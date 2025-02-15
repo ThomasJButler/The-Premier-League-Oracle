@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: theme('colors.primary.DEFAULT');
+    --secondary: theme('colors.secondary.DEFAULT');
+    --accent: theme('colors.accent.DEFAULT');
+    --text: theme('colors.primary.900');
+  }
+
+  .dark {
+    --primary: theme('colors.primary.400');
+    --secondary: theme('colors.secondary.400');
+    --accent: theme('colors.accent.400');
+    --text: theme('colors.dark.text');
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-dark-bg text-primary-900 dark:text-dark-text transition-colors duration-200;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-dark-card rounded-lg shadow-md p-6 transition-all duration-200 hover:shadow-lg
+           border border-gray-100 dark:border-dark-border;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 
+           focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-dark-bg
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark focus:ring-primary-light
+           dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-400;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary-dark focus:ring-secondary-light
+           dark:bg-secondary-600 dark:hover:bg-secondary-700 dark:focus:ring-secondary-400;
+  }
+
+  .stat-card {
+    @apply bg-white dark:bg-dark-card p-4 rounded-lg shadow-md hover:shadow-lg 
+           transition-all duration-200 border border-gray-100 dark:border-dark-border;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-primary dark:text-primary-400;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-600 dark:text-dark-text-muted font-medium;
+  }
+
+  .form-input {
+    @apply rounded-md border-gray-300 dark:border-dark-border shadow-sm 
+           focus:border-primary focus:ring focus:ring-primary-light/20 
+           dark:bg-dark-card dark:text-dark-text dark:focus:border-primary-400 
+           dark:focus:ring-primary-400/20 transition-colors duration-200;
+  }
+
+  .badge {
+    @apply px-2 py-1 text-xs font-semibold rounded-full;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+  }
+
+  .badge-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent 
+           animate-gradient bg-[length:300%_300%] dark:from-primary-400 dark:via-secondary-400 dark:to-accent-400;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden before:absolute before:inset-0 
+           before:bg-gradient-to-r before:from-transparent before:via-white/20 
+           before:to-transparent before:animate-shimmer;
+  }
+}
+
+/* Chart.js Dark Mode Styles */
+.dark .chart-container {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.dark .chart-container canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
