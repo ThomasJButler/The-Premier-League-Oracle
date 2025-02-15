@@ -1,0 +1,11 @@
+paths:
+  data_directory: "data"
+  csv_filename: "seasonresults.csv"
+
+monitoring:
+  check_interval: 60
+  auto_update: true
+
+model:
+  auto_retrain: true
+  update_threshold: 10
