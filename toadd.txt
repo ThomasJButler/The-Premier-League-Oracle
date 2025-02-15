@@ -1,0 +1,68 @@
+v2 -
+
+
+# Version 2 High-Level Structure
+
+src/
+├── data/
+│   ├── data_handler.py               (~300 LOC)
+│   │   - Load and validate CSV files
+│   │   - Process historical data
+│   │   - Maintain current season data
+│   │   - Data cleaning and formatting
+│   │
+│   ├── data_processor.py            (~250 LOC)
+│   │   - Calculate derived statistics
+│   │   - Form data processing
+│   │   - Head-to-head processing
+│   │   - Performance metrics calculation
+│   │
+├── analysis/
+│   ├── team_analyzer.py             (~400 LOC)
+│   │   - Team performance analysis
+│   │   - Form patterns
+│   │   - Scoring patterns
+│   │   - Home/Away analysis
+│   │
+│   ├── match_analyzer.py            (~350 LOC)
+│   │   - Head-to-head analysis
+│   │   - Recent form impact
+│   │   - Goal scoring patterns
+│   │   - Defense/Attack strength
+│   │
+├── prediction/
+│   ├── predictor.py                 (~500 LOC)
+│   │   - Main prediction engine
+│   │   - Pattern recognition
+│   │   - Score prediction
+│   │   - Probability calculations
+│   │
+│   ├── evaluator.py                 (~200 LOC)
+│   │   - Prediction accuracy
+│   │   - Performance metrics
+│   │   - Model evaluation
+│   │
+├── visualization/
+│   ├── vizzu_charts.py              (~400 LOC)
+│   │   - Form visualizations
+│   │   - Performance charts
+│   │   - Head-to-head visuals
+│   │   - Trend analysis charts
+│   │
+├── main.py                          (~250 LOC)
+    - Main application
+    - User interface
+    - Command processing
+    - Results display
+
+Total Estimated: ~2,650 LOC
+
+5 years of data and also this current 2024/25 season (so has lvierpools title lol)
+
+METRICS TO ANALYSE 
+
+v3 
+AI integration
+Web App
+
+v4 - player / club stats (2024/2025 onwards)
