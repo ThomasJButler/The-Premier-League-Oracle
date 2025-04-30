@@ -3,10 +3,6 @@
 This document outlines the steps needed to complete the Premier League Oracle project, which aims to be the ultimate prediction tool for the English Premier League.
 
 ## Tasks
-
-- [x] Create implementation plan (Commit: "Add implementation plan with project roadmap")
-- [x] Update page title and metadata (Commit: "Update page title to Premier League Oracle")
-- [x] Set up Supabase connection with environment variables (Commit: "Set up Supabase client with environment config")
 - [x] Create AI Assistant component (Commit: "Add AI Assistant component for stats queries")
 - [x] Update Sidebar to include AI Assistant (Commit: "Update sidebar with AI Assistant navigation")
 - [x] Update App.svelte to include new components (Commit: "Integrate AI Assistant into main app flow")

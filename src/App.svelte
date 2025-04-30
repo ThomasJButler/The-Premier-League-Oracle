@@ -6,6 +6,7 @@
   import MatchList from './components/MatchList.svelte';
   import Predictions from './components/Predictions.svelte';
   import BettingHistory from './components/BettingHistory.svelte';
+  import AiAssistant from './components/AiAssistant.svelte';
 
   let currentView = 'dashboard';
   let isDarkMode = false;
@@ -40,8 +41,9 @@
           <Predictions />
         {:else if currentView === 'history'}
           <BettingHistory />
+        {:else if currentView === 'assistant'}
+          <AiAssistant />
         {/if}
-        }
       </main>
     </div>
   </div>
