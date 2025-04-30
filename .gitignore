@@ -4,3 +4,5 @@
 /PLOracle/myenv
 /myenv/Lib
 /PLOracle/csv
+node_modules
+/.env
