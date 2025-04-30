@@ -98,7 +98,7 @@
         .select('was_correct');
         
       if (data && data.length > 0) {
-        const correct = data.filter(p => p.was_correct).length;
+        const correct = data.filter((p: { was_correct: boolean }) => p.was_correct).length;
         const total = data.length;
         const accuracy = (correct / total * 100).toFixed(1);
         return `The prediction model has an accuracy of ${accuracy}% (${correct} correct predictions out of ${total}).`;

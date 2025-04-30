@@ -3,7 +3,6 @@
 This document outlines the steps needed to complete the Premier League Oracle project, which aims to be the ultimate prediction tool for the English Premier League.
 
 ## Tasks
-- [x] Create future enhancements roadmap (Commit: "Add roadmap for future enhancements")
 
 ## Future Enhancements
 
