@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase } from '../lib/supabase';
-  
+  import { fly } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
+
   let question = '';
   let answer = '';
   let loading = false;
   let chatHistory: {question: string, answer: string}[] = [];
-  
+  let chatContainer: HTMLElement;
+
   async function askQuestion() {
     if (!question.trim()) return;
     
@@ -15,14 +18,19 @@
     question = '';
     
     try {
-      // This is where you'd integrate with a real AI service
-      // For now, we'll use a simple pattern matching system
       let response = await generateResponse(userQuestion);
       
       chatHistory = [...chatHistory, {
         question: userQuestion,
         answer: response
       }];
+      
+      // Scroll to bottom after update
+      setTimeout(() => {
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }, 0);
     } catch (error) {
       console.error('Error asking question:', error);
     } finally {
@@ -31,11 +39,9 @@
   }
   
   async function generateResponse(question: string): Promise<string> {
-    // Simple keyword matching for demo purposes
     const lowerQuestion = question.toLowerCase();
     
     if (lowerQuestion.includes('best team') || lowerQuestion.includes('strongest team')) {
-      // Query for team with highest win percentage
       const { data } = await supabase
         .from('team_stats')
         .select('team_name, wins, matches_played')
@@ -49,7 +55,6 @@
     }
     
     if (lowerQuestion.includes('most goals') || lowerQuestion.includes('highest scoring')) {
-      // Query for team with most goals scored
       const { data } = await supabase
         .from('team_stats')
         .select('team_name, goals_for, matches_played')
@@ -63,7 +68,6 @@
     }
     
     if (lowerQuestion.includes('next match') || lowerQuestion.includes('upcoming') || lowerQuestion.includes('future match')) {
-      // Get next upcoming match
       const { data } = await supabase
         .from('matches')
         .select('*')
@@ -79,7 +83,6 @@
     }
     
     if (lowerQuestion.includes('clean sheet') || lowerQuestion.includes('defense') || lowerQuestion.includes('defence')) {
-      // Get team with most clean sheets
       const { data } = await supabase
         .from('team_stats')
         .select('team_name, clean_sheets')
@@ -92,7 +95,6 @@
     }
     
     if (lowerQuestion.includes('prediction accuracy') || lowerQuestion.includes('how accurate')) {
-      // Get overall prediction accuracy
       const { data } = await supabase
         .from('predictions')
         .select('was_correct');
@@ -119,7 +121,6 @@
       return funFacts[Math.floor(Math.random() * funFacts.length)];
     }
     
-    // Default response
     return "I'm still learning about football statistics. Try asking about the best team, most goals, clean sheets, or upcoming matches!";
   }
   
@@ -128,47 +129,72 @@
   });
 </script>
 
-<div class="space-y-6">
-  <div class="flex justify-between items-center">
+<div class="space-y-6 animate-fade-in">
+  <div class="text-center">
     <h2 class="text-2xl font-bold gradient-text">Football Oracle AI</h2>
-    <p class="text-gray-600 dark:text-gray-400">Ask me anything about Premier League stats</p>
+    <p class="text-slate-600 dark:text-slate-400 mt-1">Ask me anything about Premier League stats</p>
   </div>
   
-  <div class="card max-h-96 overflow-y-auto">
+  <div 
+    bind:this={chatContainer}
+    class="card card-glass h-96 overflow-y-auto p-4 space-y-4 scroll-smooth"
+  >
     {#if chatHistory.length === 0}
-      <div class="p-6 text-center text-gray-500 dark:text-gray-400">
-        <p>Ask me about team performance, match statistics, or predictions!</p>
-        <p class="mt-2 text-sm">Try questions like "Which team scores the most goals?" or "Who has the best defensive record?"</p>
+      <div class="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400">
+        <svg class="w-16 h-16 mb-4 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+        <p class="font-medium">Ask me about team performance, match statistics, or predictions!</p>
+        <p class="mt-1 text-sm">Try questions like "Which team scores the most goals?" or "Who has the best defensive record?"</p>
       </div>
     {:else}
-      <div class="space-y-4 p-2">
-        {#each chatHistory as chat}
-          <div class="flex flex-col space-y-2">
-            <div class="bg-gray-100 dark:bg-dark-bg p-3 rounded-lg self-end max-w-[80%]">
-              <p class="text-gray-800 dark:text-dark-text">{chat.question}</p>
-            </div>
-            <div class="bg-primary-100 dark:bg-primary-900/20 p-3 rounded-lg self-start max-w-[80%]">
-              <p class="text-primary-800 dark:text-primary-400">{chat.answer}</p>
-            </div>
+      {#each chatHistory as chat, i (i)}
+        <div 
+          class="flex justify-end"
+          in:fly={{ x: 50, duration: 300, easing: quintOut, delay: 100 }}
+        >
+          <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg rounded-br-none max-w-[80%] shadow-sm">
+            <p class="text-sm text-slate-800 dark:text-slate-200">{chat.question}</p>
           </div>
-        {/each}
+        </div>
+        
+        <div 
+          class="flex justify-start"
+          in:fly={{ y: 20, duration: 400, easing: quintOut, delay: 300 }}
+        >
+          <div class="bg-white dark:bg-slate-700/50 p-3 rounded-lg rounded-bl-none max-w-[80%] shadow-sm border border-slate-200 dark:border-slate-600/50">
+            <p class="text-sm text-slate-700 dark:text-slate-300">{chat.answer}</p>
+          </div>
+        </div>
+      {/each}
+    {/if}
+    {#if loading}
+      <div class="flex justify-start">
+        <div class="bg-white dark:bg-slate-700/50 p-3 rounded-lg rounded-bl-none max-w-[80%] shadow-sm border border-slate-200 dark:border-slate-600/50">
+          <div class="flex items-center space-x-2">
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 0ms;"></div>
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 200ms;"></div>
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 400ms;"></div>
+          </div>
+        </div>
       </div>
     {/if}
   </div>
   
-  <form on:submit|preventDefault={askQuestion} class="flex space-x-2">
+  <form on:submit|preventDefault={askQuestion} class="flex space-x-3 items-center">
     <input
       bind:value={question}
-      class="form-input flex-grow"
-      placeholder="Ask about Premier League stats..."
+      class="form-input flex-grow hover-scale"
+      placeholder="Ask the Oracle..."
       disabled={loading}
     />
-    <button type="submit" class="btn btn-primary" disabled={loading || !question.trim()}>
+    <button 
+      type="submit" 
+      class="btn btn-primary hover-scale disabled:opacity-50 disabled:transform-none"
+      disabled={loading || !question.trim()}
+    >
       {#if loading}
-        <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-        Thinking...
+        <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
       {:else}
-        Ask
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
       {/if}
     </button>
   </form>
