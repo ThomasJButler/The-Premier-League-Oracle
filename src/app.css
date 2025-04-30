@@ -240,16 +240,89 @@
   }
 
   .navbar {
-    @apply bg-white dark:bg-slate-800 shadow-sm
-           border-b border-slate-200 dark:border-slate-700
-           transition-colors duration-200
-           backdrop-blur-sm bg-white/90 dark:bg-slate-800/90;
+    @apply sticky top-0 z-50 w-full 
+           bg-white/80 dark:bg-slate-900/80 
+           backdrop-blur-md 
+           border-b border-slate-200/50 dark:border-slate-700/50 
+           shadow-sm;
   }
   
   .sidebar {
-    @apply bg-white dark:bg-slate-800 shadow-sm
-           border-r border-slate-200 dark:border-slate-700
-           transition-colors duration-200;
+    @apply h-screen fixed top-0 left-0 z-40 
+           w-64 
+           bg-white dark:bg-slate-900 
+           border-r border-slate-200 dark:border-slate-700 
+           shadow-lg 
+           transition-transform duration-300 ease-in-out;
+    /* Add transform translate-x-0 for visible state */
+    /* Add -translate-x-full for hidden state if implementing toggle */
+  }
+
+  /* Advanced Card Variants */
+  .card-glass {
+    @apply bg-white/70 dark:bg-slate-800/70 backdrop-blur-md 
+           border border-white/20 dark:border-slate-700/50
+           shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .card-spotlight {
+    @apply relative overflow-hidden;
+    &::before {
+      content: '';
+      @apply absolute inset-0 opacity-0 transition-opacity duration-300
+             bg-gradient-to-r from-primary-200/20 to-accent-200/20;
+    }
+    &:hover::before {
+      @apply opacity-100;
+    }
+  }
+  
+  .card-stats {
+    @apply card flex flex-col items-center justify-center text-center p-6
+           transform transition-all duration-300 hover:-translate-y-1;
+  }
+
+  /* Enhanced Match Result Components */
+  .match-card {
+    @apply card p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between
+           hover:shadow-lg transition-all duration-300;
+  }
+  
+  .match-team {
+    @apply flex items-center space-x-3;
+  }
+  
+  .match-score {
+    @apply text-xl sm:text-2xl font-bold px-4 py-2 rounded-lg
+           bg-slate-100 dark:bg-slate-800 mx-2 sm:mx-4
+           min-w-[60px] text-center;
+  }
+  
+  .team-logo {
+    @apply w-8 h-8 sm:w-10 sm:h-10 object-contain;
+  }
+
+  /* Dynamic Data Visualization Enhancements */
+  .chart-container {
+    @apply rounded-xl p-4 bg-white/50 dark:bg-slate-800/50
+           border border-slate-100 dark:border-slate-700
+           backdrop-blur-sm transition-all duration-300;
+  }
+  
+  .stat-trend-up {
+    @apply text-emerald-500 flex items-center;
+    &::after {
+      content: '↑';
+      @apply ml-1 animate-bounce-slow;
+    }
+  }
+  
+  .stat-trend-down {
+    @apply text-rose-500 flex items-center;
+    &::after {
+      content: '↓';
+      @apply ml-1 animate-bounce-slow;
+    }
   }
 }
 
@@ -269,6 +342,60 @@
   
   .animate-bounce-in {
     animation: bounceIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+  }
+
+  /* Team color utilities */
+  .team-bg-arsenal {
+    @apply bg-red-600;
+  }
+  
+  .team-bg-chelsea {
+    @apply bg-blue-600;
+  }
+  
+  .team-bg-liverpool {
+    @apply bg-red-700;
+  }
+  
+  .team-bg-mancity {
+    @apply bg-sky-500;
+  }
+  
+  .team-bg-manutd {
+    @apply bg-red-600;
+  }
+  
+  .team-bg-tottenham {
+    @apply bg-indigo-900;
+  }
+  
+  /* Team color text utilities */
+  .team-text-arsenal {
+    @apply text-red-600;
+  }
+  
+  .team-text-chelsea {
+    @apply text-blue-600;
+  }
+  
+  /* Additional micro-interaction animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300;
+    &:hover {
+      box-shadow: 0 0 15px theme('colors.primary.400/30');
+    }
   }
 }
 
@@ -307,6 +434,21 @@
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { 
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); 
   }
 }
 

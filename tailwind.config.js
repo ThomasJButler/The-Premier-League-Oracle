@@ -65,7 +65,9 @@ export default {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'bounce-slow': 'bounce 3s infinite',
         'gradient': 'gradient 15s ease infinite',
-        'shimmer': 'shimmer 2s linear infinite'
+        'shimmer': 'shimmer 2s linear infinite',
+        'float': 'float 6s ease-in-out infinite',
+        'glow': 'glow 2s ease-in-out infinite'
       },
       keyframes: {
         gradient: {
@@ -85,6 +87,14 @@ export default {
           '100%': {
             'background-position': '1000px 0'
           }
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        glow: {
+          '0%, 100%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.5)' },
+          '50%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }
         }
       }
     }
