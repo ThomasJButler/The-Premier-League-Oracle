@@ -4,99 +4,328 @@
 
 @layer base {
   :root {
-    --primary: theme('colors.primary.DEFAULT');
-    --secondary: theme('colors.secondary.DEFAULT');
-    --accent: theme('colors.accent.DEFAULT');
-    --text: theme('colors.primary.900');
+    /* Refined color palette with slightly richer blues */
+    --primary: theme('colors.blue.700');
+    --primary-light: theme('colors.blue.500');
+    --primary-dark: theme('colors.blue.900');
+    --secondary: theme('colors.indigo.600');
+    --secondary-light: theme('colors.indigo.400');
+    --secondary-dark: theme('colors.indigo.800');
+    --accent: theme('colors.violet.600');
+    --accent-light: theme('colors.violet.400');
+    --accent-dark: theme('colors.violet.800');
+    --success: theme('colors.emerald.500');
+    --warning: theme('colors.amber.500');
+    --error: theme('colors.rose.500');
+    --text: theme('colors.slate.900');
+    --text-muted: theme('colors.slate.600');
+    --bg-primary: theme('colors.slate.50');
+    --bg-secondary: theme('colors.white');
+    --border: theme('colors.slate.200');
+    --shadow: '0 4px 20px -2px rgba(0, 0, 0, 0.1)';
   }
 
   .dark {
-    --primary: theme('colors.primary.400');
-    --secondary: theme('colors.secondary.400');
-    --accent: theme('colors.accent.400');
-    --text: theme('colors.dark.text');
+    --primary: theme('colors.blue.400');
+    --primary-light: theme('colors.blue.300');
+    --primary-dark: theme('colors.blue.600');
+    --secondary: theme('colors.indigo.400');
+    --secondary-light: theme('colors.indigo.300');
+    --secondary-dark: theme('colors.indigo.600');
+    --accent: theme('colors.violet.400');
+    --accent-light: theme('colors.violet.300');
+    --accent-dark: theme('colors.violet.600');
+    --success: theme('colors.emerald.400');
+    --warning: theme('colors.amber.400');
+    --error: theme('colors.rose.400');
+    --text: theme('colors.slate.100');
+    --text-muted: theme('colors.slate.400');
+    --bg-primary: theme('colors.slate.900');
+    --bg-secondary: theme('colors.slate.800');
+    --border: theme('colors.slate.700');
+    --shadow: '0 4px 20px -2px rgba(0, 0, 0, 0.5)';
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gray-50 dark:bg-dark-bg text-primary-900 dark:text-dark-text transition-colors duration-200;
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-300;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer components {
+  /* Card with enhanced shadows and subtle hover effect */
   .card {
-    @apply bg-white dark:bg-dark-card rounded-lg shadow-md p-6 transition-all duration-200 hover:shadow-lg
-           border border-gray-100 dark:border-dark-border;
+    @apply bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 
+           border border-slate-100/80 dark:border-slate-700/80
+           transition-all duration-300 hover:shadow-xl
+           hover:border-slate-200 dark:hover:border-slate-600;
   }
 
+  /* Enhanced buttons with refined states */
   .btn {
-    @apply px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 
-           focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-dark-bg
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-5 py-2.5 rounded-lg font-medium text-white
+           transition-all duration-200 ease-in-out
+           shadow-sm hover:shadow
+           transform hover:-translate-y-0.5
+           focus:outline-none focus:ring-2 focus:ring-offset-2 
+           dark:focus:ring-offset-slate-900
+           disabled:opacity-60 disabled:cursor-not-allowed 
+           disabled:transform-none disabled:shadow-none;
   }
 
   .btn-primary {
-    @apply bg-primary hover:bg-primary-dark focus:ring-primary-light
-           dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-400;
+    @apply bg-blue-600 hover:bg-blue-700 
+           focus:ring-blue-300
+           dark:bg-blue-500 dark:hover:bg-blue-600 
+           dark:focus:ring-blue-400/30;
   }
 
   .btn-secondary {
-    @apply bg-secondary hover:bg-secondary-dark focus:ring-secondary-light
-           dark:bg-secondary-600 dark:hover:bg-secondary-700 dark:focus:ring-secondary-400;
+    @apply bg-indigo-600 hover:bg-indigo-700 
+           focus:ring-indigo-300
+           dark:bg-indigo-500 dark:hover:bg-indigo-600 
+           dark:focus:ring-indigo-400/30;
   }
 
+  .btn-accent {
+    @apply bg-violet-600 hover:bg-violet-700 
+           focus:ring-violet-300
+           dark:bg-violet-500 dark:hover:bg-violet-600 
+           dark:focus:ring-violet-400/30;
+  }
+
+  .btn-outline {
+    @apply bg-transparent border-2 border-blue-600 text-blue-600
+           hover:bg-blue-50 dark:text-blue-400 dark:border-blue-400
+           dark:hover:bg-slate-800/80;
+  }
+
+  /* Refined stat cards */
   .stat-card {
-    @apply bg-white dark:bg-dark-card p-4 rounded-lg shadow-md hover:shadow-lg 
-           transition-all duration-200 border border-gray-100 dark:border-dark-border;
+    @apply bg-white dark:bg-slate-800 p-5 rounded-xl 
+           shadow-md hover:shadow-lg 
+           transition-all duration-300
+           border border-slate-100/80 dark:border-slate-700/80;
   }
 
   .stat-value {
-    @apply text-2xl font-bold text-primary dark:text-primary-400;
+    @apply text-2xl font-bold text-blue-700 dark:text-blue-400 
+           transition-all duration-200;
   }
 
   .stat-label {
-    @apply text-sm text-gray-600 dark:text-dark-text-muted font-medium;
+    @apply text-sm text-slate-600 dark:text-slate-400 
+           font-medium uppercase tracking-wide;
   }
 
+  /* Enhanced form elements */
   .form-input {
-    @apply rounded-md border-gray-300 dark:border-dark-border shadow-sm 
-           focus:border-primary focus:ring focus:ring-primary-light/20 
-           dark:bg-dark-card dark:text-dark-text dark:focus:border-primary-400 
-           dark:focus:ring-primary-400/20 transition-colors duration-200;
+    @apply block w-full rounded-lg border-slate-300 
+           shadow-sm px-4 py-2.5
+           focus:border-blue-500 focus:ring focus:ring-blue-200/50 
+           dark:border-slate-600 dark:bg-slate-700 
+           dark:text-slate-200 dark:focus:border-blue-400 
+           dark:focus:ring-blue-500/20 dark:placeholder-slate-400
+           transition-colors duration-200;
   }
 
+  .form-select {
+    @apply form-input bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+  }
+
+  /* Improved badges with refined styling */
   .badge {
-    @apply px-2 py-1 text-xs font-semibold rounded-full;
+    @apply inline-flex items-center justify-center px-2.5 py-0.5 
+           text-xs font-semibold rounded-full
+           transition-colors duration-150;
   }
 
   .badge-success {
-    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+    @apply bg-emerald-100 text-emerald-800 
+           dark:bg-emerald-900/30 dark:text-emerald-300;
   }
 
   .badge-warning {
-    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+    @apply bg-amber-100 text-amber-800 
+           dark:bg-amber-900/30 dark:text-amber-300;
   }
 
   .badge-error {
-    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+    @apply bg-rose-100 text-rose-800 
+           dark:bg-rose-900/30 dark:text-rose-300;
   }
 
+  .badge-info {
+    @apply bg-sky-100 text-sky-800 
+           dark:bg-sky-900/30 dark:text-sky-300;
+  }
+
+  .badge-neutral {
+    @apply bg-slate-100 text-slate-800 
+           dark:bg-slate-700 dark:text-slate-300;
+  }
+
+  /* Gorgeous gradient text with animation */
   .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent 
-           animate-gradient bg-[length:300%_300%] dark:from-primary-400 dark:via-secondary-400 dark:to-accent-400;
+    @apply text-transparent bg-clip-text bg-gradient-to-r 
+           from-blue-600 via-indigo-600 to-violet-600
+           animate-gradient bg-[length:300%_300%]
+           dark:from-blue-400 dark:via-indigo-400 
+           dark:to-violet-400;
   }
 
+  /* Enhanced shimmer effect */
   .shimmer {
-    @apply relative overflow-hidden before:absolute before:inset-0 
-           before:bg-gradient-to-r before:from-transparent before:via-white/20 
-           before:to-transparent before:animate-shimmer;
+    @apply relative overflow-hidden before:absolute 
+           before:inset-0 before:-translate-x-full
+           before:animate-shimmer
+           before:bg-gradient-to-r
+           before:from-transparent before:via-white/30 
+           before:to-transparent
+           dark:before:via-slate-600/20;
+  }
+
+  /* New additions for better UI components */
+  .divider {
+    @apply h-px w-full my-6 bg-slate-200 dark:bg-slate-700;
+  }
+
+  .avatar {
+    @apply rounded-full bg-slate-100 dark:bg-slate-700 
+           overflow-hidden flex items-center justify-center
+           border-2 border-white dark:border-slate-800 shadow-sm;
+  }
+
+  .tooltip {
+    @apply invisible absolute z-50 px-3 py-2
+           bg-slate-800 text-slate-100 text-sm rounded-lg
+           opacity-0 transition-all duration-200
+           group-hover:visible group-hover:opacity-100;
+  }
+
+  .dropdown {
+    @apply absolute right-0 mt-2 w-56 rounded-lg
+           border border-slate-200 dark:border-slate-700
+           bg-white dark:bg-slate-800 shadow-lg
+           transition-all duration-200 origin-top-right
+           z-50 overflow-hidden;
+  }
+
+  .dropdown-item {
+    @apply flex items-center px-4 py-2.5 text-sm
+           text-slate-700 dark:text-slate-200
+           hover:bg-slate-100 dark:hover:bg-slate-700
+           transition-colors duration-150;
+  }
+
+  .tab {
+    @apply px-4 py-2 text-sm font-medium rounded-lg
+           text-slate-600 hover:text-slate-900
+           dark:text-slate-400 dark:hover:text-slate-200
+           cursor-pointer transition-colors duration-200;
+  }
+
+  .tab-active {
+    @apply bg-slate-100 text-blue-600
+           dark:bg-slate-700 dark:text-blue-400;
+  }
+
+  .navbar {
+    @apply bg-white dark:bg-slate-800 shadow-sm
+           border-b border-slate-200 dark:border-slate-700
+           transition-colors duration-200
+           backdrop-blur-sm bg-white/90 dark:bg-slate-800/90;
+  }
+  
+  .sidebar {
+    @apply bg-white dark:bg-slate-800 shadow-sm
+           border-r border-slate-200 dark:border-slate-700
+           transition-colors duration-200;
   }
 }
 
-/* Chart.js Dark Mode Styles */
+@layer utilities {
+  /* Additional utility classes for animation */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+  
+  .animate-slide-in-bottom {
+    animation: slideInBottom 0.3s ease-out forwards;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+  }
+}
+
+/* Keyframes for animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInBottom {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Chart.js Dark Mode Styles with smoother inversion */
 .dark .chart-container {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(0.85) hue-rotate(180deg);
 }
 
 .dark .chart-container canvas {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(0.85) hue-rotate(180deg) saturate(1.2);
+}
+
+/* Media query for responsiveness improvements */
+@media (max-width: 768px) {
+  .card {
+    @apply p-4;
+  }
+  
+  .btn {
+    @apply px-4 py-2 text-sm;
+  }
 }
