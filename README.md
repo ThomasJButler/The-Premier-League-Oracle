@@ -9,7 +9,7 @@ The Premier League Oracle is designed to be the ultimate prediction and analysis
 
 | Desktop Screenshot | Mobile Screenshot |
 | ------------------ | ----------------- |
-| <img alt="Desktop" src="https://github.com/user-attachments/assets/3d085e2a-9aba-4f88-a732-56ce76450369" width="1200" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/7c9821d8-cc02-46b3-865a-1b0cd848ec73" width="500" /> |
+| <img alt="Desktop" src="https://github.com/user-attachments/assets/3da3aa0e-013f-4463-807b-29767b348144" width="1450" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/7c9821d8-cc02-46b3-865a-1b0cd848ec73" width="500" /> |
 
 ### Data Source
 
