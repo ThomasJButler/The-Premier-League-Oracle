@@ -77,7 +77,7 @@ I have an exciting roadmap planned for future versions:
 ## Documentation
 
 For more details about the project:
-- [Data Update Guide](docs/UPDATING_DATA.md): Instructions for adding new season data
+- [Data Update Guide](src/devdocs/UPDATING_DATA.md): Instructions for adding new season data
 - [Implementation Plan](src/devdocs/implementation-plan.md): Current development roadmap
 - [Future Enhancements](src/devdocs/future-enhancements.md): Detailed feature plans
 
