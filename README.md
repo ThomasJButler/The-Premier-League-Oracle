@@ -1,47 +1,89 @@
-# Svelte + TS + Vite
+# The Premier League Oracle
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+A comprehensive Premier League prediction platform backed by data science and machine learning. This tool analyses historical match data to provide statistically-sound predictions and uncover unusual statistics in Premier League football matches.
 
-## Recommended IDE Setup
+## Overview
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+The Premier League Oracle is designed to be the ultimate prediction and analysis tool for the English Premier League. Unlike traditional betting tips that rely on emotion or gut feeling, this platform utilises pure data analysis and statistical models to generate objective predictions and reveal hidden patterns in football data.
 
-## Need an official Svelte framework?
+### Data Source
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+All match data is sourced from [Football-Data.co.uk](https://www.football-data.co.uk/) and is used **for scientific research purposes only**. I've built a robust pipeline to clean, transform, and consolidate this data in a Supabase PostgreSQL database.
 
-## Technical considerations
+### Key Features
 
-**Why use this over SvelteKit?**
+- **Data-Driven Predictions**: Eliminates emotional bias through mathematical models
+- **Statistical Anomaly Detection**: Uncover unusual patterns and outlier performances
+- **Historical Analysis**: Access comprehensive statistics from past seasons
+- **Match Comparison**: Compare team performances across various metrics
+- **Trend Visualisation**: View performance trends and hidden patterns
+- **Informed Decision Making**: Make smarter predictions based on solid data
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## Technology Stack
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+- **Frontend**: Svelte, TypeScript, JavaScript
+- **Backend**: Supabase (PostgreSQL)
+- **Data Processing**: Python, SQL
+- **Deployment**: Vercel
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+## Responsible Usage
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+This tool is designed to promote responsible engagement with football predictions. Rather than encouraging impulsive "headless betting", The Premier League Oracle provides a structured analytical approach to understanding match outcomes.
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+## Development Status
 
-**Why include `.vscode/extensions.json`?**
+The Premier League Oracle is actively under development. My current focus is on refining the prediction algorithms and enhancing the user interface.
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
+## Future Enhancements
 
-**Why enable `allowJs` in the TS template?**
+I have an exciting roadmap planned for future versions:
 
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
+1. **Design Overhaul**
+   - Modern, responsive interface with improved data visualisations
+   - Customisable dashboard
+   - Dark/light mode toggle
 
-**Why is HMR not preserving my local component state?**
+2. **Front-end Optimisation**
+   - Performance improvements for faster loading and interaction
+   - Enhanced mobile experience
+   - Progressive Web App (PWA) capabilities
 
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
+3. **Enhanced Prediction Features**
+   - Advanced statistical models including Bayesian inference
+   - Player-specific impact analysis
+   - Weather and external factor considerations
+   - Confidence intervals for predictions
 
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
+4. **AI Assistant**
+   - Natural language chat interface to query the database
+   - Personalised insights and recommendations
+   - Automatic trend detection and alerts
 
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+5. **Standalone Application**
+   - Native mobile apps for iOS and Android
+   - Desktop application for Windows, macOS, and Linux
+   - Offline functionality with synchronisation
+
+6. **Expanded Coverage**
+   - Additional football leagues (La Liga, Bundesliga, Serie A, Ligue 1)
+   - Champions League version (based on the pre-2024 format with group stages)
+   - Exploration of other sports with rich statistical datasets
+
+## Documentation
+
+For more details about the project:
+- [Data Update Guide](docs/UPDATING_DATA.md): Instructions for adding new season data
+- [Implementation Plan](src/devdocs/implementation-plan.md): Current development roadmap
+- [Future Enhancements](src/devdocs/future-enhancements.md): Detailed feature plans
+
+## Contributing
+
+I welcome collaboration on The Premier League Oracle. It will be interesting to see where this project leads, and I'm open to contributions that align with the vision of creating an objective, data-driven analysis tool. Please feel free to submit issues or pull requests.
+
+## Disclaimer
+
+The predictions provided by this tool are based on statistical models and historical data. While I strive for accuracy, no prediction system can guarantee results with absolute certainty. This tool is intended for entertainment and research purposes only.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details. The MIT license is appropriate for this type of open-source project as it allows for collaboration while maintaining attribution.
