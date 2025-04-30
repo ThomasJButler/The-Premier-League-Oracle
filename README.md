@@ -6,6 +6,11 @@ A comprehensive Premier League prediction platform backed by data science and ma
 
 The Premier League Oracle is designed to be the ultimate prediction and analysis tool for the English Premier League. Unlike traditional betting tips that rely on emotion or gut feeling, this platform utilises pure data analysis and statistical models to generate objective predictions and reveal hidden patterns in football data.
 
+
+| Desktop Screenshot | Mobile Screenshot |
+| ------------------ | ----------------- |
+| <img alt="Desktop" src="https://github.com/user-attachments/assets/3d085e2a-9aba-4f88-a732-56ce76450369" width="1200" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/7c9821d8-cc02-46b3-865a-1b0cd848ec73" width="500" /> |
+
 ### Data Source
 
 All match data is sourced from [Football-Data.co.uk](https://www.football-data.co.uk/) and is used **for scientific research purposes only**. I've built a robust pipeline to clean, transform, and consolidate this data in a Supabase PostgreSQL database.
