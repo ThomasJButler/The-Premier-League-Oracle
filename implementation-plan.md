@@ -3,10 +3,6 @@
 This document outlines the steps needed to complete the Premier League Oracle project, which aims to be the ultimate prediction tool for the English Premier League.
 
 ## Tasks
-- [x] Create AI Assistant component (Commit: "Add AI Assistant component for stats queries")
-- [x] Update Sidebar to include AI Assistant (Commit: "Update sidebar with AI Assistant navigation")
-- [x] Update App.svelte to include new components (Commit: "Integrate AI Assistant into main app flow")
-- [x] Enhance predictions algorithm (Commit: "Enhance prediction algorithm with advanced statistics")
 - [x] Create future enhancements roadmap (Commit: "Add roadmap for future enhancements")
 
 ## Future Enhancements
