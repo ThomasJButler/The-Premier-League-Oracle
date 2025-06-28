@@ -8,12 +8,11 @@
   import BettingHistory from './components/BettingHistory.svelte';
   import AiAssistant from './components/AiAssistant.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
+  import SeasonStats from './components/SeasonStats.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
   let isSidebarOpen = true;
-  let isDarkMode = false;
-
   function navigate(event: CustomEvent<{ view: string }>) {
     currentView = event.detail.view;
   }
@@ -22,29 +21,8 @@
     isSidebarOpen = !isSidebarOpen;
   }
 
-  function toggleDarkMode() {
-    isDarkMode = !isDarkMode;
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }
-
   onMount(() => {
-    // Check local storage for theme preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      isDarkMode = true;
-      document.documentElement.classList.add('dark');
-    } else {
-      isDarkMode = false;
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Optional: Adjust sidebar based on screen size initially
+    // Adjust sidebar based on screen size initially
     if (window.innerWidth < 768) { // Example breakpoint (Tailwind's md)
       isSidebarOpen = false;
     }
@@ -69,10 +47,10 @@
 </div>
 
 <div class="flex h-screen bg-white/90 dark:bg-slate-950/90 text-slate-800 dark:text-slate-200 overflow-hidden relative">
-  <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} />
+  <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
   <div class="flex-1 flex flex-col overflow-hidden">
-    <Header toggleSidebar={toggleSidebar} on:toggleDarkMode={toggleDarkMode} />
+    <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
@@ -87,6 +65,8 @@
         <BettingHistory />
       {:else if currentView === 'AI Assistant'}
         <AiAssistant />
+      {:else if currentView === 'Season Stats'}
+        <SeasonStats />
       {/if}
     </main>
   </div>

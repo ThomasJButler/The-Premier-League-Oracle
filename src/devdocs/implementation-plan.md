@@ -4,6 +4,55 @@ This document outlines the steps needed to complete the Premier League Oracle pr
 
 ## Tasks
 
+### Completed Features
+- ✅ Fixed sidebar toggle functionality on desktop
+- ✅ Reduced ticker animation speed for better readability
+- ✅ Fixed TypeScript errors across components
+- ✅ Consolidated dark mode logic
+- ✅ Added Season Stats component with unique insights
+- ✅ Enhanced AI Assistant with free/pro tiers
+
+## AI Assistant Feature
+
+### Overview
+The AI Assistant provides intelligent, context-aware responses about Premier League data, predictions, and insights. It features a free tier with smart database queries and a pro tier for users who bring their own API keys.
+
+### Implementation Details
+
+#### Free Mode
+- Uses Supabase queries to provide intelligent responses
+- Can answer questions about:
+  - Best performing teams
+  - Top scorers and goal statistics  
+  - Clean sheets and defensive records
+  - Upcoming matches
+  - Fun facts and historical data
+- Limited to database-driven responses
+- No external API calls required
+
+#### Pro Mode  
+- Users can add their own API keys (OpenAI, Anthropic, etc.)
+- Keys stored locally in browser storage
+- Never sent to backend servers
+- Enables advanced AI-powered analysis:
+  - Complex match predictions
+  - Personalised betting strategies
+  - Deep tactical analysis
+  - Custom insights based on user preferences
+
+#### UI/UX Features
+- Chat-style interface with typing indicators
+- Message timestamps and sender identification
+- Smooth animations and transitions
+- Modal for API key management
+- Responsive design for all screen sizes
+
+### Security Considerations
+- API keys stored only in localStorage
+- No server-side storage of sensitive data
+- Clear messaging about data privacy
+- Optional feature - users can use app without it
+
 ## Future Enhancements
 
 See the detailed roadmap in `future-enhancements.md` for a comprehensive breakdown of planned features.

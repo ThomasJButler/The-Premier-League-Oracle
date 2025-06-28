@@ -17,6 +17,7 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { TrendingUp, Users, Target, BarChart2 } from 'lucide-svelte';
+  import DataFreshness from './DataFreshness.svelte';
   ChartJS.register(
     Title,
     Tooltip,
@@ -135,7 +136,7 @@
 
     const ctx = profitChartCanvas.getContext('2d');
     if (ctx) {
-      new Chart(ctx, {
+      new ChartJS(ctx, {
         type: 'line',
         data: {
           labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -182,23 +183,44 @@
 </script>
 
 <div class="space-y-8 animate-fade-in">
-  <h1 class="text-3xl font-bold gradient-text">Dashboard Overview</h1>
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <h1 class="text-3xl font-bold gradient-text">Dashboard Overview</h1>
+    <DataFreshness />
+  </div>
 
   <!-- Stats Grid -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-    {#each stats as stat, i}
-      <div class="card-stats animate-float-subtle" style="animation-delay: {i * 100}ms">
-        <div class="stat-icon-wrapper {stat.bgColor}">
-          <svelte:component this={stat.icon} class="w-6 h-6 {stat.color}" />
+  {#if loading}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {#each Array(4) as _, i}
+        <div class="card-stats">
+          <div class="skeleton w-12 h-12 rounded-lg mb-3"></div>
+          <div class="skeleton h-4 w-24 mb-2"></div>
+          <div class="skeleton h-8 w-32 mb-2"></div>
+          <div class="skeleton h-3 w-20"></div>
         </div>
-        <div class="stat-label">{stat.title}</div>
-        <div class="stat-value">{stat.value}</div>
-        <div class="stat-change {stat.change.startsWith('+') ? 'text-success dark:text-success-light' : 'text-error dark:text-error-light'}">
-          {stat.change}
+      {/each}
+    </div>
+  {:else if error}
+    <div class="p-8 text-center bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+      <p class="text-red-600 dark:text-red-400">{error}</p>
+      <button on:click={loadDashboardData} class="btn btn-primary mt-4">Retry</button>
+    </div>
+  {:else}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {#each stats as stat, i}
+        <div class="card-stats animate-float-subtle" style="animation-delay: {i * 100}ms">
+          <div class="stat-icon-wrapper {stat.bgColor}">
+            <svelte:component this={stat.icon} class="w-6 h-6 {stat.color}" />
+          </div>
+          <div class="stat-label">{stat.title}</div>
+          <div class="stat-value">{stat.value}</div>
+          <div class="stat-change {stat.change.startsWith('+') ? 'text-success dark:text-success-light' : 'text-error dark:text-error-light'}">
+            {stat.change}
+          </div>
         </div>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {/if}
 
   <!-- Charts Row -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -220,20 +242,35 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 card card-glass animate-slide-in-up" style="animation-delay: 600ms">
       <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Recent Predictions</h3>
-      <ul class="space-y-3">
-        <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
-          <span>Man City vs Arsenal (Prediction: H)</span>
-          <span class="badge badge-success">Correct</span>
-        </li>
-        <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
-          <span>Liverpool vs Chelsea (Prediction: D)</span>
-          <span class="badge badge-error">Incorrect</span>
-        </li>
-        <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
-          <span>Spurs vs Man Utd (Prediction: A)</span>
-          <span class="badge badge-success">Correct</span>
-        </li>
-      </ul>
+      {#if loading}
+        <div class="space-y-3">
+          {#each Array(3) as _}
+            <div class="flex justify-between items-center p-2">
+              <div class="skeleton h-4 w-48"></div>
+              <div class="skeleton h-6 w-20 rounded-full"></div>
+            </div>
+          {/each}
+        </div>
+      {:else if topPredictions.length === 0}
+        <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+          <p>No predictions available yet</p>
+        </div>
+      {:else}
+        <ul class="space-y-3">
+          <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
+            <span>Man City vs Arsenal (Prediction: H)</span>
+            <span class="badge badge-success">Correct</span>
+          </li>
+          <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
+            <span>Liverpool vs Chelsea (Prediction: D)</span>
+            <span class="badge badge-error">Incorrect</span>
+          </li>
+          <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5">
+            <span>Spurs vs Man Utd (Prediction: A)</span>
+            <span class="badge badge-success">Correct</span>
+          </li>
+        </ul>
+      {/if}
     </div>
     <div class="card card-glass animate-slide-in-up" style="animation-delay: 700ms">
       <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Upcoming Matches</h3>

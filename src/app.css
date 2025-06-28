@@ -331,7 +331,7 @@
   }
 
   .animate-scroll {
-    animation: scroll 30s linear infinite;
+    animation: scroll 20s linear infinite;
   }
 
   /* Particle effect */
@@ -345,5 +345,20 @@
     10% { opacity: 1; }
     90% { opacity: 1; }
     100% { transform: translateY(-100vh) translateX(100px) scale(0.5); opacity: 0; }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
   }
 }
