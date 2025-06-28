@@ -153,45 +153,43 @@ export class ExpectedGoalsCalculator {
 
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
-  static calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
-    return supabase
+  static async calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
+    const { data } = await supabase
       .from('matches')
       .select('date')
       .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
       .lt('date', matchDate.toISOString())
       .order('date', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (!data || data.length === 0) return 7; // Default rest days
-        const lastMatch = new Date(data[0].date);
-        return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
-      });
+      .limit(1);
+    
+    if (!data || data.length === 0) return 7; // Default rest days
+    const lastMatch = new Date(data[0].date);
+    return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  static calculateFixtureDifficulty(
+  static async calculateFixtureDifficulty(
     teamName: string,
     startDate: Date,
     endDate: Date
   ): Promise<number> {
     // Calculate average opponent strength in date range
-    return supabase
+    const { data } = await supabase
       .from('matches')
       .select('*')
       .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
       .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString())
-      .then(async ({ data }) => {
-        if (!data || data.length === 0) return 0;
+      .lte('date', endDate.toISOString());
+    
+    if (!data || data.length === 0) return 0;
         
-        let totalDifficulty = 0;
-        for (const match of data) {
-          const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-          // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
-          totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
-        }
-        
-        return totalDifficulty / data.length;
-      });
+    let totalDifficulty = 0;
+    for (const match of data) {
+      const opponent = match.home_team === teamName ? match.away_team : match.home_team;
+      // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
+      totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+    }
+    
+    return totalDifficulty / data.length;
   }
 
   static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
