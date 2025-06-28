@@ -79,7 +79,6 @@
             on:blur={() => setTimeout(() => isSearchOpen = false, 200)}
             placeholder="Search teams, matches..."
             class="w-64 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-            autofocus
           />
           <button on:click={handleSearch} class="absolute right-2 p-1">
             <Search class="w-4 h-4 text-slate-400" />
@@ -121,7 +120,12 @@
       
       {#if isUserMenuOpen}
         <!-- Backdrop -->
-        <div class="fixed inset-0 z-10" on:click={() => isUserMenuOpen = false}></div>
+        <button 
+          class="fixed inset-0 z-10 bg-transparent cursor-default" 
+          on:click={() => isUserMenuOpen = false}
+          aria-label="Close user menu"
+          tabindex="-1"
+        ></button>
         
         <!-- Dropdown -->
         <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-20 animate-fadeIn">
