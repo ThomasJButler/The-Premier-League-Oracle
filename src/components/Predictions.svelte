@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getCurrentSeasonMatches, getPredictionAccuracy, type Match, type Prediction } from '../lib/supabase';
-  import { predictMatch } from '../lib/predictions';
   import { format } from 'date-fns';
 
   let predictions: Array<Match & { prediction?: Prediction }> = [];
@@ -10,163 +9,114 @@
   let selectedMatch: Match | null = null;
   let predictionInProgress = false;
   let currentPrediction: any = null;
+  let visible = false; // For staggered animation
+  let error: string | null = null;
 
   async function loadData() {
     loading = true;
-    const matches = await getCurrentSeasonMatches();
-    const currentAccuracy = await getPredictionAccuracy('2024-2025');
-    
-    if (currentAccuracy) {
-      accuracy = currentAccuracy;
-    }
-
-    predictions = matches.map(match => ({
-      ...match,
-      prediction: {
-        predicted_result: match.result,
-        confidence_score: Math.random() * 0.3 + 0.6,
-        predicted_home_goals: match.home_goals || 0,
-        predicted_away_goals: match.away_goals || 0,
-        was_correct: true,
-        prediction_date: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        id: '',
-        match_id: match.id
-      }
-    }));
-    loading = false;
-  }
-
-  async function generatePrediction(match: Match) {
-    predictionInProgress = true;
-    selectedMatch = match;
-    
+    error = null;
     try {
-      currentPrediction = await predictMatch(match.home_team, match.away_team);
+      const matches = await getCurrentSeasonMatches();
+      const currentAccuracy = await getPredictionAccuracy('2024-2025');
       
-      // Add some artificial delay for UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-    } catch (error) {
-      console.error('Error generating prediction:', error);
+      if (currentAccuracy) {
+        accuracy = currentAccuracy;
+      }
+
+      predictions = matches.map(match => {
+        const mockConfidence = Math.random() * 0.4 + 0.5; // Between 50% and 90%
+        const mockResult = mockConfidence > 0.75 ? (Math.random() > 0.5 ? 'H' : 'A') : 'D';
+        const mockHomeGoals = mockResult === 'H' ? Math.ceil(Math.random() * 2) : mockResult === 'D' ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 1);
+        const mockAwayGoals = mockResult === 'A' ? Math.ceil(Math.random() * 2) : mockResult === 'D' ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 1);
+
+        return {
+          ...match,
+          prediction: {
+            predicted_result: match.result ?? mockResult,
+            confidence_score: mockConfidence,
+            predicted_home_goals: match.home_goals ?? mockHomeGoals,
+            predicted_away_goals: match.away_goals ?? mockAwayGoals,
+            was_correct: match.result ? (match.result === mockResult) : false,
+            prediction_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            id: `pred_${match.id}`,
+            match_id: match.id
+          }
+        };
+      });
+    } catch (err) {
+      error = 'Failed to load predictions. Please try again.';
+      console.error(err);
     } finally {
-      predictionInProgress = false;
+      loading = false;
+      visible = false;
+      setTimeout(() => { visible = true; }, 100);
     }
   }
 
   onMount(loadData);
 </script>
 
-<div class="space-y-6">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="text-2xl font-bold text-primary">AI Predictions</h2>
-      <p class="text-gray-600 mt-1">Powered by advanced machine learning algorithms</p>
-    </div>
-    <div class="flex items-center space-x-4">
-      <div class="stat-card">
-        <div class="stat-label">Accuracy</div>
-        <div class="stat-value">{accuracy.accuracy.toFixed(1)}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Total Predictions</div>
-        <div class="stat-value">{accuracy.total}</div>
-      </div>
-    </div>
-  </div>
+<div class="space-y-6 animate-fade-in">
+  <h2 class="text-2xl font-bold gradient-text">Match Predictions</h2>
 
   {#if loading}
     <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  {:else if error}
+    <div class="card p-6 text-center bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700/50">
+      <p class="text-rose-700 dark:text-rose-300 font-medium">{error}</p>
+      <button class="btn btn-primary mt-4" on:click={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="grid gap-6">
-      {#each predictions as match}
-        <div class="card {selectedMatch?.id === match.id ? 'ring-2 ring-primary ring-offset-2' : ''}">
-          <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center space-x-3">
-              <div class="text-lg font-semibold">
-                {match.home_team} vs {match.away_team}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {#each predictions as prediction, i (prediction.id)}
+        <div class="card card-glass animate-slide-in-up" style="animation-delay: {i * 50}ms">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-sm text-slate-500 dark:text-slate-400">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
+            {#if prediction.prediction}
+              <span class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}">
+                {(prediction.prediction.confidence_score * 100).toFixed(0)}% Conf.
+              </span>
+            {/if}
+          </div>
+          <div class="text-center mb-4">
+            <div class="flex justify-center items-center space-x-4 mb-2">
+              <div class="flex flex-col items-center w-1/3">
+                <img src={'https://via.placeholder.com/40/0000FF/FFFFFF?text=' + prediction.home_team.substring(0,3).toUpperCase()} alt="{prediction.home_team} logo" class="w-8 h-8 mb-1 object-contain rounded-full bg-gray-200">
+                <span class="text-sm font-medium text-slate-800 dark:text-slate-200 text-center">{prediction.home_team}</span>
               </div>
-              {#if new Date(match.date) > new Date()}
-                <span class="badge badge-warning">Upcoming</span>
-              {/if}
-            </div>
-            <div class="text-sm text-gray-500">
-              {format(new Date(match.date), 'MMM d, yyyy')}
+              <span class="text-xl font-bold text-slate-500 dark:text-slate-400">vs</span>
+              <div class="flex flex-col items-center w-1/3">
+                <img src={'https://via.placeholder.com/40/FF0000/FFFFFF?text=' + prediction.away_team.substring(0,3).toUpperCase()} alt="{prediction.away_team} logo" class="w-8 h-8 mb-1 object-contain rounded-full bg-gray-200">
+                <span class="text-sm font-medium text-slate-800 dark:text-slate-200 text-center">{prediction.away_team}</span>
+              </div>
             </div>
           </div>
 
-          {#if currentPrediction && selectedMatch?.id === match.id}
-            <div class="bg-blue-50 p-4 rounded-lg mb-6 animate-fade-in">
-              <h3 class="text-lg font-semibold text-primary mb-3">AI Prediction</h3>
-              <div class="grid grid-cols-3 gap-4">
-                <div class="text-center">
-                  <div class="text-sm text-gray-600">Predicted Result</div>
-                  <div class="font-bold text-lg">
-                    {currentPrediction.predictedResult === 'H' ? 'Home Win' :
-                     currentPrediction.predictedResult === 'A' ? 'Away Win' : 'Draw'}
+          {#if prediction.prediction}
+            <div class="mb-4">
+              <h4 class="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Prediction</h4>
+              <div class="flex justify-around items-center bg-slate-100/50 dark:bg-slate-800/50 rounded-lg p-3">
+                {#each [
+                  { label: 'Home Win', value: 'H', goals: prediction.prediction.predicted_home_goals },
+                  { label: 'Draw', value: 'D', goals: prediction.prediction.predicted_result === 'D' ? (prediction.prediction.predicted_home_goals + prediction.prediction.predicted_away_goals) / 2 : 0 },
+                  { label: 'Away Win', value: 'A', goals: prediction.prediction.predicted_away_goals }
+                ] as outcome}
+                  <div class="text-center px-2">
+                    <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">{outcome.label}</span>
+                    <span class="block text-lg font-bold {prediction.prediction.predicted_result === outcome.value ? 'text-primary dark:text-primary-light' : 'text-slate-800 dark:text-slate-200'}">
+                      {prediction.prediction.predicted_result === outcome.value ? outcome.value : '-'}
+                    </span>
+                    <span class="block text-xs text-slate-500 dark:text-slate-400">{prediction.prediction.predicted_result === outcome.value ? `(${outcome.goals})` : ''}</span>
                   </div>
-                </div>
-                <div class="text-center">
-                  <div class="text-sm text-gray-600">Confidence</div>
-                  <div class="font-bold text-lg">
-                    {(currentPrediction.confidence * 100).toFixed(1)}%
-                  </div>
-                </div>
-                <div class="text-center">
-                  <div class="text-sm text-gray-600">Predicted Score</div>
-                  <div class="font-bold text-lg">
-                    {currentPrediction.predictedHomeGoals} - {currentPrediction.predictedAwayGoals}
-                  </div>
-                </div>
+                {/each}
               </div>
             </div>
           {/if}
 
-          <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-sm text-gray-600">Home Win</div>
-              <div class="font-semibold text-lg">{match.home_odds?.toFixed(2) || '-'}</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-sm text-gray-600">Draw</div>
-              <div class="font-semibold text-lg">{match.draw_odds?.toFixed(2) || '-'}</div>
-            </div>
-            <div class="text-center p-3 bg-gray-50 rounded-lg">
-              <div class="text-sm text-gray-600">Away Win</div>
-              <div class="font-semibold text-lg">{match.away_odds?.toFixed(2) || '-'}</div>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-              {#if match.result}
-                <span class="text-sm font-medium">Status:</span>
-                <span class="badge {match.prediction?.was_correct ? 'badge-success' : 'badge-error'}">
-                  {match.prediction?.was_correct ? 'Correct Prediction' : 'Incorrect Prediction'}
-                </span>
-              {:else}
-                <span class="badge badge-warning">Pending</span>
-              {/if}
-            </div>
-            <div class="flex space-x-3">
-              <button 
-                class="btn btn-secondary"
-                on:click={() => generatePrediction(match)}
-                disabled={predictionInProgress && selectedMatch?.id === match.id}
-              >
-                {#if predictionInProgress && selectedMatch?.id === match.id}
-                  <div class="flex items-center space-x-2">
-                    <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span>Analyzing...</span>
-                  </div>
-                {:else}
-                  Generate Prediction
-                {/if}
-              </button>
-              <button class="btn btn-primary">View Analysis</button>
-            </div>
+          <div class="flex justify-end space-x-2">
           </div>
         </div>
       {/each}
@@ -174,7 +124,18 @@
   {/if}
 </div>
 
-<style>
+<style lang="postcss">
+  .card-glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem; /* Corresponds to rounded-xl */
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out;
   }
