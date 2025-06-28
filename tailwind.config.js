@@ -1,105 +1,126 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
-  darkMode: 'class',
+  darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
       colors: {
+        // Custom semantic colors using CSS variables
+        'bg-base': 'var(--bg-base)',
+        'bg-alt': 'var(--bg-alt)',
+        'bg-sidebar': 'var(--bg-sidebar)',
+        'bg-navbar': 'var(--bg-navbar)',
+        'text-base': 'var(--text-base)',
+        'text-muted': 'var(--text-muted)',
+        'border-base': 'var(--border-base)',
+        'border-sidebar': 'var(--border-sidebar)',
+        'border-navbar': 'var(--border-navbar)',
         primary: {
-          DEFAULT: '#1e40af',
-          light: '#3b82f6',
-          dark: '#1e3a8a',
-          900: '#1e3a8a',
-          800: '#1e40af',
-          700: '#2563eb',
-          600: '#3b82f6',
-          500: '#60a5fa',
-          400: '#93c5fd',
-          300: '#bfdbfe',
-          200: '#dbeafe',
-          100: '#eff6ff',
-          50: '#f8fafc'
-        },
-        secondary: {
-          DEFAULT: '#4f46e5',
-          light: '#6366f1',
-          dark: '#4338ca',
-          900: '#312e81',
-          800: '#3730a3',
-          700: '#4338ca',
-          600: '#4f46e5',
-          500: '#6366f1',
-          400: '#818cf8',
-          300: '#a5b4fc',
-          200: '#c7d2fe',
-          100: '#e0e7ff',
-          50: '#eef2ff'
+          DEFAULT: 'hsl(210, 90%, 50%)', // Brighter base blue
+          light: 'hsl(210, 90%, 65%)',
+          dark: 'hsl(210, 90%, 40%)',
+          '50': 'hsl(210, 90%, 95%)',
+          '100': 'hsl(210, 90%, 90%)',
+          '200': 'hsl(210, 90%, 80%)',
+          '300': 'hsl(210, 90%, 70%)',
+          '400': 'hsl(210, 90%, 60%)',
+          '500': 'hsl(210, 90%, 50%)', // Base
+          '600': 'hsl(210, 90%, 45%)',
+          '700': 'hsl(210, 90%, 40%)', // Dark
+          '800': 'hsl(210, 90%, 30%)',
+          '900': 'hsl(210, 90%, 20%)',
+          '950': 'hsl(210, 90%, 10%)',
         },
         accent: {
-          DEFAULT: '#7c3aed',
-          light: '#8b5cf6',
-          dark: '#6d28d9',
-          900: '#581c87',
-          800: '#6b21a8',
-          700: '#7e22ce',
-          600: '#9333ea',
-          500: '#a855f7',
-          400: '#c084fc',
-          300: '#d8b4fe',
-          200: '#e9d5ff',
-          100: '#f3e8ff',
-          50: '#faf5ff'
+          DEFAULT: 'hsl(260, 85%, 60%)', // Vibrant purple
+          light: 'hsl(260, 85%, 70%)',
+          dark: 'hsl(260, 85%, 50%)',
+          // Add shades 50-950 if needed
         },
-        dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
-          border: '#334155',
-          text: '#e2e8f0',
-          'text-muted': '#94a3b8'
-        }
+        secondary: {
+          DEFAULT: 'hsl(180, 70%, 50%)', // Teal/Cyan
+          light: 'hsl(180, 70%, 65%)',
+          dark: 'hsl(180, 70%, 40%)',
+           // Add shades 50-950 if needed
+        },
+        slate: { // Slightly cooler slate
+          '50': '#f8fafc',
+          '100': '#f1f5f9',
+          '200': '#e2e8f0',
+          '300': '#cbd5e1',
+          '400': '#94a3b8',
+          '500': '#64748b',
+          '600': '#475569',
+          '700': '#334155',
+          '800': '#1e293b',
+          '900': '#0f172a', // Deeper dark base
+          '950': '#020617' // Almost black
+        },
+        // Keep success, warning, error as they are or adjust similarly
+        success: {
+          DEFAULT: 'hsl(145, 63%, 42%)', // Example: Keep or adjust
+          // ... shades
+        },
+        warning: {
+          DEFAULT: 'hsl(45, 100%, 51%)', // Example: Keep or adjust
+          // ... shades
+        },
+        error: {
+          DEFAULT: 'hsl(0, 72%, 51%)', // Example: Keep or adjust
+          // ... shades
+        },
       },
-      backgroundSize: {
-        '300%': '300%'
+      boxShadow: {
+        'glow-primary-sm': '0 0 8px 0px hsla(210, 90%, 50%, 0.3)',
+        'glow-primary-md': '0 0 15px 2px hsla(210, 90%, 50%, 0.4)',
+        'glow-primary-lg': '0 0 25px 5px hsla(210, 90%, 50%, 0.5)',
+        'glow-accent-md': '0 0 15px 2px hsla(260, 85%, 60%, 0.4)',
       },
       animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'bounce-slow': 'bounce 3s infinite',
-        'gradient': 'gradient 15s ease infinite',
-        'shimmer': 'shimmer 2s linear infinite',
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
+        'slide-in-up': 'slideInUp 0.5s ease-out forwards',
+        'bounce-in': 'bounceIn 0.6s ease-out forwards',
         'float': 'float 6s ease-in-out infinite',
-        'glow': 'glow 2s ease-in-out infinite'
+        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+        'gradient': 'gradient 10s ease infinite', // Slower default gradient
+        'gradient-fast': 'gradient 5s ease infinite', // Faster gradient animation
+        'pulse-glow-subtle': 'pulseGlowSubtle 3s ease-in-out infinite',
+        'float-subtle': 'float 10s ease-in-out infinite', // Slower float
       },
       keyframes: {
-        gradient: {
-          '0%, 100%': {
-            'background-size': '300%',
-            'background-position': 'left center'
-          },
-          '50%': {
-            'background-size': '300%',
-            'background-position': 'right center'
-          }
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
-        shimmer: {
-          '0%': {
-            'background-position': '-1000px 0'
-          },
-          '100%': {
-            'background-position': '1000px 0'
-          }
+        slideInUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        bounceIn: {
+          '0%': { opacity: '0', transform: 'scale(0.8)' },
+          '60%': { opacity: '1', transform: 'scale(1.05)' },
+          '100%': { transform: 'scale(1)' },
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
+          '50%': { transform: 'translateY(-8px)' },
         },
-        glow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.5)' },
-          '50%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }
+        pulseGlow: {
+          '0%, 100%': { boxShadow: '0 0 10px hsla(var(--primary-hsl, 210 90%), 50%, 0.2)' },
+          '50%': { boxShadow: '0 0 20px hsla(var(--primary-hsl, 210 90%), 50%, 0.5)' },
+        },
+        gradient: {
+          '0%, 100%': { 'background-position': '0% 50%' },
+          '50%': { 'background-position': '100% 50%' },
+        },
+        pulseGlowSubtle: { // More subtle glow pulse
+          '0%, 100%': { boxShadow: '0 0 5px hsla(210, 90%, 50%, 0.1)' },
+          '50%': { boxShadow: '0 0 12px hsla(210, 90%, 50%, 0.3)' }
         }
       }
     }
   },
   plugins: [
-    require('@tailwindcss/forms')
-  ]
+    require('@tailwindcss/forms'),
+  ],
 }
