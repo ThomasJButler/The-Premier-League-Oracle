@@ -36,6 +36,12 @@
     isUserMenuOpen = false;
   }
 
+  function handleSearchKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  }
+
   // Initialize theme based on saved preference
   if (typeof window !== 'undefined') {
     const savedTheme = localStorage.getItem('theme');
@@ -69,7 +75,7 @@
           <input
             type="text"
             bind:value={searchQuery}
-            on:keydown={(e) => (e as KeyboardEvent).key === 'Enter' && handleSearch()}
+            on:keydown={handleSearchKeydown}
             on:blur={() => setTimeout(() => isSearchOpen = false, 200)}
             placeholder="Search teams, matches..."
             class="w-64 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
