@@ -129,72 +129,71 @@
   });
 </script>
 
-<div class="space-y-6 animate-fade-in">
-  <div class="text-center">
-    <h2 class="text-2xl font-bold gradient-text">Football Oracle AI</h2>
-    <p class="text-slate-600 dark:text-slate-400 mt-1">Ask me anything about Premier League stats</p>
-  </div>
-  
-  <div 
+<div class="card card-glass p-4 sm:p-6 h-full flex flex-col">
+  <!-- Use card-glass and adjust padding -->
+  <h2 class="text-xl font-semibold mb-4 gradient-text">AI Assistant</h2>
+  <!-- Use gradient-text -->
+
+  <div
     bind:this={chatContainer}
-    class="card card-glass h-96 overflow-y-auto p-4 space-y-4 scroll-smooth"
+    class="chat-history flex-grow overflow-y-auto mb-4 space-y-4 p-3 bg-slate-100/20 dark:bg-slate-800/30 rounded-lg border border-slate-200/20 dark:border-slate-700/20"
   >
-    {#if chatHistory.length === 0}
-      <div class="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400">
-        <svg class="w-16 h-16 mb-4 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-        <p class="font-medium">Ask me about team performance, match statistics, or predictions!</p>
-        <p class="mt-1 text-sm">Try questions like "Which team scores the most goals?" or "Who has the best defensive record?"</p>
+    <!-- Adjusted background, padding, border -->
+    {#each chatHistory as chat, i (i)}
+    <!-- Added key for transition -->
+      <!-- User Message -->
+      <div class="flex justify-end" transition:fly={{ y: 20, duration: 300, easing: quintOut }}>
+        <div class="chat-bubble user-bubble relative bg-gradient-to-br from-primary/80 to-accent/80 text-white p-3 rounded-lg rounded-br-none max-w-md shadow-md">
+          <!-- Gradient, shadow, rounded corner -->
+          <p class="text-sm">{chat.question}</p>
+          <div class="absolute bottom-1 right-2 text-xs opacity-60">You</div>
+          <!-- Label -->
+        </div>
       </div>
-    {:else}
-      {#each chatHistory as chat, i (i)}
-        <div 
-          class="flex justify-end"
-          in:fly={{ x: 50, duration: 300, easing: quintOut, delay: 100 }}
-        >
-          <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg rounded-br-none max-w-[80%] shadow-sm">
-            <p class="text-sm text-slate-800 dark:text-slate-200">{chat.question}</p>
-          </div>
+      <!-- AI Message -->
+      <div class="flex justify-start" transition:fly={{ y: 20, duration: 300, delay: 150, easing: quintOut }}>
+        <div class="chat-bubble ai-bubble relative bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 p-3 rounded-lg rounded-bl-none max-w-md shadow-md border border-slate-200/50 dark:border-slate-700/50">
+          <!-- Adjusted bg, border, shadow, rounded corner -->
+          <p class="text-sm">{chat.answer}</p>
+          <div class="absolute bottom-1 left-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">Oracle</div>
+          <!-- Label -->
         </div>
-        
-        <div 
-          class="flex justify-start"
-          in:fly={{ y: 20, duration: 400, easing: quintOut, delay: 300 }}
-        >
-          <div class="bg-white dark:bg-slate-700/50 p-3 rounded-lg rounded-bl-none max-w-[80%] shadow-sm border border-slate-200 dark:border-slate-600/50">
-            <p class="text-sm text-slate-700 dark:text-slate-300">{chat.answer}</p>
-          </div>
-        </div>
-      {/each}
-    {/if}
+      </div>
+    {/each}
     {#if loading}
       <div class="flex justify-start">
-        <div class="bg-white dark:bg-slate-700/50 p-3 rounded-lg rounded-bl-none max-w-[80%] shadow-sm border border-slate-200 dark:border-slate-600/50">
+        <div class="chat-bubble ai-bubble bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 p-3 rounded-lg rounded-bl-none max-w-xs shadow-md border border-slate-200/50 dark:border-slate-700/50">
           <div class="flex items-center space-x-2">
-            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 0ms;"></div>
-            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 200ms;"></div>
-            <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 400ms;"></div>
+             <div class="w-2 h-2 bg-primary rounded-full animate-pulse" style="animation-delay: 0ms;"></div>
+             <div class="w-2 h-2 bg-primary rounded-full animate-pulse" style="animation-delay: 150ms;"></div>
+             <div class="w-2 h-2 bg-primary rounded-full animate-pulse" style="animation-delay: 300ms;"></div>
           </div>
         </div>
       </div>
     {/if}
   </div>
-  
-  <form on:submit|preventDefault={askQuestion} class="flex space-x-3 items-center">
+
+  <form on:submit|preventDefault={askQuestion} class="chat-input flex items-center gap-2 border-t border-slate-200/50 dark:border-slate-700/50 pt-4">
+    <!-- Added top border -->
     <input
+      type="text"
       bind:value={question}
-      class="form-input flex-grow hover-scale"
       placeholder="Ask the Oracle..."
+      class="form-input flex-grow"
       disabled={loading}
     />
-    <button 
-      type="submit" 
-      class="btn btn-primary hover-scale disabled:opacity-50 disabled:transform-none"
-      disabled={loading || !question.trim()}
-    >
+    <!-- Use form-input -->
+    <button type="submit" class="btn btn-primary" disabled={loading || !question.trim()}>
+      <!-- Use btn btn-primary -->
       {#if loading}
-        <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Sending</span>
       {:else}
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+        <span>Send</span>
       {/if}
     </button>
   </form>
