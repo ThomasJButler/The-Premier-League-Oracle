@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+Important - Please commit as you go along, gradually ,just like a developer would. ONLY AFTER COMPLTED FEATURES THAT ARE ISOLATED FROM THE NEXT OR FUTURE FEATURES IN THE SAME BRANCH. Uk english and sound like me! │ > DONT PUT CLAUDE CODE IN THE COMMIT MESSAGES PLEASE     
+
 ## Project Overview
 
 The Premier League Oracle is a data-driven football prediction platform that uses statistical models and machine learning concepts to predict match outcomes and analyze team performance in the English Premier League.
