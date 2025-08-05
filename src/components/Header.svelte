@@ -97,7 +97,7 @@
       <span class="absolute top-0 right-0 w-2 h-2 bg-accent rounded-full animate-pulse"></span>
     </button>
 
-    <a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-icon" aria-label="GitHub Repository">
+    <a href="https://github.com/ThomasJButler/The-Premier-League-Oracle" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-icon" aria-label="GitHub Repository">
       <Github class="w-5 h-5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors" />
     </a>
     
