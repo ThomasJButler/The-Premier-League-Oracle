@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Send, Bot, Lock, Sparkles, ChevronDown } from 'lucide-svelte';
+  import { Send, Bot, Lock, Sparkles, ChevronDown, Settings, AlertCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { supabase } from '../lib/supabase';
+  import { aiService, type AIMessage as AIServiceMessage } from '../services/aiService';
 
   interface Message {
     id: number;
@@ -14,7 +15,7 @@
   let messages: Message[] = [
     {
       id: 1,
-      text: "Hello! I'm your Premier League Oracle assistant. I can help you analyze matches, understand predictions, and provide insights about teams and players. How can I assist you today?",
+      text: "Hello! I'm your Premier League Oracle AI assistant powered by advanced language models. I can analyze matches, provide predictions, identify value bets, and offer deep insights about teams and players. How can I assist you today?",
       sender: 'assistant',
       timestamp: new Date()
     }
@@ -26,6 +27,10 @@
   let showProModal = false;
   let apiKey = '';
   let hasApiKey = false;
+  let selectedProvider: 'openai' | 'anthropic' = 'openai';
+  let selectedModel = 'gpt-4-turbo-preview';
+  let errorMessage = '';
+  let conversationHistory: AIServiceMessage[] = [];
 
   async function generateSmartResponse(question: string): Promise<string> {
     const lowerQuestion = question.toLowerCase();
@@ -117,20 +122,37 @@
       timestamp: new Date()
     };
     messages = [...messages, userMessage];
+    
+    // Add to conversation history for context
+    conversationHistory = [...conversationHistory, { role: 'user', content: inputMessage }];
+    
+    const userInput = inputMessage;
     inputMessage = '';
 
-    // Simulate typing
+    // Show typing indicator
     isTyping = true;
     scrollToBottom();
+    errorMessage = '';
 
     try {
-      // Generate response based on mode
-      const response = hasApiKey 
-        ? `[Pro Mode] I'm analyzing your question: "${userMessage.text}". In a real implementation, this would connect to your AI provider for advanced analysis.`
-        : await generateSmartResponse(userMessage.text);
+      let response: string;
       
-      // Add delay for realism
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+      if (hasApiKey) {
+        // Use AI service for real API calls
+        const aiResponse = await aiService.sendMessage(userInput, conversationHistory);
+        
+        if (aiResponse.success && aiResponse.message) {
+          response = aiResponse.message;
+          // Add assistant response to history
+          conversationHistory = [...conversationHistory, { role: 'assistant', content: response }];
+        } else {
+          response = aiResponse.error || 'Failed to get AI response. Please check your API key and try again.';
+          errorMessage = response;
+        }
+      } else {
+        // Fallback to smart database queries
+        response = await generateSmartResponse(userInput);
+      }
       
       const assistantMessage: Message = {
         id: messages.length + 1,
@@ -141,13 +163,16 @@
       messages = [...messages, assistantMessage];
     } catch (error) {
       console.error('Error generating response:', error);
-      const errorMessage: Message = {
+      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      errorMessage = errorMsg;
+      
+      const assistantMessage: Message = {
         id: messages.length + 1,
-        text: "I apologize, but I encountered an error. Please try again or check the Season Stats for insights!",
+        text: `I encountered an error: ${errorMsg}. Please check your API configuration or try again.`,
         sender: 'assistant',
         timestamp: new Date()
       };
-      messages = [...messages, errorMessage];
+      messages = [...messages, assistantMessage];
     } finally {
       isTyping = false;
       scrollToBottom();
@@ -171,26 +196,62 @@
 
   function saveApiKey() {
     if (apiKey.trim()) {
+      // Configure the AI service with the API key
+      aiService.setApiKey(apiKey, selectedProvider, selectedModel);
       hasApiKey = true;
-      localStorage.setItem('ai_api_key', apiKey);
       showProModal = false;
+      errorMessage = '';
+      
+      const providerName = selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic';
+      const modelName = selectedModel;
+      
       messages = [...messages, {
         id: messages.length + 1,
-        text: "Great! I've activated Pro mode with your API key. I can now provide more detailed and sophisticated analysis.",
+        text: `Excellent! I've connected to ${providerName} using ${modelName}. I can now provide advanced AI-powered analysis with real-time insights, sophisticated predictions, and value betting recommendations. Ask me anything about Premier League matches, teams, or betting strategies!`,
         sender: 'assistant',
         timestamp: new Date()
       }];
+      
+      // Clear conversation history for fresh start
+      conversationHistory = [];
+    }
+  }
+  
+  function updateModelSelection() {
+    if (selectedProvider === 'openai') {
+      selectedModel = 'gpt-4-turbo-preview';
+    } else {
+      selectedModel = 'claude-3-opus-20240229';
     }
   }
 
   onMount(() => {
-    const savedKey = localStorage.getItem('ai_api_key');
-    if (savedKey) {
-      hasApiKey = true;
-      apiKey = savedKey;
+    // Check if AI service has a configured API key
+    hasApiKey = aiService.hasApiKey();
+    
+    if (hasApiKey) {
+      const savedProvider = localStorage.getItem('ai_provider') as 'openai' | 'anthropic';
+      const savedModel = localStorage.getItem('ai_model');
+      
+      if (savedProvider) selectedProvider = savedProvider;
+      if (savedModel) selectedModel = savedModel;
     }
+    
     scrollToBottom();
   });
+  
+  function clearApiKey() {
+    aiService.clearApiKey();
+    hasApiKey = false;
+    apiKey = '';
+    conversationHistory = [];
+    messages = [...messages, {
+      id: messages.length + 1,
+      text: "API key cleared. Switched back to free mode with smart database queries.",
+      sender: 'assistant',
+      timestamp: new Date()
+    }];
+  }
 </script>
 
 <div class="ai-assistant flex flex-col h-full max-h-[calc(100vh-12rem)]">
@@ -204,20 +265,23 @@
         <div>
           <h2 class="text-lg font-bold text-slate-900 dark:text-white">AI Assistant</h2>
           <p class="text-sm text-slate-600 dark:text-slate-400">
-            {hasApiKey ? 'Pro Mode Active' : 'Free Mode - Smart Responses'}
+            {hasApiKey ? `Pro Mode - ${selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic'}` : 'Free Mode - Smart Responses'}
           </p>
         </div>
       </div>
       
-      {#if !hasApiKey}
-        <button
-          on:click={() => showProModal = true}
-          class="btn btn-primary btn-sm flex items-center space-x-2"
-        >
+      <button
+        on:click={() => showProModal = true}
+        class="btn {hasApiKey ? 'btn-secondary' : 'btn-primary'} btn-sm flex items-center space-x-2"
+      >
+        {#if hasApiKey}
+          <Settings class="w-4 h-4" />
+          <span>Settings</span>
+        {:else}
           <Sparkles class="w-4 h-4" />
           <span>Upgrade</span>
-        </button>
-      {/if}
+        {/if}
+      </button>
     </div>
   </div>
 
@@ -298,7 +362,7 @@
   <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" transition:fade>
     <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl" transition:fly={{ y: 50 }}>
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Upgrade to Pro</h3>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white">{hasApiKey ? 'AI Settings' : 'Upgrade to Pro'}</h3>
         <button 
           on:click={() => showProModal = false}
           class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -319,32 +383,89 @@
         </div>
         
         <div class="space-y-3">
-          <p class="text-sm text-slate-600 dark:text-slate-400">
-            Enter your OpenAI API key or other AI provider key:
-          </p>
-          <input
-            type="password"
-            bind:value={apiKey}
-            placeholder="sk-..."
-            class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <p class="text-xs text-slate-500 dark:text-slate-400">
-            Your API key is stored locally and never sent to our servers.
-          </p>
+          <div>
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">AI Provider</label>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button
+                on:click={() => { selectedProvider = 'openai'; updateModelSelection(); }}
+                class="px-3 py-2 rounded-lg border {selectedProvider === 'openai' 
+                  ? 'border-primary bg-primary/10 text-primary' 
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}"
+              >
+                OpenAI
+              </button>
+              <button
+                on:click={() => { selectedProvider = 'anthropic'; updateModelSelection(); }}
+                class="px-3 py-2 rounded-lg border {selectedProvider === 'anthropic' 
+                  ? 'border-primary bg-primary/10 text-primary' 
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}"
+              >
+                Anthropic
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Model</label>
+            <select
+              bind:value={selectedModel}
+              class="w-full mt-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {#if selectedProvider === 'openai'}
+                <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
+                <option value="gpt-4">GPT-4</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+              {:else}
+                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+              {/if}
+            </select>
+          </div>
+          
+          <div>
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">API Key</label>
+            <input
+              type="password"
+              bind:value={apiKey}
+              placeholder={selectedProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+              class="w-full mt-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Your API key is stored locally and never sent to our servers.
+            </p>
+          </div>
+          
+          {#if errorMessage}
+            <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div class="flex items-start space-x-2">
+                <AlertCircle class="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+                <p class="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+              </div>
+            </div>
+          {/if}
         </div>
         
         <div class="flex space-x-3">
+          {#if hasApiKey}
+            <button
+              on:click={clearApiKey}
+              class="btn btn-secondary"
+            >
+              Clear Key
+            </button>
+          {/if}
           <button
             on:click={saveApiKey}
             disabled={!apiKey.trim()}
             class="flex-1 btn btn-primary disabled:opacity-50"
           >
             <Lock class="w-4 h-4 mr-2" />
-            Save API Key
+            {hasApiKey ? 'Update' : 'Save'} API Key
           </button>
           <button
-            on:click={() => showProModal = false}
-            class="flex-1 btn btn-secondary"
+            on:click={() => { showProModal = false; errorMessage = ''; }}
+            class="btn btn-secondary"
           >
             Cancel
           </button>
