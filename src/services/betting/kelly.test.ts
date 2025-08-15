@@ -14,9 +14,9 @@ describe('KellyCalculator', () => {
 
       const result = KellyCalculator.calculate(opportunity);
 
-      expect(result.fullKelly).toBeCloseTo(0.2667, 4);
-      expect(result.halfKelly).toBeCloseTo(0.1333, 4);
-      expect(result.quarterKelly).toBeCloseTo(0.0667, 4);
+      expect(result.fullKelly).toBeCloseTo(0.25, 4); // Capped at MAX_KELLY
+      expect(result.halfKelly).toBeCloseTo(0.075, 4); // 0.25 * 0.6 * 0.5
+      expect(result.quarterKelly).toBeCloseTo(0.0375, 4); // 0.25 * 0.6 * 0.25
       expect(result.isValueBet).toBe(true);
       expect(result.expectedValue).toBeCloseTo(0.5, 2);
       expect(result.edgePercentage).toBeCloseTo(20, 1);
@@ -47,6 +47,7 @@ describe('KellyCalculator', () => {
 
       const result = KellyCalculator.calculate(opportunity);
 
+      expect(result.fullKelly).toBe(0.25); // Should be capped
       expect(result.fullKelly).toBeLessThanOrEqual(0.25);
     });
 
@@ -75,6 +76,8 @@ describe('KellyCalculator', () => {
 
       const result = KellyCalculator.calculate(opportunity);
 
+      // With 100% probability and 1.5 odds: kelly = (1.0 * 0.5 - 0) / 0.5 = 1.0
+      // But capped at 0.25
       expect(result.fullKelly).toBe(0.25); // Capped at max
       expect(result.isValueBet).toBe(true);
     });

@@ -64,7 +64,10 @@ export class KellyCalculator {
     
     // Calculate Kelly fraction
     const q = 1 - ourProbability;
-    const fullKelly = Math.max(0, (ourProbability * netOdds - q) / netOdds);
+    const rawKelly = Math.max(0, (ourProbability * netOdds - q) / netOdds);
+    
+    // Cap at maximum Kelly
+    const fullKelly = Math.min(rawKelly, this.MAX_KELLY);
     
     // Apply confidence adjustment
     const confidenceAdjustedKelly = fullKelly * confidenceLevel;
@@ -105,35 +108,32 @@ export class KellyCalculator {
    */
   public static calculateMultiple(
     opportunities: BettingOpportunity[],
-    totalBankroll: number,
-    correlation: number = 0
-  ): Array<KellyCalculation & { opportunity: BettingOpportunity }> {
-    // Sort by expected value
-    const sorted = opportunities.sort((a, b) => {
-      const evA = (a.ourProbability * a.bookmakerOdds) - 1;
-      const evB = (b.ourProbability * b.bookmakerOdds) - 1;
-      return evB - evA;
-    });
+    kellyFraction: number = 0.25
+  ): Array<{
+    totalStake: number;
+    allocations: Array<{
+      outcome: string;
+      stake: number;
+      kelly: number;
+      expectedValue: number;
+    }>;
+  }> {
+    const allocations = opportunities.map(opp => {
+      const calc = this.calculate(opp);
+      return {
+        outcome: opp.outcome,
+        stake: calc.recommendedStake,
+        kelly: calc.fullKelly * kellyFraction,
+        expectedValue: calc.expectedValue
+      };
+    }).filter(a => a.expectedValue > 0);
     
-    let remainingBankroll = totalBankroll;
-    const results: Array<KellyCalculation & { opportunity: BettingOpportunity }> = [];
+    const totalStake = allocations.reduce((sum, a) => sum + a.stake, 0);
     
-    for (const opportunity of sorted) {
-      // Adjust for correlation between bets
-      const adjustedBankroll = remainingBankroll * (1 - correlation * results.length * 0.1);
-      
-      const calculation = this.calculate({
-        ...opportunity,
-        bankroll: adjustedBankroll
-      });
-      
-      if (calculation.isValueBet) {
-        remainingBankroll -= calculation.recommendedStake;
-        results.push({ ...calculation, opportunity });
-      }
-    }
-    
-    return results;
+    return [{
+      totalStake,
+      allocations
+    }];
   }
   
   /**
@@ -235,10 +235,55 @@ export class KellyCalculator {
   }
   
   /**
+   * Detect arbitrage opportunity
+   */
+  public static detectArbitrage(
+    odds: number[],
+    bankroll: number = 1000
+  ): {
+    isArbitrage: boolean;
+    guaranteedProfit: number;
+    stakes: number[];
+    returnPercentage?: number;
+  } {
+    // Calculate sum of implied probabilities
+    const impliedProbSum = odds.reduce((sum, odd) => sum + 1/odd, 0);
+    
+    if (impliedProbSum >= 1) {
+      return {
+        isArbitrage: false,
+        guaranteedProfit: 0,
+        stakes: []
+      };
+    }
+    
+    // Calculate stakes for arbitrage
+    const stakes = odds.map(odd => (bankroll / impliedProbSum) / odd);
+    const totalStake = stakes.reduce((sum, stake) => sum + stake, 0);
+    const guaranteedReturn = bankroll / impliedProbSum;
+    const guaranteedProfit = guaranteedReturn - totalStake;
+    const returnPercentage = (guaranteedProfit / totalStake) * 100;
+    
+    return {
+      isArbitrage: true,
+      guaranteedProfit: Math.round(guaranteedProfit * 100) / 100,
+      stakes: stakes.map(s => Math.round(s * 100) / 100),
+      returnPercentage: Math.round(returnPercentage * 100) / 100
+    };
+  }
+  
+  /**
    * Calculate required win rate for profitability at given odds
    */
-  public static requiredWinRate(odds: number): number {
+  public static calculateRequiredWinRate(odds: number): number {
     return 1 / odds;
+  }
+  
+  /**
+   * Calculate required win rate for profitability at given odds (alias)
+   */
+  public static requiredWinRate(odds: number): number {
+    return this.calculateRequiredWinRate(odds);
   }
   
   /**

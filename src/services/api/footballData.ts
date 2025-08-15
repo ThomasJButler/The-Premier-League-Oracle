@@ -379,5 +379,8 @@ class FootballDataAPI {
 // Export singleton instance
 export const footballDataAPI = new FootballDataAPI();
 
+// Export class for testing
+export { FootballDataAPI };
+
 // Export types
-export type { FDMatch, FDTeam, FDStanding, FDCompetition };
+export type { FDMatch, FDTeam, FDStanding, FDCompetition, FootballDataConfig };
