@@ -12,11 +12,14 @@
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
   import ValueBets from './components/betting/ValueBets.svelte';
   import Settings from './components/Settings.svelte';
+  import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
   let isSidebarOpen = true;
   let isTransitioning = false;
+  let showApiSetup = false;
+  let hasApiKey = false;
   
   function navigate(event: CustomEvent<{ view: string }>) {
     if (event.detail.view === currentView) return;
@@ -39,7 +42,27 @@
     if (window.innerWidth < 768) { // Example breakpoint (Tailwind's md)
       isSidebarOpen = false;
     }
+    
+    // Check for API key on load
+    checkApiKey();
   });
+
+  function checkApiKey() {
+    const apiKey = localStorage.getItem('footballDataApiKey');
+    hasApiKey = !!apiKey;
+    
+    // Show setup wizard if no API key found
+    if (!hasApiKey) {
+      showApiSetup = true;
+    }
+  }
+
+  function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
+    hasApiKey = true;
+    showApiSetup = false;
+    // Force refresh of data services with new API key
+    window.location.reload();
+  }
 
 </script>
 
@@ -127,6 +150,11 @@
       <div class="w-3 h-3 bg-white rounded-full live-pulse"></div>
     </div>
   </div>
+
+  <!-- API Setup Wizard -->
+  {#if showApiSetup}
+    <ApiSetupWizard on:complete={handleApiSetupComplete} />
+  {/if}
 </div>
 
 <style global lang="postcss">

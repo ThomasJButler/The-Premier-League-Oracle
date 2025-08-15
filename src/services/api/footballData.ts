@@ -1,4 +1,4 @@
-import type { Match, Season } from '../../types';
+import type { Match, Season, TeamForm } from '../../types';
 
 interface FootballDataConfig {
   apiKey: string;
@@ -120,6 +120,12 @@ class FootballDataAPI {
   public hasApiKey(): boolean {
     return !!this.config.apiKey;
   }
+
+  public clearApiKey(): void {
+    this.config.apiKey = '';
+    localStorage.removeItem('football_data_api_key');
+    this.cache.clear();
+  }
   
   private async rateLimitedFetch(url: string): Promise<Response> {
     const now = Date.now();
@@ -235,6 +241,29 @@ class FootballDataAPI {
     if (!data) return [];
     
     return data.matches.map(this.transformMatch);
+  }
+
+  // Get recent matches (both past and upcoming)
+  public async getRecentMatches(days: number = 7): Promise<Match[]> {
+    const dateFrom = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dateTo = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const endpoint = `/competitions/${this.config.competitionId}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
+    
+    if (!data) return [];
+    
+    return data.matches.map(this.transformMatch);
+  }
+
+  // Get matches by matchday
+  public async getMatchesByMatchday(matchday: number): Promise<Match[]> {
+    return this.getMatches(matchday);
+  }
+
+  // Get all matches for current season
+  public async getAllMatches(): Promise<Match[]> {
+    return this.getMatches();
   }
   
   // Get team matches
@@ -379,6 +408,40 @@ class FootballDataAPI {
       form: standing.form,
       recentMatches
     };
+  }
+
+  // Get team form from recent matches
+  public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[] | null> {
+    const team = await this.getTeamByName(teamName);
+    if (!team) return null;
+
+    // Use provided matches or fetch recent team matches
+    const teamMatches = matches?.filter(m => 
+      m.home_team.toLowerCase() === teamName.toLowerCase() || 
+      m.away_team.toLowerCase() === teamName.toLowerCase()
+    ).slice(0, 5) || await this.getTeamMatches(team.id, 5);
+
+    return teamMatches.map(match => {
+      const isHome = match.home_team.toLowerCase() === teamName.toLowerCase();
+      const opponent = isHome ? match.away_team : match.home_team;
+      const goalsFor = isHome ? match.home_goals : match.away_goals;
+      const goalsAgainst = isHome ? match.away_goals : match.home_goals;
+      
+      let result: 'W' | 'L' | 'D' | null = null;
+      if (match.result) {
+        if (match.result === 'D') result = 'D';
+        else if ((isHome && match.result === 'H') || (!isHome && match.result === 'A')) result = 'W';
+        else result = 'L';
+      }
+
+      return {
+        opponent,
+        goalsFor,
+        goalsAgainst,
+        result,
+        date: match.date
+      };
+    });
   }
   
   // Check if API is configured and working

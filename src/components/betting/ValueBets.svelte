@@ -13,6 +13,10 @@
   let bankroll: number = 1000;
   let lastRefresh: Date = new Date();
   
+  function selectMarket(market: string) {
+    selectedMarket = market as 'all' | '1X2' | 'goals' | 'btts';
+  }
+  
   async function loadValueBets() {
     loading = true;
     error = null;
@@ -170,7 +174,7 @@
       <div class="flex space-x-2">
         {#each ['all', '1X2', 'goals', 'btts'] as market}
           <button
-            on:click={() => selectedMarket = market}
+            on:click={() => selectMarket(market)}
             class="px-3 py-1 rounded-lg text-sm font-medium transition-colors {
               selectedMarket === market
                 ? 'bg-primary text-white'

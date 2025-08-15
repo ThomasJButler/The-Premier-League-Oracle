@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import type { Match } from './supabase';
+import { dataService } from '../services/dataService';
+import type { Match } from '../types';
 
 export interface TeamStats {
   team: string;
@@ -27,85 +27,124 @@ export interface HeadToHeadRecord {
 }
 
 export async function getTeamStats(team: string): Promise<TeamStats | null> {
-  const { data, error } = await supabase
-    .from('match_statistics_view')
-    .select('*')
-    .eq('team', team)
-    .single();
+  try {
+    // Get team stats from data service
+    const teamStats = await dataService.getTeamStats(team);
+    if (!teamStats) return null;
 
-  if (error) {
+    // Calculate averages from matches
+    const matches = await dataService.getMatches();
+    const teamMatches = matches.filter(m => 
+      m.home_team === team || m.away_team === team
+    );
+
+    let totalGoalsScored = 0;
+    let totalGoalsConceded = 0;
+    let completedMatches = 0;
+
+    teamMatches.forEach(match => {
+      if (match.home_goals !== null && match.away_goals !== null) {
+        completedMatches++;
+        if (match.home_team === team) {
+          totalGoalsScored += match.home_goals;
+          totalGoalsConceded += match.away_goals;
+        } else {
+          totalGoalsScored += match.away_goals;
+          totalGoalsConceded += match.home_goals;
+        }
+      }
+    });
+
+    return {
+      team,
+      avgGoalsScored: completedMatches > 0 ? totalGoalsScored / completedMatches : 0,
+      avgGoalsConceded: completedMatches > 0 ? totalGoalsConceded / completedMatches : 0,
+      totalMatches: teamStats.matches_played,
+      totalWins: teamStats.wins,
+      totalDraws: teamStats.draws,
+      totalLosses: teamStats.losses,
+      winPercentage: teamStats.matches_played > 0 ? (teamStats.wins / teamStats.matches_played) * 100 : 0
+    };
+  } catch (error) {
     console.error('Error fetching team stats:', error);
     return null;
   }
-
-  return {
-    team: data.team,
-    avgGoalsScored: data.avg_goals_scored,
-    avgGoalsConceded: data.avg_goals_conceded,
-    totalMatches: data.total_matches,
-    totalWins: data.total_wins,
-    totalDraws: data.total_draws,
-    totalLosses: data.total_losses,
-    winPercentage: data.win_percentage
-  };
 }
 
 export async function getTeamForm(team: string): Promise<TeamForm | null> {
-  const { data, error } = await supabase
-    .from('team_form_view')
-    .select('*')
-    .eq('team', team)
-    .single();
+  try {
+    // Get recent team form from data service
+    const teamForm = await dataService.getTeamForm(team);
+    if (!teamForm || teamForm.length === 0) return null;
 
-  if (error) {
+    // Calculate form statistics from recent matches
+    let totalGoalsScored = 0;
+    let totalGoalsConceded = 0;
+    let formString = '';
+    let validMatches = 0;
+
+    teamForm.forEach(match => {
+      if (match.goalsFor !== null && match.goalsAgainst !== null) {
+        totalGoalsScored += match.goalsFor;
+        totalGoalsConceded += match.goalsAgainst;
+        validMatches++;
+        
+        if (match.result) {
+          formString += match.result;
+        }
+      }
+    });
+
+    return {
+      team,
+      form: formString,
+      avgRecentGoalsScored: validMatches > 0 ? totalGoalsScored / validMatches : 0,
+      avgRecentGoalsConceded: validMatches > 0 ? totalGoalsConceded / validMatches : 0
+    };
+  } catch (error) {
     console.error('Error fetching team form:', error);
     return null;
   }
-
-  return {
-    team: data.team,
-    form: data.form,
-    avgRecentGoalsScored: data.avg_recent_goals_scored,
-    avgRecentGoalsConceded: data.avg_recent_goals_conceded
-  };
 }
 
 export async function getHeadToHeadRecord(homeTeam: string, awayTeam: string): Promise<HeadToHeadRecord> {
-  const { data, error } = await supabase
-    .from('matches')
-    .select('*')
-    .or(`and(home_team.eq.${homeTeam},away_team.eq.${awayTeam}),and(home_team.eq.${awayTeam},away_team.eq.${homeTeam})`)
-    .order('date', { ascending: false })
-    .limit(10);
+  try {
+    // Get all matches and filter for head-to-head
+    const allMatches = await dataService.getMatches();
+    const h2hMatches = allMatches.filter(match => 
+      (match.home_team === homeTeam && match.away_team === awayTeam) ||
+      (match.home_team === awayTeam && match.away_team === homeTeam)
+    ).slice(0, 10); // Last 10 head-to-head matches
 
-  if (error) {
+    let homeWins = 0;
+    let draws = 0;
+    let awayWins = 0;
+
+    h2hMatches.forEach(match => {
+      if (match.result) {
+        if (match.home_team === homeTeam && match.away_team === awayTeam) {
+          if (match.result === 'H') homeWins++;
+          else if (match.result === 'D') draws++;
+          else if (match.result === 'A') awayWins++;
+        } else {
+          // Reversed match (awayTeam at home vs homeTeam away)
+          if (match.result === 'H') awayWins++;
+          else if (match.result === 'D') draws++;
+          else if (match.result === 'A') homeWins++;
+        }
+      }
+    });
+
+    return {
+      matches: h2hMatches.length,
+      homeWins,
+      draws,
+      awayWins
+    };
+  } catch (error) {
     console.error('Error fetching head to head records:', error);
     return { matches: 0, homeWins: 0, draws: 0, awayWins: 0 };
   }
-
-  let homeWins = 0;
-  let draws = 0;
-  let awayWins = 0;
-
-  data.forEach(match => {
-    if (match.home_team === homeTeam && match.away_team === awayTeam) {
-      if (match.result === 'H') homeWins++;
-      else if (match.result === 'D') draws++;
-      else if (match.result === 'A') awayWins++;
-    } else {
-      // Reversed match
-      if (match.result === 'H') awayWins++;
-      else if (match.result === 'D') draws++;
-      else if (match.result === 'A') homeWins++;
-    }
-  });
-
-  return {
-    matches: data.length,
-    homeWins,
-    draws,
-    awayWins
-  };
 }
 
 export async function predictMatch(homeTeam: string, awayTeam: string): Promise<{
@@ -238,19 +277,7 @@ export async function savePrediction(
     predictedAwayGoals: number;
   }
 ): Promise<void> {
-  const { error } = await supabase
-    .from('predictions')
-    .insert([{
-      match_id: matchId,
-      predicted_result: prediction.predictedResult,
-      confidence_score: prediction.confidence,
-      predicted_home_goals: prediction.predictedHomeGoals,
-      predicted_away_goals: prediction.predictedAwayGoals,
-      was_correct: false // Will be updated after the match
-    }]);
-
-  if (error) {
-    console.error('Error saving prediction:', error);
-    throw error;
-  }
+  // TODO: Implement prediction saving to local storage or API
+  // For now, just log the prediction
+  console.log('Saving prediction:', { matchId, prediction });
 }

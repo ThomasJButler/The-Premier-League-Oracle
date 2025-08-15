@@ -101,7 +101,10 @@
   
   function switchDataSource(source: 'api' | 'database') {
     dataSource = source;
-    dataService.setDataSource(source);
+    // Only set API source since database is no longer supported
+    if (source === 'api') {
+      dataService.setDataSource(source);
+    }
     localStorage.setItem('data_source', source);
   }
   

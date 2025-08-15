@@ -36,8 +36,9 @@
     isUserMenuOpen = false;
   }
 
-  function handleSearchKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
+  function handleSearchKeydown(event: CustomEvent<any> & { target: any }) {
+    const keyboardEvent = event as unknown as KeyboardEvent;
+    if (keyboardEvent.key === 'Enter') {
       handleSearch();
     }
   }

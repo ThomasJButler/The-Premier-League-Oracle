@@ -159,9 +159,10 @@
     }, 100);
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
+  function handleKeydown(event: CustomEvent<any> & { target: any }) {
+    const keyboardEvent = event as unknown as KeyboardEvent;
+    if (keyboardEvent.key === 'Enter' && !keyboardEvent.shiftKey) {
+      keyboardEvent.preventDefault();
       sendMessage();
     }
   }

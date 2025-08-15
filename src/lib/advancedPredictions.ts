@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import type { Match } from './supabase';
+import { dataService } from '../services/dataService';
+import type { Match } from '../types';
 
 // Advanced team rating system using ELO
 export interface TeamRating {
@@ -133,38 +133,43 @@ export class ExpectedGoalsCalculator {
   static async calculateMatchXG(matchId: string): Promise<{ homeXG: number; awayXG: number }> {
     // This would fetch shot data from the database
     // For now, we'll estimate based on shots and shots on target
-    const { data: match } = await supabase
-      .from('matches')
-      .select('home_shots, away_shots, home_shots_target, away_shots_target')
-      .eq('id', matchId)
-      .single();
+    try {
+      const matches = await dataService.getMatches();
+      const match = matches.find(m => m.id === matchId);
 
-    if (!match) return { homeXG: 0, awayXG: 0 };
+      if (!match) return { homeXG: 0, awayXG: 0 };
 
-    // Simplified xG calculation based on available data
-    const homeXG = (match.home_shots_target || 0) * 0.38 + 
-                   ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
-    const awayXG = (match.away_shots_target || 0) * 0.38 + 
-                   ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
+      // Simplified xG calculation based on available data
+      const homeXG = (match.home_shots_target || 0) * 0.38 + 
+                     ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
+      const awayXG = (match.away_shots_target || 0) * 0.38 + 
+                     ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
 
-    return { homeXG, awayXG };
+      return { homeXG, awayXG };
+    } catch (error) {
+      console.error('Error calculating match xG:', error);
+      return { homeXG: 0, awayXG: 0 };
+    }
   }
 }
 
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
   static async calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
-    const { data } = await supabase
-      .from('matches')
-      .select('date')
-      .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
-      .lt('date', matchDate.toISOString())
-      .order('date', { ascending: false })
-      .limit(1);
-    
-    if (!data || data.length === 0) return 7; // Default rest days
-    const lastMatch = new Date(data[0].date);
-    return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
+    try {
+      const matches = await dataService.getMatches();
+      const teamMatches = matches.filter(match => 
+        (match.home_team === teamName || match.away_team === teamName) &&
+        new Date(match.date) < matchDate
+      ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      if (teamMatches.length === 0) return 7; // Default rest days
+      const lastMatch = new Date(teamMatches[0].date);
+      return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      console.error('Error calculating rest days:', error);
+      return 7;
+    }
   }
 
   static async calculateFixtureDifficulty(
@@ -172,24 +177,29 @@ export class FatigueAnalyzer {
     startDate: Date,
     endDate: Date
   ): Promise<number> {
-    // Calculate average opponent strength in date range
-    const { data } = await supabase
-      .from('matches')
-      .select('*')
-      .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
-      .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString());
-    
-    if (!data || data.length === 0) return 0;
-        
-    let totalDifficulty = 0;
-    for (const match of data) {
-      const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-      // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
-      totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+    try {
+      // Calculate average opponent strength in date range
+      const matches = await dataService.getMatches();
+      const teamMatches = matches.filter(match => 
+        (match.home_team === teamName || match.away_team === teamName) &&
+        new Date(match.date) >= startDate &&
+        new Date(match.date) <= endDate
+      );
+      
+      if (teamMatches.length === 0) return 0;
+          
+      let totalDifficulty = 0;
+      for (const match of teamMatches) {
+        const opponent = match.home_team === teamName ? match.away_team : match.home_team;
+        // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
+        totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+      }
+      
+      return totalDifficulty / teamMatches.length;
+    } catch (error) {
+      console.error('Error calculating fixture difficulty:', error);
+      return 0;
     }
-    
-    return totalDifficulty / data.length;
   }
 
   static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
@@ -312,25 +322,28 @@ export class RefereeAnalyzer {
     avgPenalties: number;
     homeWinRate: number;
   }> {
-    const { data } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('referee', refereeName);
+    try {
+      const matches = await dataService.getMatches();
+      const refereeMatches = matches.filter(match => match.referee === refereeName);
 
-    if (!data || data.length === 0) {
+      if (refereeMatches.length === 0) {
+        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+      }
+
+      const totalMatches = refereeMatches.length;
+      const totalYellows = refereeMatches.reduce((sum: number, m: Match) => sum + (m.home_yellows || 0) + (m.away_yellows || 0), 0);
+      const totalReds = refereeMatches.reduce((sum: number, m: Match) => sum + (m.home_reds || 0) + (m.away_reds || 0), 0);
+      const homeWins = refereeMatches.filter(m => m.result === 'H').length;
+
+      return {
+        avgYellowCards: totalYellows / totalMatches,
+        avgRedCards: totalReds / totalMatches,
+        avgPenalties: 0.2, // Placeholder - would need penalty data
+        homeWinRate: homeWins / totalMatches
+      };
+    } catch (error) {
+      console.error('Error getting referee stats:', error);
       return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
     }
-
-    const totalMatches = data.length;
-    const totalYellows = data.reduce((sum, m) => sum + (m.home_yellows || 0) + (m.away_yellows || 0), 0);
-    const totalReds = data.reduce((sum, m) => sum + (m.home_reds || 0) + (m.away_reds || 0), 0);
-    const homeWins = data.filter(m => m.result === 'H').length;
-
-    return {
-      avgYellowCards: totalYellows / totalMatches,
-      avgRedCards: totalReds / totalMatches,
-      avgPenalties: 0.2, // Placeholder - would need penalty data
-      homeWinRate: homeWins / totalMatches
-    };
   }
 }

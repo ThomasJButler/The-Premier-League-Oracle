@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase'; // Removed Supabase dependency
 import { dataService } from './dataService';
 import { footballDataAPI } from './api/footballData';
 import { PoissonPredictor } from '../lib/advancedPredictions';
@@ -129,13 +129,8 @@ ${awayWinBar}
       if (isUsingAPI) {
         standings = await footballDataAPI.getStandings();
       } else {
-        // Fallback to Supabase
-        const { data } = await supabase
-          .from('team_stats')
-          .select('*')
-          .order('points', { ascending: false })
-          .limit(20);
-        standings = data || [];
+        // No fallback available - API only
+        standings = [];
       }
       
       // Build context with current date and data source

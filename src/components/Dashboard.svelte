@@ -18,7 +18,6 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { TrendingUp, Users, Target, BarChart2 } from 'lucide-svelte';
-  import DataFreshness from './DataFreshness.svelte';
   ChartJS.register(
     Title,
     Tooltip,
@@ -296,10 +295,6 @@
           </div>
         </div>
         
-        <!-- Data freshness in hero -->
-        <div class="flex-shrink-0">
-          <DataFreshness />
-        </div>
       </div>
     </div>
   </div>
