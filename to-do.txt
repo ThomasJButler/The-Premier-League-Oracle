@@ -1,10 +1,5 @@
 rewrite the application to use this api rather than the supabase data (this is much easier to scale and saves manual input, its easier to work with machine and AI predictions too)
-
-https://www.football-data.org/documentation/quickstart
-
-https://www.football-data.org/
-
-https://www.football-data.org/coverage
+https://www.api-football.com/
 
 
 use gpt 5 and claude to get this spot on, in time for the new season :) 
