@@ -9,6 +9,9 @@
   import AiAssistant from './components/AiAssistant.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
+  import KellyCalculator from './components/betting/KellyCalculator.svelte';
+  import ValueBets from './components/betting/ValueBets.svelte';
+  import Settings from './components/Settings.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -61,12 +64,18 @@
         <MatchList />
       {:else if currentView === 'Predictions'}
         <Predictions />
+      {:else if currentView === 'Kelly Calculator'}
+        <KellyCalculator />
+      {:else if currentView === 'Value Bets'}
+        <ValueBets />
       {:else if currentView === 'Betting History'}
         <BettingHistory />
       {:else if currentView === 'AI Assistant'}
         <AiAssistant />
       {:else if currentView === 'Season Stats'}
         <SeasonStats />
+      {:else if currentView === 'Settings'}
+        <Settings />
       {/if}
     </main>
   </div>
