@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getAllSeasons, getMatchesBySeason, type Match, type Season } from '../lib/supabase';
+  import { dataService } from '../services/dataService';
+  import type { Match, Season } from '../types';
   import { format } from 'date-fns';
 
   let matches: Match[] = [];
@@ -10,7 +11,7 @@
   let error: string | null = null;
 
   async function loadSeasons() {
-    seasons = await getAllSeasons();
+    seasons = await dataService.getAllSeasons();
     if (seasons.length > 0) {
       const currentSeason = seasons.find(s => s.is_current) || seasons[0];
       selectedSeason = currentSeason.name;
@@ -21,7 +22,7 @@
     loading = true;
     error = null;
     try {
-      matches = await getMatchesBySeason(selectedSeason);
+      matches = await dataService.getMatchesBySeason(selectedSeason);
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
     } finally {

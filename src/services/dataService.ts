@@ -1,4 +1,5 @@
-import { supabase, type Match, type Season } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI } from './api/footballData';
 
 interface DataSource {
@@ -207,7 +208,7 @@ class DataService {
   }
   
   // Get team stats
-  public async getTeamStats(teamName: string): Promise<any> {
+  public async getTeamStats(teamName: string): Promise<TeamStats | any> {
     // Try API first
     if (this.primarySource.available) {
       const stats = await footballDataAPI.getTeamStats(teamName);
@@ -238,7 +239,7 @@ class DataService {
   }
   
   // Get standings
-  public async getStandings(): Promise<any[]> {
+  public async getStandings(): Promise<Standing[] | TeamStats[]> {
     // Try API first
     if (this.primarySource.available) {
       const standings = await footballDataAPI.getStandings();
@@ -263,6 +264,94 @@ class DataService {
     }
     
     return data || [];
+  }
+  
+  // Get team form (last N matches)
+  public async getTeamForm(teamName: string, limit: number = 5): Promise<TeamForm[]> {
+    const matches = await this.getMatches({ teamName });
+    
+    return matches.slice(0, limit).map(match => {
+      const isHome = match.home_team === teamName;
+      return {
+        opponent: isHome ? match.away_team : match.home_team,
+        goalsFor: isHome ? match.home_goals : match.away_goals,
+        goalsAgainst: isHome ? match.away_goals : match.home_goals,
+        result: match.result === null ? null :
+                isHome 
+                  ? match.result === 'H' ? 'W' : match.result === 'A' ? 'L' : 'D'
+                  : match.result === 'A' ? 'W' : match.result === 'H' ? 'L' : 'D',
+        date: match.date
+      } as TeamForm;
+    });
+  }
+  
+  // Get all seasons
+  public async getAllSeasons(): Promise<Season[]> {
+    // Try API first
+    if (this.primarySource.available) {
+      const season = await footballDataAPI.getCurrentSeason();
+      if (season) {
+        return [season]; // API only provides current season in free tier
+      }
+    }
+    
+    // Fall back to database
+    const { data, error } = await supabase
+      .from('seasons')
+      .select('*')
+      .order('name', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching seasons from database:', error);
+      return [];
+    }
+    
+    return data as Season[];
+  }
+  
+  // Get matches by season
+  public async getMatchesBySeason(seasonName: string): Promise<Match[]> {
+    // For current season, use regular getMatches
+    const currentSeason = await this.getCurrentSeason();
+    if (currentSeason && currentSeason.name === seasonName) {
+      return this.getMatches();
+    }
+    
+    // For historical seasons, use database
+    const { data: season } = await supabase
+      .from('seasons')
+      .select('id')
+      .eq('name', seasonName)
+      .single();
+    
+    if (!season) return [];
+    
+    const { data: matches } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('season_id', season.id)
+      .order('date', { ascending: false });
+    
+    return matches as Match[] || [];
+  }
+  
+  // Get current season matches
+  public async getCurrentSeasonMatches(): Promise<Match[]> {
+    return this.getMatches();
+  }
+  
+  // Get prediction accuracy (mock for now)
+  public async getPredictionAccuracy(seasonName: string): Promise<{
+    total: number;
+    correct: number;
+    accuracy: number;
+  } | null> {
+    // This would need a predictions table or calculation
+    return {
+      total: 100,
+      correct: 65,
+      accuracy: 65.0
+    };
   }
   
   // Get head to head

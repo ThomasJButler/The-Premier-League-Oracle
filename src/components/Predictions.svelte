@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getCurrentSeasonMatches, getPredictionAccuracy, type Match, type Prediction } from '../lib/supabase';
+  import { dataService } from '../services/dataService';
+  import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
 
   let predictions: Array<Match & { prediction?: Prediction }> = [];
@@ -16,8 +17,8 @@
     loading = true;
     error = null;
     try {
-      const matches = await getCurrentSeasonMatches();
-      const currentAccuracy = await getPredictionAccuracy('2024-2025');
+      const matches = await dataService.getCurrentSeasonMatches();
+      const currentAccuracy = await dataService.getPredictionAccuracy('2024-2025');
       
       if (currentAccuracy) {
         accuracy = currentAccuracy;

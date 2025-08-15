@@ -3,7 +3,8 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { Calendar, Target, TrendingUp, Award, Users, Zap } from 'lucide-svelte';
-  import { getCurrentSeasonMatches, type Match } from '../lib/supabase';
+  import { dataService } from '../services/dataService';
+  import type { Match } from '../types';
 
   interface SeasonStat {
     label: string;
@@ -25,7 +26,7 @@
   async function loadSeasonStats() {
     try {
       loading = true;
-      matches = await getCurrentSeasonMatches();
+      matches = await dataService.getCurrentSeasonMatches();
       
       if (matches.length > 0) {
         stats = calculateInterestingStats(matches);
@@ -38,28 +39,28 @@
   }
 
   function calculateInterestingStats(matches: Match[]): SeasonStat[] {
-    const completedMatches = matches.filter(m => m.ftr);
+    const completedMatches = matches.filter(m => m.result);
     
     // Calculate various statistics
-    const totalGoals = completedMatches.reduce((sum, m) => sum + (m.fthg || 0) + (m.ftag || 0), 0);
+    const totalGoals = completedMatches.reduce((sum, m) => sum + (m.home_goals || 0) + (m.away_goals || 0), 0);
     const avgGoalsPerMatch = completedMatches.length > 0 ? (totalGoals / completedMatches.length).toFixed(2) : 0;
     
     // Find biggest comeback
     let biggestComeback = { team: '', deficit: 0, match: null as Match | null };
     completedMatches.forEach(match => {
-      if (match.hthg !== null && match.htag !== null && match.fthg !== null && match.ftag !== null) {
+      if (match.first_half_home_goals !== null && match.first_half_away_goals !== null && match.home_goals !== null && match.away_goals !== null) {
         // Home team comeback
-        if (match.hthg < match.htag && match.fthg > match.ftag) {
-          const deficit = match.htag - match.hthg;
+        if (match.first_half_home_goals < match.first_half_away_goals && match.home_goals > match.away_goals) {
+          const deficit = match.first_half_away_goals - match.first_half_home_goals;
           if (deficit > biggestComeback.deficit) {
-            biggestComeback = { team: match.hometeam, deficit, match };
+            biggestComeback = { team: match.home_team, deficit, match };
           }
         }
         // Away team comeback
-        if (match.htag < match.hthg && match.ftag > match.fthg) {
-          const deficit = match.hthg - match.htag;
+        if (match.first_half_away_goals < match.first_half_home_goals && match.away_goals > match.home_goals) {
+          const deficit = match.first_half_home_goals - match.first_half_away_goals;
           if (deficit > biggestComeback.deficit) {
-            biggestComeback = { team: match.awayteam, deficit, match };
+            biggestComeback = { team: match.away_team, deficit, match };
           }
         }
       }
@@ -68,16 +69,16 @@
     // Calculate late drama (goals after 85th minute)
     const lateDramaMatches = completedMatches.filter(match => {
       // This is a simplified check - in real data you'd have minute-by-minute events
-      return match.ftr !== match.htr; // Result changed from halftime
+      return match.full_time_result !== match.half_time_result; // Result changed from halftime
     }).length;
 
     // Find most cards in a match
     let mostCardsMatch = completedMatches.reduce((prev, curr) => {
-      const currCards = (curr.hy || 0) + (curr.ay || 0) + (curr.hr || 0) + (curr.ar || 0);
-      const prevCards = (prev.hy || 0) + (prev.ay || 0) + (prev.hr || 0) + (prev.ar || 0);
+      const currCards = (curr.home_yellows || 0) + (curr.away_yellows || 0) + (curr.home_reds || 0) + (curr.away_reds || 0);
+      const prevCards = (prev.home_yellows || 0) + (prev.away_yellows || 0) + (prev.home_reds || 0) + (prev.away_reds || 0);
       return currCards > prevCards ? curr : prev;
     });
-    const mostCards = (mostCardsMatch.hy || 0) + (mostCardsMatch.ay || 0) + (mostCardsMatch.hr || 0) + (mostCardsMatch.ar || 0);
+    const mostCards = (mostCardsMatch.home_yellows || 0) + (mostCardsMatch.away_yellows || 0) + (mostCardsMatch.home_reds || 0) + (mostCardsMatch.away_reds || 0);
 
     // Find longest winning streak
     let currentStreak = 0;
@@ -86,18 +87,18 @@
     const teamResults: { [team: string]: string[] } = {};
     
     completedMatches.forEach(match => {
-      if (!teamResults[match.hometeam]) teamResults[match.hometeam] = [];
-      if (!teamResults[match.awayteam]) teamResults[match.awayteam] = [];
+      if (!teamResults[match.home_team]) teamResults[match.home_team] = [];
+      if (!teamResults[match.away_team]) teamResults[match.away_team] = [];
       
-      if (match.ftr === 'H') {
-        teamResults[match.hometeam].push('W');
-        teamResults[match.awayteam].push('L');
-      } else if (match.ftr === 'A') {
-        teamResults[match.hometeam].push('L');
-        teamResults[match.awayteam].push('W');
+      if (match.result === 'H') {
+        teamResults[match.home_team].push('W');
+        teamResults[match.away_team].push('L');
+      } else if (match.result === 'A') {
+        teamResults[match.home_team].push('L');
+        teamResults[match.away_team].push('W');
       } else {
-        teamResults[match.hometeam].push('D');
-        teamResults[match.awayteam].push('D');
+        teamResults[match.home_team].push('D');
+        teamResults[match.away_team].push('D');
       }
     });
 
@@ -119,12 +120,12 @@
     // Calculate home fortress (best home record)
     const homeRecords: { [team: string]: { played: number, won: number, percentage: number } } = {};
     completedMatches.forEach(match => {
-      if (!homeRecords[match.hometeam]) {
-        homeRecords[match.hometeam] = { played: 0, won: 0, percentage: 0 };
+      if (!homeRecords[match.home_team]) {
+        homeRecords[match.home_team] = { played: 0, won: 0, percentage: 0 };
       }
-      homeRecords[match.hometeam].played++;
-      if (match.ftr === 'H') {
-        homeRecords[match.hometeam].won++;
+      homeRecords[match.home_team].played++;
+      if (match.result === 'H') {
+        homeRecords[match.home_team].won++;
       }
     });
 
@@ -165,7 +166,7 @@
         value: `${mostCards} cards`,
         icon: Calendar,
         color: 'from-red-500 to-pink-500',
-        description: `${mostCardsMatch.hometeam} vs ${mostCardsMatch.awayteam}`
+        description: `${mostCardsMatch.home_team} vs ${mostCardsMatch.away_team}`
       },
       {
         label: 'Win Streak',

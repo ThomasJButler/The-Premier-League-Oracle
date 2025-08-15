@@ -2,7 +2,6 @@
   import { Send, Bot, Lock, Sparkles, ChevronDown, Settings, AlertCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { supabase } from '../lib/supabase';
   import { aiService, type AIMessage as AIServiceMessage } from '../services/aiService';
 
   interface Message {
@@ -32,62 +31,9 @@
   let errorMessage = '';
   let conversationHistory: AIServiceMessage[] = [];
 
+  // Legacy function removed - now using aiService for all responses
   async function generateSmartResponse(question: string): Promise<string> {
     const lowerQuestion = question.toLowerCase();
-    
-    // Team performance queries
-    if (lowerQuestion.includes('best team') || lowerQuestion.includes('strongest team')) {
-      const { data } = await supabase
-        .from('team_stats')
-        .select('team_name, wins, matches_played')
-        .order('wins', { ascending: false })
-        .limit(1);
-        
-      if (data && data.length > 0) {
-        const winPercentage = (data[0].wins / data[0].matches_played * 100).toFixed(1);
-        return `Based on current statistics, ${data[0].team_name} has the highest win percentage at ${winPercentage}%.`;
-      }
-    }
-    
-    if (lowerQuestion.includes('most goals') || lowerQuestion.includes('highest scoring')) {
-      const { data } = await supabase
-        .from('team_stats')
-        .select('team_name, goals_for, matches_played')
-        .order('goals_for', { ascending: false })
-        .limit(1);
-        
-      if (data && data.length > 0) {
-        const avgGoals = (data[0].goals_for / data[0].matches_played).toFixed(2);
-        return `${data[0].team_name} scores the most goals with ${data[0].goals_for} total goals (${avgGoals} per match).`;
-      }
-    }
-    
-    if (lowerQuestion.includes('next match') || lowerQuestion.includes('upcoming')) {
-      const { data } = await supabase
-        .from('matches')
-        .select('*')
-        .gt('date', new Date().toISOString())
-        .order('date', { ascending: true })
-        .limit(1);
-        
-      if (data && data.length > 0) {
-        const match = data[0];
-        const matchDate = new Date(match.date).toLocaleDateString();
-        return `The next match is ${match.home_team} vs ${match.away_team} on ${matchDate}.`;
-      }
-    }
-    
-    if (lowerQuestion.includes('clean sheet') || lowerQuestion.includes('defense')) {
-      const { data } = await supabase
-        .from('team_stats')
-        .select('team_name, clean_sheets')
-        .order('clean_sheets', { ascending: false })
-        .limit(1);
-        
-      if (data && data.length > 0) {
-        return `${data[0].team_name} has the best defense with ${data[0].clean_sheets} clean sheets this season.`;
-      }
-    }
     
     // Fun facts
     if (lowerQuestion.includes('fun fact') || lowerQuestion.includes('interesting')) {

@@ -12,7 +12,8 @@
     PointElement,
     type ChartData
   } from 'chart.js';
-  import { getCurrentSeasonMatches, getTeamForm, type Match } from '../lib/supabase';
+  import { dataService } from '../services/dataService';
+  import type { Match } from '../types';
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
@@ -97,7 +98,7 @@
       loading = true;
       error = null;
 
-      recentMatches = await getCurrentSeasonMatches();
+      recentMatches = await dataService.getCurrentSeasonMatches();
       
       if (recentMatches.length === 0) {
         error = "No matches found for the current season";

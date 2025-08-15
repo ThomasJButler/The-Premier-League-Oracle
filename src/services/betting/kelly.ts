@@ -182,11 +182,11 @@ export class KellyCalculator {
   } {
     const results: number[] = [];
     let busts = 0;
+    let maxDrawdown = 0;
     
     for (let i = 0; i < iterations; i++) {
       let bankroll = initialBankroll;
       let maxBankroll = initialBankroll;
-      let maxDrawdown = 0;
       
       for (const opp of opportunities) {
         const calc = this.calculate({
