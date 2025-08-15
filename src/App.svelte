@@ -105,7 +105,7 @@
     <!-- Quick Prediction FAB -->
     <button 
       class="fab-button group"
-      on:click={() => navigate({detail: {view: 'Predictions'}} as CustomEvent)}
+      on:click={() => navigate(new CustomEvent('navigate', {detail: {view: 'Predictions'}}))}
       aria-label="Quick Predictions"
     >
       <div class="fab-icon">⚡</div>
@@ -115,7 +115,7 @@
     <!-- AI Assistant FAB -->
     <button 
       class="fab-button group"
-      on:click={() => navigate({detail: {view: 'AI Assistant'}} as CustomEvent)}
+      on:click={() => navigate(new CustomEvent('navigate', {detail: {view: 'AI Assistant'}}))}
       aria-label="AI Assistant"
     >
       <div class="fab-icon">🤖</div>
