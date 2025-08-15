@@ -8,6 +8,8 @@
   let isValidating = false;
   let currentStep = 1;
   let showPrivacyInfo = false;
+  let validationError = '';
+  let validationSuccess = false;
   
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
@@ -20,31 +22,66 @@
     if (!apiKey.trim()) return;
     
     isValidating = true;
+    validationError = '';
+    validationSuccess = false;
+    
+    console.log('🔑 Testing API key...', { keyLength: apiKey.trim().length });
     
     try {
-      // Test the API key directly with Football-Data.org
-      const response = await fetch('https://api.football-data.org/v4/competitions/2021', {
+      // Test the API key - use proxy in development to avoid CORS
+      const isDevelopment = import.meta.env.DEV;
+      const apiUrl = isDevelopment 
+        ? '/api/football-data/competitions/2021'
+        : 'https://api.football-data.org/v4/competitions/2021';
+      
+      const response = await fetch(apiUrl, {
         headers: {
           'X-Auth-Token': apiKey.trim()
-        }
+        },
+        mode: 'cors',
+        credentials: 'same-origin'
+      });
+      
+      console.log('📡 API Response:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       });
       
       if (response.ok) {
+        validationSuccess = true;
         // Save to localStorage
         localStorage.setItem('football_data_api_key', apiKey.trim());
         
         // Move to final step
         currentStep = 4;
         
-        // Auto-close after showing success
+        // Auto-close and reload page after showing success
         setTimeout(() => {
           dispatch('complete', { apiKey: apiKey.trim() });
+          // Reload page to reinitialize with new API key
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
         }, 2000);
+      } else if (response.status === 401) {
+        validationError = 'Invalid API key. Please check that you copied it correctly from Football-Data.org.';
+      } else if (response.status === 403) {
+        validationError = 'API key valid but rate limited. Please wait a moment and try again.';
+      } else if (response.status === 429) {
+        validationError = 'Too many requests. Please wait a moment and try again.';
       } else {
-        throw new Error('Invalid API key');
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        validationError = `API error (${response.status}): ${response.statusText}. Please try again.`;
       }
     } catch (error) {
-      alert('Invalid API key. Please check and try again.');
+      console.error('Network error:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        validationError = 'Network error. Please check your internet connection and try again.';
+      } else {
+        validationError = 'Connection failed. Please check your internet connection and try again.';
+      }
     } finally {
       isValidating = false;
     }
@@ -64,7 +101,8 @@
 </script>
 
 <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+  <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+    <div class="flex-shrink-0">
     <!-- Header -->
     <div class="p-8 pb-0">
       <div class="flex items-center justify-between mb-6">
@@ -89,9 +127,10 @@
         </div>
       </div>
     </div>
+    </div>
     
     <!-- Content -->
-    <div class="px-8 pb-8">
+    <div class="flex-1 px-8 pb-8 overflow-y-auto min-h-0">
       {#if currentStep === 1}
         <!-- Welcome Step -->
         <div class="text-center space-y-6">
@@ -135,62 +174,62 @@
         
       {:else if currentStep === 2}
         <!-- Privacy & Security Step -->
-        <div class="space-y-6">
+        <div class="space-y-4">
           <div class="text-center">
-            <div class="w-16 h-16 mx-auto bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center mb-4">
-              <Shield class="w-8 h-8 text-green-600" />
+            <div class="w-12 h-12 mx-auto bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center mb-3">
+              <Shield class="w-6 h-6 text-green-600" />
             </div>
-            <h3 class="text-2xl font-bold mb-2">Privacy & Security</h3>
-            <p class="text-slate-600 dark:text-slate-300">Your data and privacy are our top priority</p>
+            <h3 class="text-xl font-bold mb-1">Privacy & Security</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300">Your data and privacy are our top priority</p>
           </div>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
-              <h4 class="font-semibold mb-3 flex items-center gap-2">
-                <Key class="w-5 h-5 text-blue-600" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+              <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
+                <Key class="w-4 h-4 text-blue-600" />
                 Local Storage Only
               </h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-slate-600 dark:text-slate-400">
                 Your API key is stored locally in your browser and never transmitted to our servers.
               </p>
             </div>
             
-            <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
-              <h4 class="font-semibold mb-3 flex items-center gap-2">
-                <Shield class="w-5 h-5 text-green-600" />
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+              <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
+                <Shield class="w-4 h-4 text-green-600" />
                 No Data Collection
               </h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-slate-600 dark:text-slate-400">
                 We don't collect, store, or analyze your personal data or usage patterns.
               </p>
             </div>
             
-            <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
-              <h4 class="font-semibold mb-3 flex items-center gap-2">
-                <Zap class="w-5 h-5 text-purple-600" />
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+              <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
+                <Zap class="w-4 h-4 text-purple-600" />
                 Direct API Calls
               </h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-slate-600 dark:text-slate-400">
                 All data comes directly from Football-Data.org API, bypassing our servers.
               </p>
             </div>
             
-            <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
-              <h4 class="font-semibold mb-3 flex items-center gap-2">
-                <BookOpen class="w-5 h-5 text-amber-600" />
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+              <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
+                <BookOpen class="w-4 h-4 text-amber-600" />
                 Research Purpose
               </h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-slate-600 dark:text-slate-400">
                 This tool is designed for educational and research purposes only.
               </p>
             </div>
           </div>
           
-          <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
-            <div class="flex items-start gap-3">
-              <Info class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+            <div class="flex items-start gap-2">
+              <Info class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p class="text-sm text-blue-800 dark:text-blue-200">
+                <p class="text-xs text-blue-800 dark:text-blue-200">
                   <strong>Important:</strong> This application is for research and educational purposes only. 
                   Please use responsibly and in accordance with Football-Data.org's terms of service.
                 </p>
@@ -225,6 +264,20 @@
               />
               {#if apiKey.length > 0 && apiKey.length < 10}
                 <p class="text-red-600 text-sm mt-1">API key seems too short</p>
+              {/if}
+              
+              <!-- Validation Error Display -->
+              {#if validationError}
+                <div class="mt-3 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
+                  <p class="text-red-700 dark:text-red-300 text-sm">{validationError}</p>
+                </div>
+              {/if}
+              
+              <!-- Validation Success Display -->
+              {#if validationSuccess}
+                <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700">
+                  <p class="text-green-700 dark:text-green-300 text-sm">✅ API key validated successfully!</p>
+                </div>
               {/if}
             </div>
             
@@ -287,8 +340,11 @@
         </div>
       {/if}
       
-      <!-- Navigation -->
-      <div class="flex justify-between items-center mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+    </div>
+    
+    <!-- Navigation -->
+    <div class="flex-shrink-0 px-8 pb-8">
+      <div class="flex justify-between items-center pt-6 border-t border-slate-200 dark:border-slate-700">
         <button
           on:click={prevStep}
           disabled={currentStep === 1}
@@ -312,7 +368,11 @@
             </button>
           {:else if currentStep === 4}
             <button
-              on:click={() => dispatch('complete', { apiKey: apiKey.trim() })}
+              on:click={() => {
+                dispatch('complete', { apiKey: apiKey.trim() });
+                // Reload page to reinitialize with new API key
+                setTimeout(() => window.location.reload(), 100);
+              }}
               class="btn btn-primary"
             >
               Start Using App

@@ -90,13 +90,19 @@ class FootballDataAPI {
     const savedApiKey = localStorage.getItem('football_data_api_key');
     const apiKey = envKey || savedApiKey || '';
     
+    // Use proxy in development to avoid CORS issues
+    const isDevelopment = import.meta.env.DEV;
+    const baseUrl = isDevelopment 
+      ? '/api/football-data' 
+      : 'https://api.football-data.org/v4';
+    
     this.config = {
       apiKey,
-      baseUrl: 'https://api.football-data.org/v4',
+      baseUrl,
       competitionId: 2021 // Premier League
     };
     
-    console.log(`🏆 Football-Data API: Direct mode, API key: ${apiKey ? 'Present' : 'Missing'}`);
+    console.log(`🏆 Football-Data API: ${isDevelopment ? 'Proxy' : 'Direct'} mode, API key: ${apiKey ? 'Present' : 'Missing'}`);
   }
   
   public setApiKey(apiKey: string): void {
@@ -127,10 +133,13 @@ class FootballDataAPI {
     
     this.lastRequestTime = Date.now();
     
+    // Add mode and credentials for better CORS handling
     return fetch(url, {
       headers: {
         'X-Auth-Token': this.config.apiKey
-      }
+      },
+      mode: 'cors',
+      credentials: 'same-origin'
     });
   }
   
