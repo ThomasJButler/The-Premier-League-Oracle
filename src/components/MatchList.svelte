@@ -3,6 +3,7 @@
   import { dataService } from '../services/dataService';
   import type { Match, Season } from '../types';
   import { format } from 'date-fns';
+  import { getTeamLogo } from '../utils/teamLogos';
 
   let matches: Match[] = [];
   let seasons: Season[] = [];
@@ -55,7 +56,7 @@
           <!-- Team 1 -->
           <div class="flex items-center justify-end space-x-3">
             <span class="font-semibold text-slate-800 dark:text-slate-200 text-right">{match.home_team}</span>
-            <img src={'https://via.placeholder.com/30/0000FF/FFFFFF?text=' + match.home_team.substring(0,3).toUpperCase()} alt="{match.home_team} logo" class="w-7 h-7 object-contain rounded-full bg-gray-200">
+            <img src={getTeamLogo(match.home_team, 30)} alt="{match.home_team} logo" class="w-7 h-7 object-contain rounded-full">
           </div>
 
           <!-- Score/Time -->
@@ -76,7 +77,7 @@
 
           <!-- Team 2 -->
           <div class="flex items-center justify-start space-x-3">
-            <img src={'https://via.placeholder.com/30/FF0000/FFFFFF?text=' + match.away_team.substring(0,3).toUpperCase()} alt="{match.away_team} logo" class="w-7 h-7 object-contain rounded-full bg-gray-200">
+            <img src={getTeamLogo(match.away_team, 30)} alt="{match.away_team} logo" class="w-7 h-7 object-contain rounded-full">
             <span class="font-semibold text-slate-800 dark:text-slate-200 text-left">{match.away_team}</span>
           </div>
 

@@ -16,8 +16,18 @@
 
   let currentView = 'Dashboard'; // Default view
   let isSidebarOpen = true;
+  let isTransitioning = false;
+  
   function navigate(event: CustomEvent<{ view: string }>) {
-    currentView = event.detail.view;
+    if (event.detail.view === currentView) return;
+    
+    isTransitioning = true;
+    setTimeout(() => {
+      currentView = event.detail.view;
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 50);
+    }, 200);
   }
 
   function toggleSidebar() {
@@ -56,34 +66,79 @@
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
-      <!-- Conditional Rendering based on currentView -->
-      {#if currentView === 'Dashboard'}
-        <Dashboard />
-      {:else if currentView === 'Matches'}
-        <MatchList />
-      {:else if currentView === 'Predictions'}
-        <Predictions />
-      {:else if currentView === 'Kelly Calculator'}
-        <KellyCalculator />
-      {:else if currentView === 'Value Bets'}
-        <ValueBets />
-      {:else if currentView === 'Betting History'}
-        <BettingHistory />
-      {:else if currentView === 'AI Assistant'}
-        <AiAssistant />
-      {:else if currentView === 'Season Stats'}
-        <SeasonStats />
-      {:else if currentView === 'Settings'}
-        <Settings />
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8 relative">
+      <!-- Page transition overlay -->
+      {#if isTransitioning}
+        <div class="absolute inset-0 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
       {/if}
+      
+      <!-- Page content with smooth transitions -->
+      <div class="page-content" class:transitioning={isTransitioning}>
+        {#if currentView === 'Dashboard'}
+          <Dashboard />
+        {:else if currentView === 'Matches'}
+          <MatchList />
+        {:else if currentView === 'Predictions'}
+          <Predictions />
+        {:else if currentView === 'Kelly Calculator'}
+          <KellyCalculator />
+        {:else if currentView === 'Value Bets'}
+          <ValueBets />
+        {:else if currentView === 'Betting History'}
+          <BettingHistory />
+        {:else if currentView === 'AI Assistant'}
+          <AiAssistant />
+        {:else if currentView === 'Season Stats'}
+          <SeasonStats />
+        {:else if currentView === 'Settings'}
+          <Settings />
+        {/if}
+      </div>
     </main>
   </div>
   
   <!-- Mobile Navigation -->
   <MobileNav {currentView} on:navigate={navigate} />
+  
+  <!-- Floating Action Buttons -->
+  <div class="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+    <!-- Quick Prediction FAB -->
+    <button 
+      class="fab-button group"
+      on:click={() => navigate({detail: {view: 'Predictions'}} as CustomEvent)}
+      aria-label="Quick Predictions"
+    >
+      <div class="fab-icon">⚡</div>
+      <div class="fab-tooltip">Quick Predictions</div>
+    </button>
+    
+    <!-- AI Assistant FAB -->
+    <button 
+      class="fab-button group"
+      on:click={() => navigate({detail: {view: 'AI Assistant'}} as CustomEvent)}
+      aria-label="AI Assistant"
+    >
+      <div class="fab-icon">🤖</div>
+      <div class="fab-tooltip">AI Assistant</div>
+    </button>
+    
+    <!-- Live Status Indicator -->
+    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
+      <div class="w-3 h-3 bg-white rounded-full live-pulse"></div>
+    </div>
+  </div>
 </div>
 
 <style global lang="postcss">
-  /* Add any component-specific styles here if needed, though most should be handled by Tailwind */
+  /* Page transition effects */
+  .page-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  
+  .page-content.transitioning {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0.7;
+  }
 </style>

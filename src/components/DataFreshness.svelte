@@ -61,14 +61,5 @@
   {#if isStale}
     <AlertCircle class="w-4 h-4 text-amber-500" />
   {/if}
-  
-  <button 
-    on:click={refreshData}
-    disabled={isRefreshing}
-    class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-    aria-label="Refresh data"
-  >
-    <RefreshCw class="w-4 h-4 text-slate-500 dark:text-slate-400 {isRefreshing ? 'animate-spin' : ''}" />
-  </button>
 </div>
 

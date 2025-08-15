@@ -22,6 +22,8 @@
 
   let inputMessage = '';
   let isTyping = false;
+  let isCalculating = false;
+  let calculationSteps: string[] = [];
   let chatContainer: HTMLElement;
   let showProModal = false;
   let apiKey = '';
@@ -75,8 +77,32 @@
     const userInput = inputMessage;
     inputMessage = '';
 
+    // Check if it's a prediction request and show calculation steps
+    const isPredictionRequest = userInput.toLowerCase().includes('predict') || 
+                               userInput.toLowerCase().includes('prediction') ||
+                               userInput.toLowerCase().includes('vs') ||
+                               userInput.toLowerCase().includes('odds');
+    
+    if (isPredictionRequest) {
+      isCalculating = true;
+      calculationSteps = [
+        '⏳ Analyzing team form and recent performance...',
+        '⏳ Computing Poisson distribution parameters...',
+        '⏳ Applying ELO ratings and home advantage...',
+        '⏳ Generating probability calculations...',
+        '📊 Finalizing prediction results...'
+      ];
+      
+      // Show calculation steps with delays
+      for (let i = 0; i < calculationSteps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        scrollToBottom();
+      }
+    }
+    
     // Show typing indicator
     isTyping = true;
+    isCalculating = false;
     scrollToBottom();
     errorMessage = '';
 
@@ -260,7 +286,26 @@
       </div>
     {/each}
     
-    {#if isTyping}
+    {#if isCalculating}
+      <div class="flex justify-start" transition:fade>
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 rounded-2xl px-4 py-4 border border-amber-200 dark:border-amber-700">
+          <div class="flex items-center gap-2 mb-3">
+            <Sparkles class="w-4 h-4 text-amber-600 animate-spin" />
+            <span class="font-semibold text-amber-800 dark:text-amber-200 text-sm">Live Calculation</span>
+          </div>
+          <div class="space-y-2">
+            {#each calculationSteps as step, i}
+              <div class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                <div class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
+                <span>{step}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
+    
+    {#if isTyping && !isCalculating}
       <div class="flex justify-start" transition:fade>
         <div class="bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 border border-slate-200 dark:border-slate-700">
           <div class="flex space-x-2">

@@ -91,10 +91,16 @@
       {/if}
     </div>
 
-    <!-- Notifications -->
-    <button class="btn btn-ghost btn-icon relative" aria-label="Notifications">
-      <Bell class="w-5 h-5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors" />
-      <span class="absolute top-0 right-0 w-2 h-2 bg-accent rounded-full animate-pulse"></span>
+    <!-- Notifications with enhanced live indicator -->
+    <button class="btn btn-ghost btn-icon relative group" aria-label="Notifications">
+      <Bell class="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-all duration-200" />
+      <span class="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-full live-pulse shadow-lg"></span>
+      <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white dark:bg-slate-900 rounded-full"></span>
+      <!-- Tooltip -->
+      <div class="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 p-3 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50">
+        <p class="text-xs text-slate-600 dark:text-slate-400">3 new predictions available</p>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">Live data updating...</p>
+      </div>
     </button>
 
     <a href="https://github.com/ThomasJButler/The-Premier-League-Oracle" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-icon" aria-label="GitHub Repository">

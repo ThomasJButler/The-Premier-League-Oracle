@@ -12,6 +12,7 @@ class DataService {
   private fallbackSource: DataSource = { type: 'database', available: true };
   private useCache: boolean = true;
   private cacheDb: IDBDatabase | null = null;
+  private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes default
   
   constructor() {
     this.initializeIndexedDB();
@@ -57,16 +58,29 @@ class DataService {
   }
   
   private async checkDataSources(): Promise<void> {
-    // Check if Football-Data API is available
+    // Force API as primary if key exists
     if (footballDataAPI.hasApiKey()) {
-      const isConnected = await footballDataAPI.testConnection();
-      this.primarySource.available = isConnected;
+      this.primarySource = { type: 'api', available: false };
       
-      if (!isConnected) {
-        console.warn('Football-Data API not available, falling back to database');
+      try {
+        const isConnected = await footballDataAPI.testConnection();
+        this.primarySource.available = isConnected;
+        
+        if (isConnected) {
+          console.log('✅ Football-Data API connected successfully');
+          // Clear old cache to force fresh data
+          await this.clearCache();
+          // Reset cache timeout for fresh data
+          this.cacheTimeout = 2 * 60 * 1000; // 2 minutes for development
+        } else {
+          console.warn('⚠️ Football-Data API not available, falling back to database');
+        }
+      } catch (error) {
+        console.warn('⚠️ Football-Data API connection failed:', error);
+        this.primarySource.available = false;
       }
     } else {
-      console.log('No Football-Data API key configured, using database');
+      console.log('ℹ️ No Football-Data API key configured, using database');
       this.primarySource.available = false;
     }
   }

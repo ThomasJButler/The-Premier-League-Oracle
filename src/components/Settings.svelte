@@ -38,15 +38,23 @@
       } else {
         testResult = {
           success: false,
-          message: 'Failed to connect. Please check your API key.'
+          message: 'Failed to connect. Please check your API key. Note: Custom API keys may experience CORS restrictions in browsers.'
         };
         apiConnected = false;
       }
     } catch (error) {
-      testResult = {
-        success: false,
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('CORS') || errorMessage.includes('fetch')) {
+        testResult = {
+          success: false,
+          message: 'CORS restriction detected. Your API key is saved but direct browser testing is limited. The app will still work for data fetching.'
+        };
+      } else {
+        testResult = {
+          success: false,
+          message: `Error: ${errorMessage}`
+        };
+      }
       apiConnected = false;
     } finally {
       testing = false;
