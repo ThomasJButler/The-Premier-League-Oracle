@@ -78,6 +78,32 @@ interface FDCompetition {
   };
 }
 
+interface FDPlayer {
+  id: number;
+  name: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  nationality: string;
+  position: string;
+  shirtNumber: number | null;
+  lastUpdated: string;
+}
+
+interface FDScorer {
+  player: FDPlayer;
+  team: FDTeam;
+  goals: number;
+  assists: number | null;
+  penalties: number | null;
+}
+
+interface FDSquadMember extends FDPlayer {
+  position: string;
+  dateOfBirth: string;
+  nationality: string;
+}
+
 class FootballDataAPI {
   private config: FootballDataConfig;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
@@ -443,6 +469,57 @@ class FootballDataAPI {
     });
   }
   
+  // Get top scorers for the competition
+  public async getTopScorers(limit: number = 20): Promise<FDScorer[]> {
+    const endpoint = `/competitions/${this.config.competitionId}/scorers?limit=${limit}`;
+    const data = await this.fetchWithCache<{ scorers: FDScorer[] }>(endpoint);
+    
+    if (!data) return [];
+    
+    return data.scorers;
+  }
+  
+  // Get player details
+  public async getPlayer(playerId: number): Promise<FDPlayer | null> {
+    const endpoint = `/players/${playerId}`;
+    const data = await this.fetchWithCache<FDPlayer>(endpoint);
+    
+    return data;
+  }
+  
+  // Get team squad
+  public async getTeamSquad(teamId: number): Promise<FDSquadMember[]> {
+    const endpoint = `/teams/${teamId}`;
+    const data = await this.fetchWithCache<{ 
+      squad: FDSquadMember[];
+      id: number;
+      name: string;
+      crest: string;
+    }>(endpoint);
+    
+    if (!data || !data.squad) return [];
+    
+    return data.squad;
+  }
+  
+  // Get live matches (in play)
+  public async getLiveMatches(): Promise<Match[]> {
+    const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
+    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
+    
+    if (!data) return [];
+    
+    return data.matches.map(this.transformMatch);
+  }
+  
+  // Get team details with crest
+  public async getTeam(teamId: number): Promise<FDTeam & { crest: string } | null> {
+    const endpoint = `/teams/${teamId}`;
+    const data = await this.fetchWithCache<FDTeam & { crest: string }>(endpoint);
+    
+    return data;
+  }
+  
   // Check if API is configured and working
   public async testConnection(): Promise<boolean> {
     if (!this.hasApiKey()) {
@@ -467,4 +544,13 @@ export const footballDataAPI = new FootballDataAPI();
 export { FootballDataAPI };
 
 // Export types
-export type { FDMatch, FDTeam, FDStanding, FDCompetition, FootballDataConfig };
+export type { 
+  FDMatch, 
+  FDTeam, 
+  FDStanding, 
+  FDCompetition, 
+  FDPlayer,
+  FDScorer,
+  FDSquadMember,
+  FootballDataConfig 
+};

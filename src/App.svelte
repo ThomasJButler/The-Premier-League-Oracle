@@ -14,6 +14,9 @@
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
+  import TopScorers from './components/TopScorers.svelte';
+  import LiveMatches from './components/LiveMatches.svelte';
+  import PlayerProfile from './components/PlayerProfile.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -128,6 +131,12 @@
           <Settings />
         {:else if currentView === 'Help'}
           <Help />
+        {:else if currentView === 'Top Scorers'}
+          <TopScorers />
+        {:else if currentView === 'Live Matches'}
+          <LiveMatches />
+        {:else if currentView === 'Player Profile'}
+          <PlayerProfile />
         {/if}
       </div>
     </main>
