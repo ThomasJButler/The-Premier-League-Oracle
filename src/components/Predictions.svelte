@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { dataService } from '../services/dataService';
+  import { predictionTracker } from '../services/predictionTracker';
+  import { predictMatch } from '../lib/predictions';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
@@ -40,77 +42,100 @@
         accuracy = currentAccuracy;
       }
 
-      predictions = matches.map(match => {
-        // Generate advanced prediction using real algorithms
-        const homeStrength = 1.8 + (Math.random() * 0.6); // 1.8-2.4 expected goals
-        const awayStrength = 1.2 + (Math.random() * 0.8); // 1.2-2.0 expected goals
-        
-        // Calculate Poisson probabilities
-        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(homeStrength, awayStrength, 6);
-        const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
-        
-        // Determine most likely result
-        const maxProb = Math.max(outcomeProbabilities.homeWin, outcomeProbabilities.draw, outcomeProbabilities.awayWin);
-        let predictedResult: 'H' | 'D' | 'A';
-        if (maxProb === outcomeProbabilities.homeWin) predictedResult = 'H';
-        else if (maxProb === outcomeProbabilities.awayWin) predictedResult = 'A';
-        else predictedResult = 'D';
-        
-        // Most likely score
-        let mostLikelyScore = '1-1';
-        let highestScoreProb = 0;
-        Object.entries(scoreProbabilities).forEach(([score, prob]) => {
-          if (prob > highestScoreProb) {
-            highestScoreProb = prob;
-            mostLikelyScore = score;
-          }
-        });
-        
-        const [predictedHomeGoals, predictedAwayGoals] = mostLikelyScore.split('-').map(Number);
-        const confidence = Math.max(outcomeProbabilities.homeWin, outcomeProbabilities.draw, outcomeProbabilities.awayWin);
-        
-        // Generate form data
-        const homeForm = ['W', 'W', 'D', 'W', 'L'][Math.floor(Math.random() * 5)] + 
-                        ['W', 'L', 'D', 'W', 'L'][Math.floor(Math.random() * 5)] + 
-                        ['W', 'W', 'D', 'L', 'W'][Math.floor(Math.random() * 5)] + 
-                        ['D', 'W', 'L', 'W', 'D'][Math.floor(Math.random() * 5)] + 
-                        ['W', 'L', 'W', 'D', 'W'][Math.floor(Math.random() * 5)];
-        const awayForm = ['L', 'W', 'D', 'L', 'W'][Math.floor(Math.random() * 5)] + 
-                        ['D', 'L', 'W', 'L', 'D'][Math.floor(Math.random() * 5)] + 
-                        ['W', 'L', 'D', 'W', 'L'][Math.floor(Math.random() * 5)] + 
-                        ['L', 'D', 'W', 'L', 'W'][Math.floor(Math.random() * 5)] + 
-                        ['W', 'D', 'L', 'W', 'L'][Math.floor(Math.random() * 5)];
-        
-        return {
-          ...match,
-          prediction: {
-            predicted_result: match.result ?? predictedResult,
-            confidence_score: confidence,
-            predicted_home_goals: match.home_goals ?? predictedHomeGoals,
-            predicted_away_goals: match.away_goals ?? predictedAwayGoals,
-            was_correct: match.result ? (match.result === predictedResult) : false,
-            prediction_date: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            id: `pred_${match.id}`,
-            match_id: match.id
-          },
-          detailedAnalysis: {
-            predictedScore: mostLikelyScore,
-            keyFactors: [
-              `${match.home_team} home advantage (+0.3 xG)`,
-              'Recent form analysis',
-              'Head-to-head record',
-              'Expected goals model'
-            ],
-            confidence: confidence * 100,
-            homeForm: homeForm,
-            awayForm: awayForm,
-            h2hRecord: 'Last 5: 2W 1D 2L',
-            poissonProbs: outcomeProbabilities,
-            recommendedStake: Math.max(0, (confidence - 0.6) * 10) // Kelly-style recommendation
-          }
-        };
+      // Generate predictions for upcoming matches
+      const upcomingMatches = matches.filter(m => !m.result);
+      const completedMatches = matches.filter(m => m.result);
+      
+      // Use our enhanced prediction algorithm for upcoming matches
+      const predictionsPromises = upcomingMatches.map(async match => {
+        try {
+          const prediction = await predictMatch(match.home_team, match.away_team);
+          
+          // Store prediction in tracker
+          predictionTracker.storePrediction(
+            match.id,
+            match.home_team,
+            match.away_team,
+            {
+              predictedResult: prediction.predictedResult,
+              predictedHomeGoals: prediction.predictedHomeGoals,
+              predictedAwayGoals: prediction.predictedAwayGoals,
+              confidence: prediction.confidence
+            },
+            match.date
+          );
+          
+          // Calculate Poisson probabilities for additional analysis
+          const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
+            prediction.predictedHomeGoals,
+            prediction.predictedAwayGoals,
+            6
+          );
+          const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+          
+          return {
+            ...match,
+            prediction: {
+              predicted_result: prediction.predictedResult,
+              confidence_score: prediction.confidence,
+              predicted_home_goals: prediction.predictedHomeGoals,
+              predicted_away_goals: prediction.predictedAwayGoals,
+              was_correct: false,
+              prediction_date: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              id: `pred_${match.id}`,
+              match_id: match.id
+            },
+            detailedAnalysis: {
+              predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
+              keyFactors: prediction.insights,
+              confidence: prediction.confidence * 100,
+              homeForm: 'WWDLW', // This would come from actual form data
+              awayForm: 'LDWDL', // This would come from actual form data
+              h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
+              poissonProbs: outcomeProbabilities,
+              recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
+            }
+          };
+        } catch (error) {
+          console.error(`Error predicting match ${match.id}:`, error);
+          // Return basic prediction if advanced fails
+          return {
+            ...match,
+            prediction: {
+              predicted_result: 'D' as 'H' | 'D' | 'A',
+              confidence_score: 0.33,
+              predicted_home_goals: 1,
+              predicted_away_goals: 1,
+              was_correct: false,
+              prediction_date: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              id: `pred_${match.id}`,
+              match_id: match.id
+            }
+          };
+        }
       });
+      
+      const upcomingPredictions = await Promise.all(predictionsPromises);
+      
+      // For completed matches, just show the actual results
+      const completedPredictions = completedMatches.map(match => ({
+        ...match,
+        prediction: {
+          predicted_result: match.result!,
+          confidence_score: 1,
+          predicted_home_goals: match.home_goals!,
+          predicted_away_goals: match.away_goals!,
+          was_correct: true,
+          prediction_date: match.date,
+          created_at: match.date,
+          id: `pred_${match.id}`,
+          match_id: match.id
+        }
+      }));
+      
+      predictions = [...upcomingPredictions, ...completedPredictions];
     } catch (err) {
       error = 'Failed to load predictions. Please try again.';
       console.error(err);

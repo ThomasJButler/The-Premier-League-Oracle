@@ -50,7 +50,7 @@
         </div>
         <div>
           <h1 class="text-2xl font-bold gradient-text">Top Scorers</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League 2024/25 Season</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League 2025/26 Season</p>
         </div>
       </div>
       <button 
