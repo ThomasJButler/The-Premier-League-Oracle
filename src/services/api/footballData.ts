@@ -86,21 +86,17 @@ class FootballDataAPI {
   private lastRequestTime = 0;
   
   constructor() {
-    const isDev = import.meta.env.DEV;
     const envKey = import.meta.env.VITE_FOOTBALL_DATA_API_KEY;
     const savedApiKey = localStorage.getItem('football_data_api_key');
     const apiKey = envKey || savedApiKey || '';
     
-    // Only use proxy if we're in dev mode AND using the environment key
-    const useProxy = isDev && apiKey === envKey;
-    
     this.config = {
       apiKey,
-      baseUrl: useProxy ? '/api/football-data/v4' : 'https://api.football-data.org/v4',
+      baseUrl: 'https://api.football-data.org/v4',
       competitionId: 2021 // Premier League
     };
     
-    console.log(`🏆 Football-Data API: ${useProxy ? 'Development (proxy)' : 'Direct'} mode`);
+    console.log(`🏆 Football-Data API: Direct mode, API key: ${apiKey ? 'Present' : 'Missing'}`);
   }
   
   public setApiKey(apiKey: string): void {
@@ -108,13 +104,7 @@ class FootballDataAPI {
     localStorage.setItem('football_data_api_key', apiKey);
     // Clear cache when API key changes
     this.cache.clear();
-    // Update base URL based on whether we're using the environment key or user key
-    const isDev = import.meta.env.DEV;
-    const envKey = import.meta.env.VITE_FOOTBALL_DATA_API_KEY;
-    // Only use proxy if we're in dev mode AND using the environment key
-    this.config.baseUrl = (isDev && apiKey === envKey) ? 
-      '/api/football-data/v4' : 
-      'https://api.football-data.org/v4';
+    console.log(`🏆 Football-Data API: API key updated`);
   }
   
   public hasApiKey(): boolean {

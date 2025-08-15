@@ -57,14 +57,21 @@ class DataService {
   
   private async checkDataSources(): Promise<void> {
     try {
-      // Test API availability
+      // First check if API key is available
+      if (!footballDataAPI.hasApiKey()) {
+        console.log('⏳ Football-Data API: No API key available, marking as unavailable');
+        this.apiSource.available = false;
+        return;
+      }
+      
+      // Test API availability with the key
       const season = await footballDataAPI.getCurrentSeason();
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
-        console.log('✅ Football-Data API is available');
+        console.log('✅ Football-Data API is available and working');
       } else {
-        console.error('❌ Football-Data API is not available');
+        console.error('❌ Football-Data API is not working (invalid response)');
       }
     } catch (error) {
       console.error('Error checking API availability:', error);
@@ -184,7 +191,12 @@ class DataService {
       }
     }
     
-    throw new Error('No data source available for matches');
+    // Provide helpful error message based on the situation
+    if (!footballDataAPI.hasApiKey()) {
+      throw new Error('API key required. Please set up your Football-Data.org API key in Settings or through the setup wizard.');
+    } else {
+      throw new Error('Unable to fetch matches. Please check your internet connection and API key validity.');
+    }
   }
   
   public async getCurrentSeasonMatches(): Promise<Match[]> {
@@ -325,6 +337,11 @@ class DataService {
   public setDataSource(source: 'api'): void {
     // Currently only API source is supported
     console.log(`Data source set to: ${source}`);
+  }
+
+  // Refresh data source availability (useful after API key is set)
+  public async refreshDataSources(): Promise<void> {
+    await this.checkDataSources();
   }
 
   // Get prediction accuracy for a season

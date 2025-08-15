@@ -48,7 +48,7 @@
   });
 
   function checkApiKey() {
-    const apiKey = localStorage.getItem('footballDataApiKey');
+    const apiKey = localStorage.getItem('football_data_api_key');
     hasApiKey = !!apiKey;
     
     // Show setup wizard if no API key found
@@ -57,11 +57,21 @@
     }
   }
 
-  function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
+  async function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
     hasApiKey = true;
     showApiSetup = false;
-    // Force refresh of data services with new API key
-    window.location.reload();
+    
+    // Refresh data services with new API key
+    const { dataService } = await import('./services/dataService');
+    const { footballDataAPI } = await import('./services/api/footballData');
+    
+    // Set the API key in the Football Data API
+    footballDataAPI.setApiKey(event.detail.apiKey);
+    
+    // Refresh data source availability
+    await dataService.refreshDataSources();
+    
+    console.log('✅ API key setup completed successfully');
   }
 
 </script>

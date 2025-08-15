@@ -22,8 +22,8 @@
     isValidating = true;
     
     try {
-      // Test the API key
-      const response = await fetch('/api/football-data/competitions/2021', {
+      // Test the API key directly with Football-Data.org
+      const response = await fetch('https://api.football-data.org/v4/competitions/2021', {
         headers: {
           'X-Auth-Token': apiKey.trim()
         }
@@ -31,7 +31,7 @@
       
       if (response.ok) {
         // Save to localStorage
-        localStorage.setItem('footballDataApiKey', apiKey.trim());
+        localStorage.setItem('football_data_api_key', apiKey.trim());
         
         // Move to final step
         currentStep = 4;
