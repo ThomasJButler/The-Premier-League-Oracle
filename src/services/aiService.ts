@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { dataService } from './dataService';
+import { footballDataAPI } from './api/footballData';
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -58,56 +60,107 @@ class AIService {
   
   private async getMatchContext(): Promise<string> {
     try {
-      // Get recent matches and upcoming fixtures
-      const { data: recentMatches } = await supabase
-        .from('matches')
-        .select('*')
-        .lt('date', new Date().toISOString())
-        .order('date', { ascending: false })
-        .limit(5);
+      // Check data source
+      const dataStatus = dataService.getStatus();
+      const isUsingAPI = dataStatus.primarySource.available && dataStatus.primarySource.type === 'api';
       
-      const { data: upcomingMatches } = await supabase
-        .from('matches')
-        .select('*')
-        .gte('date', new Date().toISOString())
-        .order('date', { ascending: true })
-        .limit(5);
+      // Get recent matches and upcoming fixtures from dataService (API first, then fallback)
+      const [recentMatches, upcomingMatches] = await Promise.all([
+        dataService.getMatches({ recent: true, days: 7 }),
+        dataService.getMatches({ upcoming: true, days: 7 })
+      ]);
       
-      // Get current season stats
-      const { data: teamStats } = await supabase
-        .from('team_stats')
-        .select('*')
-        .order('points', { ascending: false })
-        .limit(6);
+      // Get standings (from API if available)
+      let standings: any[] = [];
+      if (isUsingAPI) {
+        standings = await footballDataAPI.getStandings();
+      } else {
+        // Fallback to Supabase
+        const { data } = await supabase
+          .from('team_stats')
+          .select('*')
+          .order('points', { ascending: false })
+          .limit(20);
+        standings = data || [];
+      }
       
-      let context = 'Current Premier League Context:\n\n';
+      // Build context with current date and data source
+      const today = new Date();
+      const todayStr = today.toLocaleDateString('en-GB', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
       
-      if (teamStats && teamStats.length > 0) {
-        context += 'Top 6 Teams:\n';
-        teamStats.forEach((team, idx) => {
-          context += `${idx + 1}. ${team.team_name}: ${team.points} pts (W${team.wins} D${team.draws} L${team.losses})\n`;
-        });
+      let context = `Current Premier League Context:\n`;
+      context += `Today's Date: ${todayStr}\n`;
+      context += `Data Source: ${isUsingAPI ? 'Live API (Football-Data.org)' : 'Database (Cached)'}\n\n`;
+      
+      // Add standings
+      if (standings && standings.length > 0) {
+        context += 'Current Standings:\n';
+        
+        if (isUsingAPI) {
+          // API format
+          standings.slice(0, 10).forEach((standing: any) => {
+            context += `${standing.position}. ${standing.team.name}: ${standing.points} pts `;
+            context += `(P${standing.playedGames} W${standing.won} D${standing.draw} L${standing.lost} `;
+            context += `GD${standing.goalDifference > 0 ? '+' : ''}${standing.goalDifference})\n`;
+          });
+        } else {
+          // Database format
+          standings.slice(0, 10).forEach((team: any, idx: number) => {
+            context += `${idx + 1}. ${team.team_name}: ${team.points} pts `;
+            context += `(W${team.wins} D${team.draws} L${team.losses})\n`;
+          });
+        }
         context += '\n';
       }
       
+      // Add recent results
       if (recentMatches && recentMatches.length > 0) {
-        context += 'Recent Results:\n';
-        recentMatches.forEach(match => {
+        context += 'Recent Results (Last 7 days):\n';
+        recentMatches.slice(0, 10).forEach(match => {
           if (match.home_goals !== null && match.away_goals !== null) {
-            const date = new Date(match.date).toLocaleDateString();
+            const date = new Date(match.date).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short'
+            });
             context += `${date}: ${match.home_team} ${match.home_goals}-${match.away_goals} ${match.away_team}\n`;
           }
         });
         context += '\n';
       }
       
+      // Add upcoming fixtures with more detail
       if (upcomingMatches && upcomingMatches.length > 0) {
-        context += 'Upcoming Fixtures:\n';
-        upcomingMatches.forEach(match => {
-          const date = new Date(match.date).toLocaleDateString();
-          context += `${date}: ${match.home_team} vs ${match.away_team}\n`;
+        context += 'Upcoming Fixtures (Next 7 days):\n';
+        upcomingMatches.slice(0, 10).forEach(match => {
+          const matchDate = new Date(match.date);
+          const dateStr = matchDate.toLocaleDateString('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short'
+          });
+          const timeStr = matchDate.toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Check if it's tomorrow
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const isTomorrow = matchDate.toDateString() === tomorrow.toDateString();
+          
+          context += `${dateStr} ${timeStr}${isTomorrow ? ' (TOMORROW)' : ''}: `;
+          context += `${match.home_team} vs ${match.away_team}\n`;
         });
+        context += '\n';
       }
+      
+      // Add note about specific team queries
+      context += 'Note: When asked about specific teams, I can search for their fixtures and provide detailed information.\n';
       
       return context;
     } catch (error) {
@@ -136,11 +189,13 @@ class AIService {
 ${matchContext}
 
 You have access to comprehensive Premier League data including:
-- Historical match results and statistics
-- Team performance metrics and form
-- Expected Goals (xG) data
+- Live fixtures and results from Football-Data.org API
+- Current league standings and team statistics
+- Historical match results and performance metrics
+- Expected Goals (xG) data and predictions
 - Head-to-head records
-- Betting odds and market movements
+- Betting odds and Kelly Criterion calculations
+- Today's date for accurate fixture information
 
 Provide insightful, data-driven responses about:
 - Match predictions and analysis
@@ -149,7 +204,7 @@ Provide insightful, data-driven responses about:
 - Statistical trends and patterns
 - Tactical analysis
 
-Always base your responses on data and statistical analysis. When discussing predictions, mention confidence levels and key factors influencing the outcome.`
+Always base your responses on the data provided in the context. When asked about fixtures, use the dates provided. When discussing predictions, mention confidence levels and key factors influencing the outcome. If asked about a specific team's fixtures, search the context for that team name.`
       };
       
       // Prepare messages for API
