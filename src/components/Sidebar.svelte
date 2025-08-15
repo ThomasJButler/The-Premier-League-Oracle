@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart3, History, Bot, Settings, LogOut, Calculator, TrendingUp, DollarSign } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart3, History, Bot, Settings, LogOut, Calculator, TrendingUp, DollarSign, HelpCircle } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let currentView: string;
@@ -23,6 +23,7 @@
   ];
 
   const bottomNavItems = [
+    { name: 'Help', icon: HelpCircle, view: 'Help' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
     { name: 'Logout', icon: LogOut, view: 'Logout' },
   ];

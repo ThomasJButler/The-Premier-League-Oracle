@@ -13,6 +13,7 @@
   import ValueBets from './components/betting/ValueBets.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
+  import Help from './components/Help.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -125,6 +126,8 @@
           <SeasonStats />
         {:else if currentView === 'Settings'}
           <Settings />
+        {:else if currentView === 'Help'}
+          <Help />
         {/if}
       </div>
     </main>

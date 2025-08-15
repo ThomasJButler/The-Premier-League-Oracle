@@ -1,4 +1,9 @@
-# The Premier League Oracle
+# ⚽ The Premier League Oracle
+
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![API](https://img.shields.io/badge/API-Football--Data.org-orange)
+![Status](https://img.shields.io/badge/status-active-success)
 
 A comprehensive Premier League prediction platform backed by data science and machine learning. This tool analyses historical match data to provide statistically-sound predictions and uncover unusual statistics in Premier League football matches.
 
@@ -13,7 +18,7 @@ The Premier League Oracle is designed to be the ultimate prediction and analysis
 
 ### Data Source
 
-All match data is sourced from [Football-Data.co.uk](https://www.football-data.co.uk/) and is used **for scientific research purposes only**. I've built a robust pipeline to clean, transform, and consolidate this data in a Supabase PostgreSQL database.
+All match data is sourced from [Football-Data.org](https://www.football-data.org/) API for real-time updates and historical data. The platform uses advanced caching strategies to ensure optimal performance while respecting API rate limits.
 
 ### Key Features
 
@@ -24,11 +29,43 @@ All match data is sourced from [Football-Data.co.uk](https://www.football-data.c
 - **Trend Visualisation**: View performance trends and hidden patterns
 - **Informed Decision Making**: Make smarter predictions based on solid data
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ and npm
+- A free API key from [Football-Data.org](https://www.football-data.org/client/register)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/The-Premier-League-Oracle.git
+   cd The-Premier-League-Oracle
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open in browser**
+   Navigate to `http://localhost:5173`
+
+5. **Set up your API key**
+   - The setup wizard will guide you through adding your Football-Data.org API key
+   - The app will automatically reload with live data
+
 ## Technology Stack
 
-- **Frontend**: Svelte, TypeScript, JavaScript
-- **Backend**: Supabase (PostgreSQL)
-- **Data Processing**: Python, SQL
+- **Frontend**: Svelte 4.2, TypeScript, Tailwind CSS
+- **API**: Football-Data.org v4 API
+- **Build Tool**: Vite
+- **Charts**: Chart.js with svelte-chartjs
 - **Deployment**: Vercel
 
 ## Responsible Usage
@@ -74,12 +111,26 @@ I have an exciting roadmap planned for future versions:
    - Champions League version (based on the pre-2024 format with group stages)
    - Exploration of other sports with rich statistical datasets
 
-## Documentation
+## 📖 Documentation
 
-For more details about the project:
-- [Data Update Guide](src/devdocs/UPDATING_DATA.md): Instructions for adding new season data
-- [Implementation Plan](src/devdocs/implementation-plan.md): Current development roadmap
-- [Future Enhancements](src/devdocs/future-enhancements.md): Detailed feature plans
+### For Users
+- [User Guide](./docs/user-guide.md) - Getting started and using features
+- [Maximizing Predictions](./docs/maximizing-predictions.md) - Get the most from prediction tools
+- **In-App Help**: Access guides directly from the app's Help section
+
+### For Developers
+- [API Integration](./docs/api-integration.md) - Football-Data.org API setup
+- [Developer Guide](./docs/developer-guide.md) - Architecture and contributing
+- [Troubleshooting](./docs/troubleshooting.md) - Common issues and solutions
+
+## 🏗️ Recent Updates (v2.0)
+
+- ✅ Migrated from Supabase to Football-Data.org API for real-time data
+- ✅ Implemented CORS proxy for seamless development
+- ✅ Enhanced UI/UX with glassmorphism design
+- ✅ Added comprehensive onboarding wizard
+- ✅ Improved prediction models with ELO, Poisson, and xG
+- ✅ Implemented intelligent caching with IndexedDB
 
 ## Contributing
 
