@@ -217,7 +217,7 @@
                   </div>
                   <div class="flex items-center gap-3">
                     <div class="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <span><strong>Low (<60%)</strong> - Models disagree</span>
+                    <span><strong>Low (&lt;60%)</strong> - Models disagree</span>
                   </div>
                 </div>
               </div>
