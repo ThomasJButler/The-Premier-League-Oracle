@@ -5,6 +5,7 @@
   import { predictMatch } from '../lib/predictions';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
+  import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   import { PoissonPredictor } from '../lib/advancedPredictions';
   import { TrendingUp, Target, Clock, Users, BarChart3, Calculator } from 'lucide-svelte';
@@ -21,6 +22,7 @@
       poissonProbs: { homeWin: number; draw: number; awayWin: number };
       recommendedStake: number;
     };
+    predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
   }> = [];
   let accuracy = { total: 0, correct: 0, accuracy: 0 };
   let loading = true;
@@ -30,120 +32,139 @@
   let visible = false;
   let error: string | null = null;
   let flippedCards = new Set<string>(); // Track which cards are flipped
+  
+  // Batch prediction state
+  let selectedGameweek = 1;
+  let batchPredictionProgress = 0;
+  let batchPredictionTotal = 0;
+  let batchPredictionMessage = '';
+  let isBatchPredicting = false;
+  let currentProcessingTeam = '';
 
-  async function loadData() {
+  async function loadGameweekMatches(gameweek: number) {
     loading = true;
     error = null;
+    predictions = [];
+    
     try {
-      const matches = await dataService.getCurrentSeasonMatches();
-      const currentAccuracy = await dataService.getPredictionAccuracy('2024-2025');
+      // Get all matches for the season
+      const allMatches = await dataService.getCurrentSeasonMatches();
       
+      // Filter for selected gameweek (10 matches per gameweek)
+      const startIdx = (gameweek - 1) * 10;
+      const endIdx = startIdx + 10;
+      const gameweekMatches = allMatches.slice(startIdx, endIdx);
+      
+      // Initialize matches with pending status
+      predictions = gameweekMatches.map(match => ({
+        ...match,
+        predictionStatus: 'pending' as const
+      }));
+      
+      // Get accuracy stats
+      const currentAccuracy = await dataService.getPredictionAccuracy('2025-2026');
       if (currentAccuracy) {
         accuracy = currentAccuracy;
       }
-
-      // Generate predictions for upcoming matches
-      const upcomingMatches = matches.filter(m => !m.result);
-      const completedMatches = matches.filter(m => m.result);
       
-      // Use our enhanced prediction algorithm for upcoming matches
-      const predictionsPromises = upcomingMatches.map(async match => {
-        try {
-          const prediction = await predictMatch(match.home_team, match.away_team);
-          
-          // Store prediction in tracker
-          predictionTracker.storePrediction(
-            match.id,
-            match.home_team,
-            match.away_team,
-            {
-              predictedResult: prediction.predictedResult,
-              predictedHomeGoals: prediction.predictedHomeGoals,
-              predictedAwayGoals: prediction.predictedAwayGoals,
-              confidence: prediction.confidence
-            },
-            match.date
-          );
-          
-          // Calculate Poisson probabilities for additional analysis
-          const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
-            prediction.predictedHomeGoals,
-            prediction.predictedAwayGoals,
-            6
-          );
-          const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
-          
-          return {
-            ...match,
-            prediction: {
-              predicted_result: prediction.predictedResult,
-              confidence_score: prediction.confidence,
-              predicted_home_goals: prediction.predictedHomeGoals,
-              predicted_away_goals: prediction.predictedAwayGoals,
-              was_correct: false,
-              prediction_date: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-              id: `pred_${match.id}`,
-              match_id: match.id
-            },
-            detailedAnalysis: {
-              predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
-              keyFactors: prediction.insights,
-              confidence: prediction.confidence * 100,
-              homeForm: 'WWDLW', // This would come from actual form data
-              awayForm: 'LDWDL', // This would come from actual form data
-              h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
-              poissonProbs: outcomeProbabilities,
-              recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
-            }
-          };
-        } catch (error) {
-          console.error(`Error predicting match ${match.id}:`, error);
-          // Return basic prediction if advanced fails
-          return {
-            ...match,
-            prediction: {
-              predicted_result: 'D' as 'H' | 'D' | 'A',
-              confidence_score: 0.33,
-              predicted_home_goals: 1,
-              predicted_away_goals: 1,
-              was_correct: false,
-              prediction_date: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-              id: `pred_${match.id}`,
-              match_id: match.id
-            }
-          };
-        }
-      });
-      
-      const upcomingPredictions = await Promise.all(predictionsPromises);
-      
-      // For completed matches, just show the actual results
-      const completedPredictions = completedMatches.map(match => ({
-        ...match,
-        prediction: {
-          predicted_result: match.result!,
-          confidence_score: 1,
-          predicted_home_goals: match.home_goals!,
-          predicted_away_goals: match.away_goals!,
-          was_correct: true,
-          prediction_date: match.date,
-          created_at: match.date,
-          id: `pred_${match.id}`,
-          match_id: match.id
-        }
-      }));
-      
-      predictions = [...upcomingPredictions, ...completedPredictions];
+      visible = true;
     } catch (err) {
-      error = 'Failed to load predictions. Please try again.';
+      error = 'Failed to load matches. Please try again.';
       console.error(err);
     } finally {
       loading = false;
-      visible = false;
-      setTimeout(() => { visible = true; }, 100);
     }
+  }
+  
+  async function predictGameweek() {
+    if (isBatchPredicting) return;
+    
+    isBatchPredicting = true;
+    batchPredictionProgress = 0;
+    batchPredictionTotal = predictions.filter(m => !m.result).length;
+    
+    const upcomingMatches = predictions.filter(m => !m.result);
+    
+    for (let i = 0; i < upcomingMatches.length; i++) {
+      const match = upcomingMatches[i];
+      const matchIndex = predictions.findIndex(p => p.id === match.id);
+      
+      // Update status to processing
+      predictions[matchIndex].predictionStatus = 'processing';
+      currentProcessingTeam = `${match.home_team} vs ${match.away_team}`;
+      batchPredictionMessage = `Analyzing ${currentProcessingTeam}...`;
+      batchPredictionProgress = i + 1;
+      
+      // Force UI update
+      predictions = [...predictions];
+      
+      try {
+        // Add small delay to show animation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const prediction = await predictMatch(match.home_team, match.away_team);
+        
+        // Calculate Poisson probabilities for additional analysis
+        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
+          prediction.predictedHomeGoals,
+          prediction.predictedAwayGoals,
+          6
+        );
+        const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+        
+        predictions[matchIndex] = {
+          ...match,
+          prediction: {
+            predicted_result: prediction.predictedResult,
+            confidence_score: prediction.confidence,
+            predicted_home_goals: prediction.predictedHomeGoals,
+            predicted_away_goals: prediction.predictedAwayGoals,
+            was_correct: false,
+            prediction_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            id: `pred_${match.id}`,
+            match_id: match.id
+          },
+          detailedAnalysis: {
+            predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
+            keyFactors: prediction.insights,
+            confidence: prediction.confidence * 100,
+            homeForm: 'WWDLW',
+            awayForm: 'LDWDL',
+            h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
+            poissonProbs: outcomeProbabilities,
+            recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
+          },
+          predictionStatus: 'complete'
+        };
+        
+        // Store in tracker
+        predictionTracker.storePrediction(
+          match.id,
+          match.home_team,
+          match.away_team,
+          {
+            predictedResult: prediction.predictedResult,
+            predictedHomeGoals: prediction.predictedHomeGoals,
+            predictedAwayGoals: prediction.predictedAwayGoals,
+            confidence: prediction.confidence
+          },
+          match.date
+        );
+      } catch (error) {
+        console.error(`Error predicting ${match.id}:`, error);
+        predictions[matchIndex].predictionStatus = 'error';
+      }
+      
+      // Force UI update
+      predictions = [...predictions];
+    }
+    
+    batchPredictionMessage = 'All predictions complete!';
+    setTimeout(() => {
+      isBatchPredicting = false;
+      batchPredictionMessage = '';
+    }, 2000);
   }
 
   function toggleCard(matchId: string) {
@@ -155,11 +176,83 @@
     flippedCards = new Set(flippedCards);
   }
 
-  onMount(loadData);
+  onMount(() => loadGameweekMatches(selectedGameweek));
+  
+  function handleGameweekChange() {
+    loadGameweekMatches(selectedGameweek);
+  }
 </script>
 
 <div class="space-y-6 animate-fade-in">
-  <h2 class="text-2xl font-bold gradient-text">Match Predictions</h2>
+  <!-- Header with Gameweek Selector -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <h2 class="text-2xl font-bold gradient-text">Match Predictions</h2>
+    
+    <div class="flex items-center gap-4">
+      <!-- Gameweek Selector -->
+      <div class="flex items-center gap-2">
+        <label for="gameweek" class="text-sm font-medium">Gameweek:</label>
+        <select
+          id="gameweek"
+          bind:value={selectedGameweek}
+          on:change={handleGameweekChange}
+          class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+          disabled={isBatchPredicting}
+        >
+          {#each Array(38) as _, i}
+            <option value={i + 1}>Week {i + 1}</option>
+          {/each}
+        </select>
+      </div>
+      
+      <!-- Predict Button -->
+      <button
+        on:click={predictGameweek}
+        disabled={isBatchPredicting || loading}
+        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+      >
+        {#if isBatchPredicting}
+          <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          Predicting...
+        {:else}
+          <Calculator class="w-4 h-4" />
+          Predict Gameweek
+        {/if}
+      </button>
+    </div>
+  </div>
+  
+  <!-- Batch Prediction Progress -->
+  {#if isBatchPredicting}
+    <div class="glass-card p-4" in:fade={{ duration: 300 }}>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-medium">{batchPredictionMessage}</span>
+          <span class="text-sm text-slate-500 dark:text-slate-400">
+            {batchPredictionProgress} / {batchPredictionTotal}
+          </span>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+          <div 
+            class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 ease-out"
+            style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
+          >
+            <div class="h-full bg-white/30 animate-pulse"></div>
+          </div>
+        </div>
+        
+        <!-- Current Team Processing -->
+        {#if currentProcessingTeam}
+          <div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Analyzing: {currentProcessingTeam}</span>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <div class="flex justify-center items-center h-64">
@@ -168,12 +261,38 @@
   {:else if error}
     <div class="card p-6 text-center bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700/50">
       <p class="text-rose-700 dark:text-rose-300 font-medium">{error}</p>
-      <button class="btn btn-primary mt-4" on:click={loadData}>Retry</button>
+      <button class="btn btn-primary mt-4" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {#each predictions as prediction, i (prediction.id)}
-        <div class="flip-card" style="animation-delay: {i * 50}ms">
+        <div class="flip-card relative" style="animation-delay: {i * 50}ms">
+          <!-- Status Indicator Overlay -->
+          {#if prediction.predictionStatus === 'processing'}
+            <div class="absolute inset-0 bg-blue-500/10 rounded-lg z-10 flex items-center justify-center pointer-events-none">
+              <div class="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-lg flex items-center gap-2">
+                <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm font-medium">Analyzing...</span>
+              </div>
+            </div>
+          {:else if prediction.predictionStatus === 'complete'}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none">
+              <div class="bg-green-500 text-white rounded-full p-1 animate-scale-in">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </div>
+          {:else if prediction.predictionStatus === 'error'}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none">
+              <div class="bg-red-500 text-white rounded-full p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+            </div>
+          {/if}
+          
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
             <div class="flip-card-front card card-glass">
@@ -398,5 +517,23 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  @keyframes scale-in {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out;
   }
 </style>
