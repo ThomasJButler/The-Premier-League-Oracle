@@ -20,10 +20,11 @@
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
-  let isSidebarOpen = true;
+  let isSidebarOpen = false; // Start with sidebar closed
   let isTransitioning = false;
   let showApiSetup = false;
   let hasApiKey = false;
+  let dashboardComponent: Dashboard;
   
   function navigate(event: CustomEvent<{ view: string }>) {
     if (event.detail.view === currentView) return;
@@ -42,9 +43,9 @@
   }
 
   onMount(() => {
-    // Adjust sidebar based on screen size initially
-    if (window.innerWidth < 768) { // Example breakpoint (Tailwind's md)
-      isSidebarOpen = false;
+    // Open sidebar only on large desktop screens
+    if (window.innerWidth >= 1024) { // Large desktop screens
+      isSidebarOpen = true;
     }
     
     // Check for API key on load
@@ -76,6 +77,13 @@
     await dataService.refreshDataSources();
     
     console.log('✅ API key setup completed successfully');
+    
+    // Refresh dashboard if it's currently loaded
+    if (currentView === 'Dashboard' && dashboardComponent) {
+      setTimeout(() => {
+        dashboardComponent.refresh();
+      }, 100);
+    }
   }
 
 </script>
@@ -112,7 +120,7 @@
       <!-- Page content with smooth transitions -->
       <div class="page-content" class:transitioning={isTransitioning}>
         {#if currentView === 'Dashboard'}
-          <Dashboard />
+          <Dashboard bind:this={dashboardComponent} />
         {:else if currentView === 'Matches'}
           <MatchList />
         {:else if currentView === 'Predictions'}

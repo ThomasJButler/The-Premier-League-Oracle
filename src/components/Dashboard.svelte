@@ -99,6 +99,10 @@
     }
   ];
 
+  export async function refresh() {
+    await loadDashboardData();
+  }
+  
   async function loadDashboardData() {
     try {
       loading = true;
