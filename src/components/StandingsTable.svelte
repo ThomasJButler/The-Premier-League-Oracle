@@ -19,13 +19,27 @@
     try {
       loading = true;
       error = '';
+      
+      // Check if API key is configured
+      const apiKey = localStorage.getItem('football_data_api_key');
+      if (!apiKey) {
+        error = 'Please configure your Football-Data.org API key in Settings to view standings.';
+        return;
+      }
+      
       standings = await dataService.getStandings();
       
       if (!standings || standings.length === 0) {
-        error = 'No standings data available';
+        error = 'No standings data available. The season may not have started yet.';
       }
-    } catch (err) {
-      error = 'Failed to load standings. Please check your API connection.';
+    } catch (err: any) {
+      if (err.message?.includes('API key')) {
+        error = 'Please configure your Football-Data.org API key in Settings to view standings.';
+      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+        error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
+      } else {
+        error = 'Failed to load standings. Please check your internet connection and try again.';
+      }
       console.error('Error loading standings:', err);
     } finally {
       loading = false;

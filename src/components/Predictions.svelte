@@ -355,9 +355,9 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="flip-card-back card">
+            <div class="flip-card-back card card-glass p-6">
               {#if prediction.detailedAnalysis}
-                <div class="h-full overflow-y-auto text-slate-900 dark:text-slate-100">
+                <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Analysis</h3>
                     <button 
@@ -368,10 +368,10 @@
                   </div>
 
                   <!-- Predicted Score Section -->
-                  <div class="mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-700">
                     <div class="flex items-center gap-2 mb-2">
                       <Target class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span class="font-semibold text-slate-900 dark:text-slate-100">Predicted Score</span>
+                      <span class="font-semibold text-blue-800 dark:text-blue-200">Predicted Score</span>
                     </div>
                     <div class="text-2xl font-bold text-blue-700 dark:text-blue-300 text-center">
                       {prediction.detailedAnalysis.predictedScore}
@@ -417,9 +417,9 @@
 
                   <!-- Betting Recommendation -->
                   {#if prediction.detailedAnalysis.recommendedStake > 0}
-                    <div class="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-700">
                       <div class="flex items-center gap-2 mb-1">
-                        <Users class="w-4 h-4 text-amber-600" />
+                        <Users class="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         <span class="font-semibold text-amber-800 dark:text-amber-200">Betting Tip</span>
                       </div>
                       <div class="text-sm text-amber-700 dark:text-amber-300">
@@ -492,14 +492,15 @@
   }
 
   .flip-card-back {
-    background-color: rgba(255, 255, 255, 0.95);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.98) 100%);
     transform: rotateY(180deg);
-    padding: 1.5rem;
     overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   }
   
   :global(.dark) .flip-card-back {
-    background-color: rgba(30, 41, 59, 0.95);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(51, 65, 85, 0.98) 100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   }
 
   @keyframes fadeIn {

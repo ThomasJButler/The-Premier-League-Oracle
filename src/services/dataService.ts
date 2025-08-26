@@ -68,7 +68,7 @@ class DataService {
       
       // Check if API key is available
       if (!activeApi.hasApiKey()) {
-        console.log(`⏳ ${this.currentProvider === 'api-football' ? 'API-Football' : 'Football-Data'}: No API key available`);
+        console.log('⏳ Football-Data: No API key available');
         this.apiSource.available = false;
         return;
       }
@@ -78,9 +78,9 @@ class DataService {
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
-        console.log(`✅ ${this.currentProvider === 'api-football' ? 'API-Football Pro' : 'Football-Data (Free)'} is available and working`);
+        console.log('✅ Football-Data (Free) is available and working');
       } else {
-        console.error(`❌ ${this.currentProvider === 'api-football' ? 'API-Football' : 'Football-Data'} is not working`);
+        console.error('❌ Football-Data is not working');
       }
     } catch (error) {
       console.error('Error checking API availability:', error);
@@ -93,12 +93,6 @@ class DataService {
     return footballDataAPI;
   }
   
-  // Refresh API configuration
-  public async refreshApiConfiguration(): Promise<void> {
-    this.clearCache();
-    await this.checkDataSources();
-    console.log('🔄 API configuration refreshed');
-  }
   
   public getApiProvider(): ApiProvider {
     return this.currentProvider;
@@ -391,6 +385,11 @@ class DataService {
   public async refreshDataSources(): Promise<void> {
     await this.checkDataSources();
   }
+  
+  // Alias for refreshDataSources for backward compatibility
+  public async refreshApiConfiguration(): Promise<void> {
+    await this.checkDataSources();
+  }
 
   // Get prediction accuracy for a season
   public async getPredictionAccuracy(seasonId: string): Promise<{ total: number; correct: number; accuracy: number; }> {
@@ -415,8 +414,7 @@ class DataService {
       await store.clear();
     }
     
-    // Also clear API keys when clearing cache
-    localStorage.removeItem('api_football_key');
+    // Clear API key when clearing cache
     localStorage.removeItem('football_data_api_key');
     // No need for provider selection anymore
     

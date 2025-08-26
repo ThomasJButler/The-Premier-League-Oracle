@@ -75,7 +75,7 @@
                     <span class="flex-shrink-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold">1</span>
                     <div>
                       <strong>Get Your API Key</strong>
-                      <p class="text-sm mt-1">Sign up at API-Football for an API key with 100 requests per day on the free tier.</p>
+                      <p class="text-sm mt-1">Sign up at Football-Data.org for a free API key with 10 requests per minute.</p>
                     </div>
                   </li>
                   <li class="flex gap-3">
@@ -116,7 +116,7 @@
               </div>
 
               <a 
-                href="https://www.api-football.com/pricing" 
+                href="https://www.football-data.org/client/register" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -366,7 +366,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">All data comes directly from API-Football, bypassing our servers.</p>
+                      <p class="text-sm">All data comes directly from Football-Data.org, bypassing our servers.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">
@@ -386,7 +386,7 @@
                   <li>✅ Use a dedicated API key for this app</li>
                   <li>✅ Rotate keys periodically</li>
                   <li>✅ Never share your API key</li>
-                  <li>✅ Monitor usage in API-Football dashboard</li>
+                  <li>✅ Monitor usage in Football-Data.org dashboard</li>
                   <li>✅ Report any suspicious activity immediately</li>
                 </ul>
               </div>
@@ -404,7 +404,7 @@
                 
                 <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Is this app free to use?</h3>
-                  <p>Yes! The app is completely free. You just need an API key from API-Football, which includes 100 requests per day on the free tier.</p>
+                  <p>Yes! The app is completely free. You just need an API key from Football-Data.org, which provides 10 requests per minute on the free tier.</p>
                 </div>
                 
                 <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">

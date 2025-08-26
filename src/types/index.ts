@@ -7,7 +7,7 @@ export interface Season {
   end_date: string;
   is_current: boolean;
   created_at: string;
-  year?: number; // Added for API-Football season handling
+  year?: number; // Year of the season
 }
 
 export interface Match {

@@ -35,6 +35,15 @@
     try {
       loading = true;
       error = '';
+      
+      // Check if API key is configured
+      const apiKey = localStorage.getItem('football_data_api_key');
+      if (!apiKey) {
+        error = 'Please configure your Football-Data.org API key in Settings to view top scorers.';
+        loading = false;
+        return;
+      }
+      
       const rawScorers = await dataService.getTopScorers();
       
       // Transform data to consistent format
@@ -62,9 +71,11 @@
       }
     } catch (err: any) {
       if (err.message?.includes('API key')) {
-        error = 'Please configure your API key in Settings to view top scorers.';
+        error = 'Please configure your Football-Data.org API key in Settings to view top scorers.';
+      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+        error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
       } else {
-        error = 'Failed to load top scorers. Please try again later.';
+        error = 'Failed to load top scorers. Please check your internet connection and try again.';
       }
       console.error('Error loading top scorers:', err);
     } finally {

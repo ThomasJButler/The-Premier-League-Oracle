@@ -94,8 +94,8 @@
     }
   }
   
-  function selectProvider(provider: 'football-data' | 'api-football') {
-    selectedProvider = provider;
+  function selectProvider() {
+    selectedProvider = 'football-data';
     nextStep();
   }
 </script>
@@ -239,87 +239,58 @@
         </div>
         
       {:else if currentStep === 3}
-        <!-- Choose Provider Step -->
+        <!-- API Provider Step -->
         <div class="space-y-6">
           <div class="text-center">
-            <h3 class="text-2xl font-bold mb-2">Choose Your API Provider</h3>
-            <p class="text-slate-600 dark:text-slate-300">Select the option that best fits your needs</p>
+            <h3 class="text-2xl font-bold mb-2">Football-Data.org API</h3>
+            <p class="text-slate-600 dark:text-slate-300">Free Premier League data with real-time updates</p>
           </div>
           
-          <div class="grid md:grid-cols-2 gap-6">
-            <!-- Football-Data.org Option -->
-            <button
-              on:click={() => selectProvider('football-data')}
-              class="p-6 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
-            >
+          <div class="max-w-md mx-auto">
+            <div class="p-6 border-2 border-primary bg-primary/5 rounded-xl">
               <div class="flex items-center justify-between mb-4">
                 <Trophy class="w-8 h-8 text-green-600" />
                 <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
-                  FREE
+                  FREE TIER
                 </span>
               </div>
               <h4 class="font-bold text-lg mb-2">Football-Data.org</h4>
               <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Perfect for testing and demos
+                Perfect for Premier League predictions and analysis
               </p>
-              <ul class="space-y-2 text-sm">
+              <ul class="space-y-2 text-sm mb-6">
                 <li class="flex items-center gap-2">
                   <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  Premier League data
+                  Complete Premier League data
                 </li>
                 <li class="flex items-center gap-2">
                   <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  10 requests per minute
+                  10 requests per minute (free tier)
                 </li>
                 <li class="flex items-center gap-2">
                   <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  Basic predictions
+                  Matches, standings, and scorers
+                </li>
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  AI-powered predictions
                 </li>
               </ul>
-            </button>
-            
-            <!-- API-Football Option -->
-            <button
-              on:click={() => selectProvider('api-football')}
-              class="p-6 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
-            >
-              <div class="flex items-center justify-between mb-4">
-                <Sparkles class="w-8 h-8 text-purple-600" />
-                <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold rounded-full">
-                  PRO
-                </span>
-              </div>
-              <h4 class="font-bold text-lg mb-2">API-Football</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Full suite of prediction tools
-              </p>
-              <ul class="space-y-2 text-sm">
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Live match data
-                </li>
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Advanced statistics
-                </li>
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Professional predictions
-                </li>
-              </ul>
-            </button>
+              <button
+                on:click={selectProvider}
+                class="w-full px-4 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Continue with Football-Data.org
+              </button>
+            </div>
           </div>
         </div>
         
@@ -332,14 +303,14 @@
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
             <p class="text-slate-600 dark:text-slate-300">
-              Enter your {selectedProvider === 'api-football' ? 'API-Football' : 'Football-Data.org'} key to get started
+              Enter your Football-Data.org key to get started
             </p>
           </div>
           
           <div class="space-y-4">
             <div>
               <label for="apiKey" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                {selectedProvider === 'api-football' ? 'API-Football Key' : 'Football-Data.org API Key'}
+                Football-Data.org API Key
               </label>
               <input
                 id="apiKey"
@@ -376,16 +347,10 @@
                     <strong>Don't have an API key?</strong>
                   </p>
                   <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                    {#if selectedProvider === 'api-football'}
-                      Get an API key from API-Football. Various plans available starting from free tier.
-                    {:else}
-                      Get a free API key from Football-Data.org. The free tier includes 10 requests per minute.
-                    {/if}
+                    Get a free API key from Football-Data.org. The free tier includes 10 requests per minute.
                   </p>
                   <a 
-                    href={selectedProvider === 'api-football' 
-                      ? "https://www.api-football.com/pricing" 
-                      : "https://www.football-data.org/client/register"} 
+                    href="https://www.football-data.org/client/register" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200"
