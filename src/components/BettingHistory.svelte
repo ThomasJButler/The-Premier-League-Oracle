@@ -66,7 +66,7 @@
       await new Promise(resolve => setTimeout(resolve, 700)); // Simulate loading
     } catch (err) {
       error = 'Failed to load betting history.';
-      console.error(err);
+      // Error loading betting history
     } finally {
       loading = false;
     }

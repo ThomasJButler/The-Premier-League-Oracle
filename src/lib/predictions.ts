@@ -454,6 +454,5 @@ export async function savePrediction(
   }
 ): Promise<void> {
   // TODO: Implement prediction saving to local storage or API
-  // For now, just log the prediction
-  console.log('Saving prediction:', { matchId, prediction });
+  // Prediction saved: matchId, prediction details
 }

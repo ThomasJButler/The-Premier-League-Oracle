@@ -108,7 +108,7 @@
       
       lastRefresh = new Date();
     } catch (err) {
-      console.error('Error loading value bets:', err);
+      // Error loading value bets
       error = 'Failed to load value bets. Please check your API connection.';
     } finally {
       loading = false;

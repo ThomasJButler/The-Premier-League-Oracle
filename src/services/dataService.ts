@@ -22,19 +22,19 @@ class DataService {
   
   private async initializeIndexedDB(): Promise<void> {
     if (!('indexedDB' in window)) {
-      console.warn('IndexedDB not available');
+      // IndexedDB not available
       return;
     }
     
     const request = indexedDB.open('PremierLeagueOracle', 1);
     
     request.onerror = () => {
-      console.error('Failed to open IndexedDB');
+      // Failed to open IndexedDB
     };
     
     request.onsuccess = () => {
       this.cacheDb = request.result;
-      console.log('IndexedDB initialized');
+      // IndexedDB initialized
     };
     
     request.onupgradeneeded = (event) => {
@@ -68,7 +68,7 @@ class DataService {
       
       // Check if API key is available
       if (!activeApi.hasApiKey()) {
-        console.log('⏳ Football-Data: No API key available');
+        // Football-Data: No API key available
         this.apiSource.available = false;
         return;
       }
@@ -78,12 +78,12 @@ class DataService {
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
-        console.log('✅ Football-Data (Free) is available and working');
+        // Football-Data (Free) is available and working
       } else {
-        console.error('❌ Football-Data is not working');
+        // Football-Data is not working
       }
     } catch (error) {
-      console.error('Error checking API availability:', error);
+      // Error checking API availability
       this.apiSource.available = false;
     }
   }
@@ -166,7 +166,7 @@ class DataService {
           return season;
         }
       } catch (error) {
-        console.error('Error fetching season from API:', error);
+        // Error fetching season from API
       }
     }
     
@@ -206,7 +206,7 @@ class DataService {
           return matches;
         }
       } catch (error) {
-        console.error('Error fetching matches from API:', error);
+        // Error fetching matches from API
       }
     }
     
@@ -238,7 +238,7 @@ class DataService {
           return standings;
         }
       } catch (error) {
-        console.error('Error fetching standings from API:', error);
+        // Error fetching standings from API
       }
     }
     
@@ -261,7 +261,7 @@ class DataService {
           return scorers;
         }
       } catch (error) {
-        console.error('Error fetching top scorers from API:', error);
+        // Error fetching top scorers from API
       }
     }
     
@@ -313,7 +313,7 @@ class DataService {
           return stats;
         }
       } catch (error) {
-        console.error('Error fetching team stats from API:', error);
+        // Error fetching team stats from API
       }
     }
     
@@ -336,7 +336,7 @@ class DataService {
           return teamForm;
         }
       } catch (error) {
-        console.error('Error fetching team form from API:', error);
+        // Error fetching team form from API
       }
     }
     
@@ -362,7 +362,7 @@ class DataService {
           return seasons;
         }
       } catch (error) {
-        console.error('Error fetching seasons from API:', error);
+        // Error fetching seasons from API
       }
     }
     
@@ -378,7 +378,7 @@ class DataService {
   // Set data source preference
   public setDataSource(source: 'api'): void {
     // Currently only API source is supported
-    console.log(`Data source set to: ${source}`);
+    // Data source set to specified source
   }
 
   // Refresh data source availability (useful after API key is set)
@@ -422,7 +422,7 @@ class DataService {
     // Only football-data API now
     footballDataAPI.clearApiKey();
     
-    console.log('Cache and API keys cleared');
+    // Cache and API keys cleared
   }
   
   public setCacheTimeout(minutes: number): void {

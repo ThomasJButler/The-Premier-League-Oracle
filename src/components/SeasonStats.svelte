@@ -34,7 +34,7 @@
         additionalStats = calculateAdditionalStats(matches);
       }
     } catch (error) {
-      console.error('Error loading season stats:', error);
+      // Error loading season stats
     } finally {
       loading = false;
     }

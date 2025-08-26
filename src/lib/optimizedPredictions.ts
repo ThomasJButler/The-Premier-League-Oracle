@@ -167,7 +167,7 @@ export class OptimizedPredictor {
       };
 
     } catch (error) {
-      console.error('Error in optimized prediction:', error);
+      // Error in optimized prediction, using fallback
       // Fallback to simple prediction
       return {
         predictedResult: 'D',

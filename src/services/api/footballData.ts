@@ -128,7 +128,7 @@ class FootballDataAPI {
       competitionId: 2021 // Premier League
     };
     
-    console.log(`🏆 Football-Data API: ${isDevelopment ? 'Proxy' : 'Direct'} mode, API key: ${apiKey ? 'Present' : 'Missing'}`);
+    // Football-Data API initialised: mode, API key status
   }
   
   public setApiKey(apiKey: string): void {
@@ -136,7 +136,7 @@ class FootballDataAPI {
     localStorage.setItem('football_data_api_key', apiKey);
     // Clear cache when API key changes
     this.cache.clear();
-    console.log(`🏆 Football-Data API: API key updated`);
+    // Football-Data API: API key updated
   }
   
   public hasApiKey(): boolean {
@@ -174,7 +174,7 @@ class FootballDataAPI {
     const cached = this.cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      console.log(`Using cached data for ${endpoint}`);
+      // Using cached data for endpoint
       return cached.data;
     }
     
@@ -212,7 +212,7 @@ class FootballDataAPI {
     );
     
     if (!data || !data.currentSeason) {
-      console.error('Invalid competition data structure:', data);
+      // Invalid competition data structure received
       return null;
     }
     
@@ -523,7 +523,7 @@ class FootballDataAPI {
   // Check if API is configured and working
   public async testConnection(): Promise<boolean> {
     if (!this.hasApiKey()) {
-      console.error('No API key configured');
+      // No API key configured for connection test
       return false;
     }
     

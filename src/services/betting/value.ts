@@ -149,7 +149,7 @@ export class ValueBettingEngine {
       }
       
     } catch (error) {
-      console.error('Error identifying value bets:', error);
+      // Error identifying value bets
     }
     
     // Sort by expected value

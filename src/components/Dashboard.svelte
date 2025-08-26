@@ -202,7 +202,7 @@
       highRiskBets = realMatchData.filter(() => Math.random() > 0.7).length;
       
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
+      // Error loading dashboard data
       error = "Failed to load dashboard data";
     } finally {
       loading = false;
@@ -215,7 +215,7 @@
     // Auto-retry if there's an error after 1 second
     const retryInterval = setInterval(() => {
       if (error && !loading) {
-        console.log('Auto-retrying dashboard load...');
+        // Auto-retrying dashboard load
         loadDashboardData();
       }
     }, 1000);

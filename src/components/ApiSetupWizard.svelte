@@ -30,7 +30,7 @@
     validationError = '';
     validationSuccess = false;
     
-    console.log('🔑 Testing API key...', { provider: selectedProvider, keyLength: apiKey.trim().length });
+    // Testing API key validation
     
     try {
       const api = footballDataAPI;
@@ -41,7 +41,7 @@
       // Test the connection
       const isConnected = await api.testConnection();
       
-      console.log('📡 API Response:', { provider: selectedProvider, connected: isConnected });
+      // API connection test completed
       
       if (isConnected) {
         validationSuccess = true;
@@ -75,7 +75,7 @@
         }.`;
       }
     } catch (error) {
-      console.error('Network error:', error);
+      // Network error during API validation
       validationError = 'Connection failed. Please check your internet connection and try again.';
     } finally {
       isValidating = false;

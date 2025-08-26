@@ -75,7 +75,7 @@
     // Refresh data source availability
     await dataService.refreshApiConfiguration();
     
-    console.log('✅ API key setup completed successfully');
+    // API key setup completed successfully
     
     // Refresh dashboard if it's currently loaded
     if (currentView === 'Dashboard' && dashboardComponent) {

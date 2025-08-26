@@ -55,7 +55,7 @@ class PredictionTracker {
         this.predictions = new Map(Object.entries(parsed));
       }
     } catch (error) {
-      console.error('Error loading predictions:', error);
+      // Error loading predictions, using empty map
       this.predictions = new Map();
     }
   }
@@ -66,7 +66,7 @@ class PredictionTracker {
       const toStore = Object.fromEntries(this.predictions);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
     } catch (error) {
-      console.error('Error saving predictions:', error);
+      // Error saving predictions to localStorage
     }
   }
 
@@ -301,7 +301,7 @@ class PredictionTracker {
         return true;
       }
     } catch (error) {
-      console.error('Error importing predictions:', error);
+      // Error importing predictions from JSON data
     }
     return false;
   }

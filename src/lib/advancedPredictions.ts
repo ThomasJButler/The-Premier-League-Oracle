@@ -147,7 +147,7 @@ export class ExpectedGoalsCalculator {
 
       return { homeXG, awayXG };
     } catch (error) {
-      console.error('Error calculating match xG:', error);
+      // Error calculating match xG
       return { homeXG: 0, awayXG: 0 };
     }
   }
@@ -167,7 +167,7 @@ export class FatigueAnalyzer {
       const lastMatch = new Date(teamMatches[0].date);
       return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
     } catch (error) {
-      console.error('Error calculating rest days:', error);
+      // Error calculating rest days
       return 7;
     }
   }
@@ -197,7 +197,7 @@ export class FatigueAnalyzer {
       
       return totalDifficulty / teamMatches.length;
     } catch (error) {
-      console.error('Error calculating fixture difficulty:', error);
+      // Error calculating fixture difficulty
       return 0;
     }
   }
@@ -342,7 +342,7 @@ export class RefereeAnalyzer {
         homeWinRate: homeWins / totalMatches
       };
     } catch (error) {
-      console.error('Error getting referee stats:', error);
+      // Error getting referee stats
       return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
     }
   }

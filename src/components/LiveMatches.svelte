@@ -62,7 +62,7 @@
       }
     } catch (err) {
       error = 'Failed to load matches. Please check your API configuration.';
-      console.error('Error loading matches:', err);
+      // Error loading matches
     } finally {
       loading = false;
     }

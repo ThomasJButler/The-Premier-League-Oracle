@@ -55,7 +55,7 @@ class PredictionPersistenceService {
   private checkConfiguration() {
     this.isConfigured = !!(supabaseUrl && supabaseAnonKey)
     if (!this.isConfigured) {
-      console.warn('Supabase not configured. Prediction persistence disabled.')
+      // Supabase not configured. Prediction persistence disabled.
     }
   }
 
@@ -74,10 +74,10 @@ class PredictionPersistenceService {
 
       if (error) throw error
 
-      console.log('✅ Prediction stored successfully:', data)
+      // Prediction stored successfully
       return { success: true }
     } catch (error) {
-      console.error('❌ Error storing prediction:', error)
+      // Error storing prediction
       return { success: false, error: error.message }
     }
   }
@@ -96,10 +96,10 @@ class PredictionPersistenceService {
 
       if (error) throw error
 
-      console.log(`✅ ${predictions.length} predictions stored successfully`)
+      // Multiple predictions stored successfully
       return { success: true }
     } catch (error) {
-      console.error('❌ Error storing predictions:', error)
+      // Error storing predictions
       return { success: false, error: error.message }
     }
   }
@@ -121,7 +121,7 @@ class PredictionPersistenceService {
 
       return data || null
     } catch (error) {
-      console.error('Error fetching prediction:', error)
+      // Error fetching prediction
       return null
     }
   }
@@ -141,7 +141,7 @@ class PredictionPersistenceService {
 
       return data || []
     } catch (error) {
-      console.error('Error fetching gameweek predictions:', error)
+      // Error fetching gameweek predictions
       return []
     }
   }
@@ -161,7 +161,7 @@ class PredictionPersistenceService {
 
       return data || []
     } catch (error) {
-      console.error('Error fetching recent predictions:', error)
+      // Error fetching recent predictions
       return []
     }
   }
@@ -200,10 +200,10 @@ class PredictionPersistenceService {
 
       if (error) throw error
 
-      console.log('✅ Prediction result updated:', { matchId, wasCorrect })
+      // Prediction result updated successfully
       return { success: true }
     } catch (error) {
-      console.error('❌ Error updating prediction result:', error)
+      // Error updating prediction result
       return { success: false, error: error.message }
     }
   }
@@ -225,7 +225,7 @@ class PredictionPersistenceService {
 
       return data || null
     } catch (error) {
-      console.error('Error fetching accuracy stats:', error)
+      // Error fetching accuracy stats
       return null
     }
   }
@@ -246,7 +246,7 @@ class PredictionPersistenceService {
 
       return data || []
     } catch (error) {
-      console.error('Error fetching accuracy trend:', error)
+      // Error fetching accuracy trend
       return []
     }
   }
@@ -280,10 +280,10 @@ class PredictionPersistenceService {
 
       if (error) throw error
 
-      console.log('✅ Notification subscription updated')
+      // Notification subscription updated
       return { success: true }
     } catch (error) {
-      console.error('❌ Error updating subscription:', error)
+      // Error updating subscription
       return { success: false, error: error.message }
     }
   }
@@ -315,7 +315,7 @@ class PredictionPersistenceService {
 
       return coverageMap
     } catch (error) {
-      console.error('Error checking prediction coverage:', error)
+      // Error checking prediction coverage
       return new Map()
     }
   }
@@ -361,7 +361,7 @@ class PredictionPersistenceService {
         totalReturn
       }
     } catch (error) {
-      console.error('Error calculating ROI:', error)
+      // Error calculating ROI
       return null
     }
   }

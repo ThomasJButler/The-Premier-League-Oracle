@@ -77,7 +77,7 @@
       } else {
         error = 'Failed to load top scorers. Please check your internet connection and try again.';
       }
-      console.error('Error loading top scorers:', err);
+      // Error loading top scorers
     } finally {
       loading = false;
     }

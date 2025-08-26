@@ -72,7 +72,7 @@
       visible = true;
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
-      console.error(err);
+      // Error loading predictions
     } finally {
       loading = false;
     }
@@ -190,7 +190,7 @@
           });
         }
       } catch (error) {
-        console.error(`Error predicting ${match.id}:`, error);
+        // Error predicting match
         predictions[matchIndex].predictionStatus = 'error';
       }
       

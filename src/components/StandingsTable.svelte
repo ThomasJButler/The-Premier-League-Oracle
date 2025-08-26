@@ -40,7 +40,7 @@
       } else {
         error = 'Failed to load standings. Please check your internet connection and try again.';
       }
-      console.error('Error loading standings:', err);
+      // Error loading standings
     } finally {
       loading = false;
     }
