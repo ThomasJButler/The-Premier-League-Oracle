@@ -10,7 +10,8 @@
     LinearScale,
     CategoryScale,
     PointElement,
-    type ChartData
+    type ChartData,
+    type ChartItem
   } from 'chart.js';
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
@@ -225,7 +226,7 @@
 
     const ctx = profitChartCanvas.getContext('2d');
     if (ctx) {
-      new ChartJS(ctx, {
+      new ChartJS(ctx as ChartItem, {
         type: 'line',
         data: {
           labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],

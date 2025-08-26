@@ -1,12 +1,49 @@
-/csv
-/myenv
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.svelte-kit/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Python
 /myenv
 /PLOracle/myenv
-/myenv/Lib
+*.pyc
+__pycache__/
+
+# Data
+/csv
 /PLOracle/csv
-node_modules
-/.env
-CLAUDE.md
-dist/assets/browser-Bmh3iUVW.js
-/dist
+
+# Coverage
+coverage/
+*.lcov
+
+# Testing
+.nyc_output
+
+# Documentation (local only)
 API_KEYS_GUIDE.md

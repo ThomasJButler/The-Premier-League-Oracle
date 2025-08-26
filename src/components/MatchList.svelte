@@ -130,11 +130,12 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Status Filter -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <label for="status-filter" class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <Filter class="w-4 h-4" />
             Status
           </label>
           <select 
+            id="status-filter" 
             bind:value={filterStatus} 
             on:change={handleFilterChange}
             class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -147,11 +148,12 @@
         
         <!-- Team Filter -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <label for="team-filter" class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <Users class="w-4 h-4" />
             Team
           </label>
           <select 
+            id="team-filter" 
             bind:value={filterTeam} 
             on:change={handleFilterChange}
             class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -165,10 +167,10 @@
         
         <!-- Sort By -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <div class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2" role="group" aria-label="Sort options">
             <ArrowUpDown class="w-4 h-4" />
             Sort By
-          </label>
+          </div>
           <div class="flex gap-2">
             <button
               on:click={() => handleSort('date')}
