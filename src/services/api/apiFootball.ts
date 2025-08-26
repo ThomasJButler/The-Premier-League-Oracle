@@ -4,6 +4,8 @@ interface ApiFootballConfig {
   apiKey: string;
   baseUrl: string;
   leagueId: number; // Premier League = 39
+  isFreePlan?: boolean;
+  fallbackSeason?: number;
 }
 
 interface AFTeam {
@@ -532,6 +534,8 @@ class ApiFootballAPI {
   private config: ApiFootballConfig;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+  private planType: 'free' | 'pro' = 'free';
+  private readonly FREE_PLAN_SEASON = 2023; // Last season available on free plan
   
   constructor() {
     const envKey = import.meta.env.VITE_API_FOOTBALL_KEY;
@@ -541,10 +545,17 @@ class ApiFootballAPI {
     this.config = {
       apiKey,
       baseUrl: 'https://v3.football.api-sports.io',
-      leagueId: 39 // Premier League
+      leagueId: 39, // Premier League
+      isFreePlan: true, // Default to free plan
+      fallbackSeason: 2023
     };
     
     console.log(`⚽ API-Football: Initialized, API key: ${apiKey ? 'Present' : 'Missing'}`);
+    
+    // Detect plan type on initialization
+    if (apiKey) {
+      this.detectPlanType();
+    }
   }
   
   public setApiKey(apiKey: string): void {
@@ -552,6 +563,50 @@ class ApiFootballAPI {
     localStorage.setItem('api_football_key', apiKey);
     this.cache.clear();
     console.log(`⚽ API-Football: API key updated`);
+    
+    // Detect plan type when API key is set
+    this.detectPlanType();
+  }
+  
+  // Detect if user has free or pro plan
+  private async detectPlanType(): Promise<void> {
+    if (!this.config.apiKey) return;
+    
+    try {
+      // Try to fetch current season data
+      const currentYear = new Date().getFullYear();
+      const testResponse = await fetch(`${this.config.baseUrl}/fixtures?league=39&season=${currentYear}&last=1`, {
+        headers: {
+          'x-apisports-key': this.config.apiKey
+        }
+      });
+      
+      const data = await testResponse.json();
+      
+      if (data.errors && data.errors.plan) {
+        // Free plan detected
+        this.planType = 'free';
+        this.config.isFreePlan = true;
+        console.log('🆓 API-Football: Free plan detected - using 2023 season data');
+        console.log('💡 Upgrade to Pro plan for current season live data');
+      } else if (data.response) {
+        // Pro plan detected
+        this.planType = 'pro';
+        this.config.isFreePlan = false;
+        console.log('⭐ API-Football: Pro plan detected - full access enabled');
+      }
+      
+      localStorage.setItem('api_football_plan', this.planType);
+    } catch (error) {
+      console.error('Error detecting plan type:', error);
+      // Default to free plan on error
+      this.planType = 'free';
+      this.config.isFreePlan = true;
+    }
+  }
+  
+  public getPlanType(): 'free' | 'pro' {
+    return this.planType;
   }
   
   public hasApiKey(): boolean {
@@ -637,7 +692,7 @@ class ApiFootballAPI {
     }
   }
   
-  // Get current season info
+  // Get current season info (or fallback for free plan)
   public async getCurrentSeason(): Promise<Season | null> {
     const currentYear = new Date().getFullYear();
     const data = await this.fetchWithCache<AFLeagueResponse[]>('/leagues', {
@@ -650,22 +705,40 @@ class ApiFootballAPI {
     }
     
     const leagueInfo = data[0];
-    const currentSeason = leagueInfo.seasons.find(s => s.current) || 
-                         leagueInfo.seasons.find(s => s.year === currentYear) ||
-                         leagueInfo.seasons[leagueInfo.seasons.length - 1];
+    let targetSeason;
     
-    if (!currentSeason) {
-      console.error('No current season found');
+    if (this.config.isFreePlan) {
+      // Free plan: Use 2023 season
+      targetSeason = leagueInfo.seasons.find(s => s.year === this.FREE_PLAN_SEASON);
+      if (targetSeason) {
+        console.log(`📅 Using ${this.FREE_PLAN_SEASON} season data (Free Plan)`);
+      }
+    } else {
+      // Pro plan: Use current season
+      targetSeason = leagueInfo.seasons.find(s => s.current) || 
+                    leagueInfo.seasons.find(s => s.year === currentYear) ||
+                    leagueInfo.seasons[leagueInfo.seasons.length - 1];
+    }
+    
+    // Fallback to 2023 if no season found
+    if (!targetSeason) {
+      targetSeason = leagueInfo.seasons.find(s => s.year === this.FREE_PLAN_SEASON);
+      console.log(`📅 Fallback to ${this.FREE_PLAN_SEASON} season data`);
+    }
+    
+    if (!targetSeason) {
+      console.error('No suitable season found');
       return null;
     }
     
     return {
-      id: currentSeason.year.toString(),
-      name: `${currentSeason.year}/${currentSeason.year + 1}`,
-      start_date: currentSeason.start,
-      end_date: currentSeason.end,
-      is_current: currentSeason.current,
-      created_at: new Date().toISOString()
+      id: targetSeason.year.toString(),
+      name: `${targetSeason.year}/${targetSeason.year + 1}`,
+      start_date: targetSeason.start,
+      end_date: targetSeason.end,
+      is_current: this.config.isFreePlan ? false : targetSeason.current,
+      created_at: new Date().toISOString(),
+      year: targetSeason.year
     };
   }
   

@@ -14,6 +14,7 @@
   } from 'chart.js';
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
+  import { apiFootball } from '../services/api/apiFootball';
   import type { Match } from '../types';
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
@@ -38,6 +39,8 @@
   let profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
   let totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
   let betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
+  let planType: 'free' | 'pro' = 'free';
+  let seasonYear: number = 2023;
 
   let recentPerformance: ChartData<"line", number[], string> = {
     labels: [] as string[],
@@ -108,6 +111,13 @@
     try {
       loading = true;
       error = null;
+      
+      // Get plan type and season info
+      planType = apiFootball.getPlanType();
+      const season = await apiFootball.getCurrentSeason();
+      if (season && season.year) {
+        seasonYear = season.year;
+      }
 
       // Get recent and upcoming matches from API
       const [recent, upcoming] = await Promise.all([
@@ -257,6 +267,46 @@
 </script>
 
 <div class="space-y-8">
+  <!-- Plan Status Banner -->
+  {#if planType === 'free'}
+    <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="p-2 bg-amber-100 dark:bg-amber-800 rounded-lg">
+            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-amber-900 dark:text-amber-100">Historical Data Mode (Free Plan)</h3>
+            <p class="text-sm text-amber-700 dark:text-amber-300">
+              Using {seasonYear} season data • All prediction tools available
+            </p>
+          </div>
+        </div>
+        <a href="https://www.api-football.com/pricing" target="_blank" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors text-sm font-medium">
+          Upgrade to Pro
+        </a>
+      </div>
+    </div>
+  {:else}
+    <div class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
+          <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-green-900 dark:text-green-100">Pro Plan Active</h3>
+          <p class="text-sm text-green-700 dark:text-green-300">
+            Live {seasonYear}/{seasonYear + 1} season data • Real-time updates
+          </p>
+        </div>
+      </div>
+    </div>
+  {/if}
+  
   <!-- 🚀 STUNNING HERO SECTION -->
   <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 p-8 text-white animate-slide-in-up">
     <!-- Animated background elements -->
