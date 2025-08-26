@@ -1177,8 +1177,7 @@ export type {
   AFLeagueResponse as AFCompetition, 
   AFTopScorer as AFPlayer,
   AFTopScorer as AFScorer,
-  AFTopScorer['player'] as AFSquadMember,
-  ApiFootballConfig as FootballApiConfig,
+  ApiFootballConfig,
   AFInjury,
   AFPrediction,
   AFOdds
