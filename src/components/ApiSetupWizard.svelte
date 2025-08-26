@@ -2,7 +2,6 @@
   import { createEventDispatcher } from 'svelte';
   import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, Sparkles, RefreshCw } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
-  import { apiFootball } from '../services/api/apiFootball';
   import { dataService } from '../services/dataService';
   
   const dispatch = createEventDispatcher();
@@ -12,7 +11,7 @@
   let currentStep = 1;
   let validationError = '';
   let validationSuccess = false;
-  let selectedProvider: 'football-data' | 'api-football' = 'football-data';
+  let selectedProvider: 'football-data' = 'football-data';
   let isRefreshing = false;
   let validationMessage = '';
   
@@ -34,7 +33,7 @@
     console.log('🔑 Testing API key...', { provider: selectedProvider, keyLength: apiKey.trim().length });
     
     try {
-      const api = selectedProvider === 'api-football' ? apiFootball : footballDataAPI;
+      const api = footballDataAPI;
       
       // Set the API key
       api.setApiKey(apiKey.trim());
@@ -48,14 +47,10 @@
         validationSuccess = true;
         
         // Save to localStorage
-        if (selectedProvider === 'api-football') {
-          localStorage.setItem('api_football_key', apiKey.trim());
-        } else {
-          localStorage.setItem('football_data_api_key', apiKey.trim());
-        }
+        localStorage.setItem('football_data_api_key', apiKey.trim());
         
         // Set the provider in dataService
-        await dataService.setApiProvider(selectedProvider);
+        // API key is saved
         
         // Move to final step
         currentStep = 5;
@@ -76,7 +71,7 @@
         }, 5000);
       } else {
         validationError = `Invalid API key. Please check that you copied it correctly from ${
-          selectedProvider === 'api-football' ? 'API-Football' : 'Football-Data.org'
+          'Football-Data.org'
         }.`;
       }
     } catch (error) {

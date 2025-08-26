@@ -93,13 +93,11 @@ class DataService {
     return footballDataAPI;
   }
   
-  // Switch API provider
-  public async setApiProvider(provider: ApiProvider): Promise<void> {
-    this.currentProvider = provider;
-    localStorage.setItem('api_provider', provider);
+  // Refresh API configuration
+  public async refreshApiConfiguration(): Promise<void> {
     this.clearCache();
     await this.checkDataSources();
-    console.log(`🔄 Switched to ${provider === 'api-football' ? 'API-Football Pro' : 'Football-Data (Free)'}`);
+    console.log('🔄 API configuration refreshed');
   }
   
   public getApiProvider(): ApiProvider {

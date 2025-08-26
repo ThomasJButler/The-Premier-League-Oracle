@@ -38,7 +38,7 @@
   let profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
   let totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
   let betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
-  let apiProvider: 'football-data' | 'api-football' = 'football-data';
+  let apiProvider: 'football-data' = 'football-data';
 
   let recentPerformance: ChartData<"line", number[], string> = {
     labels: [] as string[],
