@@ -257,6 +257,29 @@ class DataService {
     throw new Error('No data source available for standings');
   }
   
+  public async getTopScorers(limit: number = 20): Promise<any[]> {
+    const cacheKey = `top_scorers_${limit}`;
+    
+    // Try cache first
+    const cached = await this.getCachedData<any[]>('scorers', cacheKey);
+    if (cached) return cached;
+    
+    // Get from API
+    if (this.apiSource.available) {
+      try {
+        const scorers = await this.getActiveApi().getTopScorers(limit);
+        if (scorers && scorers.length > 0) {
+          await this.setCachedData('scorers', cacheKey, scorers);
+          return scorers;
+        }
+      } catch (error) {
+        console.error('Error fetching top scorers from API:', error);
+      }
+    }
+    
+    throw new Error('No data source available for top scorers');
+  }
+  
   public async getTeamStats(teamName: string): Promise<TeamStats | null> {
     const cacheKey = `team_stats_${teamName}`;
     

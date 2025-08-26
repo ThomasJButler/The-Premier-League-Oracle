@@ -1,10 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Trophy, Target, User, Flag } from 'lucide-svelte';
-  import { apiFootball, type AFScorer } from '../services/api/apiFootball';
+  import { dataService } from '../services/dataService';
   import { fade, fly } from 'svelte/transition';
   
-  let scorers: AFScorer[] = [];
+  interface Scorer {
+    position?: number;
+    player: {
+      id: number;
+      name: string;
+      nationality?: string;
+      position?: string;
+      dateOfBirth?: string;
+    };
+    team: {
+      id: number;
+      name: string;
+      crest?: string;
+    };
+    goals: number;
+    assists?: number | null;
+    penalties?: number | null;
+  }
+  
+  let scorers: Scorer[] = [];
   let loading = true;
   let error = '';
   
@@ -16,9 +35,37 @@
     try {
       loading = true;
       error = '';
-      scorers = await apiFootball.getTopScorers(20);
-    } catch (err) {
-      error = 'Failed to load top scorers. Please try again later.';
+      const rawScorers = await dataService.getTopScorers();
+      
+      // Transform data to consistent format
+      scorers = rawScorers.map((s: any, index: number) => ({
+        position: index + 1,
+        player: {
+          id: s.player?.id || 0,
+          name: s.player?.name || 'Unknown',
+          nationality: s.player?.nationality || 'Unknown',
+          position: s.player?.position || 'Forward',
+          dateOfBirth: s.player?.dateOfBirth
+        },
+        team: {
+          id: s.team?.id || 0,
+          name: s.team?.name || s.team?.shortName || 'Unknown',
+          crest: s.team?.crest
+        },
+        goals: s.goals || s.numberOfGoals || 0,
+        assists: s.assists || s.numberOfAssists || null,
+        penalties: s.penalties || s.penaltyGoals || null
+      }));
+      
+      if (scorers.length === 0) {
+        error = 'No top scorer data available for this season.';
+      }
+    } catch (err: any) {
+      if (err.message?.includes('API key')) {
+        error = 'Please configure your API key in Settings to view top scorers.';
+      } else {
+        error = 'Failed to load top scorers. Please try again later.';
+      }
       console.error('Error loading top scorers:', err);
     } finally {
       loading = false;
@@ -50,7 +97,7 @@
         </div>
         <div>
           <h1 class="text-2xl font-bold gradient-text">Top Scorers</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League 2025/26 Season</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League 2024/25 Season</p>
         </div>
       </div>
       <button 
@@ -108,18 +155,24 @@
               </div>
               <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
                 <span class="flex items-center gap-1">
-                  <img 
-                    src={scorer.team.crest} 
-                    alt={scorer.team.name}
-                    class="w-4 h-4"
-                    on:error={(e) => e.target.style.display = 'none'}
-                  />
+                  {#if scorer.team.crest}
+                    <img 
+                      src={scorer.team.crest} 
+                      alt={scorer.team.name}
+                      class="w-4 h-4 object-contain"
+                      on:error={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  {/if}
                   {scorer.team.name}
                 </span>
-                <span class="flex items-center gap-1">
-                  <Flag class="w-3 h-3" />
-                  {scorer.player.nationality}
-                </span>
+                {#if scorer.player.nationality && scorer.player.nationality !== 'Unknown'}
+                  <span class="flex items-center gap-1">
+                    <Flag class="w-3 h-3" />
+                    {scorer.player.nationality}
+                  </span>
+                {/if}
               </div>
             </div>
             
