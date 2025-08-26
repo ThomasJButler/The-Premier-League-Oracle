@@ -1,63 +1,74 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, WifiOff } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles } from 'lucide-svelte';
   import { apiFootball } from '../services/api/apiFootball';
+  import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
-  import { aiService } from '../services/aiService';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
+  import { createEventDispatcher } from 'svelte';
   
+  const dispatch = createEventDispatcher();
+  
+  // API Provider selection
+  let selectedProvider: 'football-data' | 'api-football' = 'football-data';
+  
+  // API Keys
+  let footballDataKey = '';
   let apiFootballKey = '';
+  
+  // Status
   let apiConnected = false;
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
-  let dataSource: 'api' | 'database' = 'api';
+  
+  // Cache management
   let cacheSize = '0 MB';
   let lastSync = 'Never';
   
-  // AI Settings
-  let showAISettings = false;
-  let aiProvider: 'openai' | 'anthropic' = 'openai';
-  let aiApiKey = '';
-  let aiModel = 'gpt-4-turbo-preview';
-  let hasAIKey = false;
-  
-  async function testAPIConnection() {
+  async function testConnection(provider: 'football-data' | 'api-football') {
     testing = true;
     testResult = null;
     
     try {
-      const isConnected = await apiFootball.testConnection();
+      const api = provider === 'api-football' ? apiFootball : footballDataAPI;
+      const isConnected = await api.testConnection();
       
       if (isConnected) {
         testResult = {
           success: true,
-          message: 'Successfully connected to API-Football!'
+          message: `Successfully connected to ${provider === 'api-football' ? 'API-Football Pro' : 'Football-Data.org (Free)'}!`
         };
         apiConnected = true;
-        localStorage.setItem('football_data_api_connected', 'true');
+        
+        // Switch to this provider
+        await dataService.setApiProvider(provider);
+        selectedProvider = provider;
+        
+        // Trigger dashboard refresh
+        dispatch('apiConfigured');
       } else {
         testResult = {
           success: false,
-          message: 'Failed to connect. Please check your API key. Note: Custom API keys may experience CORS restrictions in browsers.'
+          message: 'Failed to connect. Please check your API key.'
         };
         apiConnected = false;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage.includes('CORS') || errorMessage.includes('fetch')) {
-        testResult = {
-          success: false,
-          message: 'CORS restriction detected. Your API key is saved but direct browser testing is limited. The app will still work for data fetching.'
-        };
-      } else {
-        testResult = {
-          success: false,
-          message: `Error: ${errorMessage}`
-        };
-      }
+      testResult = {
+        success: false,
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
       apiConnected = false;
     } finally {
       testing = false;
+    }
+  }
+  
+  function saveFootballDataKey() {
+    if (footballDataKey.trim()) {
+      footballDataAPI.setApiKey(footballDataKey);
+      localStorage.setItem('football_data_api_key', footballDataKey);
+      testConnection('football-data');
     }
   }
   
@@ -65,29 +76,8 @@
     if (apiFootballKey.trim()) {
       apiFootball.setApiKey(apiFootballKey);
       localStorage.setItem('api_football_key', apiFootballKey);
-      testAPIConnection();
+      testConnection('api-football');
     }
-  }
-  
-  function saveAISettings() {
-    if (aiApiKey.trim()) {
-      aiService.setApiKey(aiApiKey, aiProvider, aiModel);
-      hasAIKey = true;
-      testResult = {
-        success: true,
-        message: `AI settings saved! Using ${aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} ${aiModel}`
-      };
-    }
-  }
-  
-  function clearAIKey() {
-    aiService.clearApiKey();
-    aiApiKey = '';
-    hasAIKey = false;
-    testResult = {
-      success: true,
-      message: 'AI API key cleared'
-    };
   }
   
   async function clearCache() {
@@ -99,19 +89,9 @@
     };
   }
   
-  function switchDataSource(source: 'api' | 'database') {
-    dataSource = source;
-    // Only set API source since database is no longer supported
-    if (source === 'api') {
-      dataService.setDataSource(source);
-    }
-    localStorage.setItem('data_source', source);
-  }
-  
   async function syncData() {
     testing = true;
     try {
-      // This would trigger a full data sync
       await dataService.getMatches({ recent: true, days: 30 });
       lastSync = new Date().toLocaleString('en-GB');
       localStorage.setItem('last_sync', lastSync);
@@ -131,24 +111,22 @@
   
   onMount(() => {
     // Load saved settings
-    const savedApiKey = localStorage.getItem('api_football_key');
-    if (savedApiKey) {
-      apiFootballKey = savedApiKey;
-      apiFootball.setApiKey(savedApiKey);
-      testAPIConnection();
+    const savedFootballDataKey = localStorage.getItem('football_data_api_key');
+    const savedApiFootballKey = localStorage.getItem('api_football_key');
+    const savedProvider = localStorage.getItem('api_provider');
+    
+    if (savedFootballDataKey) {
+      footballDataKey = savedFootballDataKey;
+      footballDataAPI.setApiKey(savedFootballDataKey);
     }
     
-    // Check AI settings
-    hasAIKey = aiService.hasApiKey();
-    const savedProvider = localStorage.getItem('ai_provider');
-    const savedModel = localStorage.getItem('ai_model');
-    if (savedProvider) aiProvider = savedProvider as 'openai' | 'anthropic';
-    if (savedModel) aiModel = savedModel;
+    if (savedApiFootballKey) {
+      apiFootballKey = savedApiFootballKey;
+      apiFootball.setApiKey(savedApiFootballKey);
+    }
     
-    // Load data source preference
-    const savedDataSource = localStorage.getItem('data_source');
-    if (savedDataSource) {
-      dataSource = savedDataSource as 'api' | 'database';
+    if (savedProvider === 'api-football' || savedProvider === 'football-data') {
+      selectedProvider = savedProvider;
     }
     
     // Load last sync time
@@ -173,131 +151,175 @@
       <div>
         <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
         <p class="text-sm text-slate-600 dark:text-slate-400">
-          Configure API keys, data sources, and preferences
+          Configure your API provider and manage data
         </p>
       </div>
     </div>
   </div>
   
-  <!-- API-Football Settings -->
+  <!-- API Provider Selection -->
   <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-        <Key class="w-5 h-5 text-primary" />
-        <span>API-Football</span>
-      </h2>
-      {#if apiConnected}
-        <span class="flex items-center space-x-1 text-green-600 dark:text-green-400 text-sm">
-          <Wifi class="w-4 h-4" />
-          <span>Connected</span>
-        </span>
-      {:else}
-        <span class="flex items-center space-x-1 text-slate-500 dark:text-slate-400 text-sm">
-          <WifiOff class="w-4 h-4" />
-          <span>Not Connected</span>
-        </span>
-      {/if}
-    </div>
+    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Choose Your API Provider</h2>
     
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          API Key
-        </label>
-        <div class="flex space-x-2">
-          <input
-            type="password"
-            bind:value={apiFootballKey}
-            placeholder="Enter your API-Football key"
-            class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <button
-            on:click={saveApiFootballKey}
-            disabled={!apiFootballKey.trim() || testing}
-            class="btn btn-primary disabled:opacity-50"
-          >
-            Save
-          </button>
-          <button
-            on:click={testAPIConnection}
-            disabled={!apiFootballKey.trim() || testing}
-            class="btn btn-secondary disabled:opacity-50"
-          >
-            {#if testing}
-              <RefreshCw class="w-4 h-4 animate-spin" />
-            {:else}
-              Test
-            {/if}
-          </button>
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Football-Data.org (Free) -->
+      <div class="border-2 rounded-xl p-6 {selectedProvider === 'football-data' ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'}">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <Trophy class="w-6 h-6 text-green-600" />
+            <h3 class="font-bold text-lg">Football-Data.org</h3>
+          </div>
+          <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
+            FREE
+          </span>
         </div>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
-          Get your API key from: 
-          <a href="https://www.api-football.com/pricing" target="_blank" class="text-primary hover:underline">
-            api-football.com/pricing
-          </a>
+        
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Perfect for testing and demos. Premier League data with 10 requests per minute.
         </p>
+        
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              API Key
+            </label>
+            <div class="flex space-x-2">
+              <input
+                type="password"
+                bind:value={footballDataKey}
+                placeholder="Enter your Football-Data.org key"
+                class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+              />
+              <button
+                on:click={saveFootballDataKey}
+                disabled={!footballDataKey.trim() || testing}
+                class="btn btn-sm btn-primary disabled:opacity-50"
+              >
+                {#if testing && selectedProvider === 'football-data'}
+                  <RefreshCw class="w-4 h-4 animate-spin" />
+                {:else}
+                  Connect
+                {/if}
+              </button>
+            </div>
+          </div>
+          
+          <a 
+            href="https://www.football-data.org/client/register" 
+            target="_blank" 
+            class="inline-flex items-center text-xs text-primary hover:underline"
+          >
+            Get free API key →
+          </a>
+        </div>
       </div>
       
-      {#if testResult}
-        <div 
-          class="p-3 rounded-lg flex items-center space-x-2 {
-            testResult.success 
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' 
-              : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-          }"
-          transition:fade
-        >
-          {#if testResult.success}
-            <CheckCircle class="w-5 h-5" />
-          {:else}
-            <AlertCircle class="w-5 h-5" />
-          {/if}
-          <span class="text-sm">{testResult.message}</span>
+      <!-- API-Football (Pro) -->
+      <div class="border-2 rounded-xl p-6 {selectedProvider === 'api-football' ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-700'}">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <Sparkles class="w-6 h-6 text-purple-600" />
+            <h3 class="font-bold text-lg">API-Football</h3>
+          </div>
+          <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold rounded-full">
+            PRO
+          </span>
         </div>
-      {/if}
+        
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Full suite of prediction tools with live data, advanced statistics, and more.
+        </p>
+        
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              API Key
+            </label>
+            <div class="flex space-x-2">
+              <input
+                type="password"
+                bind:value={apiFootballKey}
+                placeholder="Enter your API-Football key"
+                class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+              />
+              <button
+                on:click={saveApiFootballKey}
+                disabled={!apiFootballKey.trim() || testing}
+                class="btn btn-sm btn-primary disabled:opacity-50"
+              >
+                {#if testing && selectedProvider === 'api-football'}
+                  <RefreshCw class="w-4 h-4 animate-spin" />
+                {:else}
+                  Connect
+                {/if}
+              </button>
+            </div>
+          </div>
+          
+          <a 
+            href="https://www.api-football.com/pricing" 
+            target="_blank" 
+            class="inline-flex items-center text-xs text-primary hover:underline"
+          >
+            Get API key →
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Status Messages -->
+    {#if testResult}
+      <div 
+        class="mt-6 p-3 rounded-lg flex items-center space-x-2 {
+          testResult.success 
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300' 
+            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+        }"
+        transition:fade
+      >
+        {#if testResult.success}
+          <CheckCircle class="w-5 h-5" />
+        {:else}
+          <AlertCircle class="w-5 h-5" />
+        {/if}
+        <span class="text-sm">{testResult.message}</span>
+      </div>
+    {/if}
+    
+    <!-- Current Provider Status -->
+    <div class="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Active Provider</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            {selectedProvider === 'api-football' ? 'API-Football (Pro)' : 'Football-Data.org (Free)'}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if apiConnected}
+            <span class="flex items-center space-x-1 text-green-600 dark:text-green-400 text-sm">
+              <Wifi class="w-4 h-4" />
+              <span>Connected</span>
+            </span>
+          {:else}
+            <span class="flex items-center space-x-1 text-slate-500 dark:text-slate-400 text-sm">
+              <Wifi class="w-4 h-4" />
+              <span>Not Connected</span>
+            </span>
+          {/if}
+        </div>
+      </div>
     </div>
   </div>
   
-  <!-- Data Source Settings -->
-  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 mb-6">
+  <!-- Cache Management -->
+  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
     <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2 mb-4">
       <Database class="w-5 h-5 text-primary" />
-      <span>Data Source</span>
+      <span>Data Management</span>
     </h2>
     
     <div class="space-y-4">
-      <div class="grid grid-cols-2 gap-4">
-        <button
-          on:click={() => switchDataSource('api')}
-          class="p-4 rounded-lg border-2 transition-all {
-            dataSource === 'api'
-              ? 'border-primary bg-primary/10'
-              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-          }"
-        >
-          <Wifi class="w-6 h-6 mb-2 {dataSource === 'api' ? 'text-primary' : 'text-slate-500'}" />
-          <h3 class="font-semibold text-slate-900 dark:text-white">API Mode</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Live data from API-Football
-          </p>
-        </button>
-        
-        <button
-          on:click={() => switchDataSource('database')}
-          class="p-4 rounded-lg border-2 transition-all {
-            dataSource === 'database'
-              ? 'border-primary bg-primary/10'
-              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-          }"
-        >
-          <Database class="w-6 h-6 mb-2 {dataSource === 'database' ? 'text-primary' : 'text-slate-500'}" />
-          <h3 class="font-semibold text-slate-900 dark:text-white">Database Mode</h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Cached data from Supabase
-          </p>
-        </button>
-      </div>
-      
       <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Cache Size</p>
@@ -329,104 +351,5 @@
         </button>
       </div>
     </div>
-  </div>
-  
-  <!-- AI Settings -->
-  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold text-slate-900 dark:text-white">AI Assistant Settings</h2>
-      {#if hasAIKey}
-        <span class="text-sm text-green-600 dark:text-green-400">Configured</span>
-      {/if}
-    </div>
-    
-    <button
-      on:click={() => showAISettings = !showAISettings}
-      class="btn btn-secondary w-full"
-    >
-      {showAISettings ? 'Hide' : 'Show'} AI Settings
-    </button>
-    
-    {#if showAISettings}
-      <div class="mt-4 space-y-4" transition:fade>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Provider
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              on:click={() => aiProvider = 'openai'}
-              class="px-3 py-2 rounded-lg border {
-                aiProvider === 'openai'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-slate-200 dark:border-slate-700'
-              }"
-            >
-              OpenAI
-            </button>
-            <button
-              on:click={() => aiProvider = 'anthropic'}
-              class="px-3 py-2 rounded-lg border {
-                aiProvider === 'anthropic'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-slate-200 dark:border-slate-700'
-              }"
-            >
-              Anthropic
-            </button>
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Model
-          </label>
-          <select
-            bind:value={aiModel}
-            class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-          >
-            {#if aiProvider === 'openai'}
-              <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-            {:else}
-              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-              <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
-              <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
-            {/if}
-          </select>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            API Key
-          </label>
-          <input
-            type="password"
-            bind:value={aiApiKey}
-            placeholder={aiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-            class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-          />
-        </div>
-        
-        <div class="flex space-x-2">
-          <button
-            on:click={saveAISettings}
-            disabled={!aiApiKey.trim()}
-            class="btn btn-primary flex-1 disabled:opacity-50"
-          >
-            Save AI Settings
-          </button>
-          {#if hasAIKey}
-            <button
-              on:click={clearAIKey}
-              class="btn btn-secondary"
-            >
-              Clear
-            </button>
-          {/if}
-        </div>
-      </div>
-    {/if}
   </div>
 </div>

@@ -6,7 +6,6 @@
   import MatchList from './components/MatchList.svelte';
   import Predictions from './components/Predictions.svelte';
   import BettingHistory from './components/BettingHistory.svelte';
-  import AiAssistant from './components/AiAssistant.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
@@ -131,12 +130,14 @@
           <ValueBets />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
-        {:else if currentView === 'AI Assistant'}
-          <AiAssistant />
         {:else if currentView === 'Season Stats'}
           <SeasonStats />
         {:else if currentView === 'Settings'}
-          <Settings />
+          <Settings on:apiConfigured={() => {
+            if (dashboardComponent && currentView === 'Dashboard') {
+              dashboardComponent.refresh();
+            }
+          }} />
         {:else if currentView === 'Help'}
           <Help />
         {:else if currentView === 'Top Scorers'}

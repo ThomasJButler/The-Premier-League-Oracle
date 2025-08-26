@@ -4,8 +4,6 @@ interface ApiFootballConfig {
   apiKey: string;
   baseUrl: string;
   leagueId: number; // Premier League = 39
-  isFreePlan?: boolean;
-  fallbackSeason?: number;
 }
 
 interface AFTeam {

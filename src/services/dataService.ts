@@ -1,13 +1,17 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { apiFootball } from './api/apiFootball';
+import { footballDataAPI } from './api/footballData';
 
 interface DataSource {
   type: 'api';
   available: boolean;
 }
 
+type ApiProvider = 'football-data' | 'api-football';
+
 class DataService {
   private apiSource: DataSource = { type: 'api', available: false };
+  private currentProvider: ApiProvider = 'football-data'; // Default to free version
   private useCache: boolean = true;
   private cacheDb: IDBDatabase | null = null;
   private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes default
@@ -57,26 +61,53 @@ class DataService {
   
   private async checkDataSources(): Promise<void> {
     try {
-      // First check if API key is available
-      if (!apiFootball.hasApiKey()) {
-        console.log('⏳ Football-Data API: No API key available, marking as unavailable');
+      // Check which API provider is configured
+      const savedProvider = localStorage.getItem('api_provider') as ApiProvider;
+      if (savedProvider) {
+        this.currentProvider = savedProvider;
+      }
+      
+      // Get the active API based on provider
+      const activeApi = this.getActiveApi();
+      
+      // Check if API key is available
+      if (!activeApi.hasApiKey()) {
+        console.log(`⏳ ${this.currentProvider === 'api-football' ? 'API-Football' : 'Football-Data'}: No API key available`);
         this.apiSource.available = false;
         return;
       }
       
       // Test API availability with the key
-      const season = await apiFootball.getCurrentSeason();
+      const season = await activeApi.getCurrentSeason();
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
-        console.log('✅ API-Football is available and working');
+        console.log(`✅ ${this.currentProvider === 'api-football' ? 'API-Football Pro' : 'Football-Data (Free)'} is available and working`);
       } else {
-        console.error('❌ API-Football is not working (invalid response)');
+        console.error(`❌ ${this.currentProvider === 'api-football' ? 'API-Football' : 'Football-Data'} is not working`);
       }
     } catch (error) {
       console.error('Error checking API availability:', error);
       this.apiSource.available = false;
     }
+  }
+  
+  // Get the currently active API
+  private getActiveApi() {
+    return this.currentProvider === 'api-football' ? apiFootball : footballDataAPI;
+  }
+  
+  // Switch API provider
+  public async setApiProvider(provider: ApiProvider): Promise<void> {
+    this.currentProvider = provider;
+    localStorage.setItem('api_provider', provider);
+    this.clearCache();
+    await this.checkDataSources();
+    console.log(`🔄 Switched to ${provider === 'api-football' ? 'API-Football Pro' : 'Football-Data (Free)'}`);
+  }
+  
+  public getApiProvider(): ApiProvider {
+    return this.currentProvider;
   }
   
   // Public API for checking data source status
@@ -141,7 +172,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const season = await apiFootball.getCurrentSeason();
+        const season = await this.getActiveApi().getCurrentSeason();
         if (season) {
           await this.setCachedData('teamStats', cacheKey, season);
           return season;
@@ -173,13 +204,13 @@ class DataService {
         let matches: Match[] = [];
         
         if (upcoming) {
-          matches = await apiFootball.getUpcomingMatches(days);
+          matches = await this.getActiveApi().getUpcomingMatches(days);
         } else if (recent) {
-          matches = await apiFootball.getRecentMatches(days);
+          matches = await this.getActiveApi().getRecentMatches(days);
         } else if (matchday) {
-          matches = await apiFootball.getMatchesByMatchday(matchday);
+          matches = await this.getActiveApi().getMatchesByMatchday(matchday);
         } else {
-          matches = await apiFootball.getAllMatches();
+          matches = await this.getActiveApi().getAllMatches();
         }
         
         if (matches.length > 0) {
@@ -192,7 +223,7 @@ class DataService {
     }
     
     // Provide helpful error message based on the situation
-    if (!apiFootball.hasApiKey()) {
+    if (!this.getActiveApi().hasApiKey()) {
       throw new Error('API key required. Please set up your Football-Data.org API key in Settings or through the setup wizard.');
     } else {
       throw new Error('Unable to fetch matches. Please check your internet connection and API key validity.');
@@ -213,7 +244,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const standings = await apiFootball.getStandings();
+        const standings = await this.getActiveApi().getStandings();
         if (standings && standings.length > 0) {
           await this.setCachedData('standings', cacheKey, standings);
           return standings;
@@ -236,7 +267,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const teamStats = await apiFootball.getTeamStats(teamName);
+        const teamStats = await this.getActiveApi().getTeamStats(teamName);
         if (teamStats) {
           // Transform Football API stats to our TeamStats format
           const stats: TeamStats = {
@@ -288,7 +319,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const teamForm = await apiFootball.getTeamForm(teamName, matches);
+        const teamForm = await this.getActiveApi().getTeamForm(teamName, matches);
         if (teamForm) {
           await this.setCachedData('teamStats', cacheKey, teamForm);
           return teamForm;
@@ -313,7 +344,7 @@ class DataService {
     // Get current season from API
     if (this.apiSource.available) {
       try {
-        const currentSeason = await apiFootball.getCurrentSeason();
+        const currentSeason = await this.getActiveApi().getCurrentSeason();
         if (currentSeason) {
           const seasons = [currentSeason];
           await this.setCachedData('matches', cacheKey, seasons);
