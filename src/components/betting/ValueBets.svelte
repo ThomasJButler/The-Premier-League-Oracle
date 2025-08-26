@@ -1,17 +1,42 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { TrendingUp, AlertTriangle, DollarSign, Target, RefreshCw, Filter } from 'lucide-svelte';
+  import { TrendingUp, AlertTriangle, DollarSign, Target, RefreshCw, Filter, Info, Trophy, ChevronRight, Check } from 'lucide-svelte';
   import { ValueBettingEngine, type ValueBet, type MarketOdds } from '../../services/betting/value';
   import { dataService } from '../../services/dataService';
+  import type { Match } from '../../types';
   import { fade, slide } from 'svelte/transition';
+  import { getTeamLogo } from '../../utils/teamLogos';
   
-  let valueBets: ValueBet[] = [];
+  let valueBets: Array<ValueBet & { 
+    match?: Match;
+    teamStats?: {
+      homeForm?: string;
+      awayForm?: string;
+      h2hRecord?: string;
+      homeAvgGoals?: number;
+      awayAvgGoals?: number;
+      homeCleanSheets?: number;
+      awayCleanSheets?: number;
+    };
+  }> = [];
   let loading = true;
   let error: string | null = null;
   let selectedMarket: 'all' | '1X2' | 'goals' | 'btts' = 'all';
-  let minEdge: number = 3;
-  let bankroll: number = 1000;
+  let minEdge: number = 5;
+  let bankroll: number = 100;
   let lastRefresh: Date = new Date();
+  let expandedBet: number | null = null;
+  
+  // Load personal limits
+  let maxStakeAmount = 50;
+  onMount(() => {
+    const saved = localStorage.getItem('betting_limits');
+    if (saved) {
+      const limits = JSON.parse(saved);
+      maxStakeAmount = limits.maxStakeAmount || 50;
+      bankroll = Math.min(limits.maxBankroll || 500, bankroll);
+    }
+  });
   
   function selectMarket(market: string) {
     selectedMarket = market as 'all' | '1X2' | 'goals' | 'btts';
@@ -31,14 +56,14 @@
       }
       
       // For each match, identify value bets
-      const allValueBets: ValueBet[] = [];
+      const allValueBets: Array<ValueBet & { match?: Match; teamStats?: any }> = [];
       
       for (const match of matches.slice(0, 10)) { // Limit to next 10 matches
         // Mock odds for demonstration (in production, fetch from odds API)
         const mockOdds: MarketOdds = {
-          home: 2.1 + Math.random(),
+          home: 1.8 + Math.random() * 1.5,
           draw: 3.2 + Math.random() * 0.5,
-          away: 3.5 + Math.random() * 0.8,
+          away: 2.5 + Math.random() * 2,
           over25: 1.8 + Math.random() * 0.4,
           under25: 2.0 + Math.random() * 0.3,
           btts: 1.9 + Math.random() * 0.3,
@@ -53,7 +78,26 @@
           bankroll
         );
         
-        allValueBets.push(...matchBets);
+        // Add match and team stats to each bet
+        for (const bet of matchBets) {
+          // Get team stats
+          const homeStats = await dataService.getTeamStats(match.home_team);
+          const awayStats = await dataService.getTeamStats(match.away_team);
+          
+          allValueBets.push({
+            ...bet,
+            match,
+            teamStats: {
+              homeForm: homeStats?.form || 'N/A',
+              awayForm: awayStats?.form || 'N/A',
+              h2hRecord: 'W2 D1 L2', // Mock H2H
+              homeAvgGoals: homeStats ? homeStats.goalsFor / Math.max(homeStats.played, 1) : 0,
+              awayAvgGoals: awayStats ? awayStats.goalsFor / Math.max(awayStats.played, 1) : 0,
+              homeCleanSheets: Math.floor(Math.random() * 5),
+              awayCleanSheets: Math.floor(Math.random() * 5)
+            }
+          });
+        }
       }
       
       // Filter by minimum edge
@@ -71,7 +115,7 @@
     }
   }
   
-  function filterBets(bets: ValueBet[]): ValueBet[] {
+  function filterBets(bets: typeof valueBets): typeof valueBets {
     if (selectedMarket === 'all') return bets;
     if (selectedMarket === '1X2') return bets.filter(b => ['home', 'draw', 'away'].includes(b.market));
     if (selectedMarket === 'goals') return bets.filter(b => b.market.includes('2.5'));
@@ -102,9 +146,23 @@
       'away': 'Away Win',
       'over2.5': 'Over 2.5 Goals',
       'under2.5': 'Under 2.5 Goals',
-      'btts': 'Both Teams to Score'
+      'btts': 'Both Teams to Score - Yes',
+      'bttsNo': 'Both Teams to Score - No'
     };
     return labels[market] || market;
+  }
+  
+  function getBettingInstruction(market: string, home: string, away: string): string {
+    switch (market) {
+      case 'home': return `Back ${home} to Win`;
+      case 'away': return `Back ${away} to Win`;
+      case 'draw': return `Back the Draw`;
+      case 'over2.5': return `Back Over 2.5 Goals`;
+      case 'under2.5': return `Back Under 2.5 Goals`;
+      case 'btts': return `Back Both Teams to Score`;
+      case 'bttsNo': return `Back No Goals for One Team`;
+      default: return 'Place Bet';
+    }
   }
   
   function getConfidenceColor(confidence: string): string {
@@ -113,6 +171,15 @@
       case 'medium': return 'text-yellow-600 dark:text-yellow-400';
       case 'low': return 'text-orange-600 dark:text-orange-400';
       default: return 'text-slate-600 dark:text-slate-400';
+    }
+  }
+  
+  function getFormClass(result: string): string {
+    switch (result) {
+      case 'W': return 'bg-green-500 text-white';
+      case 'D': return 'bg-slate-400 text-white';
+      case 'L': return 'bg-red-500 text-white';
+      default: return 'bg-slate-200 dark:bg-slate-700';
     }
   }
   
@@ -125,6 +192,7 @@
   });
   
   $: filteredBets = filterBets(valueBets);
+  $: effectiveStake = (bet: ValueBet) => Math.min(bet.recommendedStake, maxStakeAmount);
 </script>
 
 <div class="value-bets-container">
@@ -152,199 +220,259 @@
         <span>Refresh</span>
       </button>
     </div>
-    
-    <div class="mt-4 flex items-center text-sm text-slate-600 dark:text-slate-400">
-      <span>Last updated: {formatDate(lastRefresh)}</span>
-      <span class="mx-2">•</span>
-      <span>{filteredBets.length} opportunities found</span>
-      <span class="mx-2">•</span>
-      <span>Bankroll: {formatCurrency(bankroll)}</span>
-    </div>
   </div>
   
-  <!-- Filters -->
+  <!-- Info Bar -->
   <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-4 mb-6">
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="flex items-center space-x-2">
-        <Filter class="w-4 h-4 text-slate-500" />
-        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Filters:</span>
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center space-x-6 text-sm">
+        <div>
+          <span class="text-slate-500 dark:text-slate-400">Last updated:</span>
+          <span class="font-medium ml-1">{formatDate(lastRefresh)}</span>
+        </div>
+        <div>
+          <span class="text-slate-500 dark:text-slate-400">Opportunities found:</span>
+          <span class="font-medium ml-1 text-green-600">{filteredBets.length}</span>
+        </div>
+        <div>
+          <span class="text-slate-500 dark:text-slate-400">Bankroll:</span>
+          <span class="font-medium ml-1">{formatCurrency(bankroll)}</span>
+        </div>
       </div>
       
-      <!-- Market Filter -->
-      <div class="flex space-x-2">
-        {#each ['all', '1X2', 'goals', 'btts'] as market}
-          <button
-            on:click={() => selectMarket(market)}
-            class="px-3 py-1 rounded-lg text-sm font-medium transition-colors {
-              selectedMarket === market
-                ? 'bg-primary text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }"
-          >
-            {market === 'all' ? 'All' : market.toUpperCase()}
-          </button>
-        {/each}
-      </div>
-      
-      <!-- Min Edge Filter -->
-      <div class="flex items-center space-x-2">
-        <label class="text-sm text-slate-600 dark:text-slate-400">Min Edge:</label>
-        <input
-          type="range"
-          bind:value={minEdge}
-          min="1"
-          max="10"
-          step="0.5"
-          class="w-24"
-        />
-        <span class="text-sm font-medium text-primary">{minEdge}%</span>
-      </div>
-      
-      <!-- Bankroll Input -->
-      <div class="flex items-center space-x-2">
-        <label class="text-sm text-slate-600 dark:text-slate-400">Bankroll:</label>
-        <input
-          type="number"
-          bind:value={bankroll}
-          min="100"
-          max="100000"
-          step="100"
-          class="w-24 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-        />
+      <!-- Filters -->
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <Filter class="w-4 h-4 text-slate-400" />
+          <span class="text-sm text-slate-500 dark:text-slate-400">Filters:</span>
+        </div>
+        <div class="flex space-x-2">
+          {#each ['all', '1X2', 'goals', 'btts'] as market}
+            <button
+              on:click={() => selectMarket(market)}
+              class="px-3 py-1 text-xs rounded-lg font-medium transition-colors {
+                selectedMarket === market
+                  ? 'bg-primary text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }"
+            >
+              {market === 'all' ? 'All' : market.toUpperCase()}
+            </button>
+          {/each}
+        </div>
+        
+        <!-- Min Edge -->
+        <div class="flex items-center space-x-2">
+          <span class="text-sm text-slate-500 dark:text-slate-400">Min Edge:</span>
+          <input
+            type="range"
+            bind:value={minEdge}
+            min="0"
+            max="20"
+            step="1"
+            class="w-24"
+          />
+          <span class="text-sm font-medium text-primary">{minEdge}%</span>
+        </div>
       </div>
     </div>
   </div>
   
-  <!-- Value Bets List -->
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="text-center">
-        <RefreshCw class="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-        <p class="text-slate-600 dark:text-slate-400">Analysing matches for value...</p>
-      </div>
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
-    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
-      <div class="flex items-center space-x-3">
-        <AlertTriangle class="w-6 h-6 text-red-600 dark:text-red-400" />
-        <p class="text-red-800 dark:text-red-300">{error}</p>
-      </div>
+    <div class="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-6 rounded-xl text-center">
+      <p>{error}</p>
+      <button 
+        on:click={loadValueBets}
+        class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+      >
+        Try Again
+      </button>
     </div>
   {:else if filteredBets.length === 0}
     <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-12 text-center">
-      <Target class="w-12 h-12 text-slate-400 mx-auto mb-4" />
-      <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">No Value Bets Found</h3>
-      <p class="text-sm text-slate-600 dark:text-slate-400">
-        No betting opportunities meet your criteria. Try adjusting filters or check back later.
-      </p>
+      <DollarSign class="w-12 h-12 mx-auto mb-4 text-slate-400" />
+      <p class="text-slate-600 dark:text-slate-400">No value bets found matching your criteria</p>
+      <p class="text-sm text-slate-500 dark:text-slate-500 mt-2">Try adjusting your filters or check back later</p>
     </div>
   {:else}
-    <div class="space-y-4">
-      {#each filteredBets as bet, index}
-        <div 
-          class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
-          transition:slide={{ delay: index * 50 }}
-        >
-          <!-- Match Header -->
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-lg font-bold text-slate-900 dark:text-white">
-                {bet.homeTeam} vs {bet.awayTeam}
-              </h3>
-              <p class="text-sm text-slate-600 dark:text-slate-400">
-                {formatDate(bet.matchDate)}
-              </p>
-            </div>
-            
-            <div class="text-right">
-              <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                {getMarketLabel(bet.market)}
-              </span>
-            </div>
-          </div>
-          
-          <!-- Betting Details -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Our Probability</p>
-              <p class="text-lg font-bold text-slate-900 dark:text-white">
-                {(bet.ourProbability * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Bookmaker Odds</p>
-              <p class="text-lg font-bold text-slate-900 dark:text-white">
-                {bet.bookmakerOdds.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Edge</p>
-              <p class="text-lg font-bold text-green-600 dark:text-green-400">
-                +{(bet.edge * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Expected Value</p>
-              <p class="text-lg font-bold text-green-600 dark:text-green-400">
-                +{(bet.expectedValue * 100).toFixed(1)}%
-              </p>
-            </div>
-          </div>
-          
-          <!-- Kelly Recommendation -->
-          <div class="bg-gradient-to-r from-primary/10 to-accent/10 dark:from-primary/20 dark:to-accent/20 rounded-lg p-4 mb-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <DollarSign class="w-5 h-5 text-primary" />
-                <span class="font-semibold text-slate-800 dark:text-slate-200">Recommended Stake</span>
-              </div>
-              <div class="text-right">
-                <p class="text-xl font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(bet.kellyStake.recommendedStake)}
-                </p>
-                <p class="text-xs text-slate-600 dark:text-slate-400">
-                  {(bet.kellyStake.halfKelly * 100).toFixed(2)}% of bankroll
+    <div class="grid gap-4">
+      {#each filteredBets as bet, i (i)}
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+          <!-- Main Bet Card -->
+          <div class="p-6">
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <img src={getTeamLogo(bet.homeTeam)} alt="" class="w-8 h-8 object-contain" />
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                    {bet.homeTeam} vs {bet.awayTeam}
+                  </h3>
+                  <img src={getTeamLogo(bet.awayTeam)} alt="" class="w-8 h-8 object-contain" />
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-400">
+                  {formatDate(bet.matchTime)}
                 </p>
               </div>
-            </div>
-          </div>
-          
-          <!-- Confidence & Warnings -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <span class="text-sm">
-                Confidence: 
-                <span class={`font-semibold ${getConfidenceColor(bet.confidence)}`}>
-                  {bet.confidence.toUpperCase()}
-                </span>
-              </span>
-              <span class="text-sm">
-                Risk: 
-                <span class={`font-semibold ${bet.kellyStake.risk === 'high' ? 'text-red-600' : bet.kellyStake.risk === 'medium' ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {bet.kellyStake.risk.toUpperCase()}
-                </span>
-              </span>
+              
+              <!-- Quick Stats -->
+              <div class="flex items-center space-x-4">
+                <div class="text-center">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Edge</p>
+                  <p class="text-lg font-bold text-green-600">+{(bet.edge * 100).toFixed(1)}%</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">EV</p>
+                  <p class="text-lg font-bold text-primary">+{(bet.expectedValue * 100).toFixed(1)}%</p>
+                </div>
+              </div>
             </div>
             
-            {#if bet.warnings.length > 0}
-              <div class="flex items-center space-x-1 text-orange-600 dark:text-orange-400">
-                <AlertTriangle class="w-4 h-4" />
-                <span class="text-xs">{bet.warnings.length} warning{bet.warnings.length > 1 ? 's' : ''}</span>
+            <!-- Betting Instruction -->
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-4 mb-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Recommended Bet:</p>
+                  <p class="text-xl font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <ChevronRight class="w-5 h-5" />
+                    {getBettingInstruction(bet.market, bet.homeTeam, bet.awayTeam)}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm text-slate-600 dark:text-slate-400">Bookmaker Odds</p>
+                  <p class="text-2xl font-bold text-slate-900 dark:text-white">{bet.odds.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Stake Recommendation -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Recommended Stake</p>
+                  <p class="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                    {formatCurrency(effectiveStake(bet))}
+                  </p>
+                  <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    {((effectiveStake(bet) / bankroll) * 100).toFixed(1)}% of bankroll
+                  </p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm text-slate-600 dark:text-slate-400">Potential Return</p>
+                  <p class="text-xl font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(effectiveStake(bet) * bet.odds)}
+                  </p>
+                  <p class="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Profit: {formatCurrency(effectiveStake(bet) * (bet.odds - 1))}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Expand Button -->
+            <button
+              on:click={() => expandedBet = expandedBet === i ? null : i}
+              class="w-full py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center justify-center gap-1"
+            >
+              <Info class="w-4 h-4" />
+              {expandedBet === i ? 'Hide' : 'Show'} Detailed Analysis
+            </button>
+            
+            <!-- Expanded Stats -->
+            {#if expandedBet === i}
+              <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-4" transition:slide>
+                <!-- Team Form -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Recent Form</h4>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-600 dark:text-slate-400">{bet.homeTeam}:</span>
+                        <div class="flex gap-1">
+                          {#each (bet.teamStats?.homeForm || 'WWDLL').split('') as result}
+                            <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
+                              {result}
+                            </span>
+                          {/each}
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-slate-600 dark:text-slate-400">{bet.awayTeam}:</span>
+                        <div class="flex gap-1">
+                          {#each (bet.teamStats?.awayForm || 'LDWWL').split('') as result}
+                            <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
+                              {result}
+                            </span>
+                          {/each}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Key Stats</h4>
+                    <div class="space-y-1 text-sm">
+                      <div class="flex justify-between">
+                        <span class="text-slate-600 dark:text-slate-400">H2H Record:</span>
+                        <span class="font-medium">{bet.teamStats?.h2hRecord || 'W2 D1 L2'}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-slate-600 dark:text-slate-400">Home Avg Goals:</span>
+                        <span class="font-medium">{bet.teamStats?.homeAvgGoals?.toFixed(1) || '1.5'}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-slate-600 dark:text-slate-400">Away Avg Goals:</span>
+                        <span class="font-medium">{bet.teamStats?.awayAvgGoals?.toFixed(1) || '1.2'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Analysis Points -->
+                <div>
+                  <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Why This is a Value Bet</h4>
+                  <div class="space-y-2">
+                    <div class="flex items-start gap-2">
+                      <Check class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <p class="text-sm text-slate-600 dark:text-slate-400">
+                        Our model gives {bet.ourProbability * 100}% probability vs bookmaker's implied {((1/bet.odds) * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <Check class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <p class="text-sm text-slate-600 dark:text-slate-400">
+                        Confidence level: <span class="{getConfidenceColor(bet.confidence)} font-medium uppercase">{bet.confidence}</span>
+                      </p>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <Check class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <p class="text-sm text-slate-600 dark:text-slate-400">
+                        Expected ROI on this bet: {(bet.expectedValue * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    {#if bet.warnings && bet.warnings.length > 0}
+                      {#each bet.warnings as warning}
+                        <div class="flex items-start gap-2">
+                          <AlertTriangle class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <p class="text-sm text-amber-700 dark:text-amber-400">{warning}</p>
+                        </div>
+                      {/each}
+                    {/if}
+                  </div>
+                </div>
               </div>
             {/if}
           </div>
           
-          <!-- Reasoning -->
-          {#if bet.reasoning.length > 0}
-            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Analysis:</p>
-              <ul class="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                {#each bet.reasoning.slice(0, 3) as reason}
-                  <li>• {reason}</li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
+          <!-- Confidence Indicator Bar -->
+          <div class="h-2 bg-gradient-to-r {
+            bet.confidence === 'high' ? 'from-green-400 to-emerald-500' :
+            bet.confidence === 'medium' ? 'from-yellow-400 to-amber-500' :
+            'from-orange-400 to-red-500'
+          }"></div>
         </div>
       {/each}
     </div>
@@ -352,15 +480,11 @@
 </div>
 
 <style>
-  input[type="range"] {
-    @apply h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer;
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
   }
   
-  input[type="range"]::-webkit-slider-thumb {
-    @apply appearance-none w-4 h-4 bg-primary rounded-full cursor-pointer;
-  }
-  
-  input[type="range"]::-moz-range-thumb {
-    @apply w-4 h-4 bg-primary rounded-full cursor-pointer border-0;
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90;
   }
 </style>
