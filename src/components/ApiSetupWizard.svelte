@@ -1,21 +1,25 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Key, Shield, Zap, BookOpen, Info, ExternalLink } from 'lucide-svelte';
+  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, Sparkles } from 'lucide-svelte';
+  import { footballDataAPI } from '../services/api/footballData';
+  import { apiFootball } from '../services/api/apiFootball';
+  import { dataService } from '../services/dataService';
   
   const dispatch = createEventDispatcher();
   
   let apiKey = '';
   let isValidating = false;
   let currentStep = 1;
-  let showPrivacyInfo = false;
   let validationError = '';
   let validationSuccess = false;
+  let selectedProvider: 'football-data' | 'api-football' = 'football-data';
   
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
     { id: 2, title: 'Privacy & Security', icon: Shield },
-    { id: 3, title: 'API Setup', icon: Key },
-    { id: 4, title: 'Ready!', icon: BookOpen }
+    { id: 3, title: 'Choose Provider', icon: Key },
+    { id: 4, title: 'API Setup', icon: Key },
+    { id: 5, title: 'Ready!', icon: BookOpen }
   ];
   
   async function validateAndSave() {
@@ -25,66 +29,58 @@
     validationError = '';
     validationSuccess = false;
     
-    console.log('🔑 Testing API key...', { keyLength: apiKey.trim().length });
+    console.log('🔑 Testing API key...', { provider: selectedProvider, keyLength: apiKey.trim().length });
     
     try {
-      // Test the API key with API-Football
-      const response = await fetch('https://v3.football.api-sports.io/status', {
-        headers: {
-          'x-rapidapi-key': apiKey.trim(),
-          'x-rapidapi-host': 'v3.football.api-sports.io'
-        },
-        mode: 'cors'
-      });
+      const api = selectedProvider === 'api-football' ? apiFootball : footballDataAPI;
       
-      console.log('📡 API Response:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+      // Set the API key
+      api.setApiKey(apiKey.trim());
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.response?.account) {
-          validationSuccess = true;
-          // Save to localStorage
+      // Test the connection
+      const isConnected = await api.testConnection();
+      
+      console.log('📡 API Response:', { provider: selectedProvider, connected: isConnected });
+      
+      if (isConnected) {
+        validationSuccess = true;
+        
+        // Save to localStorage
+        if (selectedProvider === 'api-football') {
           localStorage.setItem('api_football_key', apiKey.trim());
         } else {
-          validationError = 'Invalid API response. Please check your API key.';
+          localStorage.setItem('football_data_api_key', apiKey.trim());
         }
         
+        // Set the provider in dataService
+        await dataService.setApiProvider(selectedProvider);
+        
         // Move to final step
-        currentStep = 4;
+        currentStep = 5;
         
         // Auto-close and reload page after showing success
         setTimeout(() => {
-          dispatch('complete', { apiKey: apiKey.trim() });
+          dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
           // Reload page to reinitialize with new API key
           setTimeout(() => {
             window.location.reload();
           }, 500);
         }, 2000);
-      } else if (response.status === 401 || response.status === 403) {
-        validationError = 'Invalid API key. Please check that you copied it correctly from API-Football.';
-      } else if (response.status === 429) {
-        validationError = 'Rate limit exceeded. Please wait a moment and try again.';
       } else {
-        validationError = `API error (${response.status}). Please try again.`;
+        validationError = `Invalid API key. Please check that you copied it correctly from ${
+          selectedProvider === 'api-football' ? 'API-Football' : 'Football-Data.org'
+        }.`;
       }
     } catch (error) {
       console.error('Network error:', error);
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        validationError = 'Network error. Please check your internet connection and try again.';
-      } else {
-        validationError = 'Connection failed. Please check your internet connection and try again.';
-      }
+      validationError = 'Connection failed. Please check your internet connection and try again.';
     } finally {
       isValidating = false;
     }
   }
   
   function nextStep() {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       currentStep++;
     }
   }
@@ -93,6 +89,11 @@
     if (currentStep > 1) {
       currentStep--;
     }
+  }
+  
+  function selectProvider(provider: 'football-data' | 'api-football') {
+    selectedProvider = provider;
+    nextStep();
   }
 </script>
 
@@ -206,7 +207,7 @@
                 Direct API Calls
               </h4>
               <p class="text-xs text-slate-600 dark:text-slate-400">
-                All data comes directly from API-Football, bypassing our servers.
+                All data comes directly from your chosen API provider, bypassing our servers.
               </p>
             </div>
             
@@ -227,7 +228,7 @@
               <div>
                 <p class="text-xs text-blue-800 dark:text-blue-200">
                   <strong>Important:</strong> This application is for research and educational purposes only. 
-                  Please use responsibly and in accordance with API-Football's terms of service.
+                  Please use responsibly and in accordance with your API provider's terms of service.
                 </p>
               </div>
             </div>
@@ -235,6 +236,91 @@
         </div>
         
       {:else if currentStep === 3}
+        <!-- Choose Provider Step -->
+        <div class="space-y-6">
+          <div class="text-center">
+            <h3 class="text-2xl font-bold mb-2">Choose Your API Provider</h3>
+            <p class="text-slate-600 dark:text-slate-300">Select the option that best fits your needs</p>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-6">
+            <!-- Football-Data.org Option -->
+            <button
+              on:click={() => selectProvider('football-data')}
+              class="p-6 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <Trophy class="w-8 h-8 text-green-600" />
+                <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
+                  FREE
+                </span>
+              </div>
+              <h4 class="font-bold text-lg mb-2">Football-Data.org</h4>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Perfect for testing and demos
+              </p>
+              <ul class="space-y-2 text-sm">
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Premier League data
+                </li>
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  10 requests per minute
+                </li>
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Basic predictions
+                </li>
+              </ul>
+            </button>
+            
+            <!-- API-Football Option -->
+            <button
+              on:click={() => selectProvider('api-football')}
+              class="p-6 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <Sparkles class="w-8 h-8 text-purple-600" />
+                <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold rounded-full">
+                  PRO
+                </span>
+              </div>
+              <h4 class="font-bold text-lg mb-2">API-Football</h4>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Full suite of prediction tools
+              </p>
+              <ul class="space-y-2 text-sm">
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Live match data
+                </li>
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Advanced statistics
+                </li>
+                <li class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Professional predictions
+                </li>
+              </ul>
+            </button>
+          </div>
+        </div>
+        
+      {:else if currentStep === 4}
         <!-- API Setup Step -->
         <div class="space-y-6">
           <div class="text-center">
@@ -242,13 +328,15 @@
               <Key class="w-8 h-8 text-blue-600" />
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
-            <p class="text-slate-600 dark:text-slate-300">Enter your API-Football key to get started</p>
+            <p class="text-slate-600 dark:text-slate-300">
+              Enter your {selectedProvider === 'api-football' ? 'API-Football' : 'Football-Data.org'} key to get started
+            </p>
           </div>
           
           <div class="space-y-4">
             <div>
               <label for="apiKey" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                API-Football Key
+                {selectedProvider === 'api-football' ? 'API-Football Key' : 'Football-Data.org API Key'}
               </label>
               <input
                 id="apiKey"
@@ -285,10 +373,16 @@
                     <strong>Don't have an API key?</strong>
                   </p>
                   <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                    Get an API key from API-Football. The free tier includes 100 requests per day.
+                    {#if selectedProvider === 'api-football'}
+                      Get an API key from API-Football. Various plans available starting from free tier.
+                    {:else}
+                      Get a free API key from Football-Data.org. The free tier includes 10 requests per minute.
+                    {/if}
                   </p>
                   <a 
-                    href="https://www.api-football.com/pricing" 
+                    href={selectedProvider === 'api-football' 
+                      ? "https://www.api-football.com/pricing" 
+                      : "https://www.football-data.org/client/register"} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200"
@@ -301,7 +395,7 @@
           </div>
         </div>
         
-      {:else if currentStep === 4}
+      {:else if currentStep === 5}
         <!-- Success Step -->
         <div class="text-center space-y-6">
           <div class="w-20 h-20 mx-auto bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center">
@@ -319,8 +413,8 @@
               <h4 class="font-semibold mb-2">💡 Recommended Usage</h4>
               <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
                 <li>• Check daily predictions</li>
-                <li>• Use AI Assistant for analysis</li>
                 <li>• Monitor team performance</li>
+                <li>• Use Kelly Calculator for betting</li>
               </ul>
             </div>
             
@@ -329,7 +423,7 @@
               <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
                 <li>• View tutorial documentation</li>
                 <li>• Understand prediction models</li>
-                <li>• Explore Kelly Criterion</li>
+                <li>• Explore value betting</li>
               </ul>
             </div>
           </div>
@@ -350,7 +444,7 @@
         </button>
         
         <div class="flex gap-3">
-          {#if currentStep === 3}
+          {#if currentStep === 4}
             <button
               on:click={validateAndSave}
               disabled={!apiKey.trim() || isValidating}
@@ -362,10 +456,10 @@
                 Validate & Save
               {/if}
             </button>
-          {:else if currentStep === 4}
+          {:else if currentStep === 5}
             <button
               on:click={() => {
-                dispatch('complete', { apiKey: apiKey.trim() });
+                dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
                 // Reload page to reinitialize with new API key
                 setTimeout(() => window.location.reload(), 100);
               }}
@@ -373,7 +467,7 @@
             >
               Start Using App
             </button>
-          {:else}
+          {:else if currentStep !== 3}
             <button
               on:click={nextStep}
               class="btn btn-primary"
