@@ -69,9 +69,9 @@ class DataService {
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
-        console.log('✅ Football-Data API is available and working');
+        console.log('✅ API-Football is available and working');
       } else {
-        console.error('❌ Football-Data API is not working (invalid response)');
+        console.error('❌ API-Football is not working (invalid response)');
       }
     } catch (error) {
       console.error('Error checking API availability:', error);

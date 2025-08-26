@@ -569,6 +569,12 @@ class ApiFootballAPI {
     const fullEndpoint = queryString ? `${endpoint}?${queryString}` : endpoint;
     const cacheKey = fullEndpoint;
     
+    // Check if API key is configured
+    if (!this.config.apiKey) {
+      console.error('🔴 API-Football: No API key configured. Please add your API key in Settings.');
+      return null;
+    }
+    
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
       console.log(`Using cached data for ${endpoint}`);
@@ -577,28 +583,48 @@ class ApiFootballAPI {
     
     try {
       const url = `${this.config.baseUrl}${fullEndpoint}`;
+      console.log(`🔷 API-Football: Fetching ${endpoint}...`);
+      
+      // Use direct API-Football headers (not RapidAPI)
       const response = await fetch(url, {
         headers: {
-          'x-rapidapi-key': this.config.apiKey,
-          'x-rapidapi-host': 'v3.football.api-sports.io'
+          'x-apisports-key': this.config.apiKey
         }
       });
       
       if (!response.ok) {
         if (response.status === 403) {
-          throw new Error('API authentication failed. Please check your API key.');
+          console.error('🔴 API-Football: Authentication failed (403). Please check your API key.');
+          throw new Error('API authentication failed. Please check your API key in Settings.');
         }
+        if (response.status === 429) {
+          console.error('🔴 API-Football: Rate limit exceeded (429). Please wait and try again.');
+          throw new Error('API rate limit exceeded. Please wait a moment and try again.');
+        }
+        console.error(`🔴 API-Football: Request failed with status ${response.status}`);
         throw new Error(`API request failed: ${response.status}`);
       }
       
       const data = await response.json();
       
       if (data.errors && Object.keys(data.errors).length > 0) {
-        console.error('API returned errors:', data.errors);
+        // Log detailed error information
+        const errorKeys = Object.keys(data.errors);
+        const errorMessages = errorKeys.map(key => `${key}: ${data.errors[key]}`).join(', ');
+        console.error(`🔴 API-Football errors: ${errorMessages}`);
+        
+        // Check for specific error types
+        if (data.errors.token) {
+          console.error('🔴 API-Football: Invalid API key. Please check your API key in Settings.');
+        } else if (data.errors.requests) {
+          console.error('🔴 API-Football: Request quota exceeded. Check your API plan limits.');
+        }
+        
         return null;
       }
       
       // Cache successful response
+      console.log(`✅ API-Football: Successfully fetched ${endpoint}`);
       this.cache.set(cacheKey, {
         data: data.response,
         timestamp: Date.now()
@@ -606,7 +632,7 @@ class ApiFootballAPI {
       
       return data.response;
     } catch (error) {
-      console.error(`Error fetching ${endpoint}:`, error);
+      console.error(`🔴 Error fetching ${endpoint}:`, error instanceof Error ? error.message : error);
       return null;
     }
   }
@@ -649,8 +675,8 @@ class ApiFootballAPI {
     if (!season) return [];
     
     const params: Record<string, any> = {
-      league: this.config.leagueId,
-      season: season.id
+      league: this.config.leagueId.toString(),
+      season: season.id.toString()
     };
     
     if (round) {
@@ -673,8 +699,8 @@ class ApiFootballAPI {
     const dateTo = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
     const data = await this.fetchWithCache<AFFixtureResponse[]>('/fixtures', {
-      league: this.config.leagueId,
-      season: season.id,
+      league: this.config.leagueId.toString(),
+      season: season.id.toString(),
       from: dateFrom,
       to: dateTo
     });
@@ -693,8 +719,8 @@ class ApiFootballAPI {
     const dateTo = new Date().toISOString().split('T')[0];
     
     const data = await this.fetchWithCache<AFFixtureResponse[]>('/fixtures', {
-      league: this.config.leagueId,
-      season: season.id,
+      league: this.config.leagueId.toString(),
+      season: season.id.toString(),
       from: dateFrom,
       to: dateTo,
       status: 'FT'
@@ -714,8 +740,8 @@ class ApiFootballAPI {
     const dateTo = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
     const data = await this.fetchWithCache<AFFixtureResponse[]>('/fixtures', {
-      league: this.config.leagueId,
-      season: season.id,
+      league: this.config.leagueId.toString(),
+      season: season.id.toString(),
       from: dateFrom,
       to: dateTo
     });
@@ -742,8 +768,8 @@ class ApiFootballAPI {
     
     const data = await this.fetchWithCache<AFFixtureResponse[]>('/fixtures', {
       team: teamId,
-      season: season.id,
-      league: this.config.leagueId,
+      season: season.id.toString(),
+      league: this.config.leagueId.toString(),
       last: limit
     });
     
@@ -758,8 +784,8 @@ class ApiFootballAPI {
     if (!season) return [];
     
     const data = await this.fetchWithCache<AFStandingResponse[]>('/standings', {
-      league: this.config.leagueId,
-      season: season.id
+      league: this.config.leagueId.toString(),
+      season: season.id.toString()
     });
     
     if (!data || data.length === 0 || !data[0].league.standings[0]) return [];
@@ -1028,8 +1054,8 @@ class ApiFootballAPI {
     if (!season) return [];
     
     const data = await this.fetchWithCache<AFTopScorer[]>('/players/topscorers', {
-      league: this.config.leagueId,
-      season: season.id
+      league: this.config.leagueId.toString(),
+      season: season.id.toString()
     });
     
     if (!data) return [];
@@ -1044,7 +1070,7 @@ class ApiFootballAPI {
     
     const data = await this.fetchWithCache<AFTopScorer[]>('/players', {
       id: playerId,
-      season: season.id
+      season: season.id.toString()
     });
     
     if (!data || data.length === 0) return null;
@@ -1072,7 +1098,7 @@ class ApiFootballAPI {
     if (!season) return [];
     
     const data = await this.fetchWithCache<AFFixtureResponse[]>('/fixtures', {
-      league: this.config.leagueId,
+      league: this.config.leagueId.toString(),
       live: 'all'
     });
     
@@ -1087,8 +1113,8 @@ class ApiFootballAPI {
     if (!season) return [];
     
     const data = await this.fetchWithCache<AFInjury[]>('/injuries', {
-      league: this.config.leagueId,
-      season: season.id
+      league: this.config.leagueId.toString(),
+      season: season.id.toString()
     });
     
     return data || [];
