@@ -20,6 +20,7 @@
   let apiConnected = false;
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
+  let isRefreshing = false;
   
   // Cache management
   let cacheSize = '0 MB';
@@ -36,16 +37,28 @@
       if (isConnected) {
         testResult = {
           success: true,
-          message: `Successfully connected to ${provider === 'api-football' ? 'API-Football Pro' : 'Football-Data.org (Free)'}!`
+          message: `Successfully connected! Refreshing dashboard in 5 seconds...`
         };
         apiConnected = true;
+        isRefreshing = true;
         
         // Switch to this provider
         await dataService.setApiProvider(provider);
         selectedProvider = provider;
         
-        // Trigger dashboard refresh
-        dispatch('apiConfigured');
+        // Add 5-second delay before refresh
+        setTimeout(async () => {
+          // Clear cache to force fresh data
+          await dataService.clearCache();
+          
+          // Trigger dashboard refresh
+          dispatch('apiConfigured');
+          
+          // Force page reload after a brief delay to ensure all components refresh
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        }, 5000);
       } else {
         testResult = {
           success: false,
@@ -278,7 +291,11 @@
         transition:fade
       >
         {#if testResult.success}
-          <CheckCircle class="w-5 h-5" />
+          {#if isRefreshing}
+            <RefreshCw class="w-5 h-5 animate-spin" />
+          {:else}
+            <CheckCircle class="w-5 h-5" />
+          {/if}
         {:else}
           <AlertCircle class="w-5 h-5" />
         {/if}

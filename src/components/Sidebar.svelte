@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart3, History, Settings, LogOut, Calculator, TrendingUp, DollarSign, HelpCircle, Trophy, Tv, User } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart3, History, Settings, LogOut, Calculator, TrendingUp, DollarSign, HelpCircle, Trophy, Tv, Table } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let currentView: string;
@@ -13,11 +13,11 @@
 
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, view: 'Dashboard' },
+    { name: 'Standings', icon: Table, view: 'Standings' },
     { name: 'Live Matches', icon: Tv, view: 'Live Matches' },
     { name: 'Matches', icon: List, view: 'Matches' },
     { name: 'Predictions', icon: BarChart3, view: 'Predictions' },
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
-    { name: 'Player Profile', icon: User, view: 'Player Profile' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
     { name: 'Value Bets', icon: TrendingUp, view: 'Value Bets' },
     { name: 'Season Stats', icon: BarChart3, view: 'Season Stats' },

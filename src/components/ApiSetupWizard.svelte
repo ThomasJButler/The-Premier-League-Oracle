@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, Sparkles } from 'lucide-svelte';
+  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, Sparkles, RefreshCw } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { apiFootball } from '../services/api/apiFootball';
   import { dataService } from '../services/dataService';
@@ -13,6 +13,8 @@
   let validationError = '';
   let validationSuccess = false;
   let selectedProvider: 'football-data' | 'api-football' = 'football-data';
+  let isRefreshing = false;
+  let validationMessage = '';
   
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
@@ -57,15 +59,21 @@
         
         // Move to final step
         currentStep = 5;
+        validationMessage = 'API key validated! Refreshing dashboard in 5 seconds...';
+        isRefreshing = true;
         
-        // Auto-close and reload page after showing success
-        setTimeout(() => {
+        // Add 5-second delay before refreshing
+        setTimeout(async () => {
+          // Clear cache to force fresh data
+          await dataService.clearCache();
+          
           dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
+          
           // Reload page to reinitialize with new API key
           setTimeout(() => {
             window.location.reload();
           }, 500);
-        }, 2000);
+        }, 5000);
       } else {
         validationError = `Invalid API key. Please check that you copied it correctly from ${
           selectedProvider === 'api-football' ? 'API-Football' : 'Football-Data.org'
@@ -399,12 +407,20 @@
         <!-- Success Step -->
         <div class="text-center space-y-6">
           <div class="w-20 h-20 mx-auto bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center">
-            <BookOpen class="w-10 h-10 text-green-600" />
+            {#if isRefreshing}
+              <RefreshCw class="w-10 h-10 text-green-600 animate-spin" />
+            {:else}
+              <BookOpen class="w-10 h-10 text-green-600" />
+            {/if}
           </div>
           <div>
-            <h3 class="text-2xl font-bold mb-4 text-green-600">All Set!</h3>
+            <h3 class="text-2xl font-bold mb-4 text-green-600">{isRefreshing ? 'Setting Up...' : 'All Set!'}</h3>
             <p class="text-slate-600 dark:text-slate-300 text-lg">
-              Your API key has been validated and saved. You're ready to explore Premier League predictions!
+              {#if isRefreshing}
+                {validationMessage}
+              {:else}
+                Your API key has been validated and saved. You're ready to explore Premier League predictions!
+              {/if}
             </p>
           </div>
           

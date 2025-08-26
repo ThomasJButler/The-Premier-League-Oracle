@@ -355,9 +355,9 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="flip-card-back card card-glass">
+            <div class="flip-card-back card">
               {#if prediction.detailedAnalysis}
-                <div class="h-full overflow-y-auto">
+                <div class="h-full overflow-y-auto text-slate-900 dark:text-slate-100">
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Analysis</h3>
                     <button 
@@ -368,15 +368,15 @@
                   </div>
 
                   <!-- Predicted Score Section -->
-                  <div class="mb-4 p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
+                  <div class="mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div class="flex items-center gap-2 mb-2">
-                      <Target class="w-4 h-4 text-primary" />
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">Predicted Score</span>
+                      <Target class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span class="font-semibold text-slate-900 dark:text-slate-100">Predicted Score</span>
                     </div>
-                    <div class="text-2xl font-bold text-primary text-center">
+                    <div class="text-2xl font-bold text-blue-700 dark:text-blue-300 text-center">
                       {prediction.detailedAnalysis.predictedScore}
                     </div>
-                    <div class="text-sm text-center text-slate-600 dark:text-slate-400 mt-1">
+                    <div class="text-sm text-center text-slate-700 dark:text-slate-300 mt-1">
                       Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
                   </div>
@@ -492,9 +492,14 @@
   }
 
   .flip-card-back {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.95);
     transform: rotateY(180deg);
-    padding: 1rem;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  
+  :global(.dark) .flip-card-back {
+    background-color: rgba(30, 41, 59, 0.95);
   }
 
   @keyframes fadeIn {

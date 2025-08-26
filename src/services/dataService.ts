@@ -398,7 +398,16 @@ class DataService {
       await store.clear();
     }
     
-    console.log('Cache cleared');
+    // Also clear API keys when clearing cache
+    localStorage.removeItem('api_football_key');
+    localStorage.removeItem('football_data_api_key');
+    localStorage.removeItem('api_provider');
+    
+    // Clear API keys from the services
+    apiFootball.clearApiKey();
+    footballDataAPI.clearApiKey();
+    
+    console.log('Cache and API keys cleared');
   }
   
   public setCacheTimeout(minutes: number): void {

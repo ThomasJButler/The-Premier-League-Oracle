@@ -1,48 +1,84 @@
 <script lang="ts">
-  import { Calculator, TrendingUp, AlertTriangle, DollarSign, Target } from 'lucide-svelte';
+  import { Calculator, TrendingUp, AlertTriangle, DollarSign, Target, Settings, Save, Shield } from 'lucide-svelte';
   import { KellyCalculator, type KellyCalculation } from '../../services/betting/kelly';
   import { fade, slide } from 'svelte/transition';
+  import { onMount } from 'svelte';
   
-  let ourProbability: number = 0.55;
+  // Main inputs
+  let ourProbability: number = 55;
   let bookmakerOdds: number = 2.0;
-  let bankroll: number = 1000;
+  let bankroll: number = 100;
   let confidenceLevel: number = 0.7;
-  let maxStakePercentage: number = 0.05;
-  let kellyFraction: 'full' | 'half' | 'quarter' = 'half';
+  let kellyFraction: 'conservative' | 'quarter' | 'half' = 'conservative';
+  
+  // Personal limits
+  let maxBankroll: number = 500;
+  let maxStakeAmount: number = 50;
+  let dailyLossLimit: number = 100;
+  let weeklyLossLimit: number = 300;
+  let showLimits: boolean = false;
   
   let calculation: KellyCalculation | null = null;
-  let showAdvanced: boolean = false;
-  let simulationResults: any = null;
+  
+  // Load saved limits
+  onMount(() => {
+    const saved = localStorage.getItem('betting_limits');
+    if (saved) {
+      const limits = JSON.parse(saved);
+      maxBankroll = limits.maxBankroll || 500;
+      maxStakeAmount = limits.maxStakeAmount || 50;
+      dailyLossLimit = limits.dailyLossLimit || 100;
+      weeklyLossLimit = limits.weeklyLossLimit || 300;
+      bankroll = Math.min(bankroll, maxBankroll);
+    }
+  });
+  
+  function saveLimits() {
+    const limits = {
+      maxBankroll,
+      maxStakeAmount,
+      dailyLossLimit,
+      weeklyLossLimit
+    };
+    localStorage.setItem('betting_limits', JSON.stringify(limits));
+    bankroll = Math.min(bankroll, maxBankroll);
+    showLimits = false;
+  }
   
   function calculate() {
+    const effectiveBankroll = Math.min(bankroll, maxBankroll);
     calculation = KellyCalculator.calculate({
       outcome: 'Manual Calculation',
       ourProbability: ourProbability / 100,
       bookmakerOdds,
-      bankroll,
-      maxStakePercentage: maxStakePercentage / 100,
+      bankroll: effectiveBankroll,
+      maxStakePercentage: maxStakeAmount / effectiveBankroll,
       confidenceLevel
     });
-  }
-  
-  function runSimulation() {
-    simulationResults = KellyCalculator.simulate(
-      bankroll,
-      [{ probability: ourProbability / 100, odds: bookmakerOdds }],
-      1000,
-      kellyFraction === 'full' ? 1 : kellyFraction === 'half' ? 0.5 : 0.25
-    );
   }
   
   function getRecommendedStake(): number {
     if (!calculation) return 0;
     
+    const effectiveBankroll = Math.min(bankroll, maxBankroll);
+    let stake: number;
+    
     switch (kellyFraction) {
-      case 'full': return calculation.fullKelly * bankroll;
-      case 'half': return calculation.halfKelly * bankroll;
-      case 'quarter': return calculation.quarterKelly * bankroll;
-      default: return calculation.halfKelly * bankroll;
+      case 'conservative': 
+        stake = calculation.quarterKelly * effectiveBankroll * 0.5;
+        break;
+      case 'quarter': 
+        stake = calculation.quarterKelly * effectiveBankroll;
+        break;
+      case 'half': 
+        stake = calculation.halfKelly * effectiveBankroll;
+        break;
+      default: 
+        stake = calculation.quarterKelly * effectiveBankroll;
     }
+    
+    // Apply max stake limit
+    return Math.min(stake, maxStakeAmount);
   }
   
   function formatCurrency(value: number): string {
@@ -59,6 +95,8 @@
   $: if (ourProbability && bookmakerOdds && bankroll) {
     calculate();
   }
+  
+  $: effectiveBankroll = Math.min(bankroll, maxBankroll);
 </script>
 
 <div class="kelly-calculator bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
@@ -69,21 +107,141 @@
           <Calculator class="w-6 h-6 text-white" />
         </div>
         <div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Kelly Criterion Calculator</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-400">Calculate optimal bet sizes for maximum growth</p>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Kelly Calculator</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Safe betting with £{maxBankroll} maximum</p>
         </div>
       </div>
       
       <button
-        on:click={() => showAdvanced = !showAdvanced}
-        class="text-sm text-primary hover:text-primary/80 font-medium"
+        on:click={() => showLimits = !showLimits}
+        class="btn btn-sm btn-secondary flex items-center gap-1"
       >
-        {showAdvanced ? 'Simple' : 'Advanced'} Mode
+        <Settings class="w-4 h-4" />
+        Personal Limits
       </button>
     </div>
   </div>
   
+  <!-- Personal Limits Modal -->
+  {#if showLimits}
+    <div class="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg" transition:slide>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <Shield class="w-5 h-5 text-blue-500" />
+          Personal Betting Limits
+        </h3>
+        <button
+          on:click={saveLimits}
+          class="btn btn-sm btn-primary flex items-center gap-1"
+        >
+          <Save class="w-4 h-4" />
+          Save Limits
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Maximum Bankroll
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <input
+              type="number"
+              bind:value={maxBankroll}
+              min="50"
+              max="500"
+              step="50"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Max Stake Per Bet
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <input
+              type="number"
+              bind:value={maxStakeAmount}
+              min="5"
+              max="100"
+              step="5"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Daily Loss Limit
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <input
+              type="number"
+              bind:value={dailyLossLimit}
+              min="20"
+              max="200"
+              step="10"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Weekly Loss Limit
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <input
+              type="number"
+              bind:value={weeklyLossLimit}
+              min="50"
+              max="500"
+              step="50"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <div class="flex items-start gap-2">
+          <AlertTriangle class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <p class="text-xs text-amber-800 dark:text-amber-200">
+            These limits help you maintain responsible betting habits. The app will automatically cap recommendations based on these settings.
+          </p>
+        </div>
+      </div>
+    </div>
+  {/if}
+  
   <div class="calculator-inputs grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <!-- Bankroll -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+        Your Bankroll
+      </label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+        <input
+          type="number"
+          bind:value={bankroll}
+          min="10"
+          max={maxBankroll}
+          step="10"
+          class="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+        />
+        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500">
+          Max: £{maxBankroll}
+        </span>
+      </div>
+    </div>
+    
     <!-- Your Probability -->
     <div>
       <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -99,14 +257,9 @@
           class="w-full"
         />
         <div class="flex justify-between items-center mt-1">
-          <input
-            type="number"
-            bind:value={ourProbability}
-            min="1"
-            max="99"
-            class="w-20 px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
-          />
+          <span class="text-xs text-slate-500">1%</span>
           <span class="text-sm font-medium text-primary">{ourProbability}%</span>
+          <span class="text-xs text-slate-500">99%</span>
         </div>
       </div>
     </div>
@@ -122,262 +275,182 @@
         min="1.01"
         max="100"
         step="0.01"
-        class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
       />
       <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
         Implied: {((1 / bookmakerOdds) * 100).toFixed(1)}%
       </p>
     </div>
     
-    <!-- Bankroll -->
-    <div>
-      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        Your Bankroll
-      </label>
-      <input
-        type="number"
-        bind:value={bankroll}
-        min="1"
-        max="1000000"
-        step="100"
-        class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
-      />
-    </div>
-    
     <!-- Kelly Fraction -->
     <div>
       <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        Kelly Fraction
+        Risk Level
       </label>
       <div class="grid grid-cols-3 gap-2">
+        <button
+          on:click={() => kellyFraction = 'conservative'}
+          class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
+            kellyFraction === 'conservative'
+              ? 'bg-green-500 text-white'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }"
+        >
+          Conservative
+        </button>
         <button
           on:click={() => kellyFraction = 'quarter'}
           class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
             kellyFraction === 'quarter'
-              ? 'bg-primary text-white'
+              ? 'bg-amber-500 text-white'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }"
         >
-          1/4 Kelly
+          Standard
         </button>
         <button
           on:click={() => kellyFraction = 'half'}
           class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
             kellyFraction === 'half'
-              ? 'bg-primary text-white'
+              ? 'bg-red-500 text-white'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
           }"
         >
-          1/2 Kelly
-        </button>
-        <button
-          on:click={() => kellyFraction = 'full'}
-          class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
-            kellyFraction === 'full'
-              ? 'bg-primary text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-          }"
-        >
-          Full Kelly
+          Aggressive
         </button>
       </div>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-        Conservative bettors use fractional Kelly
-      </p>
     </div>
-    
-    {#if showAdvanced}
-      <!-- Confidence Level -->
-      <div transition:slide>
-        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          Model Confidence
-        </label>
-        <div class="relative">
-          <input
-            type="range"
-            bind:value={confidenceLevel}
-            min="0.1"
-            max="1"
-            step="0.05"
-            class="w-full"
-          />
-          <div class="flex justify-between items-center mt-1">
-            <span class="text-sm text-slate-500">Low</span>
-            <span class="text-sm font-medium text-primary">{(confidenceLevel * 100).toFixed(0)}%</span>
-            <span class="text-sm text-slate-500">High</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Max Stake -->
-      <div transition:slide>
-        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          Max Stake (% of bankroll)
-        </label>
-        <input
-          type="number"
-          bind:value={maxStakePercentage}
-          min="1"
-          max="25"
-          step="1"
-          class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </div>
-    {/if}
   </div>
   
   {#if calculation}
-    <div class="results space-y-4" transition:fade>
-      <!-- Value Assessment -->
-      <div class="p-4 rounded-lg {
-        calculation.isValueBet 
-          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
-          : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-      }">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            {#if calculation.isValueBet}
-              <Target class="w-5 h-5 text-green-600 dark:text-green-400" />
-              <span class="font-semibold text-green-800 dark:text-green-300">Value Bet Detected!</span>
-            {:else}
-              <AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400" />
-              <span class="font-semibold text-red-800 dark:text-red-300">No Value</span>
-            {/if}
-          </div>
-          
-          <div class="text-sm">
-            <span class="text-slate-600 dark:text-slate-400">EV:</span>
-            <span class="font-bold {
-              calculation.expectedValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-            }">
-              {calculation.expectedValue > 0 ? '+' : ''}{formatPercentage(calculation.expectedValue)}
-            </span>
-          </div>
+    <!-- Results -->
+    <div class="results bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-6 mb-6" transition:fade>
+      <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+        <Target class="w-5 h-5 text-primary" />
+        <span>Recommended Bet</span>
+      </h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Stake Amount</p>
+          <p class="text-2xl font-bold text-primary">
+            {formatCurrency(getRecommendedStake())}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">
+            {((getRecommendedStake() / effectiveBankroll) * 100).toFixed(1)}% of bankroll
+          </p>
         </div>
         
-        <div class="mt-2 text-sm text-slate-700 dark:text-slate-300">
-          Edge: <span class="font-medium">{formatPercentage(calculation.edgePercentage / 100)}</span> |
-          Confidence: <span class="font-medium capitalize">{calculation.confidence}</span> |
-          Risk: <span class="font-medium capitalize">{calculation.risk}</span>
-        </div>
-      </div>
-      
-      <!-- Recommended Stake -->
-      <div class="bg-gradient-to-r from-primary/10 to-accent/10 dark:from-primary/20 dark:to-accent/20 rounded-lg p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center space-x-2">
-            <DollarSign class="w-5 h-5 text-primary" />
-            <span class="font-semibold text-slate-800 dark:text-slate-200">Recommended Stake</span>
-          </div>
-          <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-            {kellyFraction === 'full' ? 'Full' : kellyFraction === 'half' ? 'Half' : 'Quarter'} Kelly
-          </span>
+        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Expected Value</p>
+          <p class="text-2xl font-bold {calculation.expectedValue > 0 ? 'text-green-600' : 'text-red-600'}">
+            {calculation.expectedValue > 0 ? '+' : ''}{formatPercentage(calculation.expectedValue)}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">
+            {calculation.expectedValue > 0 ? 'Positive EV' : 'Negative EV'}
+          </p>
         </div>
         
-        <div class="grid grid-cols-3 gap-4">
-          <div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Stake Amount</p>
-            <p class="text-xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(getRecommendedStake())}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">% of Bankroll</p>
-            <p class="text-xl font-bold text-slate-900 dark:text-white">
-              {formatPercentage(getRecommendedStake() / bankroll)}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Potential Return</p>
-            <p class="text-xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(getRecommendedStake() * bookmakerOdds)}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Kelly Values -->
-      <div class="grid grid-cols-3 gap-3">
-        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Full Kelly</p>
-          <p class="text-lg font-bold text-slate-900 dark:text-white">
-            {formatPercentage(calculation.fullKelly)}
+        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Potential Return</p>
+          <p class="text-2xl font-bold text-blue-600">
+            {formatCurrency(getRecommendedStake() * bookmakerOdds)}
           </p>
-        </div>
-        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Half Kelly</p>
-          <p class="text-lg font-bold text-slate-900 dark:text-white">
-            {formatPercentage(calculation.halfKelly)}
-          </p>
-        </div>
-        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Quarter Kelly</p>
-          <p class="text-lg font-bold text-slate-900 dark:text-white">
-            {formatPercentage(calculation.quarterKelly)}
+          <p class="text-xs text-slate-500 mt-1">
+            Profit: {formatCurrency(getRecommendedStake() * (bookmakerOdds - 1))}
           </p>
         </div>
       </div>
       
-      {#if showAdvanced}
-        <!-- Simulation -->
-        <div class="mt-4">
-          <button
-            on:click={runSimulation}
-            class="btn btn-secondary w-full flex items-center justify-center space-x-2"
-          >
-            <TrendingUp class="w-4 h-4" />
-            <span>Run 1000 Bet Simulation</span>
-          </button>
-          
-          {#if simulationResults}
-            <div class="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg" transition:slide>
-              <h4 class="font-semibold text-slate-900 dark:text-white mb-3">Simulation Results</h4>
-              <div class="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span class="text-slate-600 dark:text-slate-400">Avg Final Bankroll:</span>
-                  <span class="font-medium text-slate-900 dark:text-white ml-2">
-                    {formatCurrency(simulationResults.finalBankroll)}
-                  </span>
-                </div>
-                <div>
-                  <span class="text-slate-600 dark:text-slate-400">Avg Return:</span>
-                  <span class="font-medium {
-                    simulationResults.averageReturn > 0 ? 'text-green-600' : 'text-red-600'
-                  } ml-2">
-                    {simulationResults.averageReturn > 0 ? '+' : ''}{simulationResults.averageReturn}%
-                  </span>
-                </div>
-                <div>
-                  <span class="text-slate-600 dark:text-slate-400">Max Drawdown:</span>
-                  <span class="font-medium text-orange-600 ml-2">
-                    {simulationResults.maxDrawdown}%
-                  </span>
-                </div>
-                <div>
-                  <span class="text-slate-600 dark:text-slate-400">Bust Rate:</span>
-                  <span class="font-medium text-red-600 ml-2">
-                    {simulationResults.bustRate}%
-                  </span>
-                </div>
-              </div>
+      <!-- Warning if edge is negative -->
+      {#if calculation.edge < 0}
+        <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
+          <div class="flex items-start gap-2">
+            <AlertTriangle class="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p class="text-sm font-semibold text-red-800 dark:text-red-200">No Value Detected</p>
+              <p class="text-xs text-red-700 dark:text-red-300">
+                The bookmaker odds don't offer value based on your probability. Consider passing on this bet.
+              </p>
             </div>
-          {/if}
+          </div>
         </div>
       {/if}
+      
+      <!-- Warning if stake exceeds limits -->
+      {#if getRecommendedStake() >= maxStakeAmount}
+        <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+          <div class="flex items-start gap-2">
+            <Shield class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <p class="text-xs text-amber-800 dark:text-amber-200">
+              Stake has been capped at your maximum limit of £{maxStakeAmount}
+            </p>
+          </div>
+        </div>
+      {/if}
+    </div>
+    
+    <!-- Details -->
+    <div class="details grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+        <h4 class="text-sm font-semibold mb-2">Kelly Values</h4>
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Full Kelly:</span>
+            <span class="font-mono">{formatPercentage(calculation.fullKelly)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Half Kelly:</span>
+            <span class="font-mono">{formatPercentage(calculation.halfKelly)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Quarter Kelly:</span>
+            <span class="font-mono">{formatPercentage(calculation.quarterKelly)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+        <h4 class="text-sm font-semibold mb-2">Analysis</h4>
+        <div class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Your Edge:</span>
+            <span class="font-mono {calculation.edge > 0 ? 'text-green-600' : 'text-red-600'}">
+              {calculation.edge > 0 ? '+' : ''}{formatPercentage(calculation.edge)}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Confidence:</span>
+            <span class="font-mono">{(confidenceLevel * 100).toFixed(0)}%</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-600 dark:text-slate-400">Risk Level:</span>
+            <span class="font-mono capitalize">{kellyFraction}</span>
+          </div>
+        </div>
+      </div>
     </div>
   {/if}
 </div>
 
 <style>
-  input[type="range"] {
-    @apply h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer;
+  .kelly-calculator {
+    max-width: 1000px;
   }
   
-  input[type="range"]::-webkit-slider-thumb {
-    @apply appearance-none w-4 h-4 bg-primary rounded-full cursor-pointer;
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
   }
   
-  input[type="range"]::-moz-range-thumb {
-    @apply w-4 h-4 bg-primary rounded-full cursor-pointer border-0;
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1 text-sm;
   }
 </style>

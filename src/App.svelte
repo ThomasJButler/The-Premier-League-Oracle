@@ -15,7 +15,7 @@
   import Help from './components/Help.svelte';
   import TopScorers from './components/TopScorers.svelte';
   import LiveMatches from './components/LiveMatches.svelte';
-  import PlayerProfile from './components/PlayerProfile.svelte';
+  import StandingsTable from './components/StandingsTable.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -144,8 +144,8 @@
           <TopScorers />
         {:else if currentView === 'Live Matches'}
           <LiveMatches />
-        {:else if currentView === 'Player Profile'}
-          <PlayerProfile />
+        {:else if currentView === 'Standings'}
+          <StandingsTable />
         {/if}
       </div>
     </main>
@@ -153,34 +153,6 @@
   
   <!-- Mobile Navigation -->
   <MobileNav {currentView} on:navigate={navigate} />
-  
-  <!-- Floating Action Buttons -->
-  <div class="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
-    <!-- Quick Prediction FAB -->
-    <button 
-      class="fab-button group"
-      on:click={() => navigate(new CustomEvent('navigate', {detail: {view: 'Predictions'}}))}
-      aria-label="Quick Predictions"
-    >
-      <div class="fab-icon">⚡</div>
-      <div class="fab-tooltip">Quick Predictions</div>
-    </button>
-    
-    <!-- AI Assistant FAB -->
-    <button 
-      class="fab-button group"
-      on:click={() => navigate(new CustomEvent('navigate', {detail: {view: 'AI Assistant'}}))}
-      aria-label="AI Assistant"
-    >
-      <div class="fab-icon">🤖</div>
-      <div class="fab-tooltip">AI Assistant</div>
-    </button>
-    
-    <!-- Live Status Indicator -->
-    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
-      <div class="w-3 h-3 bg-white rounded-full live-pulse"></div>
-    </div>
-  </div>
 
   <!-- API Setup Wizard -->
   {#if showApiSetup}
