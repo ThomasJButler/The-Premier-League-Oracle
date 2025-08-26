@@ -211,6 +211,17 @@
 
   onMount(() => {
     loadDashboardData();
+    
+    // Auto-retry if there's an error after 1 second
+    const retryInterval = setInterval(() => {
+      if (error && !loading) {
+        console.log('Auto-retrying dashboard load...');
+        loadDashboardData();
+      }
+    }, 1000);
+    
+    // Clean up interval after component unmounts
+    return () => clearInterval(retryInterval);
 
     const ctx = profitChartCanvas.getContext('2d');
     if (ctx) {

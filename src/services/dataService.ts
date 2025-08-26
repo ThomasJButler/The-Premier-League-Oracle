@@ -1,5 +1,4 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
-import { apiFootball } from './api/apiFootball';
 import { footballDataAPI } from './api/footballData';
 
 interface DataSource {
@@ -7,7 +6,7 @@ interface DataSource {
   available: boolean;
 }
 
-type ApiProvider = 'football-data' | 'api-football';
+type ApiProvider = 'football-data';
 
 class DataService {
   private apiSource: DataSource = { type: 'api', available: false };
@@ -61,13 +60,10 @@ class DataService {
   
   private async checkDataSources(): Promise<void> {
     try {
-      // Check which API provider is configured
-      const savedProvider = localStorage.getItem('api_provider') as ApiProvider;
-      if (savedProvider) {
-        this.currentProvider = savedProvider;
-      }
+      // Always use football-data now
+      this.currentProvider = 'football-data';
       
-      // Get the active API based on provider
+      // Check if API key is available
       const activeApi = this.getActiveApi();
       
       // Check if API key is available
@@ -94,7 +90,7 @@ class DataService {
   
   // Get the currently active API
   private getActiveApi() {
-    return this.currentProvider === 'api-football' ? apiFootball : footballDataAPI;
+    return footballDataAPI;
   }
   
   // Switch API provider
@@ -424,10 +420,10 @@ class DataService {
     // Also clear API keys when clearing cache
     localStorage.removeItem('api_football_key');
     localStorage.removeItem('football_data_api_key');
-    localStorage.removeItem('api_provider');
+    // No need for provider selection anymore
     
     // Clear API keys from the services
-    apiFootball.clearApiKey();
+    // Only football-data API now
     footballDataAPI.clearApiKey();
     
     console.log('Cache and API keys cleared');
