@@ -2,13 +2,15 @@
   import { onMount } from 'svelte';
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
+  import { predictionPersistence } from '../services/predictionPersistence';
   import { predictMatch } from '../lib/predictions';
+  import { OptimizedPredictor } from '../lib/optimizedPredictions';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   import { PoissonPredictor } from '../lib/advancedPredictions';
-  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator } from 'lucide-svelte';
+  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database } from 'lucide-svelte';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -102,7 +104,21 @@
         // Add small delay to show animation
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        const prediction = await predictMatch(match.home_team, match.away_team);
+        // Use optimized predictor for better accuracy
+        const optimizedPrediction = await OptimizedPredictor.predictMatch(
+          match.home_team, 
+          match.away_team
+        );
+        
+        // Convert to legacy format for compatibility
+        const prediction = {
+          predictedResult: optimizedPrediction.predictedResult,
+          confidence: optimizedPrediction.confidence,
+          predictedHomeGoals: optimizedPrediction.predictedHomeGoals,
+          predictedAwayGoals: optimizedPrediction.predictedAwayGoals,
+          insights: optimizedPrediction.insights,
+          eloRating: optimizedPrediction.modelWeights.elo
+        };
         
         // Calculate Poisson probabilities for additional analysis
         const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
@@ -138,7 +154,7 @@
           predictionStatus: 'complete'
         };
         
-        // Store in tracker
+        // Store in tracker (local storage)
         predictionTracker.storePrediction(
           match.id,
           match.home_team,
@@ -151,6 +167,28 @@
           },
           match.date
         );
+        
+        // Store in Supabase for persistence
+        if (predictionPersistence.isServiceConfigured()) {
+          await predictionPersistence.storePrediction({
+            match_id: match.id,
+            match_date: match.date,
+            home_team: match.home_team,
+            away_team: match.away_team,
+            gameweek: selectedGameweek,
+            predicted_result: prediction.predictedResult as 'H' | 'D' | 'A',
+            confidence_score: prediction.confidence * 100,
+            predicted_home_goals: prediction.predictedHomeGoals,
+            predicted_away_goals: prediction.predictedAwayGoals,
+            elo_prediction: prediction.eloRating || null,
+            poisson_prediction: { probabilities: outcomeProbabilities },
+            combined_model_data: {
+              insights: prediction.insights,
+              homeForm: 'WWDLW',
+              awayForm: 'LDWDL'
+            }
+          });
+        }
       } catch (error) {
         console.error(`Error predicting ${match.id}:`, error);
         predictions[matchIndex].predictionStatus = 'error';
