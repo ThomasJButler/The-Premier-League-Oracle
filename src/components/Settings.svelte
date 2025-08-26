@@ -1,12 +1,12 @@
 <script lang="ts">
   import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, WifiOff } from 'lucide-svelte';
-  import { footballDataAPI } from '../services/api/footballData';
+  import { apiFootball } from '../services/api/apiFootball';
   import { dataService } from '../services/dataService';
   import { aiService } from '../services/aiService';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   
-  let footballDataKey = '';
+  let apiFootballKey = '';
   let apiConnected = false;
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
@@ -26,12 +26,12 @@
     testResult = null;
     
     try {
-      const isConnected = await footballDataAPI.testConnection();
+      const isConnected = await apiFootball.testConnection();
       
       if (isConnected) {
         testResult = {
           success: true,
-          message: 'Successfully connected to Football-Data.org API!'
+          message: 'Successfully connected to API-Football!'
         };
         apiConnected = true;
         localStorage.setItem('football_data_api_connected', 'true');
@@ -61,10 +61,10 @@
     }
   }
   
-  function saveFootballDataKey() {
-    if (footballDataKey.trim()) {
-      footballDataAPI.setApiKey(footballDataKey);
-      localStorage.setItem('football_data_api_key', footballDataKey);
+  function saveApiFootballKey() {
+    if (apiFootballKey.trim()) {
+      apiFootball.setApiKey(apiFootballKey);
+      localStorage.setItem('api_football_key', apiFootballKey);
       testAPIConnection();
     }
   }
@@ -131,10 +131,10 @@
   
   onMount(() => {
     // Load saved settings
-    const savedFootballKey = localStorage.getItem('football_data_api_key');
-    if (savedFootballKey) {
-      footballDataKey = savedFootballKey;
-      footballDataAPI.setApiKey(savedFootballKey);
+    const savedApiKey = localStorage.getItem('api_football_key');
+    if (savedApiKey) {
+      apiFootballKey = savedApiKey;
+      apiFootball.setApiKey(savedApiKey);
       testAPIConnection();
     }
     
@@ -179,12 +179,12 @@
     </div>
   </div>
   
-  <!-- Football-Data API Settings -->
+  <!-- API-Football Settings -->
   <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
         <Key class="w-5 h-5 text-primary" />
-        <span>Football-Data.org API</span>
+        <span>API-Football</span>
       </h2>
       {#if apiConnected}
         <span class="flex items-center space-x-1 text-green-600 dark:text-green-400 text-sm">
@@ -207,20 +207,20 @@
         <div class="flex space-x-2">
           <input
             type="password"
-            bind:value={footballDataKey}
-            placeholder="Enter your Football-Data.org API key"
+            bind:value={apiFootballKey}
+            placeholder="Enter your API-Football key"
             class="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           <button
-            on:click={saveFootballDataKey}
-            disabled={!footballDataKey.trim() || testing}
+            on:click={saveApiFootballKey}
+            disabled={!apiFootballKey.trim() || testing}
             class="btn btn-primary disabled:opacity-50"
           >
             Save
           </button>
           <button
             on:click={testAPIConnection}
-            disabled={!footballDataKey.trim() || testing}
+            disabled={!apiFootballKey.trim() || testing}
             class="btn btn-secondary disabled:opacity-50"
           >
             {#if testing}
@@ -231,9 +231,9 @@
           </button>
         </div>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
-          Get your free API key from: 
-          <a href="https://www.football-data.org/client/register" target="_blank" class="text-primary hover:underline">
-            football-data.org/client/register
+          Get your API key from: 
+          <a href="https://www.api-football.com/pricing" target="_blank" class="text-primary hover:underline">
+            api-football.com/pricing
           </a>
         </p>
       </div>
@@ -278,7 +278,7 @@
           <Wifi class="w-6 h-6 mb-2 {dataSource === 'api' ? 'text-primary' : 'text-slate-500'}" />
           <h3 class="font-semibold text-slate-900 dark:text-white">API Mode</h3>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Live data from Football-Data.org
+            Live data from API-Football
           </p>
         </button>
         

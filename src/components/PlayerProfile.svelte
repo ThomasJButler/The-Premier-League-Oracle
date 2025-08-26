@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { User, Calendar, Flag, Hash, Shirt, ArrowLeft } from 'lucide-svelte';
-  import { footballDataAPI, type FDPlayer } from '../services/api/footballData';
+  import { apiFootball, type AFPlayer } from '../services/api/apiFootball';
   import { fade, fly } from 'svelte/transition';
   
   export let playerId: number | null = null;
   
-  let player: FDPlayer | null = null;
+  let player: AFPlayer | null = null;
   let loading = false;
   let error = '';
   let searchId = '';
@@ -21,7 +21,7 @@
     try {
       loading = true;
       error = '';
-      player = await footballDataAPI.getPlayer(id);
+      player = await apiFootball.getPlayer(id);
       
       if (!player) {
         error = 'Player not found';

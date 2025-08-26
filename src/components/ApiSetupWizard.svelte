@@ -28,18 +28,13 @@
     console.log('🔑 Testing API key...', { keyLength: apiKey.trim().length });
     
     try {
-      // Test the API key - use proxy in development to avoid CORS
-      const isDevelopment = import.meta.env.DEV;
-      const apiUrl = isDevelopment 
-        ? '/api/football-data/competitions/2021'
-        : 'https://api.football-data.org/v4/competitions/2021';
-      
-      const response = await fetch(apiUrl, {
+      // Test the API key with API-Football
+      const response = await fetch('https://v3.football.api-sports.io/status', {
         headers: {
-          'X-Auth-Token': apiKey.trim()
+          'x-rapidapi-key': apiKey.trim(),
+          'x-rapidapi-host': 'v3.football.api-sports.io'
         },
-        mode: 'cors',
-        credentials: 'same-origin'
+        mode: 'cors'
       });
       
       console.log('📡 API Response:', { 
@@ -49,9 +44,14 @@
       });
       
       if (response.ok) {
-        validationSuccess = true;
-        // Save to localStorage
-        localStorage.setItem('football_data_api_key', apiKey.trim());
+        const data = await response.json();
+        if (data.response?.account) {
+          validationSuccess = true;
+          // Save to localStorage
+          localStorage.setItem('api_football_key', apiKey.trim());
+        } else {
+          validationError = 'Invalid API response. Please check your API key.';
+        }
         
         // Move to final step
         currentStep = 4;
@@ -64,16 +64,12 @@
             window.location.reload();
           }, 500);
         }, 2000);
-      } else if (response.status === 401) {
-        validationError = 'Invalid API key. Please check that you copied it correctly from Football-Data.org.';
-      } else if (response.status === 403) {
-        validationError = 'API key valid but rate limited. Please wait a moment and try again.';
+      } else if (response.status === 401 || response.status === 403) {
+        validationError = 'Invalid API key. Please check that you copied it correctly from API-Football.';
       } else if (response.status === 429) {
-        validationError = 'Too many requests. Please wait a moment and try again.';
+        validationError = 'Rate limit exceeded. Please wait a moment and try again.';
       } else {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        validationError = `API error (${response.status}): ${response.statusText}. Please try again.`;
+        validationError = `API error (${response.status}). Please try again.`;
       }
     } catch (error) {
       console.error('Network error:', error);
@@ -210,7 +206,7 @@
                 Direct API Calls
               </h4>
               <p class="text-xs text-slate-600 dark:text-slate-400">
-                All data comes directly from Football-Data.org API, bypassing our servers.
+                All data comes directly from API-Football, bypassing our servers.
               </p>
             </div>
             
@@ -231,7 +227,7 @@
               <div>
                 <p class="text-xs text-blue-800 dark:text-blue-200">
                   <strong>Important:</strong> This application is for research and educational purposes only. 
-                  Please use responsibly and in accordance with Football-Data.org's terms of service.
+                  Please use responsibly and in accordance with API-Football's terms of service.
                 </p>
               </div>
             </div>
@@ -246,13 +242,13 @@
               <Key class="w-8 h-8 text-blue-600" />
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
-            <p class="text-slate-600 dark:text-slate-300">Enter your Football-Data.org API key to get started</p>
+            <p class="text-slate-600 dark:text-slate-300">Enter your API-Football key to get started</p>
           </div>
           
           <div class="space-y-4">
             <div>
               <label for="apiKey" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Football-Data.org API Key
+                API-Football Key
               </label>
               <input
                 id="apiKey"
@@ -289,10 +285,10 @@
                     <strong>Don't have an API key?</strong>
                   </p>
                   <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                    Get a free API key from Football-Data.org. The free tier includes 10 requests per minute.
+                    Get an API key from API-Football. The free tier includes 100 requests per day.
                   </p>
                   <a 
-                    href="https://www.football-data.org/client/register" 
+                    href="https://www.api-football.com/pricing" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200"

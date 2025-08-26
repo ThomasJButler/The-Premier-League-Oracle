@@ -1,5 +1,5 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
-import { footballDataAPI } from './api/footballData';
+import { apiFootball } from './api/apiFootball';
 
 interface DataSource {
   type: 'api';
@@ -58,14 +58,14 @@ class DataService {
   private async checkDataSources(): Promise<void> {
     try {
       // First check if API key is available
-      if (!footballDataAPI.hasApiKey()) {
+      if (!apiFootball.hasApiKey()) {
         console.log('⏳ Football-Data API: No API key available, marking as unavailable');
         this.apiSource.available = false;
         return;
       }
       
       // Test API availability with the key
-      const season = await footballDataAPI.getCurrentSeason();
+      const season = await apiFootball.getCurrentSeason();
       this.apiSource.available = season !== null;
       
       if (this.apiSource.available) {
@@ -141,7 +141,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const season = await footballDataAPI.getCurrentSeason();
+        const season = await apiFootball.getCurrentSeason();
         if (season) {
           await this.setCachedData('teamStats', cacheKey, season);
           return season;
@@ -173,13 +173,13 @@ class DataService {
         let matches: Match[] = [];
         
         if (upcoming) {
-          matches = await footballDataAPI.getUpcomingMatches(days);
+          matches = await apiFootball.getUpcomingMatches(days);
         } else if (recent) {
-          matches = await footballDataAPI.getRecentMatches(days);
+          matches = await apiFootball.getRecentMatches(days);
         } else if (matchday) {
-          matches = await footballDataAPI.getMatchesByMatchday(matchday);
+          matches = await apiFootball.getMatchesByMatchday(matchday);
         } else {
-          matches = await footballDataAPI.getAllMatches();
+          matches = await apiFootball.getAllMatches();
         }
         
         if (matches.length > 0) {
@@ -192,7 +192,7 @@ class DataService {
     }
     
     // Provide helpful error message based on the situation
-    if (!footballDataAPI.hasApiKey()) {
+    if (!apiFootball.hasApiKey()) {
       throw new Error('API key required. Please set up your Football-Data.org API key in Settings or through the setup wizard.');
     } else {
       throw new Error('Unable to fetch matches. Please check your internet connection and API key validity.');
@@ -213,7 +213,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const standings = await footballDataAPI.getStandings();
+        const standings = await apiFootball.getStandings();
         if (standings && standings.length > 0) {
           await this.setCachedData('standings', cacheKey, standings);
           return standings;
@@ -236,7 +236,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const teamStats = await footballDataAPI.getTeamStats(teamName);
+        const teamStats = await apiFootball.getTeamStats(teamName);
         if (teamStats) {
           // Transform Football API stats to our TeamStats format
           const stats: TeamStats = {
@@ -288,7 +288,7 @@ class DataService {
     // Get from API
     if (this.apiSource.available) {
       try {
-        const teamForm = await footballDataAPI.getTeamForm(teamName, matches);
+        const teamForm = await apiFootball.getTeamForm(teamName, matches);
         if (teamForm) {
           await this.setCachedData('teamStats', cacheKey, teamForm);
           return teamForm;
@@ -313,7 +313,7 @@ class DataService {
     // Get current season from API
     if (this.apiSource.available) {
       try {
-        const currentSeason = await footballDataAPI.getCurrentSeason();
+        const currentSeason = await apiFootball.getCurrentSeason();
         if (currentSeason) {
           const seasons = [currentSeason];
           await this.setCachedData('matches', cacheKey, seasons);

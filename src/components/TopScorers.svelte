@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Trophy, Target, User, Flag } from 'lucide-svelte';
-  import { footballDataAPI, type FDScorer } from '../services/api/footballData';
+  import { apiFootball, type AFScorer } from '../services/api/apiFootball';
   import { fade, fly } from 'svelte/transition';
   
-  let scorers: FDScorer[] = [];
+  let scorers: AFScorer[] = [];
   let loading = true;
   let error = '';
   
@@ -16,7 +16,7 @@
     try {
       loading = true;
       error = '';
-      scorers = await footballDataAPI.getTopScorers(20);
+      scorers = await apiFootball.getTopScorers(20);
     } catch (err) {
       error = 'Failed to load top scorers. Please try again later.';
       console.error('Error loading top scorers:', err);

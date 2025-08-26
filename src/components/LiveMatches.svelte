@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { Activity, Clock, AlertCircle, Tv } from 'lucide-svelte';
-  import { footballDataAPI } from '../services/api/footballData';
+  import { apiFootball } from '../services/api/apiFootball';
   import type { Match } from '../types';
   import { fade, scale } from 'svelte/transition';
   
@@ -26,7 +26,7 @@
   async function loadLiveMatches() {
     try {
       error = '';
-      const matches = await footballDataAPI.getLiveMatches();
+      const matches = await apiFootball.getLiveMatches();
       liveMatches = matches;
       lastRefresh = new Date();
     } catch (err) {

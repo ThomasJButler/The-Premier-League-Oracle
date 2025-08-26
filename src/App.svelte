@@ -53,7 +53,7 @@
   });
 
   function checkApiKey() {
-    const apiKey = localStorage.getItem('football_data_api_key');
+    const apiKey = localStorage.getItem('api_football_key');
     hasApiKey = !!apiKey;
     
     // Show setup wizard if no API key found
@@ -68,10 +68,10 @@
     
     // Refresh data services with new API key
     const { dataService } = await import('./services/dataService');
-    const { footballDataAPI } = await import('./services/api/footballData');
+    const { apiFootball } = await import('./services/api/apiFootball');
     
     // Set the API key in the Football Data API
-    footballDataAPI.setApiKey(event.detail.apiKey);
+    apiFootball.setApiKey(event.detail.apiKey);
     
     // Refresh data source availability
     await dataService.refreshDataSources();

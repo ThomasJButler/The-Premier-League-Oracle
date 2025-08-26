@@ -1,6 +1,6 @@
 // import { supabase } from '../lib/supabase'; // Removed Supabase dependency
 import { dataService } from './dataService';
-import { footballDataAPI } from './api/footballData';
+import { apiFootball } from './api/apiFootball';
 import { PoissonPredictor } from '../lib/advancedPredictions';
 
 interface AIMessage {
@@ -127,7 +127,7 @@ ${awayWinBar}
       // Get standings (from API if available)
       let standings: any[] = [];
       if (isUsingAPI) {
-        standings = await footballDataAPI.getStandings();
+        standings = await apiFootball.getStandings();
       } else {
         // No fallback available - API only
         standings = [];
