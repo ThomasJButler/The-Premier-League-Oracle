@@ -10,7 +10,9 @@
   import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   import { PoissonPredictor } from '../lib/advancedPredictions';
-  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database } from 'lucide-svelte';
+  import { BetBuilderPredictor } from '../lib/betBuilder';
+  import type { BetBuilderPrediction } from '../lib/betBuilder';
+  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database, Package } from 'lucide-svelte';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -24,6 +26,7 @@
       poissonProbs: { homeWin: number; draw: number; awayWin: number };
       recommendedStake: number;
     };
+    betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
   }> = [];
   let accuracy = { total: 0, correct: 0, accuracy: 0 };
@@ -57,11 +60,74 @@
       const endIdx = startIdx + 10;
       const gameweekMatches = allMatches.slice(startIdx, endIdx);
       
+      // Filter to only show future matches (after current date/time)
+      const now = new Date();
+      const futureMatches = gameweekMatches.filter(match => {
+        const matchDate = new Date(match.date);
+        return matchDate > now || !match.result; // Show future matches or matches without results
+      });
+      
+      // If no future matches in this gameweek, show a message
+      if (futureMatches.length === 0 && gameweekMatches.length > 0) {
+        error = 'All matches in this gameweek have already been played. Please select a future gameweek.';
+        loading = false;
+        return;
+      }
+      
       // Initialize matches with pending status
-      predictions = gameweekMatches.map(match => ({
+      predictions = futureMatches.map(match => ({
         ...match,
         predictionStatus: 'pending' as const
       }));
+      
+      // Load existing predictions from Supabase
+      if (predictionPersistence.isServiceConfigured()) {
+        const existingPredictions = await predictionPersistence.getGameweekPredictions(gameweek);
+        
+        // Map existing predictions to matches
+        if (existingPredictions && existingPredictions.length > 0) {
+          predictions = predictions.map(match => {
+            const storedPred = existingPredictions.find(p => p.match_id === match.id);
+            
+            if (storedPred) {
+              // Reconstruct the prediction data from stored prediction
+              const poissonProbs = storedPred.poisson_prediction?.probabilities || {
+                homeWin: 0.33,
+                draw: 0.33,
+                awayWin: 0.34
+              };
+              
+              return {
+                ...match,
+                prediction: {
+                  predicted_result: storedPred.predicted_result,
+                  confidence_score: storedPred.confidence_score / 100, // Convert back to 0-1 scale
+                  predicted_home_goals: storedPred.predicted_home_goals || 0,
+                  predicted_away_goals: storedPred.predicted_away_goals || 0,
+                  was_correct: storedPred.was_correct || false,
+                  prediction_date: storedPred.created_at || new Date().toISOString(),
+                  created_at: storedPred.created_at || new Date().toISOString(),
+                  id: storedPred.id || `pred_${match.id}`,
+                  match_id: match.id
+                },
+                detailedAnalysis: {
+                  predictedScore: `${storedPred.predicted_home_goals || 0}-${storedPred.predicted_away_goals || 0}`,
+                  keyFactors: storedPred.combined_model_data?.insights || [],
+                  confidence: storedPred.confidence_score,
+                  homeForm: storedPred.combined_model_data?.homeForm || 'N/A',
+                  awayForm: storedPred.combined_model_data?.awayForm || 'N/A',
+                  h2hRecord: storedPred.combined_model_data?.insights?.find(i => i.includes('H2H')) || 'No H2H data',
+                  poissonProbs: poissonProbs,
+                  recommendedStake: Math.max(0, (storedPred.confidence_score / 100 - 0.6) * 10)
+                },
+                predictionStatus: 'complete' as const
+              };
+            }
+            
+            return match;
+          });
+        }
+      }
       
       // Get accuracy stats
       const currentAccuracy = await dataService.getPredictionAccuracy('2025-2026');
@@ -128,6 +194,13 @@
         );
         const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
         
+        // Generate bet builder predictions
+        const betBuilder = await BetBuilderPredictor.generateBetBuilder(
+          match.home_team,
+          match.away_team,
+          match.id
+        );
+        
         predictions[matchIndex] = {
           ...match,
           prediction: {
@@ -151,6 +224,7 @@
             poissonProbs: outcomeProbabilities,
             recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
           },
+          betBuilder: betBuilder,
           predictionStatus: 'complete'
         };
         
@@ -383,13 +457,19 @@
                 </div>
               {/if}
 
-              <button 
-                on:click={() => toggleCard(prediction.id)}
-                class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
-              >
-                <Calculator class="w-4 h-4" />
-                Tap for Analysis
-              </button>
+              {#if prediction.prediction && prediction.detailedAnalysis}
+                <button 
+                  on:click={() => toggleCard(prediction.id)}
+                  class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
+                >
+                  <Calculator class="w-4 h-4" />
+                  Tap for Analysis
+                </button>
+              {:else}
+                <div class="w-full text-center text-sm text-slate-500 dark:text-slate-400 mt-3 py-2">
+                  Click "Predict Gameweek" to generate analysis
+                </div>
+              {/if}
             </div>
 
             <!-- Back of Card -->
@@ -465,6 +545,89 @@
                       </div>
                     </div>
                   {/if}
+                  
+                  <!-- Bet Builder Section -->
+                  {#if prediction.betBuilder}
+                    <div class="mt-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                      <div class="flex items-center gap-2 mb-3">
+                        <Package class="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <span class="font-semibold text-purple-800 dark:text-purple-200">Bet Builder Markets</span>
+                      </div>
+                      
+                      <!-- Quick Markets Grid -->
+                      <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                          <span class="text-slate-600 dark:text-slate-400">BTTS:</span>
+                          <span class="font-bold ml-1 {prediction.betBuilder.bothTeamsToScore.prediction ? 'text-green-600' : 'text-red-600'}">
+                            {prediction.betBuilder.bothTeamsToScore.prediction ? 'Yes' : 'No'}
+                            ({(prediction.betBuilder.bothTeamsToScore.prediction ? 
+                              prediction.betBuilder.bothTeamsToScore.yesProb : 
+                              prediction.betBuilder.bothTeamsToScore.noProb * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                          <span class="text-slate-600 dark:text-slate-400">O/U 2.5:</span>
+                          <span class="font-bold ml-1 {prediction.betBuilder.totalGoals.over25.prediction ? 'text-green-600' : 'text-red-600'}">
+                            {prediction.betBuilder.totalGoals.over25.prediction ? 'Over' : 'Under'}
+                            ({(prediction.betBuilder.totalGoals.over25.probability * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                          <span class="text-slate-600 dark:text-slate-400">Corners:</span>
+                          <span class="font-bold ml-1">
+                            O{prediction.betBuilder.corners.totalOver95.prediction ? '9.5' : '8.5'}
+                          </span>
+                        </div>
+                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
+                          <span class="text-slate-600 dark:text-slate-400">Cards:</span>
+                          <span class="font-bold ml-1">
+                            O{prediction.betBuilder.cards.totalOver35.prediction ? '3.5' : '2.5'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Suggested Combos -->
+                      {#if prediction.betBuilder.suggestedCombos.length > 0}
+                        <div class="mt-2">
+                          <div class="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">
+                            Suggested Builders:
+                          </div>
+                          {#each prediction.betBuilder.suggestedCombos.slice(0, 2) as combo}
+                            <div class="bg-white/40 dark:bg-slate-800/40 rounded p-2 mb-1">
+                              <div class="flex justify-between items-start mb-1">
+                                <span class="text-xs font-bold text-purple-700 dark:text-purple-300">
+                                  {combo.name}
+                                </span>
+                                <span class="text-xs font-mono bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-1 rounded">
+                                  @{combo.combinedOdds.toFixed(2)}
+                                </span>
+                              </div>
+                              <div class="text-xs text-slate-600 dark:text-slate-400">
+                                {combo.selections.join(' + ')}
+                              </div>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <div class="h-full flex flex-col items-center justify-center text-center p-6">
+                  <div class="mb-4">
+                    <Calculator class="w-16 h-16 text-slate-400 dark:text-slate-600" />
+                  </div>
+                  <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    No Prediction Available
+                  </h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    Click the "Predict Gameweek" button to generate predictions and analysis for this match.
+                  </p>
+                  <button 
+                    on:click={() => toggleCard(prediction.id)}
+                    class="btn btn-outline btn-sm">
+                    Go Back
+                  </button>
                 </div>
               {/if}
             </div>

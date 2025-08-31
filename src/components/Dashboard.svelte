@@ -63,6 +63,17 @@
     formAnalysis: true,
     homeAdvantage: true
   };
+  
+  // Current date and time
+  let currentDateTime = new Date();
+  let formattedDate = '';
+  let formattedTime = '';
+  
+  function updateDateTime() {
+    currentDateTime = new Date();
+    formattedDate = format(currentDateTime, 'EEEE, dd MMMM yyyy');
+    formattedTime = format(currentDateTime, 'HH:mm:ss');
+  }
 
   let profitChartCanvas: HTMLCanvasElement;
 
@@ -213,16 +224,25 @@
   onMount(() => {
     loadDashboardData();
     
+    // Initialize date/time
+    updateDateTime();
+    
+    // Update time every second
+    const timeInterval = setInterval(updateDateTime, 1000);
+    
     // Auto-retry if there's an error after 1 second
     const retryInterval = setInterval(() => {
       if (error && !loading) {
         // Auto-retrying dashboard load
         loadDashboardData();
       }
-    }, 1000);
+    }, 5000); // Changed to 5 seconds to avoid too frequent retries
     
-    // Clean up interval after component unmounts
-    return () => clearInterval(retryInterval);
+    // Clean up intervals after component unmounts
+    return () => {
+      clearInterval(timeInterval);
+      clearInterval(retryInterval);
+    };
 
     const ctx = profitChartCanvas.getContext('2d');
     if (ctx) {
@@ -289,6 +309,9 @@
           <div class="flex items-center gap-3 mb-3">
             <div class="w-3 h-3 bg-green-400 rounded-full live-pulse"></div>
             <span class="text-green-200 text-sm font-semibold tracking-wide uppercase">LIVE PREDICTIONS</span>
+            <span class="text-blue-200 text-sm ml-auto">
+              {formattedDate} • {formattedTime}
+            </span>
           </div>
           <h1 class="text-4xl md:text-5xl font-black mb-3 text-transparent bg-gradient-to-r from-white to-blue-100 bg-clip-text">
             Premier League Oracle

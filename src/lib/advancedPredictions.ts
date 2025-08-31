@@ -64,11 +64,120 @@ export class PoissonPredictor {
 export class EloRatingSystem {
   private static readonly K_FACTOR = 32; // Sensitivity of rating changes
   private static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
+  private static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
+  
+  private teamRatings: Map<string, number> = new Map();
+  
+  constructor() {
+    this.initializeRatings();
+  }
+  
+  private initializeRatings() {
+    // Initialize Premier League teams with base ratings
+    const teams = [
+      { name: 'Manchester City', rating: 1850 },
+      { name: 'Arsenal', rating: 1800 },
+      { name: 'Liverpool', rating: 1780 },
+      { name: 'Manchester United', rating: 1700 },
+      { name: 'Chelsea', rating: 1680 },
+      { name: 'Tottenham Hotspur', rating: 1650 },
+      { name: 'Newcastle United', rating: 1620 },
+      { name: 'Brighton & Hove Albion', rating: 1580 },
+      { name: 'Aston Villa', rating: 1560 },
+      { name: 'West Ham United', rating: 1540 },
+      { name: 'Brentford', rating: 1520 },
+      { name: 'Fulham', rating: 1500 },
+      { name: 'Crystal Palace', rating: 1480 },
+      { name: 'Wolverhampton Wanderers', rating: 1460 },
+      { name: 'Everton', rating: 1440 },
+      { name: 'Nottingham Forest', rating: 1420 },
+      { name: 'AFC Bournemouth', rating: 1400 },
+      { name: 'Leicester City', rating: 1380 },
+      { name: 'Leeds United', rating: 1360 },
+      { name: 'Southampton', rating: 1340 },
+      { name: 'Ipswich Town', rating: 1320 },
+      { name: 'Sunderland AFC', rating: 1310 },
+      { name: 'Luton Town', rating: 1300 },
+      // Add variations for common name differences
+      { name: 'Man City', rating: 1850 },
+      { name: 'Man United', rating: 1700 },
+      { name: 'Man Utd', rating: 1700 },
+      { name: 'Spurs', rating: 1650 },
+      { name: 'Tottenham', rating: 1650 },
+      { name: 'Newcastle', rating: 1620 },
+      { name: 'Brighton', rating: 1580 },
+      { name: 'West Ham', rating: 1540 },
+      { name: 'Wolves', rating: 1460 },
+      { name: 'Nottm Forest', rating: 1420 },
+      { name: 'Bournemouth', rating: 1400 },
+      { name: 'Leicester', rating: 1380 },
+      { name: 'Leeds', rating: 1360 },
+      { name: 'Ipswich', rating: 1320 },
+      { name: 'Sunderland', rating: 1310 },
+      { name: 'Luton', rating: 1300 }
+    ];
+    
+    teams.forEach(team => {
+      this.teamRatings.set(team.name, team.rating);
+    });
+  }
+  
+  getTeamRating(teamName: string): number {
+    // Try exact match first
+    if (this.teamRatings.has(teamName)) {
+      return this.teamRatings.get(teamName)!;
+    }
+    
+    // Try partial match
+    for (const [name, rating] of this.teamRatings) {
+      if (name.toLowerCase().includes(teamName.toLowerCase()) || 
+          teamName.toLowerCase().includes(name.toLowerCase())) {
+        return rating;
+      }
+    }
+    
+    // Return default rating if team not found
+    return EloRatingSystem.DEFAULT_RATING;
+  }
+  
+  calculateWinProbability(homeRating: number, awayRating: number): number {
+    return 1 / (1 + Math.pow(10, (awayRating - homeRating) / 400));
+  }
 
   static calculateExpectedScore(ratingA: number, ratingB: number): number {
     return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   }
 
+  updateRatings(
+    homeTeam: string,
+    awayTeam: string,
+    actualResult: 'H' | 'D' | 'A'
+  ): { newHomeRating: number; newAwayRating: number } {
+    const homeRating = this.getTeamRating(homeTeam);
+    const awayRating = this.getTeamRating(awayTeam);
+    
+    // Add home advantage
+    const adjustedHomeRating = homeRating + EloRatingSystem.HOME_ADVANTAGE;
+    
+    // Calculate expected scores
+    const expectedHome = EloRatingSystem.calculateExpectedScore(adjustedHomeRating, awayRating);
+    const expectedAway = 1 - expectedHome;
+
+    // Actual scores
+    const actualHome = actualResult === 'H' ? 1 : actualResult === 'D' ? 0.5 : 0;
+    const actualAway = actualResult === 'A' ? 1 : actualResult === 'D' ? 0.5 : 0;
+
+    // Update ratings
+    const newHomeRating = homeRating + EloRatingSystem.K_FACTOR * (actualHome - expectedHome);
+    const newAwayRating = awayRating + EloRatingSystem.K_FACTOR * (actualAway - expectedAway);
+    
+    // Store updated ratings
+    this.teamRatings.set(homeTeam, newHomeRating);
+    this.teamRatings.set(awayTeam, newAwayRating);
+
+    return { newHomeRating, newAwayRating };
+  }
+  
   static updateRatings(
     homeRating: number,
     awayRating: number,
