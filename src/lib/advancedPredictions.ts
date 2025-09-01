@@ -122,6 +122,10 @@ export class EloRatingSystem {
     });
   }
   
+  setTeamRating(teamName: string, rating: number): void {
+    this.teamRatings.set(teamName, rating);
+  }
+  
   getTeamRating(teamName: string): number {
     // Try exact match first
     if (this.teamRatings.has(teamName)) {

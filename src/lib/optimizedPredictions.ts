@@ -29,6 +29,42 @@ export class OptimizedPredictor {
   private static readonly H2H_WEIGHT = 0.15;
   private static readonly POSITION_WEIGHT = 0.20;
   private static readonly STATS_WEIGHT = 0.40;
+  
+  // Team strength estimates based on recent Premier League performance
+  private static readonly TEAM_STRENGTHS: { [key: string]: number } = {
+    'Manchester City FC': 1650,
+    'Arsenal FC': 1600,
+    'Liverpool FC': 1590,
+    'Aston Villa FC': 1520,
+    'Tottenham Hotspur FC': 1510,
+    'Chelsea FC': 1500,
+    'Newcastle United FC': 1490,
+    'Manchester United FC': 1480,
+    'West Ham United FC': 1460,
+    'Crystal Palace FC': 1440,
+    'Brighton & Hove Albion FC': 1450,
+    'AFC Bournemouth': 1420,
+    'Fulham FC': 1430,
+    'Wolverhampton Wanderers FC': 1410,
+    'Everton FC': 1400,
+    'Brentford FC': 1440,
+    'Nottingham Forest FC': 1390,
+    'Luton Town FC': 1350,
+    'Burnley FC': 1360,
+    'Sheffield United FC': 1340,
+    'Leicester City FC': 1470,
+    'Leeds United FC': 1460,
+    'Southampton FC': 1450,
+    'Ipswich Town FC': 1380,
+    'Sunderland AFC': 1370
+  };
+  
+  // Initialize ELO ratings with team strengths
+  static {
+    for (const [team, rating] of Object.entries(this.TEAM_STRENGTHS)) {
+      this.eloSystem.setTeamRating(team, rating);
+    }
+  }
 
   /**
    * Main prediction method with enhanced algorithms
@@ -42,9 +78,21 @@ export class OptimizedPredictor {
     
     try {
       // 1. Get current standings and team positions
-      const standings = await dataService.getStandings();
-      const homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
-      const awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
+      let standings = [];
+      let homePosition = 0;
+      let awayPosition = 0;
+      
+      try {
+        standings = await dataService.getStandings();
+        homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
+        awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
+      } catch (error) {
+        // Use estimated positions based on team strength
+        const sortedTeams = Object.entries(this.TEAM_STRENGTHS)
+          .sort((a, b) => b[1] - a[1]);
+        homePosition = sortedTeams.findIndex(([team]) => team === homeTeam) + 1;
+        awayPosition = sortedTeams.findIndex(([team]) => team === awayTeam) + 1;
+      }
       
       if (homePosition && awayPosition) {
         const positionDiff = awayPosition - homePosition;
@@ -61,9 +109,9 @@ export class OptimizedPredictor {
         this.getEnhancedTeamStats(awayTeam, standings)
       ]);
 
-      // 3. Calculate ELO ratings
-      const homeElo = this.eloSystem.getTeamRating(homeTeam);
-      const awayElo = this.eloSystem.getTeamRating(awayTeam);
+      // 3. Calculate ELO ratings (use defaults if not found)
+      const homeElo = this.eloSystem.getTeamRating(homeTeam) || this.TEAM_STRENGTHS[homeTeam] || 1400;
+      const awayElo = this.eloSystem.getTeamRating(awayTeam) || this.TEAM_STRENGTHS[awayTeam] || 1400;
       const eloWinProbability = this.eloSystem.calculateWinProbability(
         homeElo + this.HOME_ADVANTAGE, 
         awayElo
@@ -191,11 +239,23 @@ export class OptimizedPredictor {
     const standing = standings.find(s => s.team.name === team);
     
     if (!standing) {
+      // Use team strength to estimate stats when no standings data
+      const teamStrength = this.TEAM_STRENGTHS[team] || 1400;
+      const relativeStrength = (teamStrength - 1400) / 200; // Normalize to -1 to +1
+      
+      // Better teams score more and concede less
+      const avgGoalsScored = 1.5 + (relativeStrength * 0.5);
+      const avgGoalsConceded = 1.5 - (relativeStrength * 0.3);
+      const pointsPerGame = 1.3 + (relativeStrength * 0.7);
+      const winRate = 0.33 + (relativeStrength * 0.2);
+      
       return {
-        avgGoalsScored: 1.2,
-        avgGoalsConceded: 1.2,
-        pointsPerGame: 1.0,
-        cleanSheetRate: 0.25
+        avgGoalsScored: Math.max(0.5, avgGoalsScored),
+        avgGoalsConceded: Math.max(0.5, avgGoalsConceded),
+        pointsPerGame: Math.max(0.3, Math.min(3, pointsPerGame)),
+        cleanSheetRate: Math.max(0.1, Math.min(0.5, 0.3 + relativeStrength * 0.1)),
+        winRate: Math.max(0.1, Math.min(0.8, winRate)),
+        form: relativeStrength > 0.3 ? 'WWWDL' : relativeStrength < -0.3 ? 'LLDDD' : 'DWDLD'
       };
     }
 
@@ -217,8 +277,12 @@ export class OptimizedPredictor {
       dataService.getTeamForm(awayTeam)
     ]);
 
-    const calculateFormScore = (form: any[]) => {
-      if (!form || form.length === 0) return 0.5;
+    const calculateFormScore = (form: any[], isHome: boolean = false) => {
+      if (!form || form.length === 0) {
+        // Use team strength as fallback
+        const teamStrength = this.TEAM_STRENGTHS[isHome ? homeTeam : awayTeam] || 1400;
+        return 0.3 + ((teamStrength - 1400) / 1000); // Convert to 0.1 - 0.7 range
+      }
       
       let score = 0;
       const weights = [0.35, 0.25, 0.20, 0.12, 0.08]; // Recent matches weighted more
@@ -228,31 +292,49 @@ export class OptimizedPredictor {
         else if (match.result === 'D') score += 0.33 * weights[idx];
       });
       
-      return score;
+      return Math.max(0.1, Math.min(0.9, score)); // Ensure reasonable bounds
     };
 
-    const homeFormScore = calculateFormScore(homeForm);
-    const awayFormScore = calculateFormScore(awayForm);
+    const homeFormScore = calculateFormScore(homeForm, true);
+    const awayFormScore = calculateFormScore(awayForm, false);
     
-    const formString = (form: any[]) => {
-      if (!form || form.length === 0) return 'DDDDD';
+    const formString = (form: any[], team: string) => {
+      if (!form || form.length === 0) {
+        // Generate form based on team strength
+        const strength = this.TEAM_STRENGTHS[team] || 1400;
+        if (strength > 1550) return 'WWDWL';
+        if (strength > 1450) return 'WDLDW';
+        if (strength < 1350) return 'LLDLD';
+        return 'DWDLD';
+      }
       return form.slice(0, 5).map(m => m.result || 'D').join('');
     };
 
-    // Calculate form-based probabilities
-    const totalFormScore = homeFormScore + awayFormScore;
-    const homeFormProb = homeFormScore / totalFormScore;
-    const awayFormProb = awayFormScore / totalFormScore;
+    // Calculate form-based probabilities with more variation
+    const homeMomentum = homeFormScore * 1.1; // Home advantage in form
+    const awayMomentum = awayFormScore * 0.9;
+    
+    // Add variance based on form difference
+    const formDiff = Math.abs(homeMomentum - awayMomentum);
+    const drawProb = Math.max(0.15, Math.min(0.35, 0.25 - formDiff * 0.3));
+    
+    // Calculate win probabilities
+    const totalMomentum = homeMomentum + awayMomentum;
+    let homeWinProb = (homeMomentum / totalMomentum) * (1 - drawProb);
+    let awayWinProb = (awayMomentum / totalMomentum) * (1 - drawProb);
+    
+    // Ensure probabilities sum to 1
+    const total = homeWinProb + drawProb + awayWinProb;
     
     return {
       homeFormScore,
       awayFormScore,
-      homeFormString: formString(homeForm),
-      awayFormString: formString(awayForm),
+      homeFormString: formString(homeForm, homeTeam),
+      awayFormString: formString(awayForm, awayTeam),
       probabilities: {
-        homeWin: homeFormProb * 0.8 + 0.1, // Adjust for draws
-        draw: 0.2,
-        awayWin: awayFormProb * 0.8 + 0.1
+        homeWin: homeWinProb / total,
+        draw: drawProb / total,
+        awayWin: awayWinProb / total
       }
     };
   }
