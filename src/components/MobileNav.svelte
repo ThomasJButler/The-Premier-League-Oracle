@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart3, History } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart3, Trophy, HelpCircle } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let currentView: string;
@@ -10,7 +10,8 @@
     { name: 'Dashboard', icon: LayoutDashboard, view: 'Dashboard' },
     { name: 'Matches', icon: List, view: 'Matches' },
     { name: 'Predictions', icon: BarChart3, view: 'Predictions' },
-    { name: 'History', icon: History, view: 'Betting History' },
+    { name: 'Scorers', icon: Trophy, view: 'Top Scorers' },
+    { name: 'Help', icon: HelpCircle, view: 'Help' },
   ];
 
   function handleNavClick(view: string) {

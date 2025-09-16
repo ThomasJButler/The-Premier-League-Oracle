@@ -6,15 +6,35 @@
   import MatchList from './components/MatchList.svelte';
   import Predictions from './components/Predictions.svelte';
   import BettingHistory from './components/BettingHistory.svelte';
-  import AiAssistant from './components/AiAssistant.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
+  import KellyCalculator from './components/betting/KellyCalculator.svelte';
+  import ValueBets from './components/betting/ValueBets.svelte';
+  import Settings from './components/Settings.svelte';
+  import ApiSetupWizard from './components/ApiSetupWizard.svelte';
+  import Help from './components/Help.svelte';
+  import TopScorers from './components/TopScorers.svelte';
+  import LiveMatches from './components/LiveMatches.svelte';
+  import StandingsTable from './components/StandingsTable.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
-  let isSidebarOpen = true;
+  let isSidebarOpen = false; // Start with sidebar closed
+  let isTransitioning = false;
+  let showApiSetup = false;
+  let hasApiKey = false;
+  let dashboardComponent: Dashboard;
+  
   function navigate(event: CustomEvent<{ view: string }>) {
-    currentView = event.detail.view;
+    if (event.detail.view === currentView) return;
+    
+    isTransitioning = true;
+    setTimeout(() => {
+      currentView = event.detail.view;
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 50);
+    }, 200);
   }
 
   function toggleSidebar() {
@@ -22,11 +42,48 @@
   }
 
   onMount(() => {
-    // Adjust sidebar based on screen size initially
-    if (window.innerWidth < 768) { // Example breakpoint (Tailwind's md)
-      isSidebarOpen = false;
+    // Open sidebar only on large desktop screens
+    if (window.innerWidth >= 1024) { // Large desktop screens
+      isSidebarOpen = true;
     }
+    
+    // Check for API key on load
+    checkApiKey();
   });
+
+  function checkApiKey() {
+    const apiKey = localStorage.getItem('football_data_api_key');
+    hasApiKey = !!apiKey;
+    
+    // Show setup wizard if no API key found
+    if (!hasApiKey) {
+      showApiSetup = true;
+    }
+  }
+
+  async function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
+    hasApiKey = true;
+    showApiSetup = false;
+    
+    // Refresh data services with new API key
+    const { dataService } = await import('./services/dataService');
+    const { footballDataAPI } = await import('./services/api/footballData');
+    
+    // Set the API key in the Football Data API
+    footballDataAPI.setApiKey(event.detail.apiKey);
+    
+    // Refresh data source availability
+    await dataService.refreshApiConfiguration();
+    
+    // API key setup completed successfully
+    
+    // Refresh dashboard if it's currently loaded
+    if (currentView === 'Dashboard' && dashboardComponent) {
+      setTimeout(() => {
+        dashboardComponent.refresh();
+      }, 100);
+    }
+  }
 
 </script>
 
@@ -53,28 +110,66 @@
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
-      <!-- Conditional Rendering based on currentView -->
-      {#if currentView === 'Dashboard'}
-        <Dashboard />
-      {:else if currentView === 'Matches'}
-        <MatchList />
-      {:else if currentView === 'Predictions'}
-        <Predictions />
-      {:else if currentView === 'Betting History'}
-        <BettingHistory />
-      {:else if currentView === 'AI Assistant'}
-        <AiAssistant />
-      {:else if currentView === 'Season Stats'}
-        <SeasonStats />
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8 relative">
+      <!-- Page transition overlay -->
+      {#if isTransitioning}
+        <div class="absolute inset-0 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
       {/if}
+      
+      <!-- Page content with smooth transitions -->
+      <div class="page-content" class:transitioning={isTransitioning}>
+        {#if currentView === 'Dashboard'}
+          <Dashboard bind:this={dashboardComponent} />
+        {:else if currentView === 'Matches'}
+          <MatchList />
+        {:else if currentView === 'Predictions'}
+          <Predictions />
+        {:else if currentView === 'Kelly Calculator'}
+          <KellyCalculator />
+        {:else if currentView === 'Value Bets'}
+          <ValueBets />
+        {:else if currentView === 'Betting History'}
+          <BettingHistory />
+        {:else if currentView === 'Season Stats'}
+          <SeasonStats />
+        {:else if currentView === 'Settings'}
+          <Settings on:apiConfigured={() => {
+            if (dashboardComponent && currentView === 'Dashboard') {
+              dashboardComponent.refresh();
+            }
+          }} />
+        {:else if currentView === 'Help'}
+          <Help />
+        {:else if currentView === 'Top Scorers'}
+          <TopScorers />
+        {:else if currentView === 'Live Matches'}
+          <LiveMatches />
+        {:else if currentView === 'Standings'}
+          <StandingsTable />
+        {/if}
+      </div>
     </main>
   </div>
   
   <!-- Mobile Navigation -->
   <MobileNav {currentView} on:navigate={navigate} />
+
+  <!-- API Setup Wizard -->
+  {#if showApiSetup}
+    <ApiSetupWizard on:complete={handleApiSetupComplete} />
+  {/if}
 </div>
 
 <style global lang="postcss">
-  /* Add any component-specific styles here if needed, though most should be handled by Tailwind */
+  /* Page transition effects */
+  .page-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  
+  .page-content.transitioning {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0.7;
+  }
 </style>

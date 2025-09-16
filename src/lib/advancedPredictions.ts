@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import type { Match } from './supabase';
+import { dataService } from '../services/dataService';
+import type { Match } from '../types';
 
 // Advanced team rating system using ELO
 export interface TeamRating {
@@ -64,11 +64,124 @@ export class PoissonPredictor {
 export class EloRatingSystem {
   private static readonly K_FACTOR = 32; // Sensitivity of rating changes
   private static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
+  private static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
+  
+  private teamRatings: Map<string, number> = new Map();
+  
+  constructor() {
+    this.initializeRatings();
+  }
+  
+  private initializeRatings() {
+    // Initialize Premier League teams with base ratings
+    const teams = [
+      { name: 'Manchester City', rating: 1850 },
+      { name: 'Arsenal', rating: 1800 },
+      { name: 'Liverpool', rating: 1780 },
+      { name: 'Manchester United', rating: 1700 },
+      { name: 'Chelsea', rating: 1680 },
+      { name: 'Tottenham Hotspur', rating: 1650 },
+      { name: 'Newcastle United', rating: 1620 },
+      { name: 'Brighton & Hove Albion', rating: 1580 },
+      { name: 'Aston Villa', rating: 1560 },
+      { name: 'West Ham United', rating: 1540 },
+      { name: 'Brentford', rating: 1520 },
+      { name: 'Fulham', rating: 1500 },
+      { name: 'Crystal Palace', rating: 1480 },
+      { name: 'Wolverhampton Wanderers', rating: 1460 },
+      { name: 'Everton', rating: 1440 },
+      { name: 'Nottingham Forest', rating: 1420 },
+      { name: 'AFC Bournemouth', rating: 1400 },
+      { name: 'Leicester City', rating: 1380 },
+      { name: 'Leeds United', rating: 1360 },
+      { name: 'Southampton', rating: 1340 },
+      { name: 'Ipswich Town', rating: 1320 },
+      { name: 'Sunderland AFC', rating: 1310 },
+      { name: 'Luton Town', rating: 1300 },
+      // Add variations for common name differences
+      { name: 'Man City', rating: 1850 },
+      { name: 'Man United', rating: 1700 },
+      { name: 'Man Utd', rating: 1700 },
+      { name: 'Spurs', rating: 1650 },
+      { name: 'Tottenham', rating: 1650 },
+      { name: 'Newcastle', rating: 1620 },
+      { name: 'Brighton', rating: 1580 },
+      { name: 'West Ham', rating: 1540 },
+      { name: 'Wolves', rating: 1460 },
+      { name: 'Nottm Forest', rating: 1420 },
+      { name: 'Bournemouth', rating: 1400 },
+      { name: 'Leicester', rating: 1380 },
+      { name: 'Leeds', rating: 1360 },
+      { name: 'Ipswich', rating: 1320 },
+      { name: 'Sunderland', rating: 1310 },
+      { name: 'Luton', rating: 1300 }
+    ];
+    
+    teams.forEach(team => {
+      this.teamRatings.set(team.name, team.rating);
+    });
+  }
+  
+  setTeamRating(teamName: string, rating: number): void {
+    this.teamRatings.set(teamName, rating);
+  }
+  
+  getTeamRating(teamName: string): number {
+    // Try exact match first
+    if (this.teamRatings.has(teamName)) {
+      return this.teamRatings.get(teamName)!;
+    }
+    
+    // Try partial match
+    for (const [name, rating] of this.teamRatings) {
+      if (name.toLowerCase().includes(teamName.toLowerCase()) || 
+          teamName.toLowerCase().includes(name.toLowerCase())) {
+        return rating;
+      }
+    }
+    
+    // Return default rating if team not found
+    return EloRatingSystem.DEFAULT_RATING;
+  }
+  
+  calculateWinProbability(homeRating: number, awayRating: number): number {
+    return 1 / (1 + Math.pow(10, (awayRating - homeRating) / 400));
+  }
 
   static calculateExpectedScore(ratingA: number, ratingB: number): number {
     return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   }
 
+  updateRatings(
+    homeTeam: string,
+    awayTeam: string,
+    actualResult: 'H' | 'D' | 'A'
+  ): { newHomeRating: number; newAwayRating: number } {
+    const homeRating = this.getTeamRating(homeTeam);
+    const awayRating = this.getTeamRating(awayTeam);
+    
+    // Add home advantage
+    const adjustedHomeRating = homeRating + EloRatingSystem.HOME_ADVANTAGE;
+    
+    // Calculate expected scores
+    const expectedHome = EloRatingSystem.calculateExpectedScore(adjustedHomeRating, awayRating);
+    const expectedAway = 1 - expectedHome;
+
+    // Actual scores
+    const actualHome = actualResult === 'H' ? 1 : actualResult === 'D' ? 0.5 : 0;
+    const actualAway = actualResult === 'A' ? 1 : actualResult === 'D' ? 0.5 : 0;
+
+    // Update ratings
+    const newHomeRating = homeRating + EloRatingSystem.K_FACTOR * (actualHome - expectedHome);
+    const newAwayRating = awayRating + EloRatingSystem.K_FACTOR * (actualAway - expectedAway);
+    
+    // Store updated ratings
+    this.teamRatings.set(homeTeam, newHomeRating);
+    this.teamRatings.set(awayTeam, newAwayRating);
+
+    return { newHomeRating, newAwayRating };
+  }
+  
   static updateRatings(
     homeRating: number,
     awayRating: number,
@@ -133,38 +246,43 @@ export class ExpectedGoalsCalculator {
   static async calculateMatchXG(matchId: string): Promise<{ homeXG: number; awayXG: number }> {
     // This would fetch shot data from the database
     // For now, we'll estimate based on shots and shots on target
-    const { data: match } = await supabase
-      .from('matches')
-      .select('home_shots, away_shots, home_shots_target, away_shots_target')
-      .eq('id', matchId)
-      .single();
+    try {
+      const matches = await dataService.getMatches();
+      const match = matches.find(m => m.id === matchId);
 
-    if (!match) return { homeXG: 0, awayXG: 0 };
+      if (!match) return { homeXG: 0, awayXG: 0 };
 
-    // Simplified xG calculation based on available data
-    const homeXG = (match.home_shots_target || 0) * 0.38 + 
-                   ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
-    const awayXG = (match.away_shots_target || 0) * 0.38 + 
-                   ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
+      // Simplified xG calculation based on available data
+      const homeXG = (match.home_shots_target || 0) * 0.38 + 
+                     ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
+      const awayXG = (match.away_shots_target || 0) * 0.38 + 
+                     ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
 
-    return { homeXG, awayXG };
+      return { homeXG, awayXG };
+    } catch (error) {
+      // Error calculating match xG
+      return { homeXG: 0, awayXG: 0 };
+    }
   }
 }
 
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
   static async calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
-    const { data } = await supabase
-      .from('matches')
-      .select('date')
-      .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
-      .lt('date', matchDate.toISOString())
-      .order('date', { ascending: false })
-      .limit(1);
-    
-    if (!data || data.length === 0) return 7; // Default rest days
-    const lastMatch = new Date(data[0].date);
-    return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
+    try {
+      const matches = await dataService.getMatches();
+      const teamMatches = matches.filter(match => 
+        (match.home_team === teamName || match.away_team === teamName) &&
+        new Date(match.date) < matchDate
+      ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      if (teamMatches.length === 0) return 7; // Default rest days
+      const lastMatch = new Date(teamMatches[0].date);
+      return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      // Error calculating rest days
+      return 7;
+    }
   }
 
   static async calculateFixtureDifficulty(
@@ -172,24 +290,29 @@ export class FatigueAnalyzer {
     startDate: Date,
     endDate: Date
   ): Promise<number> {
-    // Calculate average opponent strength in date range
-    const { data } = await supabase
-      .from('matches')
-      .select('*')
-      .or(`home_team.eq.${teamName},away_team.eq.${teamName}`)
-      .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString());
-    
-    if (!data || data.length === 0) return 0;
-        
-    let totalDifficulty = 0;
-    for (const match of data) {
-      const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-      // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
-      totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+    try {
+      // Calculate average opponent strength in date range
+      const matches = await dataService.getMatches();
+      const teamMatches = matches.filter(match => 
+        (match.home_team === teamName || match.away_team === teamName) &&
+        new Date(match.date) >= startDate &&
+        new Date(match.date) <= endDate
+      );
+      
+      if (teamMatches.length === 0) return 0;
+          
+      let totalDifficulty = 0;
+      for (const match of teamMatches) {
+        const opponent = match.home_team === teamName ? match.away_team : match.home_team;
+        // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
+        totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+      }
+      
+      return totalDifficulty / teamMatches.length;
+    } catch (error) {
+      // Error calculating fixture difficulty
+      return 0;
     }
-    
-    return totalDifficulty / data.length;
   }
 
   static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
@@ -312,25 +435,28 @@ export class RefereeAnalyzer {
     avgPenalties: number;
     homeWinRate: number;
   }> {
-    const { data } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('referee', refereeName);
+    try {
+      const matches = await dataService.getMatches();
+      const refereeMatches = matches.filter(match => match.referee === refereeName);
 
-    if (!data || data.length === 0) {
+      if (refereeMatches.length === 0) {
+        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+      }
+
+      const totalMatches = refereeMatches.length;
+      const totalYellows = refereeMatches.reduce((sum: number, m: Match) => sum + (m.home_yellows || 0) + (m.away_yellows || 0), 0);
+      const totalReds = refereeMatches.reduce((sum: number, m: Match) => sum + (m.home_reds || 0) + (m.away_reds || 0), 0);
+      const homeWins = refereeMatches.filter(m => m.result === 'H').length;
+
+      return {
+        avgYellowCards: totalYellows / totalMatches,
+        avgRedCards: totalReds / totalMatches,
+        avgPenalties: 0.2, // Placeholder - would need penalty data
+        homeWinRate: homeWins / totalMatches
+      };
+    } catch (error) {
+      // Error getting referee stats
       return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
     }
-
-    const totalMatches = data.length;
-    const totalYellows = data.reduce((sum, m) => sum + (m.home_yellows || 0) + (m.away_yellows || 0), 0);
-    const totalReds = data.reduce((sum, m) => sum + (m.home_reds || 0) + (m.away_reds || 0), 0);
-    const homeWins = data.filter(m => m.result === 'H').length;
-
-    return {
-      avgYellowCards: totalYellows / totalMatches,
-      avgRedCards: totalReds / totalMatches,
-      avgPenalties: 0.2, // Placeholder - would need penalty data
-      homeWinRate: homeWins / totalMatches
-    };
   }
 }

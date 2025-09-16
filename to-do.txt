@@ -1,0 +1,11 @@
+rewrite the application to use Football-Data.org API rather than the supabase data (this is much easier to scale and saves manual input, its easier to work with machine and AI predictions too)
+https://www.football-data.org/
+
+
+use gpt 5 and claude to get this spot on, in time for the new season :) 
+
+get the python predictions on point. 
+
+have the last 5 seasons..
+
+Plan this out and create sub agents.
