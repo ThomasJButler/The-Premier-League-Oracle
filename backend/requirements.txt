@@ -1,13 +1,13 @@
 # Core ML Libraries
 xgboost==2.0.3          # Main prediction model - gradient boosting
-lightgbm==4.1.0         # Alternative gradient boosting
+lightgbm==4.6.0         # Alternative gradient boosting
 catboost==1.2.2         # Another gradient boosting option
-scikit-learn==1.3.2     # Basic ML algorithms and utilities
+scikit-learn==1.5.0     # Basic ML algorithms and utilities
 
 # Deep Learning
-torch==2.1.2            # PyTorch for neural networks
+torch==2.8.0            # PyTorch for neural networks
 tensorflow==2.15.0      # Alternative to PyTorch
-transformers==4.36.2    # For transformer models
+transformers==4.53.0    # For transformer models
 
 # Data Processing
 pandas==2.1.4           # Data manipulation
@@ -35,16 +35,16 @@ redis==5.0.1            # Redis client
 motor==3.3.2            # Async MongoDB driver
 
 # ML Ops & Experiment Tracking
-mlflow==2.9.2           # Experiment tracking
+mlflow==3.5.0rc0           # Experiment tracking
 optuna==3.5.0           # Hyperparameter optimization
 wandb==0.16.2           # Weights & Biases tracking
 ray[tune]==2.9.1        # Distributed hyperparameter tuning
 
 # Data Sources & APIs
-requests==2.31.0        # HTTP library
+requests==2.32.4        # HTTP library
 beautifulsoup4==4.12.2  # Web scraping
 selenium==4.16.0        # Browser automation
-aiohttp==3.9.1          # Async HTTP
+aiohttp==3.12.14          # Async HTTP
 
 # Time Series
 statsmodels==0.14.1     # Statistical models
@@ -55,7 +55,7 @@ darts==0.27.0           # Time series forecasting
 matplotlib==3.8.2       # Plotting
 seaborn==0.13.0         # Statistical plots
 plotly==5.18.0          # Interactive plots
-dash==2.14.2            # Dashboard creation
+dash==2.15.0            # Dashboard creation
 
 # Testing
 pytest==7.4.3           # Testing framework
@@ -64,7 +64,7 @@ pytest-asyncio==0.21.1  # Async testing
 hypothesis==6.92.1      # Property-based testing
 
 # Code Quality
-black==23.12.1          # Code formatter
+black==24.3.0          # Code formatter
 flake8==7.0.0           # Linting
 mypy==1.8.0             # Type checking
 pylint==3.0.3           # More linting
@@ -73,7 +73,7 @@ pylint==3.0.3           # More linting
 python-dotenv==1.0.0    # Environment variables
 pyyaml==6.0.1           # YAML parsing
 loguru==0.7.2           # Better logging
-tqdm==4.66.1            # Progress bars
+tqdm==4.66.3            # Progress bars
 joblib==1.3.2           # Parallel processing
 click==8.1.7            # CLI creation
 
@@ -95,7 +95,7 @@ docker==7.0.0           # Docker SDK
 
 # Monitoring
 prometheus-client==0.19.0  # Metrics
-sentry-sdk==1.39.1      # Error tracking
+sentry-sdk==1.45.1      # Error tracking
 elastic-apm==6.20.0     # APM
 
 # Date & Time
@@ -114,10 +114,10 @@ eli5==0.13.0            # Debug ML models
 # Graph Neural Networks
 torch-geometric==2.4.0   # PyTorch Geometric
 networkx==3.2.1         # Network analysis
-dgl==1.1.3              # Deep Graph Library
+dgl==2.2.1              # Deep Graph Library
 
 # NLP (for news/sentiment analysis)
-nltk==3.8.1             # Natural language toolkit
+nltk==3.9             # Natural language toolkit
 spacy==3.7.2            # NLP library
 textblob==0.17.1        # Simple NLP
 vaderSentiment==3.3.2   # Sentiment analysis
@@ -129,5 +129,5 @@ vaderSentiment==3.3.2   # Sentiment analysis
 # Development Tools
 ipython==8.19.0         # Better Python shell
 jupyter==1.0.0          # Jupyter notebooks
-notebook==7.0.6         # Jupyter notebook
+notebook==7.2.2         # Jupyter notebook
 ipywidgets==8.1.1       # Jupyter widgets
