@@ -44,7 +44,7 @@ ray[tune]==2.9.1        # Distributed hyperparameter tuning
 requests==2.32.4        # HTTP library
 beautifulsoup4==4.12.2  # Web scraping
 selenium==4.16.0        # Browser automation
-aiohttp==3.12.14          # Async HTTP
+aiohttp==3.13.3          # Async HTTP
 
 # Time Series
 statsmodels==0.14.1     # Statistical models
