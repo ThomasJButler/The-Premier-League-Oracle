@@ -102,12 +102,28 @@ The root `package.json` is a copy of the old v1 `package.json` and still referen
 
 ## Phase 2: Prediction Engine (spec 01)
 
-### 2a. Dynamic ELO ratings
-`advancedPredictions.ts:67-89` — teams initialised with static ratings (Man City: 1850, Luton: 1300). `updateRatings()` exists but is never called.
+### ARCHITECTURAL NOTE: Three Competing Prediction Systems
+The codebase has three independent prediction pipelines that don't coordinate:
+1. `predictions.ts` — original weighted model (H2H 30%, Form 25%, Stats 20%, Home 15%, Trend 10%)
+2. `optimizedPredictions.ts` — ensemble orchestrator (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%) — **this is the production model used by the UI**
+3. `AdvancedMatchPredictor` in `advancedPredictions.ts` — standalone advanced predictor
+
+**Key inconsistencies to resolve:**
+- HOME_ADVANTAGE: 65 in `advancedPredictions.ts` vs 60 in `optimizedPredictions.ts`
+- Team ELO ratings: Arsenal=1800 in `advancedPredictions.ts` vs 1600 in `optimizedPredictions.ts` (different scales entirely)
+- `calculateFatigueFactor()` in `optimizedPredictions.ts:408-414` always returns 1.0 (completely stubbed)
+- `predictions.ts` is the original model — it should either be deprecated or consolidated with the ensemble
+
+**Resolution:** `OptimizedPredictor` is the production model. All fixes should target it and the classes it uses from `advancedPredictions.ts`. `predictions.ts` can remain as a fallback but should not diverge further.
+
+### 2a. Dynamic ELO ratings — Single Source of Truth
+`advancedPredictions.ts:67-89` — teams initialised with static ratings (Man City: 1850, Luton: 1300). `updateRatings()` exists but is never called. `optimizedPredictions.ts:34-60` has a SEPARATE set of ratings with different values.
 - [ ] On startup, load persisted ELO ratings from localStorage key `elo_ratings`
 - [ ] After each completed match loads, call `eloSystem.updateRatings()` to update ratings
 - [ ] Persist updated ratings back to localStorage after each update
 - [ ] Wire into `dataService` — trigger ELO updates when processing completed match results
+- [ ] Remove `TEAM_STRENGTHS` dict from `optimizedPredictions.ts` — use `EloRatingSystem` as single source
+- [ ] Standardise HOME_ADVANTAGE constant — use one value across both files
 
 ### 2b. Poisson lambdas from real stats
 `PoissonPredictor` uses manually estimated lambda values instead of computing from team stats.
@@ -116,8 +132,11 @@ The root `package.json` is a copy of the old v1 `package.json` and still referen
 - [ ] Pull stats from `dataService.getTeamStats()` instead of hardcoded averages
 
 ### 2c. Fatigue analysis fix
-`advancedPredictions.ts:308` — `calculateFixtureDifficulty()` always returns `1500` (hardcoded placeholder).
-- [ ] Use ELO system (2a) to look up actual opponent ratings
+Two separate fatigue stubs:
+1. `advancedPredictions.ts:308` — `calculateFixtureDifficulty()` always returns `1500` (hardcoded placeholder)
+2. `optimizedPredictions.ts:408-414` — `calculateFatigueFactor()` always returns `1.0` (completely stubbed)
+- [ ] Use ELO system (2a) to look up actual opponent ratings for fixture difficulty
+- [ ] Implement real fatigue factor based on days since last match, European fixtures, etc.
 - [ ] Wire fatigue multiplier into `OptimizedPredictor.predictMatch()` to adjust Poisson lambda
 
 ### 2d. Referee adjustment
@@ -380,6 +399,14 @@ The following capabilities are mentioned in the project goals but have no dedica
 | `value.ts:74,99,112,143` | Empty `matchId: ''` hardcoded — value bets created with blank match IDs | Phase 4d |
 | `predictionTracker.ts:206-234` | Streak calculation bug — resets then decrements, incorrect worst streak | Phase 3a |
 | `dataService.test.ts` | Tests methods that don't exist: `getHeadToHead()`, `getMatches({teamName})` | Phase 1b |
+| `optimizedPredictions.ts:27` vs `advancedPredictions.ts:66` | HOME_ADVANTAGE inconsistent: 60 vs 65 | Phase 2a |
+| `optimizedPredictions.ts:34-60` vs `advancedPredictions.ts:77-117` | Duplicate team ratings with DIFFERENT values (Arsenal: 1600 vs 1800) | Phase 2a |
+| `optimizedPredictions.ts:408-414` | `calculateFatigueFactor()` always returns 1.0 — completely stubbed | Phase 2c |
+| `optimizedPredictions.ts:509` | Array mutation bug — `.sort()` mutates probability array in confidence calc | Phase 2e |
+| `optimizedPredictions.ts:142` | Hardcoded 0.25 draw probability doesn't match actual PL stats (~26.5%) | Phase 2e |
+| `betBuilder.ts:327-398` | Combo odds ignore market correlation (e.g. clean sheet + over 2.5 negatively correlated) | Phase 4e |
+| `betBuilder.ts:269-276` | Only 6 hardcoded rivalries, case-sensitive matching | Phase 4e |
+| `predictions.ts:456-458` | `savePrediction()` entirely unimplemented | Phase 3d |
 
 ---
 
@@ -391,6 +418,10 @@ The following capabilities are mentioned in the project goals but have no dedica
 | `predictionTracker.ts:206-234` | Streak logic resets `currentStreak` to 0 then decrements to -1, making worst streak calculation unreliable | Medium |
 | `value.ts:151-153` | Empty catch block swallows errors silently — value bet identification failures are invisible | Medium |
 | `dataService.test.ts` | Tests reference non-existent methods (`getHeadToHead`, `getMatches({teamName})`) — tests may pass due to mocking but don't validate real API | Low |
+| `optimizedPredictions.ts` vs `advancedPredictions.ts` | Three competing prediction systems with no coordination; inconsistent constants (HOME_ADVANTAGE: 60 vs 65); duplicate team ratings at different scales | High |
+| `optimizedPredictions.ts:408-414` | `calculateFatigueFactor()` returns hardcoded 1.0 — fatigue never affects predictions | High |
+| `optimizedPredictions.ts:509` | `.sort()` mutates the probabilities array during confidence calculation — affects subsequent code | Medium |
+| `betBuilder.ts:327-398` | Accumulator combos multiply probabilities ignoring market correlation — overestimates combo confidence | Medium |
 
 ---
 
