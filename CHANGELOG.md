@@ -2,7 +2,29 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
-## [2.0.0] - 14th August 2025 - The Definitive Transformation 🚀
+## [Unreleased] - v2.0-Development Branch
+
+### Planning & Audit (5 March 2026)
+- Comprehensive codebase audit identifying 18 stubs/hardcoded values, 4 TODO comments, and 6 missing service files
+- Updated IMPLEMENTATION_PLAN.md with prioritised 6-phase plan covering data pipeline, prediction engine, tracking, betting, backend ML, and UI/UX
+- Updated CLAUDE.md to reflect current architecture (frontend/backend split, no Supabase, Vitest testing)
+- Identified and documented stale files for removal (old src/ directory, outdated documentation, Supabase remnants)
+
+### Backend Scaffolding
+- Python ML backend with FastAPI, XGBoost, LSTM, and Transformer model files
+- 150+ feature engineering pipeline in `advanced_engineering.py`
+- Football data collector for historical season data
+- Security layer with auth, secrets, and validators
+
+### Frontend Restructuring
+- Migrated from `src/` to `frontend/src/` directory structure
+- Removed Supabase dependency from frontend code
+- Added Vitest testing framework with testing-library/svelte
+- Added comprehensive type definitions in `types/index.ts`
+
+---
+
+## [2.0.0] - 14th August 2025 - The Definitive Transformation
 
 ### 🎯 Overview
 Complete transformation from a static, manually-updated prediction tool to a dynamic, AI-powered platform with real-time data integration and professional betting intelligence.

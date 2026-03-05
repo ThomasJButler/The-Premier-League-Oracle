@@ -1,23 +1,28 @@
+# Python virtual environments
 /csv
-/myenv
 /myenv
 /PLOracle/myenv
 /myenv/Lib
 /PLOracle/csv
+
+# Node
 node_modules
+
+# Environment files (contain API keys)
 /.env
-CLAUDE.md
-dist/assets/browser-Bmh3iUVW.js
+frontend/.env
+
+# Build output
 /dist
-API_KEYS_GUIDE.md
-/specs
+dist/assets/browser-Bmh3iUVW.js
+
+# Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
 oldplan.md
 plan.md
-PROMPT_build.md
-PROMPT_plan.md
-IMPLEMENTATION_PLAN.md
+SAAS_OPERATION_GUIDE.md
+API_KEYS_GUIDE.md
+
+# Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
-SAAS_OPERATION_GUIDE.md
-frontend/.env
