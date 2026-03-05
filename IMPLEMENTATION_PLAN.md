@@ -66,9 +66,12 @@ The root `package.json` is a copy of the old v1 `package.json` and still referen
 
 ## Phase 1: Data Pipeline & Live Data (specs 02, 05)
 
-### 1a. Fix IndexedDB scorers bug
-`dataService.ts:40-58` — `onupgradeneeded` creates `matches`, `standings`, `teamStats` stores but NOT `scorers`. Yet `getTopScorers()` at line 252 uses the `scorers` store, causing silent failures.
+### 1a. Fix IndexedDB bugs
+`dataService.ts:40-58` — `onupgradeneeded` has two bugs:
+1. Missing `scorers` store — `getTopScorers()` at line 252 uses it but it doesn't exist, causing silent failures
+2. `standings` store uses `team_id` as keyPath but Football-Data API returns `team.id` nested in object — cache writes silently fail
 - [ ] Add `db.createObjectStore('scorers', { keyPath: 'id' })` to `onupgradeneeded` handler
+- [ ] Fix `standings` store keyPath to match actual API response structure (use `id` or transform data before caching)
 
 ### 1b. Add missing DataService methods (spec 02)
 `footballData.ts` has `getLiveMatches()` at line 506, but `dataService.ts` doesn't expose it.
@@ -320,10 +323,10 @@ The following capabilities are mentioned in the project goals but have no dedica
 | File | Status |
 |------|--------|
 | `api/footballData.ts` | Implemented — API client with rate limiting |
-| `dataService.ts` | Partial — missing getLiveMatches, getHistoricalMatches, getTeamRecentMatches, scorers IndexedDB store |
+| `dataService.ts` | Partial — `footballData.ts` has the underlying methods but dataService doesn't expose getLiveMatches/getHistoricalMatches/getTeamRecentMatches; IndexedDB scorers+standings store bugs |
 | `predictionTracker.ts` | Implemented — but not wired into dashboard/accuracy displays |
 | `betting/kelly.ts` | Implemented — full/half/quarter Kelly |
-| `betting/value.ts` | Broken — uses Math.random() for odds |
+| `betting/value.ts` | Partially working — core maths correct but Math.random() used in UI component; empty matchId strings; silent error swallowing |
 
 ### Files That Need Creating
 | File | Spec | Purpose |
@@ -372,6 +375,22 @@ The following capabilities are mentioned in the project goals but have no dedica
 | `App.svelte:96-100` | `Math.random()` for star particles (cosmetic) | Phase 6f |
 | `kelly.ts:202` | `Math.random()` in simulation (acceptable — Monte Carlo) | N/A |
 | `predictions.ts:456` | TODO: save prediction to storage | Phase 3d |
+| `dataService.ts:294-308` | All home/away team stats hardcoded to 0 (clean_sheets, failed_to_score, etc.) | Phase 1b |
+| `dataService.ts:50-53` | IndexedDB `standings` store uses `team_id` keyPath but API returns `team.id` nested | Phase 1a |
+| `value.ts:74,99,112,143` | Empty `matchId: ''` hardcoded — value bets created with blank match IDs | Phase 4d |
+| `predictionTracker.ts:206-234` | Streak calculation bug — resets then decrements, incorrect worst streak | Phase 3a |
+| `dataService.test.ts` | Tests methods that don't exist: `getHeadToHead()`, `getMatches({teamName})` | Phase 1b |
+
+---
+
+## Additional Bugs Found (Deep Analysis)
+
+| Location | Bug | Severity |
+|----------|-----|----------|
+| `dataService.ts:50-53` | `standings` IndexedDB store uses `team_id` as keyPath but Football-Data API returns `team.id` nested in object — cache writes will silently fail | High |
+| `predictionTracker.ts:206-234` | Streak logic resets `currentStreak` to 0 then decrements to -1, making worst streak calculation unreliable | Medium |
+| `value.ts:151-153` | Empty catch block swallows errors silently — value bet identification failures are invisible | Medium |
+| `dataService.test.ts` | Tests reference non-existent methods (`getHeadToHead`, `getMatches({teamName})`) — tests may pass due to mocking but don't validate real API | Low |
 
 ---
 
