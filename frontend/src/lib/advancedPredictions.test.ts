@@ -16,6 +16,36 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
+/** Creates a full Match object with sensible defaults. Override any field as needed. */
+function createMockMatch(overrides: Partial<Match> & { id: string; season_id: string; date: string; home_team: string; away_team: string; created_at: string }): Match {
+  return {
+    home_goals: null,
+    away_goals: null,
+    result: null,
+    home_odds: null,
+    draw_odds: null,
+    away_odds: null,
+    first_half_home_goals: null,
+    first_half_away_goals: null,
+    full_time_result: null,
+    half_time_result: null,
+    referee: null,
+    home_shots: null,
+    away_shots: null,
+    home_shots_target: null,
+    away_shots_target: null,
+    home_fouls: null,
+    away_fouls: null,
+    home_corners: null,
+    away_corners: null,
+    home_yellows: null,
+    away_yellows: null,
+    home_reds: null,
+    away_reds: null,
+    ...overrides
+  };
+}
+
 describe('Advanced Predictions Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -212,7 +242,7 @@ describe('Advanced Predictions Module', () => {
 
     describe('calculateMatchXG', () => {
       it('should estimate xG from shots data', async () => {
-        const mockMatch: Match = {
+        const mockMatch: Match = createMockMatch({
           id: 'match1',
           season_id: '2025-26',
           date: '2025-08-15',
@@ -226,7 +256,7 @@ describe('Advanced Predictions Module', () => {
           away_shots_target: 4,
           result: 'H',
           created_at: '2025-08-15'
-        };
+        });
 
         vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
 
@@ -248,7 +278,7 @@ describe('Advanced Predictions Module', () => {
       });
 
       it('should handle null shot values', async () => {
-        const mockMatch: Match = {
+        const mockMatch: Match = createMockMatch({
           id: 'match2',
           season_id: '2025-26',
           date: '2025-08-15',
@@ -256,13 +286,9 @@ describe('Advanced Predictions Module', () => {
           away_team: 'Chelsea',
           home_goals: 1,
           away_goals: 0,
-          home_shots: null,
-          away_shots: null,
-          home_shots_target: null,
-          away_shots_target: null,
           result: 'H',
           created_at: '2025-08-15'
-        };
+        });
 
         vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
 
@@ -278,7 +304,7 @@ describe('Advanced Predictions Module', () => {
     describe('calculateRestDays', () => {
       it('should calculate rest days between matches', async () => {
         const mockMatches: Match[] = [
-          {
+          createMockMatch({
             id: '1',
             season_id: '2025-26',
             date: '2025-08-10T15:00:00Z',
@@ -288,8 +314,8 @@ describe('Advanced Predictions Module', () => {
             away_goals: 1,
             result: 'H',
             created_at: '2025-08-10'
-          },
-          {
+          }),
+          createMockMatch({
             id: '2',
             season_id: '2025-26',
             date: '2025-08-07T20:00:00Z',
@@ -299,7 +325,7 @@ describe('Advanced Predictions Module', () => {
             away_goals: 1,
             result: 'D',
             created_at: '2025-08-07'
-          }
+          })
         ];
 
         vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
@@ -322,24 +348,22 @@ describe('Advanced Predictions Module', () => {
     describe('calculateFixtureDifficulty', () => {
       it('should calculate average opponent strength', async () => {
         const mockMatches: Match[] = [
-          {
+          createMockMatch({
             id: '1',
             season_id: '2025-26',
             date: '2025-08-10',
             home_team: 'Arsenal',
             away_team: 'Man City',
-            result: null,
             created_at: '2025-08-10'
-          },
-          {
+          }),
+          createMockMatch({
             id: '2',
             season_id: '2025-26',
             date: '2025-08-15',
             home_team: 'Liverpool',
             away_team: 'Arsenal',
-            result: null,
             created_at: '2025-08-15'
-          }
+          })
         ];
 
         vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
@@ -388,7 +412,7 @@ describe('Advanced Predictions Module', () => {
     describe('getRefereeStats', () => {
       it('should calculate referee statistics', async () => {
         const mockMatches: Match[] = [
-          {
+          createMockMatch({
             id: '1',
             season_id: '2024-25',
             date: '2024-12-01',
@@ -403,8 +427,8 @@ describe('Advanced Predictions Module', () => {
             referee: 'Michael Oliver',
             result: 'H',
             created_at: '2024-12-01'
-          },
-          {
+          }),
+          createMockMatch({
             id: '2',
             season_id: '2024-25',
             date: '2024-11-01',
@@ -417,7 +441,7 @@ describe('Advanced Predictions Module', () => {
             referee: 'Michael Oliver',
             result: 'D',
             created_at: '2024-11-01'
-          }
+          })
         ];
 
         vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
@@ -442,7 +466,7 @@ describe('Advanced Predictions Module', () => {
 
       it('should handle matches with null card values', async () => {
         const mockMatches: Match[] = [
-          {
+          createMockMatch({
             id: '1',
             season_id: '2024-25',
             date: '2024-12-01',
@@ -450,14 +474,10 @@ describe('Advanced Predictions Module', () => {
             away_team: 'Chelsea',
             home_goals: 2,
             away_goals: 1,
-            home_yellows: null,
-            away_yellows: null,
-            home_reds: null,
-            away_reds: null,
             referee: 'Michael Oliver',
             result: 'H',
             created_at: '2024-12-01'
-          }
+          })
         ];
 
         vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
@@ -528,7 +548,7 @@ describe('Advanced Predictions Module', () => {
 
       it('should generate meaningful insights', async () => {
         // Mock matches to trigger fatigue insights
-        const recentMatch: Match = {
+        const recentMatch: Match = createMockMatch({
           id: '1',
           season_id: '2025-26',
           date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
@@ -538,7 +558,7 @@ describe('Advanced Predictions Module', () => {
           away_goals: 1,
           result: 'H',
           created_at: '2025-08-15'
-        };
+        });
 
         vi.mocked(dataService.getMatches).mockResolvedValue([recentMatch]);
 
