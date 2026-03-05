@@ -249,7 +249,20 @@ No backtesting capability exists.
 
 ## Phase 5: Backend ML Integration (spec 03)
 
-### 5a. BackendService (new file)
+### Backend Status (Deep Analysis)
+The Python backend is more complete than initially assessed:
+- **API endpoints**: 95% complete — all endpoints functional except `/admin/retrain` (mock)
+- **Model architectures**: 100% complete — XGBoost (2000 estimators, depth 8), LSTM (3-layer bidirectional, 8-head attention), Transformer (6-layer, 512d, sinusoidal encoding)
+- **Ensemble**: Fully implemented — XGBoost 40%, LSTM 30%, Transformer 30% with Optuna weight optimisation
+- **Security**: 100% complete — JWT auth, RBAC (admin/premium/standard/trial), brute force protection, rate limiting
+- **LangChain**: Integrated — ReAct agent with 5 tools (Predict, Team Stats, Similar Matches, Form, Betting)
+- **Feature engineering**: **0% REAL** — all 180 features return `np.random.uniform()` random values
+- **Training pipeline**: Does not exist — no script, no data connection, no validation splits
+- **Tests**: 0% — no pytest tests written
+
+The critical bottleneck is **feature engineering** (all fake) and **training data pipeline** (missing).
+
+### 5a. BackendService (new file — frontend)
 No frontend code calls the Python backend.
 - [ ] Create `frontend/src/services/backendService.ts`
 - [ ] Implement: `isAvailable()` (pings `/health`), `predictMatch()`, `predictBatch()`, `getUpcomingPredictions()`, `queryNaturalLanguage()`
@@ -276,8 +289,27 @@ No live service exists.
 - [ ] Include: probabilities, confidence, predicted score, model breakdown (xgboost/lstm/transformer), feature importance
 
 ### 5f. Historical data collection for training
-- [ ] Wire `backend/app/data/football_data_collector.py` to use Football-Data.org API
-- [ ] Document training command in `AGENTS.md`: `python -m app.data.football_data_collector --seasons 2020,2021,2022,2023,2024`
+`football_data_collector.py` is already complete with rate limiting and caching. The gap is connecting it to feature engineering.
+- [ ] Create a training script that calls `FootballDataCollector.get_historical_data()` for seasons 2020-2024
+- [ ] Document training command in `AGENTS.md`
+
+### 5g. Real feature engineering (backend critical path)
+`advanced_engineering.py` defines 180 features across 10 categories, but **every `_calculate_*()` method returns `np.random.uniform()` random values**. This is the single biggest backend blocker.
+- [ ] Implement real feature calculations using match DataFrames from the data collector
+- [ ] Priority features: rolling goals scored/conceded, xG metrics, form streaks, H2H stats, rest days
+- [ ] Connect `FootballDataCollector` output to `AdvancedFeatureEngineer` input
+- [ ] Create train/validation/test splits (e.g. 2020-2023 train, 2024 validation)
+
+### 5h. Model training pipeline
+No training script or notebook exists.
+- [ ] Create `backend/train.py` or notebook that orchestrates: data collection -> feature engineering -> model training -> evaluation
+- [ ] Implement `/admin/retrain` endpoint (currently returns mock response)
+- [ ] Add backend pytest tests (currently 0% coverage)
+
+### 5i. Trim requirements.txt
+130+ packages including unnecessary ones (Kafka, Azure, AWS, Graph Neural Networks, Computer Vision, Dash, etc.).
+- [ ] Audit imports across all `.py` files and trim to actually-used packages
+- [ ] Core needed: FastAPI, uvicorn, xgboost, torch, transformers, scikit-learn, pandas, numpy, httpx, pydantic, python-dotenv, scipy, langchain, chromadb, mlflow, optuna, redis, shap, joblib, loguru
 
 ---
 
@@ -329,10 +361,11 @@ The following capabilities are mentioned in the project goals but have no dedica
 - Backend: `/nl-query` endpoint exists in `main.py`
 - Need: spec for the complete end-to-end AI pundit flow (which model, prompt template, caching, cost management)
 
-### Transformer Model Training
-- `backend/app/models/transformer_model.py` exists but may be incomplete
-- No spec for training pipeline, hyperparameters, or evaluation criteria
-- Need: spec for backend model training and evaluation
+### Backend Training Pipeline
+- All 3 model architectures (XGBoost, LSTM, Transformer) are complete
+- Feature engineering has 180 features defined but ALL return random values
+- No training script, no train/test splits, no evaluation framework
+- Need: spec for `specs/08-backend-training.md` covering data preparation, feature implementation, training pipeline, evaluation metrics, model versioning
 
 ---
 
@@ -359,16 +392,16 @@ The following capabilities are mentioned in the project goals but have no dedica
 ### Backend Files (backend/app/)
 | File | Status |
 |------|--------|
-| `api/main.py` | Scaffolded — endpoints defined, needs wiring |
-| `models/xgboost_model.py` | Scaffolded — needs training pipeline |
-| `models/lstm_predictor.py` | Scaffolded — needs training pipeline |
-| `models/transformer_model.py` | Scaffolded — needs training pipeline |
-| `models/modern_oracle.py` | Scaffolded — ensemble orchestrator |
-| `features/advanced_engineering.py` | Scaffolded — 150+ features defined |
-| `data/football_data_collector.py` | Scaffolded — needs API key wiring |
-| `security/auth.py` | Scaffolded — HTTPBearer auth |
-| `security/secrets.py` | Scaffolded — secrets management |
-| `security/validators.py` | Scaffolded — input validation |
+| `api/main.py` | Complete — all endpoints functional except `/admin/retrain` (mock); WebSocket `/ws/predictions` is a stub |
+| `models/xgboost_model.py` | Complete architecture — 2000 estimators, Optuna HPO, SHAP integration; needs training data |
+| `models/lstm_predictor.py` | Complete architecture — 3-layer BiLSTM, 8-head attention, early stopping; needs training data |
+| `models/transformer_model.py` | Complete architecture — 6-layer, 512d, positional encoding; needs training pipeline |
+| `models/modern_oracle.py` | Complete — ensemble (XGB 40%, LSTM 30%, Transformer 30%), LangChain ReAct agent, ChromaDB similarity |
+| `features/advanced_engineering.py` | **FAKE** — 180 features defined but ALL return `np.random.uniform()` random values |
+| `data/football_data_collector.py` | Complete — Football-Data.org v4 integration with rate limiting, caching, multi-season support |
+| `security/auth.py` | Complete — JWT, RBAC (4 roles), brute force protection, rate limiting, token revocation |
+| `security/secrets.py` | Complete — multi-provider (env, AWS, Vault, encrypted file), rotation, audit logging |
+| `security/validators.py` | Complete — SQL injection, XSS, command injection prevention; input sanitisation |
 
 ---
 
