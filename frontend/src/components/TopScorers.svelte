@@ -172,7 +172,8 @@
                       alt={scorer.team.name}
                       class="w-4 h-4 object-contain"
                       on:error={(e) => {
-                        e.currentTarget.style.display = 'none';
+                        const target = e.currentTarget as HTMLImageElement | null;
+                        if (target) target.style.display = 'none';
                       }}
                     />
                   {/if}
@@ -199,7 +200,7 @@
                   <div class="text-xs text-slate-500 dark:text-slate-400">Assists</div>
                 </div>
               {/if}
-              {#if scorer.penalties !== null && scorer.penalties > 0}
+              {#if scorer.penalties != null && scorer.penalties > 0}
                 <div>
                   <div class="text-2xl font-bold text-amber-500">{scorer.penalties}</div>
                   <div class="text-xs text-slate-500 dark:text-slate-400">Pens</div>
