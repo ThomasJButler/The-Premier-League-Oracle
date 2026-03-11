@@ -45,7 +45,19 @@ export class KellyCalculator {
    */
   public static calculate(opportunity: BettingOpportunity): KellyCalculation {
     const { ourProbability, bookmakerOdds, bankroll, maxStakePercentage = 0.05, confidenceLevel = 0.6 } = opportunity;
-    
+
+    // Validate inputs — return zero result for invalid values
+    if (isNaN(ourProbability) || isNaN(bookmakerOdds) || isNaN(bankroll) ||
+        bankroll <= 0 || bookmakerOdds < 1 || ourProbability < 0 || ourProbability > 1) {
+      const impliedProb = bookmakerOdds > 0 && !isNaN(bookmakerOdds) ? 1 / bookmakerOdds : 0;
+      return {
+        fullKelly: 0, halfKelly: 0, quarterKelly: 0,
+        recommendedStake: 0, expectedValue: 0, edgePercentage: 0,
+        impliedProbability: Math.round(impliedProb * 10000) / 10000,
+        isValueBet: false, confidence: 'low', risk: 'high'
+      };
+    }
+
     // Convert decimal odds to net odds (profit on win)
     const netOdds = bookmakerOdds - 1;
     
@@ -87,7 +99,7 @@ export class KellyCalculator {
     const confidence = this.getConfidenceLevel(ourProbability, edge, confidenceLevel);
     
     // Assess risk level
-    const risk = this.getRiskLevel(fullKelly, edge);
+    const risk = this.getRiskLevel(fullKelly, edge, ourProbability);
     
     return {
       fullKelly: Math.round(fullKelly * 10000) / 10000,
@@ -313,11 +325,12 @@ export class KellyCalculator {
    */
   private static getRiskLevel(
     kellyFraction: number,
-    edge: number
+    edge: number,
+    probability: number
   ): 'high' | 'medium' | 'low' {
-    if (kellyFraction > 0.15 || edge < 0.03) return 'high';
-    if (kellyFraction > 0.08 || edge < 0.05) return 'medium';
-    return 'low';
+    if (probability < 0.6) return 'high';
+    if (probability >= 0.7 && edge > 0.05) return 'low';
+    return 'medium';
   }
   
   /**

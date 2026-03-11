@@ -1,6 +1,27 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { Match, Season, TeamStats, Standing } from '../types';
 
+// Mock predictionTracker
+vi.mock('./predictionTracker', () => ({
+  predictionTracker: {
+    getAccuracyStats: vi.fn(() => ({
+      totalPredictions: 0,
+      correctPredictions: 0,
+      accuracy: 0,
+      resultAccuracy: 0,
+      scoreAccuracy: 0,
+      highConfidenceAccuracy: 0,
+      mediumConfidenceAccuracy: 0,
+      lowConfidenceAccuracy: 0,
+      homeWinAccuracy: 0,
+      awayWinAccuracy: 0,
+      drawAccuracy: 0,
+      averageConfidence: 0,
+      streak: { current: 0, best: 0, worst: 0 }
+    }))
+  }
+}));
+
 // Mock the dependencies
 vi.mock('./api/footballData', () => ({
   footballDataAPI: {

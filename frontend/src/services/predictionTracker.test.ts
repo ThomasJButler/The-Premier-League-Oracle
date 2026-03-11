@@ -6,22 +6,24 @@ describe('PredictionTracker Service', () => {
   let localStorageMock: { [key: string]: string };
 
   beforeEach(() => {
-    // Reset localStorage mock
+    // Reset localStorage mock data
     localStorageMock = {};
-    
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
+
+    // Spy on the global localStorage mock (setup.ts replaces localStorage with a plain object,
+    // so Storage.prototype spying doesn't work — we must spy on the object directly)
+    vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => {
       return localStorageMock[key] || null;
     });
-    
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
+
+    vi.spyOn(localStorage, 'setItem').mockImplementation((key: string, value: string) => {
       localStorageMock[key] = value;
     });
-    
-    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation((key) => {
+
+    vi.spyOn(localStorage, 'removeItem').mockImplementation((key: string) => {
       delete localStorageMock[key];
     });
-    
-    vi.spyOn(Storage.prototype, 'clear').mockImplementation(() => {
+
+    vi.spyOn(localStorage, 'clear').mockImplementation(() => {
       localStorageMock = {};
     });
 

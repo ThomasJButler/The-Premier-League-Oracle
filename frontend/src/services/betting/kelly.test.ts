@@ -94,7 +94,7 @@ describe('KellyCalculator', () => {
       const result = KellyCalculator.calculate(opportunity);
 
       expect(result.confidence).toBe('high');
-      expect(result.recommendedStake).toBeLessThan(50); // Less than full Kelly due to fractional betting
+      expect(result.recommendedStake).toBeLessThanOrEqual(50); // Capped by maxStakePercentage default (5%)
     });
 
     it('should respect maximum stake percentage', () => {
@@ -153,7 +153,8 @@ describe('KellyCalculator', () => {
 
       const results = KellyCalculator.calculateMultiple(opportunities, 0.25);
 
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(1);
+      expect(results[0].allocations).toHaveLength(2);
       expect(results[0].totalStake).toBeLessThanOrEqual(250);
       results[0].allocations.forEach(allocation => {
         expect(allocation.stake).toBeGreaterThanOrEqual(0);

@@ -1,5 +1,6 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI } from './api/footballData';
+import { predictionTracker } from './predictionTracker';
 
 interface DataSource {
   type: 'api';
@@ -26,34 +27,46 @@ class DataService {
       return;
     }
     
-    const request = indexedDB.open('PremierLeagueOracle', 1);
-    
+    const request = indexedDB.open('PremierLeagueOracle', 2);
+
     request.onerror = () => {
       // Failed to open IndexedDB
     };
-    
+
     request.onsuccess = () => {
       this.cacheDb = request.result;
       // IndexedDB initialized
     };
-    
+
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      
-      // Create object stores for caching
-      if (!db.objectStoreNames.contains('matches')) {
+      const oldVersion = event.oldVersion;
+
+      if (oldVersion < 1) {
+        // Fresh install — create all stores with correct keyPath
         const matchStore = db.createObjectStore('matches', { keyPath: 'id' });
         matchStore.createIndex('date', 'date', { unique: false });
-        matchStore.createIndex('teams', ['home_team', 'away_team'], { unique: false });
+        db.createObjectStore('standings', { keyPath: 'id' });
+        db.createObjectStore('teamStats', { keyPath: 'id' });
+        db.createObjectStore('scorers', { keyPath: 'id' });
       }
-      
-      if (!db.objectStoreNames.contains('standings')) {
-        const standingsStore = db.createObjectStore('standings', { keyPath: 'team_id' });
-        standingsStore.createIndex('position', 'position', { unique: false });
-      }
-      
-      if (!db.objectStoreNames.contains('teamStats')) {
-        db.createObjectStore('teamStats', { keyPath: 'team_name' });
+
+      if (oldVersion >= 1 && oldVersion < 2) {
+        // Upgrade from v1: fix keyPaths (standings used 'team_id', teamStats used 'team_name')
+        // and add missing scorers store
+        if (db.objectStoreNames.contains('standings')) {
+          db.deleteObjectStore('standings');
+        }
+        db.createObjectStore('standings', { keyPath: 'id' });
+
+        if (db.objectStoreNames.contains('teamStats')) {
+          db.deleteObjectStore('teamStats');
+        }
+        db.createObjectStore('teamStats', { keyPath: 'id' });
+
+        if (!db.objectStoreNames.contains('scorers')) {
+          db.createObjectStore('scorers', { keyPath: 'id' });
+        }
       }
     };
   }
@@ -393,12 +406,11 @@ class DataService {
 
   // Get prediction accuracy for a season
   public async getPredictionAccuracy(seasonId: string): Promise<{ total: number; correct: number; accuracy: number; }> {
-    // TODO: Implement prediction tracking and accuracy calculation
-    // For now, return a placeholder value
+    const stats = predictionTracker.getAccuracyStats();
     return {
-      total: 100,
-      correct: 65,
-      accuracy: 0.65
+      total: stats.totalPredictions,
+      correct: stats.correctPredictions,
+      accuracy: stats.totalPredictions > 0 ? stats.accuracy / 100 : 0
     };
   }
 
@@ -406,7 +418,7 @@ class DataService {
   public async clearCache(): Promise<void> {
     if (!this.cacheDb) return;
     
-    const storeNames = ['matches', 'standings', 'teamStats'];
+    const storeNames = ['matches', 'standings', 'teamStats', 'scorers'];
     const transaction = this.cacheDb.transaction(storeNames, 'readwrite');
     
     for (const storeName of storeNames) {

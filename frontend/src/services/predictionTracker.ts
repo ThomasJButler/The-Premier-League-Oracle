@@ -40,6 +40,7 @@ export interface AccuracyStats {
 class PredictionTracker {
   private readonly STORAGE_KEY = 'pl_oracle_predictions';
   private predictions: Map<string, StoredPrediction>;
+  private static idCounter = 0;
 
   constructor() {
     this.predictions = new Map();
@@ -83,7 +84,8 @@ class PredictionTracker {
     },
     matchDate: string
   ): void {
-    const id = `${matchId}_${Date.now()}`;
+    PredictionTracker.idCounter++;
+    const id = `${matchId}_${Date.now()}_${PredictionTracker.idCounter}`;
     const storedPrediction: StoredPrediction = {
       id,
       matchId,
@@ -215,16 +217,15 @@ class PredictionTracker {
 
     predictions.forEach((pred, index) => {
       if (pred.isCorrect) {
+        if (currentStreak < 0) currentStreak = 0;
         currentStreak++;
         if (currentStreak > best) best = currentStreak;
       } else {
-        if (currentStreak > 0) {
-          currentStreak = 0;
-        }
+        if (currentStreak > 0) currentStreak = 0;
         currentStreak--;
         if (Math.abs(currentStreak) > Math.abs(worst)) worst = currentStreak;
       }
-      
+
       if (index === predictions.length - 1) {
         current = currentStreak;
       }
@@ -236,7 +237,12 @@ class PredictionTracker {
   // Get recent predictions
   public getRecentPredictions(limit: number = 10): StoredPrediction[] {
     return Array.from(this.predictions.values())
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => {
+        const timeDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // Tiebreaker: higher ID (later counter) comes first
+        return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+      })
       .slice(0, limit);
   }
 
