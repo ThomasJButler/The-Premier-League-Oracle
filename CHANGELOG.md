@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Deep Audit & Plan Refresh (11 March 2026)
+- Full codebase audit with 7 parallel research agents across specs, frontend libs/services, components, backend, tests, and stale files
+- Identified 35 stubs/hardcoded values across frontend (up from 18 previously documented) and 40+ fake feature methods in backend
+- Confirmed test suite health: 110 tests across 8 files, all passing, no broken references
+- Identified missing test coverage: optimizedPredictions.ts, betBuilder.ts, value.ts have zero tests; backend has 0% coverage
+- Removed stale files: `oldplan.md` (marked "OUT OF DATE"), `to-do.txt` (referenced old api-football.com and Supabase)
+- Updated IMPLEMENTATION_PLAN.md with comprehensive 6-phase plan, complete stub audit table, test coverage matrix, and file creation list
+- Updated CLAUDE.md to reflect current state (old src/ removed, backend feature engineering status, test counts)
+
 ### Planning & Audit (5 March 2026)
 - Comprehensive codebase audit identifying 18 stubs/hardcoded values, 4 TODO comments, and 6 missing service files
 - Updated IMPLEMENTATION_PLAN.md with prioritised 6-phase plan covering data pipeline, prediction engine, tracking, betting, backend ML, and UI/UX

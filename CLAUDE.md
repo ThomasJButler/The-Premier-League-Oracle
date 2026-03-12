@@ -99,8 +99,10 @@ These specs are the single source of truth for requirements.
 - Ralph loop configured in `how-to-ralph-wiggum/`
 
 ### Important Notes
-- The old `src/` directory at the project root is v1.x dead code (pending removal)
-- `frontend/src/` is the active codebase
+- `frontend/src/` is the active codebase (old `src/` directory has been removed)
 - shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
-- Backend models are scaffolded but need training data and pipeline completion
+- Backend models are scaffolded but need training data and pipeline completion — all 40+ feature engineering methods return random values
+- Backend has 0% test coverage (no pytest tests)
+- Frontend has 110 Vitest tests across 8 test files, all passing
+- 5 new service files need creating: backendService, liveService, aiAnalysis, betHistoryService, backtest
 - MIT licensed for open-source collaboration
