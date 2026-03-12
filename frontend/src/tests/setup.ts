@@ -27,10 +27,10 @@ const mockIndexedDB = {
 };
 
 // Setup global mocks
-global.indexedDB = mockIndexedDB as any;
+(globalThis as any).indexedDB = mockIndexedDB as any;
 
 // Mock fetch globally
-global.fetch = vi.fn();
+(globalThis as any).fetch = vi.fn();
 
 // Mock localStorage
 const localStorageMock = {
@@ -41,10 +41,10 @@ const localStorageMock = {
   length: 0,
   key: vi.fn()
 };
-global.localStorage = localStorageMock as Storage;
+(globalThis as any).localStorage = localStorageMock as Storage;
 
 // Mock console methods to reduce noise in tests
-global.console = {
+(globalThis as any).console = {
   ...console,
   log: vi.fn(),
   warn: vi.fn(),

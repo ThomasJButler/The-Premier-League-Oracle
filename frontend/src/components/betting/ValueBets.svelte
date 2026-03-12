@@ -88,13 +88,13 @@
             ...bet,
             match,
             teamStats: {
-              homeForm: homeStats?.form || 'N/A',
-              awayForm: awayStats?.form || 'N/A',
-              h2hRecord: 'W2 D1 L2', // Mock H2H
-              homeAvgGoals: homeStats ? homeStats.goalsFor / Math.max(homeStats.played, 1) : 0,
-              awayAvgGoals: awayStats ? awayStats.goalsFor / Math.max(awayStats.played, 1) : 0,
-              homeCleanSheets: Math.floor(Math.random() * 5),
-              awayCleanSheets: Math.floor(Math.random() * 5)
+              homeForm: 'N/A',
+              awayForm: 'N/A',
+              h2hRecord: 'N/A',
+              homeAvgGoals: homeStats ? homeStats.goals_for / Math.max(homeStats.matches_played, 1) : 0,
+              awayAvgGoals: awayStats ? awayStats.goals_for / Math.max(awayStats.matches_played, 1) : 0,
+              homeCleanSheets: homeStats?.clean_sheets ?? 0,
+              awayCleanSheets: awayStats?.clean_sheets ?? 0
             }
           });
         }
@@ -192,7 +192,7 @@
   });
   
   $: filteredBets = filterBets(valueBets);
-  $: effectiveStake = (bet: ValueBet) => Math.min(bet.recommendedStake, maxStakeAmount);
+  $: effectiveStake = (bet: ValueBet) => Math.min(bet.kellyStake.recommendedStake, maxStakeAmount);
 </script>
 
 <div class="value-bets-container">
@@ -314,7 +314,7 @@
                   <img src={getTeamLogo(bet.awayTeam)} alt="" class="w-8 h-8 object-contain" />
                 </div>
                 <p class="text-sm text-slate-600 dark:text-slate-400">
-                  {formatDate(bet.matchTime)}
+                  {formatDate(bet.matchDate)}
                 </p>
               </div>
               
@@ -343,7 +343,7 @@
                 </div>
                 <div class="text-right">
                   <p class="text-sm text-slate-600 dark:text-slate-400">Bookmaker Odds</p>
-                  <p class="text-2xl font-bold text-slate-900 dark:text-white">{bet.odds.toFixed(2)}</p>
+                  <p class="text-2xl font-bold text-slate-900 dark:text-white">{bet.bookmakerOdds.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -363,10 +363,10 @@
                 <div class="text-right">
                   <p class="text-sm text-slate-600 dark:text-slate-400">Potential Return</p>
                   <p class="text-xl font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(effectiveStake(bet) * bet.odds)}
+                    {formatCurrency(effectiveStake(bet) * bet.bookmakerOdds)}
                   </p>
                   <p class="text-xs text-green-600 dark:text-green-400 mt-1">
-                    Profit: {formatCurrency(effectiveStake(bet) * (bet.odds - 1))}
+                    Profit: {formatCurrency(effectiveStake(bet) * (bet.bookmakerOdds - 1))}
                   </p>
                 </div>
               </div>
@@ -438,7 +438,7 @@
                     <div class="flex items-start gap-2">
                       <Check class="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                       <p class="text-sm text-slate-600 dark:text-slate-400">
-                        Our model gives {bet.ourProbability * 100}% probability vs bookmaker's implied {((1/bet.odds) * 100).toFixed(1)}%
+                        Our model gives {bet.ourProbability * 100}% probability vs bookmaker's implied {((1/bet.bookmakerOdds) * 100).toFixed(1)}%
                       </p>
                     </div>
                     <div class="flex items-start gap-2">

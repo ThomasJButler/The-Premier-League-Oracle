@@ -55,7 +55,7 @@ describe('FootballDataAPI', () => {
             currentMatchday: 10
           }
         })
-      } as Response);
+      } as unknown as Response);
 
       const result = await api.testConnection();
 
@@ -75,7 +75,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 401
-      } as Response);
+      } as unknown as Response);
 
       const result = await api.testConnection();
       expect(result).toBe(false);
@@ -107,7 +107,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => mockSeasonData
-      } as Response);
+      } as unknown as Response);
 
       const result = await api.getCurrentSeason();
       
@@ -127,7 +127,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 500
-      } as Response);
+      } as unknown as Response);
 
       const result = await api.getCurrentSeason();
       expect(result).toBeNull();
@@ -172,7 +172,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => mockMatchesResponse
-      } as Response);
+      } as unknown as Response);
 
       const matches = await api.getMatches();
       
@@ -190,7 +190,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => mockMatchesResponse
-      } as Response);
+      } as unknown as Response);
 
       const matches = await api.getMatches();
       
@@ -215,7 +215,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ matches: [] })
-      } as Response);
+      } as unknown as Response);
 
       await api.getUpcomingMatches(7);
       
@@ -237,7 +237,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ matches: [] })
-      } as Response);
+      } as unknown as Response);
 
       await api.getRecentResults(7);
       
@@ -288,7 +288,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => mockStandingsResponse
-      } as Response);
+      } as unknown as Response);
 
       const standings = await api.getStandings();
       
@@ -304,7 +304,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ standings: [] })
-      } as Response);
+      } as unknown as Response);
 
       const standings = await api.getStandings();
       expect(standings).toEqual([]);
@@ -340,7 +340,7 @@ describe('FootballDataAPI', () => {
       // getTeamStats calls getStandings() then getTeamMatches()
       vi.mocked(fetch)
         .mockResolvedValueOnce({ ok: true, json: async () => mockStandingsForStats } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => mockTeamMatches } as Response);
+        .mockResolvedValueOnce({ ok: true, json: async () => mockTeamMatches } as unknown as Response);
 
       const stats = await api.getTeamStats('Arsenal');
 
@@ -355,7 +355,7 @@ describe('FootballDataAPI', () => {
       // getTeamStats matches by name or shortName (case-insensitive)
       vi.mocked(fetch)
         .mockResolvedValueOnce({ ok: true, json: async () => mockStandingsForStats } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => mockTeamMatches } as Response);
+        .mockResolvedValueOnce({ ok: true, json: async () => mockTeamMatches } as unknown as Response);
 
       const stats = await api.getTeamStats('arsenal');
       expect(stats).toBeDefined();
@@ -371,7 +371,7 @@ describe('FootballDataAPI', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests'
-      } as Response);
+      } as unknown as Response);
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const matches = await api.getMatches();
@@ -388,7 +388,7 @@ describe('FootballDataAPI', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized'
-      } as Response);
+      } as unknown as Response);
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const matches = await api.getMatches();
@@ -404,7 +404,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => { throw new Error('Invalid JSON'); }
-      } as Response);
+      } as unknown as Response);
 
       const matches = await api.getMatches();
       
@@ -476,7 +476,7 @@ describe('FootballDataAPI', () => {
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
         json: async () => ({ matches: [] })
-      } as Response);
+      } as unknown as Response);
 
       // First call fetches from API
       await api.getMatches();

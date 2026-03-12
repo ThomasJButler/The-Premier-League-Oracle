@@ -363,7 +363,7 @@
       </div>
       
       <!-- Warning if edge is negative -->
-      {#if calculation.edge < 0}
+      {#if calculation.edgePercentage < 0}
         <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
           <div class="flex items-start gap-2">
             <AlertTriangle class="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
@@ -415,8 +415,8 @@
         <div class="space-y-1 text-sm">
           <div class="flex justify-between">
             <span class="text-slate-600 dark:text-slate-400">Your Edge:</span>
-            <span class="font-mono {calculation.edge > 0 ? 'text-green-600' : 'text-red-600'}">
-              {calculation.edge > 0 ? '+' : ''}{formatPercentage(calculation.edge)}
+            <span class="font-mono {calculation.edgePercentage > 0 ? 'text-green-600' : 'text-red-600'}">
+              {calculation.edgePercentage > 0 ? '+' : ''}{formatPercentage(calculation.edgePercentage)}
             </span>
           </div>
           <div class="flex justify-between">

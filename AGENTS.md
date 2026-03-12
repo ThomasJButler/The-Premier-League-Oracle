@@ -32,7 +32,7 @@
 
 ## Known Bugs
 
-- IndexedDB `scorers` store referenced but not created in `onupgradeneeded`
+None currently tracked. See `IMPLEMENTATION_PLAN.md` for outstanding items.
 
 ## Safety
 
