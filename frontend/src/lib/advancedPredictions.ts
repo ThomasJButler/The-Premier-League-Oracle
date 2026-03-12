@@ -60,90 +60,172 @@ export class PoissonPredictor {
   }
 }
 
-// ELO Rating System
+// ELO Rating System — single source of truth for team strength
+// Ratings persist to localStorage and update dynamically from completed match results.
 export class EloRatingSystem {
-  private static readonly K_FACTOR = 32; // Sensitivity of rating changes
-  private static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
-  private static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
-  
+  static readonly K_FACTOR = 32; // Sensitivity of rating changes
+  static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
+  static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
+  private static readonly STORAGE_KEY = 'elo_ratings';
+  private static readonly PROCESSED_KEY = 'elo_processed_match_ids';
+
   private teamRatings: Map<string, number> = new Map();
-  
+  private processedMatchIds: Set<string> = new Set();
+
+  // Default seed ratings — used only when no localStorage data exists.
+  // Keyed by canonical Football-Data.org names (with FC suffix).
+  private static readonly SEED_RATINGS: Record<string, number> = {
+    'Manchester City FC': 1850,
+    'Arsenal FC': 1800,
+    'Liverpool FC': 1780,
+    'Manchester United FC': 1700,
+    'Chelsea FC': 1680,
+    'Tottenham Hotspur FC': 1650,
+    'Newcastle United FC': 1620,
+    'Brighton & Hove Albion FC': 1580,
+    'Aston Villa FC': 1560,
+    'West Ham United FC': 1540,
+    'Brentford FC': 1520,
+    'Fulham FC': 1500,
+    'Crystal Palace FC': 1480,
+    'Wolverhampton Wanderers FC': 1460,
+    'Everton FC': 1440,
+    'Nottingham Forest FC': 1420,
+    'AFC Bournemouth': 1400,
+    'Leicester City FC': 1380,
+    'Leeds United FC': 1360,
+    'Southampton FC': 1340,
+    'Ipswich Town FC': 1320,
+    'Sunderland AFC': 1310,
+    'Luton Town FC': 1300,
+    'Burnley FC': 1290,
+    'Sheffield United FC': 1280,
+  };
+
+  // Short-name aliases → canonical name for fuzzy lookup
+  private static readonly ALIASES: Record<string, string> = {
+    'manchester city': 'Manchester City FC',
+    'man city': 'Manchester City FC',
+    'arsenal': 'Arsenal FC',
+    'liverpool': 'Liverpool FC',
+    'manchester united': 'Manchester United FC',
+    'man united': 'Manchester United FC',
+    'man utd': 'Manchester United FC',
+    'chelsea': 'Chelsea FC',
+    'tottenham hotspur': 'Tottenham Hotspur FC',
+    'tottenham': 'Tottenham Hotspur FC',
+    'spurs': 'Tottenham Hotspur FC',
+    'newcastle united': 'Newcastle United FC',
+    'newcastle': 'Newcastle United FC',
+    'brighton & hove albion': 'Brighton & Hove Albion FC',
+    'brighton': 'Brighton & Hove Albion FC',
+    'aston villa': 'Aston Villa FC',
+    'west ham united': 'West Ham United FC',
+    'west ham': 'West Ham United FC',
+    'brentford': 'Brentford FC',
+    'fulham': 'Fulham FC',
+    'crystal palace': 'Crystal Palace FC',
+    'wolverhampton wanderers': 'Wolverhampton Wanderers FC',
+    'wolves': 'Wolverhampton Wanderers FC',
+    'everton': 'Everton FC',
+    'nottingham forest': 'Nottingham Forest FC',
+    'nottm forest': 'Nottingham Forest FC',
+    'afc bournemouth': 'AFC Bournemouth',
+    'bournemouth': 'AFC Bournemouth',
+    'leicester city': 'Leicester City FC',
+    'leicester': 'Leicester City FC',
+    'leeds united': 'Leeds United FC',
+    'leeds': 'Leeds United FC',
+    'southampton': 'Southampton FC',
+    'ipswich town': 'Ipswich Town FC',
+    'ipswich': 'Ipswich Town FC',
+    'sunderland afc': 'Sunderland AFC',
+    'sunderland': 'Sunderland AFC',
+    'luton town': 'Luton Town FC',
+    'luton': 'Luton Town FC',
+    'burnley': 'Burnley FC',
+    'sheffield united': 'Sheffield United FC',
+  };
+
   constructor() {
-    this.initializeRatings();
+    this.loadFromStorage();
   }
-  
-  private initializeRatings() {
-    // Initialize Premier League teams with base ratings
-    const teams = [
-      { name: 'Manchester City', rating: 1850 },
-      { name: 'Arsenal', rating: 1800 },
-      { name: 'Liverpool', rating: 1780 },
-      { name: 'Manchester United', rating: 1700 },
-      { name: 'Chelsea', rating: 1680 },
-      { name: 'Tottenham Hotspur', rating: 1650 },
-      { name: 'Newcastle United', rating: 1620 },
-      { name: 'Brighton & Hove Albion', rating: 1580 },
-      { name: 'Aston Villa', rating: 1560 },
-      { name: 'West Ham United', rating: 1540 },
-      { name: 'Brentford', rating: 1520 },
-      { name: 'Fulham', rating: 1500 },
-      { name: 'Crystal Palace', rating: 1480 },
-      { name: 'Wolverhampton Wanderers', rating: 1460 },
-      { name: 'Everton', rating: 1440 },
-      { name: 'Nottingham Forest', rating: 1420 },
-      { name: 'AFC Bournemouth', rating: 1400 },
-      { name: 'Leicester City', rating: 1380 },
-      { name: 'Leeds United', rating: 1360 },
-      { name: 'Southampton', rating: 1340 },
-      { name: 'Ipswich Town', rating: 1320 },
-      { name: 'Sunderland AFC', rating: 1310 },
-      { name: 'Luton Town', rating: 1300 },
-      // Add variations for common name differences
-      { name: 'Man City', rating: 1850 },
-      { name: 'Man United', rating: 1700 },
-      { name: 'Man Utd', rating: 1700 },
-      { name: 'Spurs', rating: 1650 },
-      { name: 'Tottenham', rating: 1650 },
-      { name: 'Newcastle', rating: 1620 },
-      { name: 'Brighton', rating: 1580 },
-      { name: 'West Ham', rating: 1540 },
-      { name: 'Wolves', rating: 1460 },
-      { name: 'Nottm Forest', rating: 1420 },
-      { name: 'Bournemouth', rating: 1400 },
-      { name: 'Leicester', rating: 1380 },
-      { name: 'Leeds', rating: 1360 },
-      { name: 'Ipswich', rating: 1320 },
-      { name: 'Sunderland', rating: 1310 },
-      { name: 'Luton', rating: 1300 }
-    ];
-    
-    teams.forEach(team => {
-      this.teamRatings.set(team.name, team.rating);
-    });
-  }
-  
-  setTeamRating(teamName: string, rating: number): void {
-    this.teamRatings.set(teamName, rating);
-  }
-  
-  getTeamRating(teamName: string): number {
-    // Try exact match first
-    if (this.teamRatings.has(teamName)) {
-      return this.teamRatings.get(teamName)!;
+
+  /** Load persisted ratings from localStorage, falling back to seed values. */
+  private loadFromStorage(): void {
+    try {
+      const stored = localStorage.getItem(EloRatingSystem.STORAGE_KEY);
+      if (stored) {
+        const parsed: Record<string, number> = JSON.parse(stored);
+        this.teamRatings = new Map(Object.entries(parsed));
+      } else {
+        // First run — seed with defaults
+        this.teamRatings = new Map(Object.entries(EloRatingSystem.SEED_RATINGS));
+        this.saveToStorage();
+      }
+
+      const processedIds = localStorage.getItem(EloRatingSystem.PROCESSED_KEY);
+      if (processedIds) {
+        this.processedMatchIds = new Set(JSON.parse(processedIds));
+      }
+    } catch {
+      // localStorage unavailable (SSR or test) — use seed ratings
+      this.teamRatings = new Map(Object.entries(EloRatingSystem.SEED_RATINGS));
     }
-    
-    // Try partial match
-    for (const [name, rating] of this.teamRatings) {
-      if (name.toLowerCase().includes(teamName.toLowerCase()) || 
-          teamName.toLowerCase().includes(name.toLowerCase())) {
-        return rating;
+  }
+
+  /** Persist current ratings to localStorage. */
+  saveToStorage(): void {
+    try {
+      const obj: Record<string, number> = {};
+      this.teamRatings.forEach((rating, team) => { obj[team] = Math.round(rating); });
+      localStorage.setItem(EloRatingSystem.STORAGE_KEY, JSON.stringify(obj));
+      localStorage.setItem(
+        EloRatingSystem.PROCESSED_KEY,
+        JSON.stringify([...this.processedMatchIds])
+      );
+    } catch {
+      // localStorage unavailable — silently continue
+    }
+  }
+
+  /** Resolve a team name to its canonical form, or return as-is if unrecognised. */
+  private resolveTeamName(name: string): string {
+    // Exact match on existing ratings
+    if (this.teamRatings.has(name)) return name;
+
+    // Try alias lookup (case-insensitive)
+    const lower = name.toLowerCase();
+    const canonical = EloRatingSystem.ALIASES[lower];
+    if (canonical) return canonical;
+
+    // Try partial match against existing rating keys
+    for (const key of this.teamRatings.keys()) {
+      if (key.toLowerCase().includes(lower) || lower.includes(key.toLowerCase())) {
+        return key;
       }
     }
-    
-    // Return default rating if team not found
-    return EloRatingSystem.DEFAULT_RATING;
+
+    return name;
   }
-  
+
+  setTeamRating(teamName: string, rating: number): void {
+    const resolved = this.resolveTeamName(teamName);
+    this.teamRatings.set(resolved, rating);
+  }
+
+  getTeamRating(teamName: string): number {
+    const resolved = this.resolveTeamName(teamName);
+    return this.teamRatings.get(resolved) ?? EloRatingSystem.DEFAULT_RATING;
+  }
+
+  /** Get all current ratings as a plain object (useful for debugging / display). */
+  getAllRatings(): Record<string, number> {
+    const result: Record<string, number> = {};
+    this.teamRatings.forEach((rating, team) => { result[team] = Math.round(rating); });
+    return result;
+  }
+
   calculateWinProbability(homeRating: number, awayRating: number): number {
     return 1 / (1 + Math.pow(10, (awayRating - homeRating) / 400));
   }
@@ -157,12 +239,14 @@ export class EloRatingSystem {
     awayTeam: string,
     actualResult: 'H' | 'D' | 'A'
   ): { newHomeRating: number; newAwayRating: number } {
-    const homeRating = this.getTeamRating(homeTeam);
-    const awayRating = this.getTeamRating(awayTeam);
-    
+    const homeResolved = this.resolveTeamName(homeTeam);
+    const awayResolved = this.resolveTeamName(awayTeam);
+    const homeRating = this.getTeamRating(homeResolved);
+    const awayRating = this.getTeamRating(awayResolved);
+
     // Add home advantage
     const adjustedHomeRating = homeRating + EloRatingSystem.HOME_ADVANTAGE;
-    
+
     // Calculate expected scores
     const expectedHome = EloRatingSystem.calculateExpectedScore(adjustedHomeRating, awayRating);
     const expectedAway = 1 - expectedHome;
@@ -174,14 +258,14 @@ export class EloRatingSystem {
     // Update ratings
     const newHomeRating = homeRating + EloRatingSystem.K_FACTOR * (actualHome - expectedHome);
     const newAwayRating = awayRating + EloRatingSystem.K_FACTOR * (actualAway - expectedAway);
-    
-    // Store updated ratings
-    this.teamRatings.set(homeTeam, newHomeRating);
-    this.teamRatings.set(awayTeam, newAwayRating);
+
+    // Store updated ratings under canonical names
+    this.teamRatings.set(homeResolved, newHomeRating);
+    this.teamRatings.set(awayResolved, newAwayRating);
 
     return { newHomeRating, newAwayRating };
   }
-  
+
   static updateRatings(
     homeRating: number,
     awayRating: number,
@@ -189,7 +273,7 @@ export class EloRatingSystem {
   ): { newHomeRating: number; newAwayRating: number } {
     // Add home advantage
     const adjustedHomeRating = homeRating + this.HOME_ADVANTAGE;
-    
+
     // Calculate expected scores
     const expectedHome = this.calculateExpectedScore(adjustedHomeRating, awayRating);
     const expectedAway = 1 - expectedHome;
@@ -203,6 +287,32 @@ export class EloRatingSystem {
     const newAwayRating = awayRating + this.K_FACTOR * (actualAway - expectedAway);
 
     return { newHomeRating, newAwayRating };
+  }
+
+  /**
+   * Process an array of completed matches chronologically to update ELO ratings.
+   * Skips matches already processed (idempotent). Persists to localStorage when done.
+   */
+  processCompletedMatches(matches: Match[]): number {
+    // Sort chronologically so ratings evolve in the correct order
+    const sorted = [...matches]
+      .filter(m => m.result && m.status === 'FINISHED')
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let processed = 0;
+    for (const match of sorted) {
+      if (this.processedMatchIds.has(match.id)) continue;
+
+      this.updateRatings(match.home_team, match.away_team, match.result!);
+      this.processedMatchIds.add(match.id);
+      processed++;
+    }
+
+    if (processed > 0) {
+      this.saveToStorage();
+    }
+
+    return processed;
   }
 }
 
@@ -221,7 +331,7 @@ export class ExpectedGoalsCalculator {
       case 'penalty':
         return 0.76; // Penalties have ~76% conversion rate
       case 'open-play':
-        baseXG = 0.1;
+        baseXG = 0.4;
         break;
       case 'corner':
         baseXG = 0.03;
@@ -232,7 +342,7 @@ export class ExpectedGoalsCalculator {
     }
 
     // Adjust for distance (closer = higher xG)
-    const distanceFactor = Math.exp(-0.1 * distance);
+    const distanceFactor = Math.exp(-0.05 * distance);
     
     // Adjust for angle (more central = higher xG)
     const angleFactor = 1 - (Math.abs(angle) / 90) * 0.7;
@@ -288,26 +398,27 @@ export class FatigueAnalyzer {
   static async calculateFixtureDifficulty(
     teamName: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    eloSystem?: EloRatingSystem
   ): Promise<number> {
     try {
-      // Calculate average opponent strength in date range
+      // Calculate average opponent ELO in date range
       const matches = await dataService.getMatches();
-      const teamMatches = matches.filter(match => 
+      const teamMatches = matches.filter(match =>
         (match.home_team === teamName || match.away_team === teamName) &&
         new Date(match.date) >= startDate &&
         new Date(match.date) <= endDate
       );
-      
+
       if (teamMatches.length === 0) return 0;
-          
+
+      const elo = eloSystem ?? new EloRatingSystem();
       let totalDifficulty = 0;
       for (const match of teamMatches) {
         const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-        // Get opponent's rating (simplified - in real implementation, fetch from ratings table)
-        totalDifficulty += 1500; // Placeholder - would fetch actual ELO rating
+        totalDifficulty += elo.getTeamRating(opponent);
       }
-      
+
       return totalDifficulty / teamMatches.length;
     } catch (error) {
       // Error calculating fixture difficulty
@@ -323,6 +434,9 @@ export class FatigueAnalyzer {
     return restFactor * fixtureFactor;
   }
 }
+
+// Shared ELO system instance — used by both AdvancedMatchPredictor and OptimizedPredictor
+export const sharedEloSystem = new EloRatingSystem();
 
 // Advanced Match Predictor combining all factors
 export class AdvancedMatchPredictor {
@@ -340,9 +454,9 @@ export class AdvancedMatchPredictor {
     valueBets: Array<{ outcome: string; odds: number; expectedValue: number }>;
     insights: string[];
   }> {
-    // 1. Get team ratings (would be fetched from database)
-    const homeRating = 1500; // Placeholder - fetch from DB
-    const awayRating = 1450; // Placeholder - fetch from DB
+    // 1. Get team ratings from the shared ELO system
+    const homeRating = sharedEloSystem.getTeamRating(homeTeam);
+    const awayRating = sharedEloSystem.getTeamRating(awayTeam);
 
     // 2. Calculate rest days and fatigue
     const [homeRestDays, awayRestDays] = await Promise.all([

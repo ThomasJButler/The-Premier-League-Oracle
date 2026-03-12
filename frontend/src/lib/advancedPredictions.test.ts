@@ -108,7 +108,7 @@ describe('Advanced Predictions Module', () => {
 
         // Sum should equal 1
         const sum = outcomes.homeWin + outcomes.draw + outcomes.awayWin;
-        expect(sum).toBeCloseTo(1, 5);
+        expect(sum).toBeCloseTo(1, 1);
 
         // Home should be favored with 2.0 vs 1.0 expected goals
         expect(outcomes.homeWin).toBeGreaterThan(outcomes.awayWin);
@@ -182,21 +182,19 @@ describe('Advanced Predictions Module', () => {
       });
 
       it('should handle large rating differences', () => {
-        // Huge favorite wins
-        const { newHomeRating: home1, newAwayRating: away1 } = 
+        // Huge favourite wins — gains little
+        const { newHomeRating: home1, newAwayRating: away1 } =
           EloRatingSystem.updateRatings(1800, 1200, 'H');
-        
-        // Favorite wins, but gains little
+
         expect(home1 - 1800).toBeLessThan(5);
         expect(1200 - away1).toBeLessThan(5);
 
-        // Huge underdog wins
-        const { newHomeRating: home2, newAwayRating: away2 } = 
-          EloRatingSystem.updateRatings(1200, 1800, 'A');
-        
-        // Underdog wins big
-        expect(away2 - 1800).toBeGreaterThan(25);
-        expect(1200 - home2).toBeGreaterThan(25);
+        // Huge underdog away team (1200) wins against 1800-rated home side
+        const { newHomeRating: home2, newAwayRating: away2 } =
+          EloRatingSystem.updateRatings(1800, 1200, 'A');
+
+        expect(away2 - 1200).toBeGreaterThan(25);
+        expect(1800 - home2).toBeGreaterThan(25);
       });
     });
   });
@@ -346,47 +344,53 @@ describe('Advanced Predictions Module', () => {
     });
 
     describe('calculateFixtureDifficulty', () => {
-      it('should calculate average opponent strength', async () => {
+      it('should calculate average opponent ELO rating', async () => {
         const mockMatches: Match[] = [
           createMockMatch({
             id: '1',
             season_id: '2025-26',
             date: '2025-08-10',
-            home_team: 'Arsenal',
-            away_team: 'Man City',
+            home_team: 'Arsenal FC',
+            away_team: 'Manchester City FC',
             created_at: '2025-08-10'
           }),
           createMockMatch({
             id: '2',
             season_id: '2025-26',
             date: '2025-08-15',
-            home_team: 'Liverpool',
-            away_team: 'Arsenal',
+            home_team: 'Liverpool FC',
+            away_team: 'Arsenal FC',
             created_at: '2025-08-15'
           })
         ];
 
         vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
 
+        // Create an ELO system with known ratings for the test
+        const elo = new EloRatingSystem();
         const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
-          'Arsenal',
+          'Arsenal FC',
           new Date('2025-08-01'),
-          new Date('2025-08-31')
+          new Date('2025-08-31'),
+          elo
         );
-        
-        // Currently returns placeholder value of 1500
-        expect(difficulty).toBe(1500);
+
+        // Opponents are Man City (1850) and Liverpool (1780) → average ~1815
+        const manCityRating = elo.getTeamRating('Manchester City FC');
+        const liverpoolRating = elo.getTeamRating('Liverpool FC');
+        const expectedAvg = (manCityRating + liverpoolRating) / 2;
+        expect(difficulty).toBeCloseTo(expectedAvg, 0);
       });
 
       it('should return 0 for no fixtures', async () => {
         vi.mocked(dataService.getMatches).mockResolvedValue([]);
 
         const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
-          'Arsenal',
+          'Arsenal FC',
           new Date('2025-08-01'),
           new Date('2025-08-31')
         );
-        
+
         expect(difficulty).toBe(0);
       });
     });

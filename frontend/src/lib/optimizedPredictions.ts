@@ -1,8 +1,8 @@
 import { dataService } from '../services/dataService';
 import type { Match, Standing } from '../types';
-import { EloRatingSystem, PoissonPredictor } from './advancedPredictions';
+import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, sharedEloSystem } from './advancedPredictions';
 
-interface EnhancedPredictionModel {
+export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
   confidence: number;
   predictedHomeGoals: number;
@@ -23,48 +23,8 @@ interface EnhancedPredictionModel {
 }
 
 export class OptimizedPredictor {
-  private static eloSystem = new EloRatingSystem();
-  private static readonly HOME_ADVANTAGE = 60; // ELO home advantage
-  private static readonly FORM_WEIGHT = 0.25;
-  private static readonly H2H_WEIGHT = 0.15;
-  private static readonly POSITION_WEIGHT = 0.20;
-  private static readonly STATS_WEIGHT = 0.40;
-  
-  // Team strength estimates based on recent Premier League performance
-  private static readonly TEAM_STRENGTHS: { [key: string]: number } = {
-    'Manchester City FC': 1650,
-    'Arsenal FC': 1600,
-    'Liverpool FC': 1590,
-    'Aston Villa FC': 1520,
-    'Tottenham Hotspur FC': 1510,
-    'Chelsea FC': 1500,
-    'Newcastle United FC': 1490,
-    'Manchester United FC': 1480,
-    'West Ham United FC': 1460,
-    'Crystal Palace FC': 1440,
-    'Brighton & Hove Albion FC': 1450,
-    'AFC Bournemouth': 1420,
-    'Fulham FC': 1430,
-    'Wolverhampton Wanderers FC': 1410,
-    'Everton FC': 1400,
-    'Brentford FC': 1440,
-    'Nottingham Forest FC': 1390,
-    'Luton Town FC': 1350,
-    'Burnley FC': 1360,
-    'Sheffield United FC': 1340,
-    'Leicester City FC': 1470,
-    'Leeds United FC': 1460,
-    'Southampton FC': 1450,
-    'Ipswich Town FC': 1380,
-    'Sunderland AFC': 1370
-  };
-  
-  // Initialize ELO ratings with team strengths
-  static {
-    for (const [team, rating] of Object.entries(this.TEAM_STRENGTHS)) {
-      this.eloSystem.setTeamRating(team, rating);
-    }
-  }
+  // Use the shared ELO system — single source of truth for team ratings
+  private static eloSystem = sharedEloSystem;
 
   /**
    * Main prediction method with enhanced algorithms
@@ -87,9 +47,9 @@ export class OptimizedPredictor {
         homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
         awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
       } catch (error) {
-        // Use estimated positions based on team strength
-        const sortedTeams = Object.entries(this.TEAM_STRENGTHS)
-          .sort((a, b) => b[1] - a[1]);
+        // Use ELO-derived positions as fallback
+        const allRatings = this.eloSystem.getAllRatings();
+        const sortedTeams = Object.entries(allRatings).sort((a, b) => b[1] - a[1]);
         homePosition = sortedTeams.findIndex(([team]) => team === homeTeam) + 1;
         awayPosition = sortedTeams.findIndex(([team]) => team === awayTeam) + 1;
       }
@@ -109,11 +69,11 @@ export class OptimizedPredictor {
         this.getEnhancedTeamStats(awayTeam, standings)
       ]);
 
-      // 3. Calculate ELO ratings (use defaults if not found)
-      const homeElo = this.eloSystem.getTeamRating(homeTeam) || this.TEAM_STRENGTHS[homeTeam] || 1400;
-      const awayElo = this.eloSystem.getTeamRating(awayTeam) || this.TEAM_STRENGTHS[awayTeam] || 1400;
+      // 3. Calculate ELO ratings from shared system
+      const homeElo = this.eloSystem.getTeamRating(homeTeam);
+      const awayElo = this.eloSystem.getTeamRating(awayTeam);
       const eloWinProbability = this.eloSystem.calculateWinProbability(
-        homeElo + this.HOME_ADVANTAGE, 
+        homeElo + EloRatingSystem.HOME_ADVANTAGE,
         awayElo
       );
 
@@ -138,8 +98,14 @@ export class OptimizedPredictor {
       const fatigueFactor = await this.calculateFatigueFactor(homeTeam, awayTeam);
       
       // 8. Combine all models with weighted approach
+      // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)
+      const ratingDiffAbs = Math.abs(homeElo - awayElo);
+      const eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600);
+      const eloDrawClamped = Math.max(0.10, Math.min(0.35, eloDrawProb));
+      const eloHomeProb = eloWinProbability * (1 - eloDrawClamped);
+      const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
       const combinedProbabilities = this.combineModels({
-        elo: { home: eloWinProbability, draw: 0.25, away: 1 - eloWinProbability - 0.25 },
+        elo: { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb },
         poisson: poissonProbs,
         form: formAnalysis.probabilities,
         h2h: h2hAnalysis.probabilities,
@@ -206,9 +172,9 @@ export class OptimizedPredictor {
         modelWeights: {
           elo: 0.25,
           poisson: 0.30,
-          form: this.FORM_WEIGHT,
-          h2h: this.H2H_WEIGHT,
-          standings: this.POSITION_WEIGHT
+          form: 0.20,
+          h2h: 0.10,
+          standings: 0.15
         },
         insights,
         valueOdds
@@ -237,11 +203,11 @@ export class OptimizedPredictor {
 
   private static async getEnhancedTeamStats(team: string, standings: Standing[]) {
     const standing = standings.find(s => s.team.name === team);
-    
+
     if (!standing) {
-      // Use team strength to estimate stats when no standings data
-      const teamStrength = this.TEAM_STRENGTHS[team] || 1400;
-      const relativeStrength = (teamStrength - 1400) / 200; // Normalize to -1 to +1
+      // Use ELO rating to estimate stats when no standings data available
+      const teamStrength = this.eloSystem.getTeamRating(team);
+      const relativeStrength = (teamStrength - 1500) / 200; // Normalise to approx -1.5 to +1.75
       
       // Better teams score more and concede less
       const avgGoalsScored = 1.5 + (relativeStrength * 0.5);
@@ -255,7 +221,7 @@ export class OptimizedPredictor {
         pointsPerGame: Math.max(0.3, Math.min(3, pointsPerGame)),
         cleanSheetRate: Math.max(0.1, Math.min(0.5, 0.3 + relativeStrength * 0.1)),
         winRate: Math.max(0.1, Math.min(0.8, winRate)),
-        form: relativeStrength > 0.3 ? 'WWWDL' : relativeStrength < -0.3 ? 'LLDDD' : 'DWDLD'
+        form: '?????' // No form data available — will be computed from match results
       };
     }
 
@@ -279,9 +245,9 @@ export class OptimizedPredictor {
 
     const calculateFormScore = (form: any[], isHome: boolean = false) => {
       if (!form || form.length === 0) {
-        // Use team strength as fallback
-        const teamStrength = this.TEAM_STRENGTHS[isHome ? homeTeam : awayTeam] || 1400;
-        return 0.3 + ((teamStrength - 1400) / 1000); // Convert to 0.1 - 0.7 range
+        // Use ELO rating as fallback when no form data available
+        const teamStrength = this.eloSystem.getTeamRating(isHome ? homeTeam : awayTeam);
+        return 0.3 + ((teamStrength - 1500) / 1000); // Convert to ~0.1 - 0.65 range
       }
       
       let score = 0;
@@ -300,14 +266,9 @@ export class OptimizedPredictor {
     
     const formString = (form: any[], team: string) => {
       if (!form || form.length === 0) {
-        // Generate form based on team strength
-        const strength = this.TEAM_STRENGTHS[team] || 1400;
-        if (strength > 1550) return 'WWDWL';
-        if (strength > 1450) return 'WDLDW';
-        if (strength < 1350) return 'LLDLD';
-        return 'DWDLD';
+        return '?????'; // No form data available
       }
-      return form.slice(0, 5).map(m => m.result || 'D').join('');
+      return form.slice(0, 5).map(m => m.result || '?').join('');
     };
 
     // Calculate form-based probabilities with more variation
@@ -406,11 +367,23 @@ export class OptimizedPredictor {
   }
 
   private static async calculateFatigueFactor(homeTeam: string, awayTeam: string) {
-    // Simplified fatigue calculation
-    // In a real scenario, would check days since last match, European fixtures, etc.
+    const now = new Date();
+    const [homeRestDays, awayRestDays] = await Promise.all([
+      FatigueAnalyzer.calculateRestDays(homeTeam, now),
+      FatigueAnalyzer.calculateRestDays(awayTeam, now)
+    ]);
+
+    // Less rest → more fatigue → lower multiplier (min 0.85 to avoid extreme swings)
+    const restToFatigue = (days: number) => {
+      if (days >= 6) return 1.0;   // Fully rested
+      if (days >= 4) return 0.97;  // Normal schedule
+      if (days >= 3) return 0.93;  // Tight turnaround
+      return 0.88;                 // Midweek congestion
+    };
+
     return {
-      homeFatigue: 1.0, // No fatigue adjustment
-      awayFatigue: 1.0
+      homeFatigue: restToFatigue(homeRestDays),
+      awayFatigue: restToFatigue(awayRestDays)
     };
   }
 
@@ -505,26 +478,27 @@ export class OptimizedPredictor {
     fatigueFactor: { homeFatigue: number; awayFatigue: number }
   ): number {
     const probs = Object.values(probabilities);
-    const maxProb = Math.max(...probs);
-    const secondProb = probs.sort((a, b) => b - a)[1];
-    
-    // Confidence based on probability difference
+    const sorted = [...probs].sort((a, b) => b - a); // Non-mutating sort
+    const maxProb = sorted[0];
+    const secondProb = sorted[1];
+
+    // Confidence based on probability gap between top two outcomes
     const probDifference = maxProb - secondProb;
-    
-    // Base confidence from probability
+
+    // Base confidence from the predicted outcome's probability
     let confidence = maxProb;
-    
-    // Boost confidence if there's a clear favorite
+
+    // Boost confidence if there's a clear favourite
     if (probDifference > 0.2) {
       confidence += 0.1;
     } else if (probDifference < 0.1) {
       confidence -= 0.1;
     }
-    
-    // Apply fatigue adjustment (minimal for now)
+
+    // Apply fatigue adjustment — uncertain when teams are tired
     const avgFatigue = (fatigueFactor.homeFatigue + fatigueFactor.awayFatigue) / 2;
     confidence *= avgFatigue;
-    
+
     // Ensure confidence is within bounds
     return Math.max(0.25, Math.min(0.95, confidence));
   }

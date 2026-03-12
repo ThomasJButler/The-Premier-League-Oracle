@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 11 March 2026
+Last updated: 12 March 2026
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 11 March 2026
 - PredictionTracker (localStorage) in `frontend/src/services/predictionTracker.ts` — fully implemented
 - BetBuilder in `frontend/src/lib/betBuilder.ts` — multi-market predictions (partial)
 - Vite proxy for Football-Data.org in `frontend/vite.config.ts`
-- Test framework: Vitest with 110 tests across 8 test files, all passing
+- Test framework: Vitest with 152 tests across 9 test files, all passing
 - Python ML backend scaffolded: XGBoost, LSTM, Transformer models, FastAPI, feature engineering, security
 
 ### NOT Done (Incorrectly Marked or Assumed)
@@ -34,9 +34,9 @@ Last updated: 11 March 2026
 
 ## Priority 0: Remaining Cleanup
 
-### 0a. Remove remaining stale files
-- [ ] Delete `oldplan.md` (explicitly marked "OUT OF DATE" in its own header, references September 2025 predictions)
-- [ ] Delete `to-do.txt` (references old api-football.com and Supabase — superseded by this plan)
+### 0a. Remove remaining stale files ✅
+- [x] Delete `oldplan.md` (explicitly marked "OUT OF DATE" in its own header, references September 2025 predictions)
+- [x] Delete `to-do.txt` (references old api-football.com and Supabase — superseded by this plan)
 
 ### 0b. Trim backend requirements.txt
 `backend/requirements.txt` lists 130+ packages including Kafka, Azure, AWS, Graph Neural Networks, Computer Vision, Dash, etc. Most are aspirational and make installation fail.
@@ -46,18 +46,18 @@ Last updated: 11 March 2026
 
 ## Phase 1: Data Pipeline & Live Data (specs 02, 05)
 
-### 1a. Fix IndexedDB bugs
-`dataService.ts:40-58` — `onupgradeneeded` has two bugs:
-1. Missing `scorers` store — `getTopScorers()` uses it but it doesn't exist, causing silent failures
-2. `standings` store uses `team_id` as keyPath but Football-Data API returns `team.id` nested — cache writes silently fail
-- [ ] Add `db.createObjectStore('scorers', { keyPath: 'id' })` to `onupgradeneeded` handler
-- [ ] Fix `standings` store keyPath to match actual API response structure
+### 1a. Fix IndexedDB bugs ✅
+`dataService.ts:40-58` — `onupgradeneeded` had two bugs:
+1. Missing `scorers` store — `getTopScorers()` uses it but it didn't exist, causing silent failures
+2. `standings` store used `team_id` as keyPath but Football-Data API returns `team.id` nested — cache writes silently failed
+- [x] Add `db.createObjectStore('scorers', { keyPath: 'id' })` to `onupgradeneeded` handler
+- [x] Fix `standings` store keyPath to match actual API response structure
 
-### 1b. Add missing DataService methods (spec 02)
-`footballData.ts` has `getLiveMatches()` but `dataService.ts` doesn't expose it.
-- [ ] Add `getLiveMatches()` to `dataService.ts` — delegates to `footballData.getLiveMatches()`, 60s IndexedDB cache
-- [ ] Add `getHistoricalMatches(season: number)` — fetches `/competitions/PL/matches?season={year}&status=FINISHED`, 24h cache, queue requests 6s apart for rate limiting
-- [ ] Add `getTeamRecentMatches(teamId: number, limit: number = 5)` — fetches `/teams/{teamId}/matches?status=FINISHED&limit={limit}`, 30min cache
+### 1b. Add missing DataService methods (spec 02) ✅
+`footballData.ts` had `getLiveMatches()` but `dataService.ts` didn't expose it.
+- [x] Add `getLiveMatches()` to `dataService.ts` — delegates to `footballData.getLiveMatches()`, 60s IndexedDB cache
+- [x] Add `getHistoricalMatches(season: number)` — fetches `/competitions/PL/matches?season={year}&status=FINISHED`, 24h cache, queue requests 6s apart for rate limiting
+- [x] Add `getTeamRecentMatches(teamId: number, limit: number = 5)` — fetches `/teams/{teamId}/matches?status=FINISHED&limit={limit}`, 30min cache
 
 ### 1c. Smart polling manager (spec 05)
 - [ ] Implement polling schedule: 60s during match hours, 5min on match days, 30min otherwise
@@ -90,14 +90,14 @@ Last updated: 11 March 2026
 
 **Resolution:** `OptimizedPredictor` is the production model. All fixes target it and its dependencies from `advancedPredictions.ts`. `predictions.ts` remains as fallback.
 
-### 2a. Dynamic ELO ratings — Single Source of Truth
-`advancedPredictions.ts:67-89` — teams initialised with static ratings. `updateRatings()` exists but is never called. `optimizedPredictions.ts:34-60` has a SEPARATE set of ratings with different values (Arsenal: 1800 vs 1600).
-- [ ] On startup, load persisted ELO ratings from localStorage key `elo_ratings`
-- [ ] After each completed match loads, call `eloSystem.updateRatings()`
-- [ ] Persist updated ratings back to localStorage
-- [ ] Wire into `dataService` — trigger ELO updates when processing completed match results
-- [ ] Remove `TEAM_STRENGTHS` dict from `optimizedPredictions.ts` — use `EloRatingSystem` as single source
-- [ ] Standardise HOME_ADVANTAGE constant — use one value across both files (currently 65 vs 60)
+### 2a. Dynamic ELO ratings — Single Source of Truth ✅
+`advancedPredictions.ts:67-89` — teams were initialised with static ratings. `updateRatings()` existed but was never called. `optimizedPredictions.ts:34-60` had a SEPARATE set of ratings with different values (Arsenal: 1800 vs 1600).
+- [x] On startup, load persisted ELO ratings from localStorage key `elo_ratings`
+- [x] After each completed match loads, call `eloSystem.updateRatings()`
+- [x] Persist updated ratings back to localStorage
+- [x] Wire into `dataService` — trigger ELO updates when processing completed match results
+- [x] Remove `TEAM_STRENGTHS` dict from `optimizedPredictions.ts` — use `EloRatingSystem` as single source
+- [x] Standardise HOME_ADVANTAGE constant — use one value (65) across both files
 
 ### 2b. Poisson lambdas from real stats
 `PoissonPredictor` uses manually estimated lambda values instead of computing from team stats.
@@ -105,13 +105,13 @@ Last updated: 11 March 2026
 - [ ] Lambda away = `(away avg goals scored away) × (home avg goals conceded at home) / (league avg goals)`
 - [ ] Pull stats from `dataService.getTeamStats()` instead of hardcoded averages
 
-### 2c. Fatigue analysis fix
-Two separate fatigue stubs:
-1. `advancedPredictions.ts:308` — `calculateFixtureDifficulty()` always returns `1500` (hardcoded placeholder)
-2. `optimizedPredictions.ts:408-414` — `calculateFatigueFactor()` always returns `1.0` (completely stubbed)
-- [ ] Use ELO system (2a) to look up actual opponent ratings for fixture difficulty
-- [ ] Implement real fatigue factor based on days since last match, European fixtures, etc.
-- [ ] Wire fatigue multiplier into `OptimizedPredictor.predictMatch()` to adjust Poisson lambda
+### 2c. Fatigue analysis fix ✅
+Two separate fatigue stubs fixed:
+1. `advancedPredictions.ts:308` — `calculateFixtureDifficulty()` was always returning `1500` (hardcoded placeholder)
+2. `optimizedPredictions.ts:408-414` — `calculateFatigueFactor()` was always returning `1.0` (completely stubbed)
+- [x] Use ELO system (2a) to look up actual opponent ratings for fixture difficulty
+- [x] Implement real fatigue factor based on days since last match
+- [x] Wire fatigue multiplier into `OptimizedPredictor.predictMatch()` to adjust confidence
 
 ### 2d. Referee adjustment
 `advancedPredictions.ts:380` — referee stats calculated but never applied to prediction output. Also uses hardcoded bookmaker odds `{home: 2.1, draw: 3.4, away: 3.8}`.
@@ -119,12 +119,12 @@ Two separate fatigue stubs:
 - [ ] Surface referee stats as tooltip/info panel in Predictions component
 - [ ] Remove hardcoded bookmaker odds from AdvancedMatchPredictor
 
-### 2e. Confidence calibration
-`OptimizedPredictor.calculateConfidence()` uses simple probability gap formula. Also has a `.sort()` mutation bug at line 509.
-- [ ] Fix `.sort()` array mutation bug — use `[...probs].sort()` to avoid mutating the original
+### 2e. Confidence calibration (partially complete)
+`OptimizedPredictor.calculateConfidence()` uses simple probability gap formula. Two quick wins landed this session; deeper calibration is future work.
+- [x] Fix `.sort()` array mutation bug — use `[...probs].sort()` to avoid mutating the original
+- [x] Update hardcoded draw probability 0.25 to match actual PL stats (~26.5%)
 - [ ] Incorporate ensemble disagreement: if ELO and Poisson strongly disagree, lower confidence
 - [ ] Track historical accuracy by confidence band and apply calibration factor
-- [ ] Update hardcoded draw probability 0.25 to match actual PL stats (~26.5%)
 
 ### 2f. AI-assisted analysis (spec 01, new)
 No AI analysis service exists in the frontend.

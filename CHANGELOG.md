@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Prediction Engine Overhaul (12 March 2026)
+- **Dynamic ELO ratings**: Team ratings now persist to localStorage and update automatically from completed match results — no more static hardcoded ratings
+- **Single source of truth**: Removed duplicate `TEAM_STRENGTHS` dictionary from `optimizedPredictions.ts`; both `AdvancedMatchPredictor` and `OptimizedPredictor` now share one `EloRatingSystem` instance
+- **Standardised HOME_ADVANTAGE**: Unified at 65 ELO points across both prediction files (was 60 vs 65)
+- **Real fatigue calculation**: `OptimizedPredictor` now computes fatigue from actual rest days between matches instead of returning a constant 1.0
+- **Fixture difficulty fix**: `FatigueAnalyzer.calculateFixtureDifficulty()` now uses real opponent ELO ratings instead of hardcoded 1500
+- **Confidence calibration**: Fixed `.sort()` array mutation bug; draw probability now scales dynamically with rating difference (PL average ~26.5%) instead of hardcoded 0.25
+- **Eliminated hardcoded form strings**: Removed fabricated form strings ('WWDWL', 'LLDLD', etc.) from prediction fallback paths
+- **New test suite**: Added 9 tests for `OptimizedPredictor` (previously 0% coverage); fixed 4 pre-existing Dashboard test failures; total now 152 tests across 9 files, all passing
+
 ### Deep Audit & Plan Refresh (11 March 2026)
 - Full codebase audit with 7 parallel research agents across specs, frontend libs/services, components, backend, tests, and stale files
 - Identified 35 stubs/hardcoded values across frontend (up from 18 previously documented) and 40+ fake feature methods in backend
