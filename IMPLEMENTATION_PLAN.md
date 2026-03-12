@@ -141,10 +141,11 @@ No backtesting capability exists.
 - [ ] Reports: overall accuracy %, per-outcome accuracy (H/D/A), log loss, Brier score
 - [ ] Accessible from Predictions view or Settings panel
 
-### 2h. Fix hardcoded form strings
-`Predictions.svelte:171` has `homeForm: 'WWDLW'` hardcoded. `optimizedPredictions.ts:258,305-307` has multiple fallback form strings. `ValueBets.svelte:395,405` has fallback forms.
-- [ ] Replace with computed form from `dataService.getTeamRecentMatches()`
-- [ ] Remove all hardcoded form strings from components and prediction logic
+### 2h. Fix hardcoded form strings (partially complete)
+`Predictions.svelte:171` has `homeForm: 'WWDLW'` hardcoded. `optimizedPredictions.ts:258,305-307` had multiple fallback form strings. `ValueBets.svelte:395,405` has fallback forms.
+- [x] Remove hardcoded form strings from `optimizedPredictions.ts` — now returns `'?????'` when no data available
+- [ ] Replace with computed form from `dataService.getTeamRecentMatches()` in frontend components
+- [ ] Remove hardcoded form strings from `Predictions.svelte` and `ValueBets.svelte`
 
 ### 2i. Implement `savePrediction()` in predictions.ts
 `predictions.ts:456-458` — `savePrediction()` is a TODO stub with empty body.
