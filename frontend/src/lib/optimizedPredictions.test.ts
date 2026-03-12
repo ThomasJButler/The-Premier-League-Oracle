@@ -262,6 +262,130 @@ describe('OptimizedPredictor', () => {
     });
   });
 
+  describe('Poisson Dixon-Coles lambdas', () => {
+    it('should produce higher expected goals for stronger teams when match data is available', async () => {
+      // Create a season of matches where Arsenal scores heavily at home, Southampton concedes heavily away
+      const completedMatches: Match[] = [];
+      const teams = ['Arsenal FC', 'Chelsea FC', 'Southampton FC', 'Liverpool FC'];
+      let matchId = 1;
+
+      // Arsenal at home: scores 3, concedes 0 (4 matches)
+      for (let i = 0; i < 4; i++) {
+        completedMatches.push(createMockMatch({
+          id: String(matchId++),
+          home_team: 'Arsenal FC',
+          away_team: teams[(i + 1) % teams.length],
+          home_goals: 3,
+          away_goals: 0,
+          result: 'H' as const,
+          status: 'FINISHED' as const
+        }));
+      }
+
+      // Southampton away: scores 0, concedes 3 (4 matches)
+      for (let i = 0; i < 4; i++) {
+        completedMatches.push(createMockMatch({
+          id: String(matchId++),
+          home_team: teams[(i + 1) % teams.length],
+          away_team: 'Southampton FC',
+          home_goals: 3,
+          away_goals: 0,
+          result: 'H' as const,
+          status: 'FINISHED' as const
+        }));
+      }
+
+      // Filler matches to establish league averages (1-1 draws)
+      for (let i = 0; i < 8; i++) {
+        completedMatches.push(createMockMatch({
+          id: String(matchId++),
+          home_team: teams[i % teams.length],
+          away_team: teams[(i + 2) % teams.length],
+          home_goals: 1,
+          away_goals: 1,
+          result: 'D' as const,
+          status: 'FINISHED' as const
+        }));
+      }
+
+      const standings: Standing[] = [
+        createMockStanding({
+          position: 1,
+          team: { id: 57, name: 'Arsenal FC', shortName: 'Arsenal', tla: 'ARS', crest: '' },
+          playedGames: 20, won: 16, draw: 2, lost: 2, points: 50, goalsFor: 50, goalsAgainst: 10, goalDifference: 40
+        }),
+        createMockStanding({
+          position: 20,
+          team: { id: 340, name: 'Southampton FC', shortName: 'Southampton', tla: 'SOU', crest: '' },
+          playedGames: 20, won: 2, draw: 3, lost: 15, points: 9, goalsFor: 10, goalsAgainst: 45, goalDifference: -35
+        })
+      ];
+
+      vi.mocked(dataService.getStandings).mockResolvedValue(standings);
+      vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+      vi.mocked(dataService.getMatches).mockResolvedValue(completedMatches);
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Southampton FC');
+
+      // Arsenal at home vs Southampton away should produce high home goals
+      expect(prediction.predictedHomeGoals).toBeGreaterThanOrEqual(2);
+      expect(prediction.predictedResult).toBe('H');
+    });
+
+    it('should fall back gracefully when no completed matches exist', async () => {
+      vi.mocked(dataService.getStandings).mockResolvedValue([]);
+      vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+      vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      // Should still produce valid predictions using ELO-derived fallback
+      expect(['H', 'D', 'A']).toContain(prediction.predictedResult);
+      expect(prediction.predictedHomeGoals).toBeGreaterThanOrEqual(0);
+      expect(prediction.predictedAwayGoals).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should use league averages that reflect actual match data', async () => {
+      // High-scoring league: every match is 3-2
+      const highScoringMatches: Match[] = [];
+      const teams = ['Arsenal FC', 'Chelsea FC', 'Liverpool FC', 'Brentford FC'];
+      let matchId = 1;
+
+      for (let i = 0; i < teams.length; i++) {
+        for (let j = 0; j < teams.length; j++) {
+          if (i === j) continue;
+          highScoringMatches.push(createMockMatch({
+            id: String(matchId++),
+            home_team: teams[i],
+            away_team: teams[j],
+            home_goals: 3,
+            away_goals: 2,
+            result: 'H' as const,
+            status: 'FINISHED' as const
+          }));
+        }
+      }
+
+      const standings = teams.map((team, idx) =>
+        createMockStanding({
+          position: idx + 1,
+          team: { id: idx + 1, name: team, shortName: team, tla: team.substring(0, 3).toUpperCase(), crest: '' },
+          playedGames: 6, won: 3, draw: 0, lost: 3, points: 9,
+          goalsFor: 15, goalsAgainst: 15, goalDifference: 0
+        })
+      );
+
+      vi.mocked(dataService.getStandings).mockResolvedValue(standings);
+      vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+      vi.mocked(dataService.getMatches).mockResolvedValue(highScoringMatches);
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      // In a high-scoring league, predicted goals should be elevated
+      expect(prediction.predictedHomeGoals + prediction.predictedAwayGoals).toBeGreaterThanOrEqual(3);
+    });
+  });
+
   describe('value odds calculation', () => {
     it('should return decimal odds that are inversely related to probabilities', async () => {
       vi.mocked(dataService.getStandings).mockResolvedValue([]);

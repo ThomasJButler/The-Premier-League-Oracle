@@ -99,11 +99,14 @@ Last updated: 12 March 2026
 - [x] Remove `TEAM_STRENGTHS` dict from `optimizedPredictions.ts` — use `EloRatingSystem` as single source
 - [x] Standardise HOME_ADVANTAGE constant — use one value (65) across both files
 
-### 2b. Poisson lambdas from real stats
-`PoissonPredictor` uses manually estimated lambda values instead of computing from team stats.
-- [ ] Lambda home = `(home avg goals scored at home) × (away avg goals conceded away) / (league avg goals)`
-- [ ] Lambda away = `(away avg goals scored away) × (home avg goals conceded at home) / (league avg goals)`
-- [ ] Pull stats from `dataService.getTeamStats()` instead of hardcoded averages
+### 2b. Poisson lambdas from real stats ✅
+`PoissonPredictor` previously used an ad-hoc formula (`avgGoalsScored * 1.2 + avgGoalsConceded * 0.8`) instead of the proper Dixon-Coles approach.
+- [x] Lambda home = `home_attack_strength × away_defence_weakness × league_avg_home_goals`
+- [x] Lambda away = `away_attack_strength × home_defence_weakness × league_avg_away_goals`
+- [x] Compute attack/defence strengths from completed match data via `dataService.getMatches()`
+- [x] Per-team home/away splits calculated from real match results (minimum 3 matches required)
+- [x] Fallback to overall stats when insufficient match data exists
+- [x] Lambda values clamped to sensible range (0.3 – 4.5 goals)
 
 ### 2c. Fatigue analysis fix ✅
 Two separate fatigue stubs fixed:
@@ -411,8 +414,8 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `footballData.test.ts` | 26 | Good | API client with error handling |
 | `dataService.test.ts` | 10 | Good | Service layer delegation |
 | `predictionTracker.test.ts` | 18 | Excellent | Comprehensive with import/export |
-| `optimizedPredictions.test.ts` | 9 | Good | Covers prediction structure, model weights, ELO integration, confidence calculation, value odds |
-| **Total** | **152** | — | All pass, no skipped/flaky tests |
+| `optimizedPredictions.test.ts` | 12 | Good | Covers prediction structure, model weights, ELO integration, confidence, value odds, Dixon-Coles Poisson lambdas |
+| **Total** | **155** | — | All pass, no skipped/flaky tests |
 
 ### Missing Test Coverage
 - `betBuilder.ts` — no tests

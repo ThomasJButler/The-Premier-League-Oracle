@@ -22,9 +22,135 @@ export interface EnhancedPredictionModel {
   };
 }
 
+// Home/away attack & defence strengths for the Poisson model
+interface TeamStrengths {
+  homeAttack: number;   // Goals scored at home relative to league average
+  homeDefence: number;  // Goals conceded at home relative to league average
+  awayAttack: number;   // Goals scored away relative to league average
+  awayDefence: number;  // Goals conceded away relative to league average
+}
+
+// League-wide averages derived from completed matches
+interface LeagueAverages {
+  avgHomeGoals: number; // Average goals scored by home teams per match
+  avgAwayGoals: number; // Average goals scored by away teams per match
+  teamStrengths: Map<string, TeamStrengths>;
+}
+
 export class OptimizedPredictor {
   // Use the shared ELO system — single source of truth for team ratings
   private static eloSystem = sharedEloSystem;
+
+  /**
+   * Compute league averages and per-team attack/defence strengths from completed matches.
+   * This is the foundation of the Dixon-Coles Poisson model.
+   */
+  private static computeLeagueAverages(matches: Match[]): LeagueAverages {
+    const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
+
+    if (completed.length === 0) {
+      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, teamStrengths: new Map() };
+    }
+
+    // League totals
+    let totalHomeGoals = 0;
+    let totalAwayGoals = 0;
+
+    // Per-team accumulators
+    const teamHome = new Map<string, { scored: number; conceded: number; matches: number }>();
+    const teamAway = new Map<string, { scored: number; conceded: number; matches: number }>();
+
+    for (const m of completed) {
+      const hg = m.home_goals!;
+      const ag = m.away_goals!;
+      totalHomeGoals += hg;
+      totalAwayGoals += ag;
+
+      // Home team stats
+      const h = teamHome.get(m.home_team) ?? { scored: 0, conceded: 0, matches: 0 };
+      h.scored += hg;
+      h.conceded += ag;
+      h.matches += 1;
+      teamHome.set(m.home_team, h);
+
+      // Away team stats
+      const a = teamAway.get(m.away_team) ?? { scored: 0, conceded: 0, matches: 0 };
+      a.scored += ag;
+      a.conceded += hg;
+      a.matches += 1;
+      teamAway.set(m.away_team, a);
+    }
+
+    const avgHomeGoals = totalHomeGoals / completed.length;
+    const avgAwayGoals = totalAwayGoals / completed.length;
+
+    // Compute per-team strengths relative to league average
+    const teamStrengths = new Map<string, TeamStrengths>();
+    const allTeams = new Set([...teamHome.keys(), ...teamAway.keys()]);
+
+    for (const team of allTeams) {
+      const home = teamHome.get(team);
+      const away = teamAway.get(team);
+
+      teamStrengths.set(team, {
+        homeAttack: home && home.matches >= 3
+          ? (home.scored / home.matches) / avgHomeGoals
+          : 1.0,
+        homeDefence: home && home.matches >= 3
+          ? (home.conceded / home.matches) / avgAwayGoals
+          : 1.0,
+        awayAttack: away && away.matches >= 3
+          ? (away.scored / away.matches) / avgAwayGoals
+          : 1.0,
+        awayDefence: away && away.matches >= 3
+          ? (away.conceded / away.matches) / avgHomeGoals
+          : 1.0,
+      });
+    }
+
+    return { avgHomeGoals, avgAwayGoals, teamStrengths };
+  }
+
+  /**
+   * Calculate Poisson lambda values using the Dixon-Coles approach.
+   *
+   * λ_home = home_attack × away_defence × league_avg_home_goals
+   * λ_away = away_attack × home_defence × league_avg_away_goals
+   *
+   * Falls back to ELO-derived estimates when insufficient match data exists.
+   */
+  private static calculatePoissonLambdas(
+    homeTeam: string,
+    awayTeam: string,
+    leagueAvgs: LeagueAverages,
+    homeStats: { avgGoalsScored: number; avgGoalsConceded: number },
+    awayStats: { avgGoalsScored: number; avgGoalsConceded: number }
+  ): { lambdaHome: number; lambdaAway: number } {
+    const homeStrengths = leagueAvgs.teamStrengths.get(homeTeam);
+    const awayStrengths = leagueAvgs.teamStrengths.get(awayTeam);
+
+    if (homeStrengths && awayStrengths) {
+      // Full Dixon-Coles: team strengths are relative to league average
+      const lambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
+      const lambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
+
+      // Clamp to sensible range (0.3 – 4.5 goals)
+      return {
+        lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
+        lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+      };
+    }
+
+    // Fallback: derive from overall stats (no home/away split available)
+    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || 1.35;
+    const lambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
+    const lambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
+
+    return {
+      lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
+      lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+    };
+  }
 
   /**
    * Main prediction method with enhanced algorithms
@@ -77,10 +203,17 @@ export class OptimizedPredictor {
         awayElo
       );
 
-      // 4. Calculate Poisson predictions
-      const homeGoalsExpected = homeStats.avgGoalsScored * 1.2 + awayStats.avgGoalsConceded * 0.8;
-      const awayGoalsExpected = awayStats.avgGoalsScored * 0.8 + homeStats.avgGoalsConceded * 1.2;
-      
+      // 4. Calculate Poisson predictions using Dixon-Coles lambdas
+      let allMatches: Match[] = [];
+      try {
+        allMatches = await dataService.getMatches();
+      } catch {
+        // No match data available — lambdas will use fallback path
+      }
+      const leagueAvgs = this.computeLeagueAverages(allMatches);
+      const { lambdaHome: homeGoalsExpected, lambdaAway: awayGoalsExpected } =
+        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
+
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
         awayGoalsExpected,

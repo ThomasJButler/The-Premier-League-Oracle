@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Dixon-Coles Poisson Model (12 March 2026)
+- **Proper Poisson lambdas**: Replaced ad-hoc lambda formula (`avgGoalsScored * 1.2 + avgGoalsConceded * 0.8`) with the standard Dixon-Coles approach: `λ = attack_strength × defence_weakness × league_avg_goals`
+- **Home/away splits**: Attack and defence strengths now computed separately for home and away from completed match results — a team's home scoring record is distinct from their away record
+- **League-relative strengths**: Team strengths are expressed relative to the league average, so a team scoring 2 goals per game in a 1.5 avg league gets attack strength 1.33, not 2.0
+- **Graceful fallback**: Falls back to overall stats when fewer than 3 home or away matches are available for a team
+- **3 new tests**: Verifying stronger teams get higher lambdas, fallback behaviour, and high-scoring league adaptation; total now 155 tests, all passing
+
 ### Prediction Engine Overhaul (12 March 2026)
 - **Dynamic ELO ratings**: Team ratings now persist to localStorage and update automatically from completed match results — no more static hardcoded ratings
 - **Single source of truth**: Removed duplicate `TEAM_STRENGTHS` dictionary from `optimizedPredictions.ts`; both `AdvancedMatchPredictor` and `OptimizedPredictor` now share one `EloRatingSystem` instance
