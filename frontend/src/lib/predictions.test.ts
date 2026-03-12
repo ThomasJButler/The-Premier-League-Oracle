@@ -20,6 +20,39 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
+// Helper to create a full Match object with sensible defaults
+function createMatch(partial: Partial<Match> & Pick<Match, 'id' | 'home_team' | 'away_team'>): Match {
+  return {
+    season_id: '',
+    date: new Date().toISOString(),
+    home_goals: null,
+    away_goals: null,
+    result: null,
+    home_odds: null,
+    draw_odds: null,
+    away_odds: null,
+    first_half_home_goals: null,
+    first_half_away_goals: null,
+    full_time_result: null,
+    half_time_result: null,
+    referee: null,
+    home_shots: null,
+    away_shots: null,
+    home_shots_target: null,
+    away_shots_target: null,
+    home_fouls: null,
+    away_fouls: null,
+    home_corners: null,
+    away_corners: null,
+    home_yellows: null,
+    away_yellows: null,
+    home_reds: null,
+    away_reds: null,
+    created_at: new Date().toISOString(),
+    ...partial
+  };
+}
+
 describe('Enhanced Prediction Algorithm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,6 +61,8 @@ describe('Enhanced Prediction Algorithm', () => {
   describe('getTeamStats', () => {
     it('should calculate team statistics correctly', async () => {
       const mockTeamStats = {
+        id: 'arsenal_2025',
+        season_id: '2025',
         team_name: 'Arsenal',
         matches_played: 10,
         wins: 6,
@@ -35,32 +70,27 @@ describe('Enhanced Prediction Algorithm', () => {
         losses: 2,
         goals_for: 20,
         goals_against: 10,
-        points: 20
+        clean_sheets: 3,
+        failed_to_score: 1,
+        points: 20,
+        home_matches_played: 5,
+        home_wins: 4,
+        home_draws: 1,
+        home_losses: 0,
+        home_goals_for: 12,
+        home_goals_against: 3,
+        away_matches_played: 5,
+        away_wins: 2,
+        away_draws: 1,
+        away_losses: 2,
+        away_goals_for: 8,
+        away_goals_against: 7,
+        updated_at: new Date().toISOString()
       };
 
       const mockMatches: Match[] = [
-        {
-          id: '1',
-          season_id: '2025-26',
-          date: '2025-08-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 3,
-          away_goals: 1,
-          result: 'H',
-          created_at: '2025-08-01'
-        },
-        {
-          id: '2',
-          season_id: '2025-26',
-          date: '2025-08-08',
-          home_team: 'Liverpool',
-          away_team: 'Arsenal',
-          home_goals: 1,
-          away_goals: 2,
-          result: 'A',
-          created_at: '2025-08-08'
-        }
+        createMatch({ id: '1', season_id: '2025-26', date: '2025-08-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 3, away_goals: 1, result: 'H' }),
+        createMatch({ id: '2', season_id: '2025-26', date: '2025-08-08', home_team: 'Liverpool', away_team: 'Arsenal', home_goals: 1, away_goals: 2, result: 'A' })
       ];
 
       vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats);
@@ -88,39 +118,9 @@ describe('Enhanced Prediction Algorithm', () => {
   describe('getHeadToHeadRecord', () => {
     it('should analyze H2H records with detailed statistics', async () => {
       const mockH2HMatches: Match[] = [
-        {
-          id: '1',
-          season_id: '2024-25',
-          date: '2024-12-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 2,
-          away_goals: 0,
-          result: 'H',
-          created_at: '2024-12-01'
-        },
-        {
-          id: '2',
-          season_id: '2024-25',
-          date: '2024-09-01',
-          home_team: 'Chelsea',
-          away_team: 'Arsenal',
-          home_goals: 1,
-          away_goals: 1,
-          result: 'D',
-          created_at: '2024-09-01'
-        },
-        {
-          id: '3',
-          season_id: '2023-24',
-          date: '2024-03-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 3,
-          away_goals: 2,
-          result: 'H',
-          created_at: '2024-03-01'
-        }
+        createMatch({ id: '1', season_id: '2024-25', date: '2024-12-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 2, away_goals: 0, result: 'H' }),
+        createMatch({ id: '2', season_id: '2024-25', date: '2024-09-01', home_team: 'Chelsea', away_team: 'Arsenal', home_goals: 1, away_goals: 1, result: 'D' }),
+        createMatch({ id: '3', season_id: '2023-24', date: '2024-03-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 3, away_goals: 2, result: 'H' })
       ];
 
       vi.mocked(dataService.getMatches).mockResolvedValue(mockH2HMatches);
@@ -142,17 +142,7 @@ describe('Enhanced Prediction Algorithm', () => {
 
     it('should handle reversed H2H matches correctly', async () => {
       const mockH2HMatches: Match[] = [
-        {
-          id: '1',
-          season_id: '2024-25',
-          date: '2024-12-01',
-          home_team: 'Chelsea',
-          away_team: 'Arsenal',
-          home_goals: 1,
-          away_goals: 2,
-          result: 'A',
-          created_at: '2024-12-01'
-        }
+        createMatch({ id: '1', season_id: '2024-25', date: '2024-12-01', home_team: 'Chelsea', away_team: 'Arsenal', home_goals: 1, away_goals: 2, result: 'A' })
       ];
 
       vi.mocked(dataService.getMatches).mockResolvedValue(mockH2HMatches);
@@ -259,39 +249,9 @@ describe('Enhanced Prediction Algorithm', () => {
       });
 
       vi.mocked(dataService.getMatches).mockResolvedValue([
-        {
-          id: '1',
-          season_id: '2024-25',
-          date: '2024-12-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 2,
-          away_goals: 1,
-          result: 'H',
-          created_at: '2024-12-01'
-        },
-        {
-          id: '2',
-          season_id: '2024-25',
-          date: '2024-09-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 3,
-          away_goals: 0,
-          result: 'H',
-          created_at: '2024-09-01'
-        },
-        {
-          id: '3',
-          season_id: '2023-24',
-          date: '2024-03-01',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 1,
-          away_goals: 1,
-          result: 'D',
-          created_at: '2024-03-01'
-        }
+        createMatch({ id: '1', season_id: '2024-25', date: '2024-12-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 2, away_goals: 1, result: 'H' }),
+        createMatch({ id: '2', season_id: '2024-25', date: '2024-09-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 3, away_goals: 0, result: 'H' }),
+        createMatch({ id: '3', season_id: '2023-24', date: '2024-03-01', home_team: 'Arsenal', away_team: 'Chelsea', home_goals: 1, away_goals: 1, result: 'D' })
       ]);
 
       const prediction = await predictMatch('Arsenal', 'Chelsea');

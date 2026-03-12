@@ -78,7 +78,7 @@ export class OptimizedPredictor {
     
     try {
       // 1. Get current standings and team positions
-      let standings = [];
+      let standings: Standing[] = [];
       let homePosition = 0;
       let awayPosition = 0;
       

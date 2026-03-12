@@ -256,10 +256,8 @@
       ? ((over25Matches / completedMatches.length) * 100).toFixed(1)
       : 0;
     
-    // Penalty count
-    const totalPenalties = completedMatches.reduce((sum, m) => 
-      sum + (m.home_penalties || 0) + (m.away_penalties || 0), 0
-    );
+    // Penalty count — not available from Football-Data.org free tier
+    const totalPenalties = 0;
     
     // First half goals vs second half
     const firstHalfGoals = completedMatches.reduce((sum, m) => 

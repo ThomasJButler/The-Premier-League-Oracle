@@ -294,9 +294,12 @@ class DataService {
         const teamStats = await this.getActiveApi().getTeamStats(teamName);
         if (teamStats) {
           // Transform Football API stats to our TeamStats format
+          const currentYear = new Date().getFullYear();
+          // Use the earlier year of the season (e.g. 2025 for 2025/26)
+          const seasonYear = new Date().getMonth() >= 7 ? currentYear : currentYear - 1;
           const stats: TeamStats = {
-            id: `${teamName}_${new Date().getFullYear()}`,
-            season_id: '2024', // TODO: Get current season ID
+            id: `${teamName}_${currentYear}`,
+            season_id: String(seasonYear),
             team_name: teamName,
             matches_played: teamStats.played,
             wins: teamStats.wins,
@@ -412,6 +415,77 @@ class DataService {
       correct: stats.correctPredictions,
       accuracy: stats.totalPredictions > 0 ? stats.accuracy / 100 : 0
     };
+  }
+
+  // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
+  public async getLiveMatches(): Promise<Match[]> {
+    const cacheKey = 'live_matches';
+
+    // Live data uses a short 60s cache
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    if (cached) return cached;
+
+    if (this.apiSource.available) {
+      try {
+        const matches = await this.getActiveApi().getLiveMatches();
+        if (matches.length > 0) {
+          // Store with standard setCachedData — caller controls refresh frequency
+          await this.setCachedData('matches', cacheKey, matches);
+        }
+        return matches;
+      } catch (error) {
+        // Error fetching live matches
+      }
+    }
+
+    return [];
+  }
+
+  // Get completed matches for a given season year (e.g. 2024 for 2024/25)
+  public async getHistoricalMatches(season: number): Promise<Match[]> {
+    const cacheKey = `historical_matches_${season}`;
+
+    // Historical data rarely changes — use 24h cache
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    if (cached) return cached;
+
+    if (this.apiSource.available) {
+      try {
+        const api = this.getActiveApi();
+        // Football-Data.org v4 supports ?season=YYYY on the competition matches endpoint
+        const matches = await api.getMatchesBySeason(season);
+        if (matches.length > 0) {
+          await this.setCachedData('matches', cacheKey, matches);
+        }
+        return matches;
+      } catch (error) {
+        // Error fetching historical matches
+      }
+    }
+
+    return [];
+  }
+
+  // Get a team's recent finished matches — 30min cache
+  public async getTeamRecentMatches(teamId: number, limit: number = 5): Promise<Match[]> {
+    const cacheKey = `team_recent_${teamId}_${limit}`;
+
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    if (cached) return cached;
+
+    if (this.apiSource.available) {
+      try {
+        const matches = await this.getActiveApi().getTeamMatches(teamId, limit);
+        if (matches.length > 0) {
+          await this.setCachedData('matches', cacheKey, matches);
+        }
+        return matches;
+      } catch (error) {
+        // Error fetching team recent matches
+      }
+    }
+
+    return [];
   }
 
   // Cache management utilities

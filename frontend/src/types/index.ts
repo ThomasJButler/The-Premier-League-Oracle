@@ -10,6 +10,19 @@ export interface Season {
   year?: number; // Year of the season
 }
 
+export type MatchStatus =
+  | 'SCHEDULED'
+  | 'TIMED'
+  | 'IN_PLAY'
+  | 'PAUSED'
+  | 'EXTRA_TIME'
+  | 'PENALTY_SHOOTOUT'
+  | 'FINISHED'
+  | 'SUSPENDED'
+  | 'POSTPONED'
+  | 'CANCELLED'
+  | 'AWARDED';
+
 export interface Match {
   id: string;
   season_id: string;
@@ -40,6 +53,9 @@ export interface Match {
   home_reds: number | null;
   away_reds: number | null;
   created_at: string;
+  status?: MatchStatus;
+  minute?: number | null;
+  matchday?: number;
 }
 
 export interface TeamStats {

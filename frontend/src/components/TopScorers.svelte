@@ -26,6 +26,11 @@
   let scorers: Scorer[] = [];
   let loading = true;
   let error = '';
+
+  function handleImageError(e: Event) {
+    const target = e.currentTarget;
+    if (target instanceof HTMLImageElement) target.style.display = 'none';
+  }
   
   onMount(async () => {
     await loadTopScorers();
@@ -171,10 +176,7 @@
                       src={scorer.team.crest} 
                       alt={scorer.team.name}
                       class="w-4 h-4 object-contain"
-                      on:error={(e) => {
-                        const target = e.currentTarget as HTMLImageElement | null;
-                        if (target) target.style.display = 'none';
-                      }}
+                      on:error={handleImageError}
                     />
                   {/if}
                   {scorer.team.name}

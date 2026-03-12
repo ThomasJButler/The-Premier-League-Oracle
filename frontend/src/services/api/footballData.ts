@@ -1,4 +1,4 @@
-import type { Match, Season, TeamForm } from '../../types';
+import type { Match, MatchStatus, Season, TeamForm } from '../../types';
 
 interface FootballDataConfig {
   apiKey: string;
@@ -24,6 +24,7 @@ interface FDMatch {
   utcDate: string;
   status: string;
   matchday: number;
+  minute: number | null;
   stage: string;
   group: null;
   lastUpdated: string;
@@ -169,12 +170,12 @@ class FootballDataAPI {
     });
   }
   
-  private async fetchWithCache<T>(endpoint: string): Promise<T | null> {
+  private async fetchWithCache<T>(endpoint: string, customCacheTimeout?: number): Promise<T | null> {
     const cacheKey = endpoint;
     const cached = this.cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      // Using cached data for endpoint
+    const timeout = customCacheTimeout ?? this.cacheTimeout;
+
+    if (cached && Date.now() - cached.timestamp < timeout) {
       return cached.data;
     }
     
@@ -290,6 +291,16 @@ class FootballDataAPI {
   public async getAllMatches(): Promise<Match[]> {
     return this.getMatches();
   }
+
+  // Get finished matches for a specific season (e.g. 2024 for 2024/25)
+  public async getMatchesBySeason(season: number): Promise<Match[]> {
+    const endpoint = `/competitions/${this.config.competitionId}/matches?season=${season}&status=FINISHED`;
+    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint, 24 * 60 * 60 * 1000);
+
+    if (!data) return [];
+
+    return data.matches.map(this.transformMatch);
+  }
   
   // Get team matches
   public async getTeamMatches(teamId: number, limit: number = 10): Promise<Match[]> {
@@ -383,7 +394,10 @@ class FootballDataAPI {
       away_yellows: null,
       home_reds: null,
       away_reds: null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      status: fdMatch.status as MatchStatus,
+      minute: fdMatch.minute ?? null,
+      matchday: fdMatch.matchday
     };
   }
   
@@ -502,13 +516,13 @@ class FootballDataAPI {
     return data.squad;
   }
   
-  // Get live matches (in play)
+  // Get live matches (in play) — uses 60s cache for freshness
   public async getLiveMatches(): Promise<Match[]> {
     const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
-    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
-    
+    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint, 60_000);
+
     if (!data) return [];
-    
+
     return data.matches.map(this.transformMatch);
   }
   
