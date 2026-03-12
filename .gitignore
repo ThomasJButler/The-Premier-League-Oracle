@@ -26,3 +26,4 @@ API_KEYS_GUIDE.md
 # Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
+.env

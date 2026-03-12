@@ -270,6 +270,7 @@ describe('PredictionTracker Service', () => {
     });
 
     it('should handle empty prediction history', () => {
+      localStorageMock = {};
       const emptyTracker = new PredictionTracker();
       const stats = emptyTracker.getAccuracyStats(30);
       

@@ -3,7 +3,7 @@ import { FootballDataAPI } from './footballData';
 import type { FootballDataConfig } from './footballData';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+vi.stubGlobal('fetch', vi.fn());
 
 describe('FootballDataAPI', () => {
   let api: FootballDataAPI;
@@ -15,6 +15,9 @@ describe('FootballDataAPI', () => {
     localStorage.removeItem('football_data_api_key');
     api = new FootballDataAPI();
     api.clearApiKey();
+    // Bypass rate limiting in tests
+    (api as any).rateLimitDelay = 0;
+    (api as any).lastRequestTime = 0;
   });
 
   afterEach(() => {
