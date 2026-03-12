@@ -4,6 +4,8 @@ Last updated: 12 March 2026
 
 ---
 
+Please create a new guide how to run the backend. Remove any outdated documentation. Thank you.
+
 ## Current State
 
 ### Done
