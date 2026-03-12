@@ -344,21 +344,12 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 
 | Location | Problem | Fix Phase |
 |----------|---------|-----------|
-| `dataService.ts:40-58` | `scorers` IndexedDB store missing; `standings` keyPath mismatch | Phase 1a |
 | `dataService.ts:299` | `season_id: '2024'` hardcoded TODO | Phase 1b |
 | `LiveMatches.svelte:43` | `liveMatches = []` never populated | Phase 1d |
 | `LiveMatches.svelte:74` | `getMinute()` returns hardcoded `"45'"` | Phase 1d |
 | `LiveTicker.svelte:34` | `Math.random()` for confidence | Phase 1e |
-| `advancedPredictions.ts:308` | Fatigue `calculateFixtureDifficulty()` always returns 1500 | Phase 2c |
-| `advancedPredictions.ts:344-345` | ELO ratings hardcoded to 1500/1450 in AdvancedMatchPredictor | Phase 2a |
 | `advancedPredictions.ts:381` | Bookmaker odds hardcoded `{home: 2.1, draw: 3.4, away: 3.8}` | Phase 2d |
 | `advancedPredictions.ts:454` | `avgPenalties: 0.2` placeholder | Phase 2b |
-| `optimizedPredictions.ts:27` | HOME_ADVANTAGE = 60 (vs 65 in advancedPredictions) | Phase 2a |
-| `optimizedPredictions.ts:40-57` | All team ELO ratings hardcoded (different scale from advancedPredictions) | Phase 2a |
-| `optimizedPredictions.ts:258,305-307` | Multiple hardcoded form strings | Phase 2h |
-| `optimizedPredictions.ts:408-414` | `calculateFatigueFactor()` always returns 1.0 | Phase 2c |
-| `optimizedPredictions.ts:509` | `.sort()` mutates probability array | Phase 2e |
-| `optimizedPredictions.ts:142` | Hardcoded 0.25 draw probability (actual PL ~26.5%) | Phase 2e |
 | `predictions.ts:456-458` | `savePrediction()` entirely unimplemented | Phase 2i |
 | `Predictions.svelte:171-172` | `homeForm: 'WWDLW'`, `awayForm: 'LDWDL'` hardcoded | Phase 2h |
 | `Dashboard.svelte:169-214` | 7× `Math.random()` calls for fake data | Phase 3c |
@@ -380,6 +371,19 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `modern_oracle.py` | `optimize_ensemble_weights()` returns random performance | Phase 5g |
 | `football_data_collector.py` | `get_head_to_head()` returns empty DataFrame | Phase 5h |
 
+### Resolved stubs (removed from active list)
+| Location | What was fixed | Session |
+|----------|---------------|---------|
+| `dataService.ts:40-58` | `scorers` IndexedDB store added; `standings` keyPath fixed | Phase 1a |
+| `optimizedPredictions.ts:27` | HOME_ADVANTAGE standardised to 65 | Phase 2a |
+| `optimizedPredictions.ts:40-57` | `TEAM_STRENGTHS` removed — `EloRatingSystem` is now sole source | Phase 2a |
+| `advancedPredictions.ts:344-345` | ELO ratings now loaded from shared localStorage-persisted system | Phase 2a |
+| `advancedPredictions.ts:308` | `calculateFixtureDifficulty()` now uses real ELO opponent ratings | Phase 2c |
+| `optimizedPredictions.ts:408-414` | `calculateFatigueFactor()` now uses real days-since-last-match logic | Phase 2c |
+| `optimizedPredictions.ts:509` | `.sort()` mutation fixed — uses `[...probs].sort()` | Phase 2e |
+| `optimizedPredictions.ts:142` | Draw probability updated from 0.25 to 0.265 (real PL average) | Phase 2e |
+| `optimizedPredictions.ts:258,305-307` | Hardcoded form strings removed — returns `'?????'` when no data | Phase 2h |
+
 ---
 
 ## Files That Need Creating
@@ -399,18 +403,18 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 
 | Test File | Tests | Quality | Notes |
 |-----------|-------|---------|-------|
-| `predictions.test.ts` | 9 | Good | Tests real prediction logic |
-| `types.test.ts` | 10 | Trivial | Type structure validation only |
-| `advancedPredictions.test.ts` | 17 | Good | Documents stub at line 377 (fixture difficulty returns 1500) |
-| `Dashboard.test.ts` | 8 | Good | Component rendering tests |
-| `kelly.test.ts` | 13 | Excellent | Thorough edge case coverage |
-| `footballData.test.ts` | 19 | Good | API client with error handling |
-| `dataService.test.ts` | 8 | Good | Service layer delegation |
-| `predictionTracker.test.ts` | 26 | Excellent | Comprehensive with import/export |
-| **Total** | **110** | — | All pass, no skipped/flaky tests |
+| `predictions.test.ts` | 11 | Good | Tests real prediction logic |
+| `types.test.ts` | 18 | Trivial | Type structure validation only |
+| `advancedPredictions.test.ts` | 28 | Good | Covers ELO, Poisson, fatigue, referee, xG |
+| `Dashboard.test.ts` | 12 | Good | Component rendering tests — expanded from 8 this session |
+| `kelly.test.ts` | 20 | Excellent | Thorough edge case coverage |
+| `footballData.test.ts` | 26 | Good | API client with error handling |
+| `dataService.test.ts` | 10 | Good | Service layer delegation |
+| `predictionTracker.test.ts` | 18 | Excellent | Comprehensive with import/export |
+| `optimizedPredictions.test.ts` | 9 | Good | Covers prediction structure, model weights, ELO integration, confidence calculation, value odds |
+| **Total** | **152** | — | All pass, no skipped/flaky tests |
 
 ### Missing Test Coverage
-- `optimizedPredictions.ts` — production model has zero tests
 - `betBuilder.ts` — no tests
 - `value.ts` — no tests
 - `backend/` — 0% test coverage (no pytest tests exist)
