@@ -443,16 +443,3 @@ function calculateFormConsistency(homeForm: string, awayForm: string, prediction
   }
   return (homeDraws + awayDraws) / (homeForm.length + awayForm.length + 0.1);
 }
-
-export async function savePrediction(
-  matchId: string,
-  prediction: {
-    predictedResult: 'H' | 'A' | 'D';
-    confidence: number;
-    predictedHomeGoals: number;
-    predictedAwayGoals: number;
-  }
-): Promise<void> {
-  // TODO: Implement prediction saving to local storage or API
-  // Prediction saved: matchId, prediction details
-}

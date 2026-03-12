@@ -7,6 +7,8 @@ export interface EnhancedPredictionModel {
   confidence: number;
   predictedHomeGoals: number;
   predictedAwayGoals: number;
+  homeForm: string;
+  awayForm: string;
   modelWeights: {
     elo: number;
     poisson: number;
@@ -302,6 +304,8 @@ export class OptimizedPredictor {
         confidence,
         predictedHomeGoals: predictedGoals.home,
         predictedAwayGoals: predictedGoals.away,
+        homeForm: formAnalysis.homeFormString,
+        awayForm: formAnalysis.awayFormString,
         modelWeights: {
           elo: 0.25,
           poisson: 0.30,
@@ -321,6 +325,8 @@ export class OptimizedPredictor {
         confidence: 0.33,
         predictedHomeGoals: 1,
         predictedAwayGoals: 1,
+        homeForm: '?????',
+        awayForm: '?????',
         modelWeights: {
           elo: 0.25,
           poisson: 0.30,

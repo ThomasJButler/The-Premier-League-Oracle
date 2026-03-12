@@ -168,8 +168,8 @@
             predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
             keyFactors: prediction.insights,
             confidence: prediction.confidence * 100,
-            homeForm: 'WWDLW',
-            awayForm: 'LDWDL',
+            homeForm: optimizedPrediction.homeForm,
+            awayForm: optimizedPrediction.awayForm,
             h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
             poissonProbs: outcomeProbabilities,
             recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
