@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Bar, Line } from 'svelte-chartjs';
+  import { Bar } from 'svelte-chartjs';
   import {
     Chart as ChartJS,
     Title,
@@ -11,70 +11,128 @@
     LinearScale,
     type ChartData
   } from 'chart.js';
-  import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, TrendingDown, Scale, Filter, Download, DollarSign, Minus } from 'lucide-svelte';
+  import { TrendingUp, TrendingDown, Download, DollarSign, Minus, Trophy, Percent } from 'lucide-svelte';
   import { formatDistanceToNow } from 'date-fns';
+  import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
 
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
-  let bets: any[] = []; // TODO: replace with BetHistoryService — see specs/04-betting-intelligence.md
+  let bets: StoredBet[] = [];
   let loading = true;
-  let error: string | null = null;
+  let filterResult: 'all' | 'win' | 'loss' | 'pending' = 'all';
 
   let totalWagered = tweened(0, { duration: 800, easing: cubicOut });
   let totalProfitLoss = tweened(0, { duration: 1000, easing: cubicOut });
-  let roi = tweened(0, { duration: 1200, easing: cubicOut });
+  let roiTweened = tweened(0, { duration: 1200, easing: cubicOut });
+  let winRateTweened = tweened(0, { duration: 1000, easing: cubicOut });
+  let totalBetsTweened = tweened(0, { duration: 800, easing: cubicOut });
 
   let monthlyPerformance: ChartData<"bar", number[], string> = {
-    labels: [] as string[],
+    labels: [],
     datasets: [{
       label: 'Monthly Profit/Loss',
-      data: [] as number[],
+      data: [],
       backgroundColor: [],
       borderColor: [],
       borderWidth: 1
     }]
   };
 
-  let performanceData: ChartData<"line", number[], string> = {
-    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
-    datasets: [{
-      label: 'ROI %',
-      data: [] as number[],
-      borderColor: 'hsl(var(--primary-hsl) 50%)',
-      tension: 0.4,
-      fill: true,
-      backgroundColor: 'hsla(var(--primary-hsl), 50%, 0.1)'
-    }]
-  };
-
-  async function loadBettingHistory() {
+  function loadBettingHistory() {
     loading = true;
-    error = null;
-    try {
-      // bets = await getBettingHistory(); // Commented out
-      // Mock data for now:
-      bets = [
-        { id: 1, match_description: 'Man City vs Liverpool', bet_type: 'Home Win', stake: 10, odds: 2.5, result: 'win', payout: 25, date: new Date(Date.now() - 86400000 * 2) },
-        { id: 2, match_description: 'Arsenal vs Chelsea', bet_type: 'Draw', stake: 5, odds: 3.1, result: 'loss', payout: 0, date: new Date(Date.now() - 86400000 * 5) },
-        { id: 3, match_description: 'Spurs vs Man United', bet_type: 'Away Win', stake: 20, odds: 2.8, result: 'pending', payout: null, date: new Date(Date.now() - 86400000 * 1) },
-      ];
-      await new Promise(resolve => setTimeout(resolve, 700)); // Simulate loading
-    } catch (err) {
-      error = 'Failed to load betting history.';
-      // Error loading betting history
-    } finally {
-      loading = false;
+
+    bets = betHistoryService.getAllBets();
+
+    const roiData = betHistoryService.getROI();
+    totalWagered.set(roiData.totalStaked);
+    totalProfitLoss.set(roiData.totalReturn - roiData.totalStaked);
+    roiTweened.set(roiData.roi);
+    totalBetsTweened.set(roiData.totalBets);
+
+    winRateTweened.set(betHistoryService.getWinRate());
+
+    buildMonthlyChart();
+
+    loading = false;
+  }
+
+  function buildMonthlyChart() {
+    const monthly = betHistoryService.getMonthlyPL();
+
+    if (monthly.length === 0) {
+      monthlyPerformance = {
+        labels: [],
+        datasets: [{
+          label: 'Monthly Profit/Loss',
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+          borderWidth: 1
+        }]
+      };
+      return;
+    }
+
+    const labels = monthly.map(m => m.month);
+    const data = monthly.map(m => m.profit);
+    const bgColours = data.map(v =>
+      v >= 0
+        ? 'rgba(16, 185, 129, 0.6)'   // emerald for profit
+        : 'rgba(244, 63, 94, 0.6)'     // rose for loss
+    );
+    const borderColours = data.map(v =>
+      v >= 0
+        ? 'rgba(16, 185, 129, 1)'
+        : 'rgba(244, 63, 94, 1)'
+    );
+
+    monthlyPerformance = {
+      labels,
+      datasets: [{
+        label: 'Monthly Profit/Loss',
+        data,
+        backgroundColor: bgColours,
+        borderColor: borderColours,
+        borderWidth: 1
+      }]
+    };
+  }
+
+  $: filteredBets = bets.filter(bet => {
+    if (filterResult === 'all') return true;
+    if (filterResult === 'pending') return !bet.result;
+    return bet.result === filterResult;
+  });
+
+  function formatMarket(market: string): string {
+    switch (market) {
+      case 'match_result': return '1X2';
+      case 'btts': return 'BTTS';
+      case 'over_2_5': return 'O2.5';
+      case 'over_3_5': return 'O3.5';
+      case 'combo': return 'Combo';
+      default: return market;
     }
   }
 
-  onMount(() => {
-    loadBettingHistory();
-  });
+  function formatSelection(bet: StoredBet): string {
+    if (bet.market === 'match_result') {
+      if (bet.selection === 'home') return 'Home';
+      if (bet.selection === 'draw') return 'Draw';
+      if (bet.selection === 'away') return 'Away';
+    }
+    if (bet.market === 'btts') {
+      return bet.selection === 'yes' ? 'Yes' : 'No';
+    }
+    if (bet.market === 'over_2_5' || bet.market === 'over_3_5') {
+      return bet.selection === 'over' ? 'Over' : 'Under';
+    }
+    return bet.selection;
+  }
 
-  function getResultIcon(result: string) {
+  function getResultIcon(result?: string) {
     switch (result) {
       case 'win': return TrendingUp;
       case 'loss': return TrendingDown;
@@ -82,13 +140,34 @@
     }
   }
 
-  function getResultColor(result: string) {
+  function getResultColour(result?: string): string {
     switch (result) {
-      case 'win': return 'text-success';
-      case 'loss': return 'text-error';
-      default: return 'text-slate-500 dark:text-slate-400'; // Corrected class
+      case 'win': return 'text-emerald-600 dark:text-emerald-400';
+      case 'loss': return 'text-rose-600 dark:text-rose-400';
+      default: return 'text-slate-500 dark:text-slate-400';
     }
   }
+
+  function getResultLabel(result?: string): string {
+    if (!result) return 'Pending';
+    if (result === 'void') return 'Void';
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
+  function handleExport() {
+    const json = betHistoryService.exportBets();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pl-oracle-bets-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  onMount(() => {
+    loadBettingHistory();
+  });
 
   const chartOptions = {
     responsive: true,
@@ -100,7 +179,8 @@
           color: 'hsla(var(--text-base) / 0.1)'
         },
         ticks: {
-          color: 'hsl(var(--text-muted))'
+          color: 'hsl(var(--text-muted))',
+          callback: (value: number | string) => `£${value}`
         }
       },
       x: {
@@ -115,41 +195,86 @@
     plugins: {
       legend: {
         display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => `£${ctx.parsed.y.toFixed(2)}`
+        }
       }
     }
   };
 
+  export function refresh() {
+    loadBettingHistory();
+  }
 </script>
 
 <div class="space-y-6 animate-fade-in">
   <h2 class="text-2xl font-bold gradient-text">Betting History</h2>
 
   <!-- Summary Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
     <div class="card-stats animate-float-subtle">
-      <div class="stat-label">Total Wagered</div>
+      <div class="stat-icon-wrapper bg-blue-100 dark:bg-blue-900/30">
+        <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+      </div>
+      <div class="stat-label">Total Staked</div>
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
     </div>
-    <div class="card-stats animate-float-subtle" style="animation-delay: 150ms">
+
+    <div class="card-stats animate-float-subtle" style="animation-delay: 100ms">
+      <div class="stat-icon-wrapper {$totalProfitLoss >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
+        {#if $totalProfitLoss >= 0}
+          <TrendingUp class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+        {:else}
+          <TrendingDown class="w-5 h-5 text-rose-600 dark:text-rose-400" />
+        {/if}
+      </div>
       <div class="stat-label">Total Profit/Loss</div>
       <div class="stat-value {$totalProfitLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
         {$totalProfitLoss >= 0 ? '+' : ''}£{$totalProfitLoss.toFixed(2)}
       </div>
     </div>
-    <div class="card-stats animate-float-subtle" style="animation-delay: 300ms">
-      <div class="stat-label">ROI</div>
-      <div class="stat-value {$roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
-        {$roi.toFixed(1)}%
+
+    <div class="card-stats animate-float-subtle" style="animation-delay: 200ms">
+      <div class="stat-icon-wrapper {$roiTweened >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
+        <Percent class="w-5 h-5 {$roiTweened >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}" />
       </div>
+      <div class="stat-label">ROI</div>
+      <div class="stat-value {$roiTweened >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+        {$roiTweened.toFixed(1)}%
+      </div>
+    </div>
+
+    <div class="card-stats animate-float-subtle" style="animation-delay: 300ms">
+      <div class="stat-icon-wrapper bg-purple-100 dark:bg-purple-900/30">
+        <Trophy class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+      </div>
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value">{$winRateTweened.toFixed(1)}%</div>
+    </div>
+
+    <div class="card-stats animate-float-subtle" style="animation-delay: 400ms">
+      <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
+        <DollarSign class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+      </div>
+      <div class="stat-label">Total Bets</div>
+      <div class="stat-value">{Math.round($totalBetsTweened)}</div>
     </div>
   </div>
 
   <!-- Profit/Loss Chart -->
   <div class="chart-container animate-slide-in-up" style="animation-delay: 300ms">
     <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Monthly Profit/Loss</h3>
-    <div class="h-64">
-      <Bar data={monthlyPerformance} options={chartOptions} />
-    </div>
+    {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
+      <div class="h-64">
+        <Bar data={monthlyPerformance} options={chartOptions} />
+      </div>
+    {:else}
+      <div class="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+        <p>No resolved bets yet — place and resolve bets to see monthly performance.</p>
+      </div>
+    {/if}
   </div>
 
   <!-- Bet History Table -->
@@ -157,58 +282,78 @@
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Detailed History</h3>
       <div class="flex space-x-2">
-        <button class="btn btn-secondary btn-sm">
-          <Filter class="w-4 h-4 mr-1" /> Filter
-        </button>
-        <button class="btn btn-secondary btn-sm">
+        <select
+          bind:value={filterResult}
+          class="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All</option>
+          <option value="win">Wins</option>
+          <option value="loss">Losses</option>
+          <option value="pending">Pending</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" on:click={handleExport}>
           <Download class="w-4 h-4 mr-1" /> Export
         </button>
       </div>
     </div>
 
     {#if loading}
-      <div class="flex-grow flex justify-center items-center">
+      <div class="flex-grow flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
-    {:else if error}
-      <div class="flex-grow flex justify-center items-center">
-        <p class="text-error">{error}</p>
-      </div>
     {:else if bets.length === 0}
-      <div class="flex-grow flex flex-col justify-center items-center text-center text-slate-500 dark:text-slate-400">
+      <div class="flex-grow flex flex-col justify-center items-center text-center text-slate-500 dark:text-slate-400 py-12">
         <DollarSign class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>
-        <p class="text-sm">Place some bets on predictions to see them here.</p>
+        <p class="text-sm">Place some bets via the Kelly Calculator or Value Bets page to see them here.</p>
+      </div>
+    {:else if filteredBets.length === 0}
+      <div class="flex-grow flex flex-col justify-center items-center text-center text-slate-500 dark:text-slate-400 py-8">
+        <p>No bets match the current filter.</p>
       </div>
     {:else}
       <div class="overflow-x-auto flex-grow">
         <table class="table w-full">
           <thead>
             <tr>
-              <th>Match</th>
-              <th>Bet</th>
-              <th>Stake</th>
-              <th>Odds</th>
-              <th>Result</th>
-              <th>Payout</th>
               <th>Date</th>
+              <th>Match</th>
+              <th>Market</th>
+              <th>Selection</th>
+              <th>Odds</th>
+              <th>Stake</th>
+              <th>Result</th>
+              <th>Profit</th>
             </tr>
           </thead>
           <tbody>
-            {#each bets as bet (bet.id)}
+            {#each filteredBets as bet (bet.id)}
               <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                <td>{bet.match_description}</td>
-                <td>{bet.bet_type}</td>
-                <td>£{bet.stake.toFixed(2)}</td>
-                <td>@{bet.odds.toFixed(2)}</td>
+                <td class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {formatDistanceToNow(new Date(bet.createdAt), { addSuffix: true })}
+                </td>
+                <td class="whitespace-nowrap">{bet.homeTeam} vs {bet.awayTeam}</td>
                 <td>
-                  <span class="flex items-center {getResultColor(bet.result)}">
-                    <svelte:component this={getResultIcon(bet.result)} class="w-4 h-4 mr-1" />
-                    {bet.result}
+                  <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    {formatMarket(bet.market)}
                   </span>
                 </td>
-                <td>{bet.payout != null ? `£${bet.payout.toFixed(2)}` : '-'}</td>
-                <td class="text-xs text-slate-500 dark:text-slate-400">{formatDistanceToNow(new Date(bet.date), { addSuffix: true })}</td>
+                <td>{formatSelection(bet)}</td>
+                <td>@{bet.odds.toFixed(2)}</td>
+                <td>£{bet.stake.toFixed(2)}</td>
+                <td>
+                  <span class="flex items-center {getResultColour(bet.result)}">
+                    <svelte:component this={getResultIcon(bet.result)} class="w-4 h-4 mr-1" />
+                    {getResultLabel(bet.result)}
+                  </span>
+                </td>
+                <td class="{bet.profit != null ? (bet.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-slate-400'}">
+                  {#if bet.profit != null}
+                    {bet.profit >= 0 ? '+' : ''}£{bet.profit.toFixed(2)}
+                  {:else}
+                    -
+                  {/if}
+                </td>
               </tr>
             {/each}
           </tbody>
