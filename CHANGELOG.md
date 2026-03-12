@@ -4,6 +4,19 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### BetHistoryService & Dashboard Real Data (12 March 2026)
+- **BetHistoryService created**: New `services/betting/betHistoryService.ts` with full localStorage persistence — stores bets, calculates ROI, monthly P/L, win rate, and auto-resolves bets against match results
+- **Dashboard wired to real data**: Removed all 7 `Math.random()` calls from `Dashboard.svelte` — profit, accuracy, predictions, and bet counts now come from `PredictionTracker` and `BetHistoryService`
+- **Dead code removed**: Profit chart was unreachable (after `return` in `onMount`) with hardcoded `[150, 220, 180, 300, 250, 400]` — now renders real monthly P/L from `BetHistoryService`
+- **Stat card fixes**: Renamed "Active Users" to "Total Predictions"; replaced hardcoded change strings with computed deltas
+- **27 new tests**: Comprehensive test coverage for `BetHistoryService` (store, resolve, ROI, monthly P/L, win rate, export/import, persistence)
+
+### Type Check & Cleanup (12 March 2026)
+- **Fixed 21 type check errors**: `KellyCalculator.svelte` (edge→edgePercentage), `ValueBets.svelte` (property name mismatches, removed `Math.random()` for clean sheets and hardcoded H2H), `setup.ts` (global→globalThis), `footballData.test.ts` (Response mock casts)
+- **Stale files removed**: backend/ANACONDA_SETUP.md, backend/JUPYTER_GUIDE.md, backend/TRAINING_GUIDE.md, backend/QUICKSTART.md, backend/docs/FOR_BEGINNERS.md (all documented non-existent infrastructure), root public/vite.svg, frontend/test-api.html
+- **AGENTS.md**: Removed resolved IndexedDB bug entry
+- **Tests**: 182 tests across 10 files, all passing; 0 type errors
+
 ### Dixon-Coles Poisson Model (12 March 2026)
 - **Proper Poisson lambdas**: Replaced ad-hoc lambda formula (`avgGoalsScored * 1.2 + avgGoalsConceded * 0.8`) with the standard Dixon-Coles approach: `λ = attack_strength × defence_weakness × league_avg_goals`
 - **Home/away splits**: Attack and defence strengths now computed separately for home and away from completed match results — a team's home scoring record is distinct from their away record

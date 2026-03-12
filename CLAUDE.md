@@ -53,7 +53,8 @@ uvicorn app.api.main:app --reload --port 8000
   - `dataService.ts` - Singleton data layer (cache + API)
   - `predictionTracker.ts` - Prediction persistence (localStorage)
   - `betting/kelly.ts` - Kelly Criterion calculator
-  - `betting/value.ts` - Value bet detection (needs real implementation)
+  - `betting/value.ts` - Value bet detection (needs real odds source)
+  - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
 - `types/index.ts` - Shared TypeScript types
 - `utils/teamLogos.ts` - Team logo URL mappings
 - `App.svelte` - Root component with routing
@@ -103,6 +104,6 @@ These specs are the single source of truth for requirements.
 - shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
 - Backend models are scaffolded but need training data and pipeline completion — all 40+ feature engineering methods return random values
 - Backend has 0% test coverage (no pytest tests)
-- Frontend has 155 Vitest tests across 9 test files, all passing
-- 5 new service files need creating: backendService, liveService, aiAnalysis, betHistoryService, backtest
+- Frontend has 182 Vitest tests across 10 test files, all passing
+- 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
 - MIT licensed for open-source collaboration

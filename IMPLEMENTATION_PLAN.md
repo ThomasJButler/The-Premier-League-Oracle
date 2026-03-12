@@ -4,8 +4,6 @@ Last updated: 12 March 2026
 
 ---
 
-Please create a new guide how to run the backend. Remove any outdated documentation. Thank you.
-
 ## Current State
 
 ### Done
@@ -23,7 +21,7 @@ Please create a new guide how to run the backend. Remove any outdated documentat
 - PredictionTracker (localStorage) in `frontend/src/services/predictionTracker.ts` — fully implemented
 - BetBuilder in `frontend/src/lib/betBuilder.ts` — multi-market predictions (partial)
 - Vite proxy for Football-Data.org in `frontend/vite.config.ts`
-- Test framework: Vitest with 152 tests across 9 test files, all passing
+- Test framework: Vitest with 182 tests across 10 test files, all passing
 - Python ML backend scaffolded: XGBoost, LSTM, Transformer models, FastAPI, feature engineering, security
 
 ### NOT Done (Incorrectly Marked or Assumed)
@@ -61,22 +59,21 @@ Please create a new guide how to run the backend. Remove any outdated documentat
 - [x] Add `getHistoricalMatches(season: number)` — fetches `/competitions/PL/matches?season={year}&status=FINISHED`, 24h cache, queue requests 6s apart for rate limiting
 - [x] Add `getTeamRecentMatches(teamId: number, limit: number = 5)` — fetches `/teams/{teamId}/matches?status=FINISHED&limit={limit}`, 30min cache
 
-### 1c. Smart polling manager (spec 05)
-- [ ] Implement polling schedule: 60s during match hours, 5min on match days, 30min otherwise
-- [ ] Adaptive backoff: if 3 consecutive polls return empty, switch to 5-minute intervals
+### 1c. Smart polling manager (spec 05) ✅
+`LiveMatches.svelte` already implements smart polling: 30s when live matches exist, 5min on match days, 30min when idle, with adaptive backoff after 3 consecutive empty polls.
+- [x] Implement polling schedule: 30s live / 5min match day / 30min idle
+- [x] Adaptive backoff: if 3 consecutive polls return empty, switch to longer intervals
 
-### 1d. Fix LiveMatches.svelte (spec 05)
-`LiveMatches.svelte:43` — `liveMatches = []` is hardcoded, never populated from API.
-- [ ] Replace stub with `dataService.getLiveMatches()` call on mount + smart polling
-- [ ] Show real scores with current minute, team logos, match status
-- [ ] Add "No live matches" state with next kickoff countdown
-- [ ] Fix hardcoded `getMinute()` returning `"45'"` placeholder (line 74)
+### 1d. Fix LiveMatches.svelte (spec 05) ✅
+- [x] `dataService.getLiveMatches()` called on mount with smart polling
+- [x] Real scores shown with current minute and match status
+- [x] "No live matches" state exists with next kickoff countdown
+- [x] `getMinute()` now estimates from kick-off time rather than returning hardcoded `"45'"`
 
-### 1e. Enhance LiveTicker.svelte (spec 05)
-`LiveTicker.svelte:34` — uses `Math.random()` for fake confidence values.
-- [ ] Priority ordering: live scores > recent results (24h) > upcoming fixtures (48h)
-- [ ] Live format: `Arsenal 2-1 Chelsea (67')` with pulsing indicator
-- [ ] Remove `Math.random()` confidence generation
+### 1e. Enhance LiveTicker.svelte (spec 05) ✅
+- [x] Priority ordering: live scores > recent results (24h) > upcoming fixtures (48h)
+- [x] Live format: `Arsenal 2-1 Chelsea (67')` with pulsing indicator
+- [x] No `Math.random()` calls remain
 
 ### 1f. Backend proxy (spec 02, 03)
 - [ ] Add Vite proxy in `frontend/vite.config.ts`: `/api/oracle` → `http://localhost:8000`
@@ -161,23 +158,25 @@ No backtesting capability exists.
 
 ## Phase 3: Prediction Tracking (spec 06)
 
-### 3a. Replace hardcoded accuracy
-`dataService.ts` — `getPredictionAccuracy()` should delegate to `predictionTracker.getAccuracyStats()` (real implementation exists).
-- [ ] Replace stub with `predictionTracker.getAccuracyStats()` call
+### 3a. Replace hardcoded accuracy ✅
+`dataService.ts:411` — `getPredictionAccuracy()` already delegates to `predictionTracker.getAccuracyStats()`.
+- [x] Replace stub with `predictionTracker.getAccuracyStats()` call (already done)
 
 ### 3b. Auto-reconciliation
 - [ ] Add `reconcilePredictions(completedMatches)` to `dataService.ts`
 - [ ] On every `getMatches(status: 'FINISHED')` call, check for pending predictions and resolve them against actual results
 - [ ] Call `predictionTracker.updateWithResult()` for each resolved prediction
 
-### 3c. Dashboard real stats
-`Dashboard.svelte:169-214` — uses `Math.random()` extensively for fake confidence, odds, accuracy, and bet results. Also has hardcoded monthly profit data at lines 252-260.
-- [ ] Wire `overallAccuracy` from `predictionTracker.getAccuracyStats().accuracy`
-- [ ] Wire `totalPredictions` from `predictionTracker.getAccuracyStats().total`
-- [ ] Wire `profitMargin` from `betHistoryService.getROI().roi` (requires Phase 4a first)
-- [ ] Wire `betsPlaced` from `betHistoryService.getAllBets().length`
-- [ ] Remove ALL `Math.random()` calls (lines 169, 173, 176, 185, 200, 208, 214)
-- [ ] Replace hardcoded monthly profit data with real data from betHistoryService
+### 3c. Dashboard real stats ✅
+- [x] Wire `overallAccuracy` from `predictionTracker.getAccuracyStats().accuracy`
+- [x] Wire `totalPredictions` from `predictionTracker.getAccuracyStats().totalPredictions`
+- [x] Wire `profitMargin` from `betHistoryService.getROI()`
+- [x] Wire `betsPlaced` from `betHistoryService.getAllBets().length`
+- [x] Remove ALL `Math.random()` calls (7 total removed)
+- [x] Replace hardcoded monthly profit data with `betHistoryService.getMonthlyPL()`
+- [x] Remove dead code after `return` in `onMount` (unreachable profit chart initialisation)
+- [x] Fix stat card labels ("Active Users" → "Total Predictions")
+- [x] Replace hardcoded change strings with computed deltas
 
 ### 3d. Prediction store on generate
 `Predictions.svelte:182` calls `predictionTracker.storePrediction()` in some paths but not all.
@@ -196,15 +195,15 @@ No backtesting capability exists.
 
 ## Phase 4: Betting Intelligence (spec 04)
 
-### 4a. BetHistoryService (new file)
-`BettingHistory.svelte:22` has `bets: any[] = []` — currently populated with 3 hardcoded mock bets (lines 59-63).
-- [ ] Create `frontend/src/services/betting/betHistoryService.ts`
-- [ ] Follow localStorage pattern from `PredictionTracker`
-- [ ] Implement: `storeBet()`, `updateBetResult()`, `getAllBets()`, `getBetsByMonth()`, `getROI()`, `getMonthlyPL()`, `clearHistory()`
+### 4a. BetHistoryService ✅
+- [x] Create `frontend/src/services/betting/betHistoryService.ts`
+- [x] Follow localStorage pattern from `PredictionTracker`
+- [x] Implement: `storeBet()`, `updateBetResult()`, `resolveMatchBets()`, `getAllBets()`, `getBetsByMonth()`, `getROI()`, `getMonthlyPL()`, `getWinRate()`, `getPendingBets()`, `clearHistory()`, `export/import`
+- [x] 27 comprehensive tests in `betHistoryService.test.ts`
 
-### 4b. Fix BettingHistory.svelte
+### 4b. Create BettingHistory.svelte (file does not exist)
+- [ ] Create `frontend/src/components/BettingHistory.svelte` from scratch
 - [ ] Wire to `betHistoryService` — real history table, monthly P/L bar chart, summary stats
-- [ ] Remove hardcoded mock bets and `bets: any[] = []` stub entirely
 
 ### 4c. Kelly auto-suggestions
 `KellyCalculator.svelte` is manual-input only.
@@ -351,16 +350,10 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | Location | Problem | Fix Phase |
 |----------|---------|-----------|
 | `dataService.ts:299` | `season_id: '2024'` hardcoded TODO | Phase 1b |
-| `LiveMatches.svelte:43` | `liveMatches = []` never populated | Phase 1d |
-| `LiveMatches.svelte:74` | `getMinute()` returns hardcoded `"45'"` | Phase 1d |
-| `LiveTicker.svelte:34` | `Math.random()` for confidence | Phase 1e |
 | `advancedPredictions.ts:381` | Bookmaker odds hardcoded `{home: 2.1, draw: 3.4, away: 3.8}` | Phase 2d |
 | `advancedPredictions.ts:454` | `avgPenalties: 0.2` placeholder | Phase 2b |
 | `predictions.ts:456-458` | `savePrediction()` entirely unimplemented | Phase 2i |
 | `Predictions.svelte:171-172` | `homeForm: 'WWDLW'`, `awayForm: 'LDWDL'` hardcoded | Phase 2h |
-| `Dashboard.svelte:169-214` | 7× `Math.random()` calls for fake data | Phase 3c |
-| `Dashboard.svelte:252-260` | Hardcoded monthly profit data `[150, 220, ...]` | Phase 3c |
-| `BettingHistory.svelte:59-63` | 3 hardcoded mock bets | Phase 4b |
 | `ValueBets.svelte:64-97` | 9× `Math.random()` for fake odds/stats | Phase 4d |
 | `ValueBets.svelte:93` | Hardcoded h2h record `'W2 D1 L2'` | Phase 4d |
 | `ValueBets.svelte:395,405` | Hardcoded fallback form strings | Phase 2h |
@@ -389,6 +382,16 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `optimizedPredictions.ts:509` | `.sort()` mutation fixed — uses `[...probs].sort()` | Phase 2e |
 | `optimizedPredictions.ts:142` | Draw probability updated from 0.25 to 0.265 (real PL average) | Phase 2e |
 | `optimizedPredictions.ts:258,305-307` | Hardcoded form strings removed — returns `'?????'` when no data | Phase 2h |
+| `LiveMatches.svelte` | `getLiveMatches()` called on mount with smart polling; real scores/minute/status shown; "No live matches" state with countdown; `getMinute()` estimates from kick-off | Phase 1c/1d |
+| `LiveTicker.svelte` | Priority ordering (live > 24h results > 48h upcoming); pulsing live indicator; `Math.random()` removed | Phase 1e |
+| `KellyCalculator.svelte` | Fixed `calculation.edge` → `calculation.edgePercentage` (type error) | Phase 4c |
+| `ValueBets.svelte` | Fixed property mismatches (`odds→bookmakerOdds`, `matchTime→matchDate`, `goalsFor→goals_for`, `played→matches_played`); removed `Math.random()` for cleanSheets; removed hardcoded h2h `'W2 D1 L2'` | Phase 4d |
+| `setup.ts` | Fixed `global` → `globalThis` (type error) | — |
+| `footballData.test.ts` | Fixed `Response` mock casts (type error) | — |
+| `Dashboard.svelte:169-214` | 7× `Math.random()` removed — all stats wired to `PredictionTracker` and `BetHistoryService` | Phase 3c |
+| `Dashboard.svelte:252-260` | Hardcoded profit data removed — chart now uses `betHistoryService.getMonthlyPL()` | Phase 3c |
+| `Dashboard.svelte:onMount` | Dead code after `return` removed — profit chart now initialised properly | Phase 3c |
+| `services/betting/betHistoryService.ts` | Created with full localStorage persistence, 27 tests | Phase 4a |
 
 ---
 
@@ -399,7 +402,8 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `services/backendService.ts` | 03 | Frontend-backend bridge |
 | `services/liveService.ts` | 05 | WebSocket + polling for live data |
 | `services/aiAnalysis.ts` | 01 | AI-powered match analysis |
-| `services/betting/betHistoryService.ts` | 04 | Bet history persistence (localStorage) |
+| ~~`services/betting/betHistoryService.ts`~~ | ~~04~~ | ~~✅ Created — bet persistence (localStorage)~~ |
+| `components/BettingHistory.svelte` | 04 | Bet history UI (table, charts, ROI stats) |
 | `lib/backtest.ts` | 01 | Ensemble backtesting runner |
 | `backend/train.py` | — | Training pipeline orchestrator |
 
@@ -418,7 +422,8 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `dataService.test.ts` | 10 | Good | Service layer delegation |
 | `predictionTracker.test.ts` | 18 | Excellent | Comprehensive with import/export |
 | `optimizedPredictions.test.ts` | 12 | Good | Covers prediction structure, model weights, ELO integration, confidence, value odds, Dixon-Coles Poisson lambdas |
-| **Total** | **155** | — | All pass, no skipped/flaky tests |
+| `betHistoryService.test.ts` | 27 | Excellent | Store, resolve, ROI, monthly P/L, win rate, export/import, persistence |
+| **Total** | **182** | — | All pass across 10 files, no skipped/flaky tests |
 
 ### Missing Test Coverage
 - `betBuilder.ts` — no tests
