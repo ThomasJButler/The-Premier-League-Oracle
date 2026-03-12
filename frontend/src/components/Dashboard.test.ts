@@ -25,21 +25,37 @@ vi.mock('../services/predictionTracker', () => ({
       correctPredictions: 6,
       incorrectPredictions: 4
     })),
-    updateWithResult: vi.fn()
+    updateWithResult: vi.fn(),
+    getRecentPredictions: vi.fn(() => [])
+  }
+}));
+
+vi.mock('../services/betting/betHistoryService', () => ({
+  betHistoryService: {
+    resolveMatchBets: vi.fn(),
+    getROI: vi.fn(() => ({ roi: 0, totalStaked: 0, totalReturn: 0, totalBets: 0 })),
+    getAllBets: vi.fn(() => []),
+    getWinRate: vi.fn(() => 0),
+    getPendingBets: vi.fn(() => []),
+    getMonthlyPL: vi.fn(() => [])
   }
 }));
 
 // Mock Chart.js — Dashboard imports and registers chart components
-vi.mock('chart.js', () => ({
-  Chart: { register: vi.fn() },
-  Title: vi.fn(),
-  Tooltip: vi.fn(),
-  Legend: vi.fn(),
-  LineElement: vi.fn(),
-  LinearScale: vi.fn(),
-  CategoryScale: vi.fn(),
-  PointElement: vi.fn()
-}));
+vi.mock('chart.js', () => {
+  function MockChart() {}
+  MockChart.register = vi.fn();
+  return {
+    Chart: MockChart,
+    Title: vi.fn(),
+    Tooltip: vi.fn(),
+    Legend: vi.fn(),
+    LineElement: vi.fn(),
+    LinearScale: vi.fn(),
+    CategoryScale: vi.fn(),
+    PointElement: vi.fn()
+  };
+});
 
 // Mock svelte-chartjs with a minimal Svelte-like component constructor
 vi.mock('svelte-chartjs', () => {
