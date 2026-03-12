@@ -27,3 +27,4 @@ API_KEYS_GUIDE.md
 /how-to-ralph-wiggum
 loop.sh
 .env
+/backend/app/api/__pycache__
