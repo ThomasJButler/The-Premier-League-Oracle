@@ -392,7 +392,7 @@
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-600 dark:text-slate-400">{bet.homeTeam}:</span>
                         <div class="flex gap-1">
-                          {#each (bet.teamStats?.homeForm || 'WWDLL').split('') as result}
+                          {#each (bet.teamStats?.homeForm || '?????').split('') as result}
                             <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
                               {result}
                             </span>
@@ -402,7 +402,7 @@
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-600 dark:text-slate-400">{bet.awayTeam}:</span>
                         <div class="flex gap-1">
-                          {#each (bet.teamStats?.awayForm || 'LDWWL').split('') as result}
+                          {#each (bet.teamStats?.awayForm || '?????').split('') as result}
                             <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
                               {result}
                             </span>
