@@ -102,8 +102,12 @@ These specs are the single source of truth for requirements.
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
 - shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
-- Backend models are scaffolded but need training data and pipeline completion — all 40+ feature engineering methods return random values
+- Backend server will NOT start — broken LangChain/ChromaDB imports in `modern_oracle.py` must be fixed first
+- Backend models are scaffolded but need training data and pipeline completion — 102 `np.random.*` calls in feature engineering return random values
 - Backend has 0% test coverage (no pytest tests)
 - Frontend has 197 Vitest tests across 11 test files, all passing
+- `betBuilder.ts` and `value.ts` have zero test coverage (complex logic, high priority)
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
+- `ValueBets.svelte` uses `Math.random()` for all bookmaker odds — the feature is functionally useless until real odds are provided
+- `value.ts` has uncommitted changes (OddsProvider interface + matchId parameter) — commit when ready
 - MIT licensed for open-source collaboration

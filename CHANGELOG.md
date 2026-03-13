@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Deep Audit & Plan Update (13 March 2026)
+- **Second comprehensive audit**: 7 parallel research agents studied specs, frontend libs/services/components, backend, tests, and stubs
+- **Discovered 12 new stubs** not previously documented: `cleanSheetRate: 0.3`, standings fallback probabilities, betBuilder half-time/combo hardcoded values, fake cache size calculation, position movement proxy, hardcoded season labels, non-functional UI elements
+- **Corrected 1 false positive**: `ValueBets.svelte` h2h fallback `'W2 D1 L2'` was marked resolved but the template fallback at line 420 remains
+- **Backend blocker identified**: `modern_oracle.py` uses deprecated LangChain/ChromaDB imports — server cannot start; must fix before any backend integration
+- **102 `np.random.*` calls** confirmed in `advanced_engineering.py` (up from "40+" in previous audit)
+- **Missing test coverage**: `betBuilder.ts` and `value.ts` have zero tests despite containing complex probability logic
+- **Updated IMPLEMENTATION_PLAN.md**: Added phases 1g, 1h, 2j, 4h, 4i, 5a; expanded stubs table from 18 to 32 active entries; corrected resolved status for 1 entry
+- **Updated CLAUDE.md**: Backend startup blocker, uncommitted value.ts changes, missing test coverage notes
+
 ### Prediction Engine Refinement & Auto-Reconciliation (13 March 2026)
 - **Referee adjustment wired into ensemble**: `RefereeAnalyzer` is now called by `OptimizedPredictor.predictMatch()` — applies ±3% max adjustment to home/away probabilities based on referee's historical home win rate vs league average (46%). Insight surfaced in predictions output.
 - **Hardcoded bookmaker odds removed**: Replaced `{home: 2.1, draw: 3.4, away: 3.8}` in `AdvancedMatchPredictor` with fair odds derived from model probabilities — no more fictitious value bet calculations.

@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 13 March 2026
+Last updated: 13 March 2026 (second audit)
 
 ---
 
@@ -29,6 +29,8 @@ Last updated: 13 March 2026
 - Backend feature engineering is ALL FAKE — 40+ methods return `np.random.uniform()`
 - No frontend ↔ backend integration exists
 - No training pipeline for ML models
+- Backend server (`main.py`) will NOT start — broken LangChain/ChromaDB imports in `modern_oracle.py`
+- ValueBets.svelte still uses `Math.random()` for ALL bookmaker odds — the feature is functionally useless
 
 ---
 
@@ -77,6 +79,20 @@ Last updated: 13 March 2026
 
 ### 1f. Backend proxy (spec 02, 03)
 - [ ] Add Vite proxy in `frontend/vite.config.ts`: `/api/oracle` → `http://localhost:8000`
+
+### 1g. Fix DataService inconsistencies (NEW — discovered in audit)
+- [ ] `getMatchesBySeason(seasonId)` ignores its argument and returns current-season matches — implement real season filtering or remove the parameter
+- [ ] `season_id` field on every transformed `Match` is always `''` — set from actual API response or remove from type
+- [ ] Live match IndexedDB cache uses default 5-min timeout but intent is 60s — align with `footballDataAPI.getLiveMatches()` 60s TTL
+- [ ] Remove dead `setDataSource()` no-op method and vestigial `ApiProvider` type
+- [ ] `getAllSeasons()` only returns current season — document this limitation or implement historical season listing
+
+### 1h. Fix component data accuracy issues (NEW)
+- [ ] `LiveMatches.svelte`: "Auto-refreshing every 30 seconds" label is hardcoded — should reflect actual current polling interval
+- [ ] `LiveTicker.svelte`: Live dot detection uses fragile `startsWith('⚽')` heuristic — use a boolean flag instead
+- [ ] `StandingsTable.svelte` and `TopScorers.svelte`: "2024/25 Season" subtitle is hardcoded — derive from `dataService.getCurrentSeason()`
+- [ ] `SeasonStats.svelte`: "Late Drama" metric uses HT vs FT result change, not actual late goals — rename label or document the proxy
+- [ ] `Predictions.svelte`: Gameweek slicing assumes exactly 10 matches per gameweek in array order — use matchday field from API
 
 ---
 
@@ -138,6 +154,7 @@ No AI analysis service exists in the frontend.
 - [ ] Configurable: users enable/disable and enter OpenAI/Anthropic API key in Settings
 - [ ] Supplementary display only — does NOT modify numerical prediction probabilities
 - [ ] Cache AI responses for 24h per match
+- [ ] Update `Help.svelte` "AI Assistant" feature card to reflect actual capabilities (currently describes features that don't exist)
 
 ### 2g. Backtest runner (spec 01, new)
 No backtesting capability exists.
@@ -156,6 +173,10 @@ No backtesting capability exists.
 ### 2i. Implement `savePrediction()` in predictions.ts ✅
 `predictions.ts` — `savePrediction()` stub no longer exists; it was removed in a prior session.
 - [x] Stub removed — no action required
+
+### 2j. Fix Predictions.svelte calculation issues (NEW)
+- [ ] `recommendedStake` at line 177 uses a simple linear formula `Math.max(0, (confidence - 0.6) * 10)` — should use Kelly Criterion from `kelly.ts` instead
+- [ ] Bet builder BTTS display has a precedence bug: `* 100` only applies to the `noProb` branch, giving inconsistent display
 
 ---
 
@@ -189,11 +210,16 @@ No backtesting capability exists.
 ### 3e. Per-gameweek accuracy
 - [ ] Store per-gameweek accuracy in localStorage under `gameweek_accuracy`
 - [ ] Display accuracy-over-time chart in Dashboard using Chart.js
+- [ ] Note: Dashboard accuracy trend chart currently plots `prediction.confidence * 100` as proxy — this should be replaced with actual accuracy per gameweek
 
 ### 3f. Accuracy breakdown panel
 - [ ] Add to Predictions component: per-outcome accuracy (Home/Draw/Away %)
 - [ ] Per-confidence band accuracy (65-70%, 70-80%, 80%+)
 - [ ] Last 10 predictions rolling accuracy
+
+### 3g. Fix Dashboard navigation (NEW)
+- [ ] "View All Matches" button at line 512 fires no navigation event — wire to `dispatch('navigate', { view: 'MatchList' })`
+- [ ] Remove unused `apiProvider` variable and `dataService.getApiProvider()` call
 
 ---
 
@@ -205,23 +231,27 @@ No backtesting capability exists.
 - [x] Implement: `storeBet()`, `updateBetResult()`, `resolveMatchBets()`, `getAllBets()`, `getBetsByMonth()`, `getROI()`, `getMonthlyPL()`, `getWinRate()`, `getPendingBets()`, `clearHistory()`, `export/import`
 - [x] 27 comprehensive tests in `betHistoryService.test.ts`
 
-### 4b. Create BettingHistory.svelte (file does not exist)
-- [ ] Create `frontend/src/components/BettingHistory.svelte` from scratch
-- [ ] Wire to `betHistoryService` — real history table, monthly P/L bar chart, summary stats
+### 4b. Create BettingHistory.svelte ✅
+- [x] Create `frontend/src/components/BettingHistory.svelte`
+- [x] Wire to `betHistoryService` — real history table, monthly P/L bar chart, summary stats
 
 ### 4c. Kelly auto-suggestions
 `KellyCalculator.svelte` is manual-input only.
 - [ ] Load upcoming predictions from `OptimizedPredictor`
 - [ ] For predictions with confidence >= 65% and positive EV, generate Kelly suggestions
 - [ ] Display as "Suggested Bets" list above manual calculator
+- [ ] Fix: `confidenceLevel` (line 11) is hardcoded at 0.7 with no UI control — add a slider or derive from model confidence
 
-### 4d. Fix ValueBets.svelte
-`ValueBets.svelte:64-97` — uses `Math.random()` for ALL odds and stats (7 locations). Also has hardcoded h2h record `'W2 D1 L2'` at line 93.
+### 4d. Fix ValueBets.svelte — CRITICAL
+`ValueBets.svelte:64-97` — uses `Math.random()` for ALL odds and stats (7 locations). Also has hardcoded h2h record `'W2 D1 L2'` at line 420 (incorrectly marked resolved in previous audit — template fallback was not removed).
 - [ ] MVP: manual odds entry — user selects match, enters bookmaker odds
 - [ ] Calculate EV = `(predicted_probability × decimal_odds) - 1`
 - [ ] Show Kelly-recommended stake as % of bankroll
-- [ ] Leave `OddsProvider` interface stub for future API integration
-- [ ] Remove all Math.random() calls and hardcoded h2h record
+- [ ] Leave `OddsProvider` interface stub for future API integration (already defined in `value.ts`)
+- [ ] Remove all `Math.random()` calls (7 remaining)
+- [ ] Remove hardcoded h2h record `'W2 D1 L2'` fallback at line 420
+- [ ] Fix `homeForm: 'N/A'` and `awayForm: 'N/A'` at lines 91-92 — fetch real form data
+- [ ] Remove dead `dataService` import from `value.ts`
 
 ### 4e. Complete betBuilder suggestedCombos
 `betBuilder.ts` — `suggestedCombos` is incomplete. Combo odds ignore market correlation (e.g. clean sheet + over 2.5 negatively correlated).
@@ -230,14 +260,31 @@ No backtesting capability exists.
 - [ ] Only suggest combos with confidence >= 55% and odds >= 2.0
 - [ ] Add `reasoning` string per combo
 - [ ] Account for market correlation in combo probability calculation
+- [ ] Replace hardcoded combo confidence values (0.65, 0.45, 0.25, 0.40) with calculated values
+- [ ] Replace hardcoded probabilities: HT `drawProb: 0.40`, win-to-nil `1/0.3`, first-half goals `1/0.35`
+- [ ] Replace hardcoded corners `avgCorners: 9.5` and cards `expectedCards: 3.2` with league averages computed from match data (note: free tier may not provide these)
+- [ ] Expand rivalry list beyond 6 hardcoded entries
 
-### 4f. Fix value.ts empty matchId
+### 4f. Fix value.ts empty matchId ✅ (uncommitted)
 `value.ts:74,99,112,143` — value bets created with blank `matchId: ''`.
-- [ ] Pass real match IDs through from the calling context
+- [x] `identifyValueBets()` now takes `matchId` as first parameter and passes it through — **uncommitted change in working tree**
+- [x] `OddsProvider` interface added with JSDoc documentation — **uncommitted change in working tree**
+- [ ] Commit the uncommitted `value.ts` changes
+- [ ] Update `ValueBets.svelte` call site to pass `match.id` as first argument (currently passes `match.home_team`)
 
 ### 4g. Auto-resolve bets
-- [ ] When match results arrive via API, check for unresolved bets on that match
-- [ ] Call `betHistoryService.updateBetResult()` accordingly
+- [ ] Wire `betHistoryService.resolveMatchBets()` into `dataService.reconcilePredictions()` — currently only predictions are auto-reconciled, not bets
+- [ ] Add `combo` market resolution to `betHistoryService.didBetWin()` — currently returns `null` for combo bets
+
+### 4h. Add betBuilder tests (NEW)
+`betBuilder.ts` has zero test coverage despite containing complex probability calculations.
+- [ ] Create `frontend/src/lib/betBuilder.test.ts`
+- [ ] Test: match result probabilities, BTTS calculation, over/under goals, corner/card models, half-time result, combo generation, rivalry detection
+
+### 4i. Add value.ts tests (NEW)
+`value.ts` has zero test coverage.
+- [ ] Create `frontend/src/services/betting/value.test.ts`
+- [ ] Test: `identifyValueBets()`, `evaluateMarket()`, `calculateGoalsProbability()`, `calculateBTTSProbability()`, `generateWarnings()`, `calculateCLV()`, `findArbitrage()`, `calculateSharpeRatio()`, `calculatePerformanceMetrics()`
 
 ---
 
@@ -249,47 +296,66 @@ No backtesting capability exists.
 - **Ensemble**: Fully implemented — XGBoost 40%, LSTM 30%, Transformer 30% with Optuna weight optimisation
 - **Security**: 100% complete — JWT auth, RBAC (4 roles), brute force protection, rate limiting
 - **LangChain**: Integrated — ReAct agent with 5 tools
-- **Feature engineering**: **0% REAL** — all 40+ `_calculate_*()` methods return `np.random.uniform()` random values
+- **Feature engineering**: **0% REAL** — all 40+ `_calculate_*()` methods return `np.random.uniform()` random values (102 occurrences)
 - **Training pipeline**: Does not exist — no script, no data connection, no validation splits
 - **Tests**: 0% — no pytest tests written
 - **Data collector**: Fully implemented with rate limiting and caching
 - **LSTM feature importance**: Returns `np.random.random()` placeholder (line 523)
 - **Modern Oracle**: `_calculate_betting_value()` uses hardcoded mock odds (2.5, 3.2, 2.8); `optimize_ensemble_weights()` returns random performance
 
-### 5a. BackendService (new file — frontend)
+### ⚠️ CRITICAL: Backend Server Will Not Start (NEW)
+`modern_oracle.py` imports at the top level:
+1. `from langchain.embeddings import OpenAIEmbeddings` — moved to `langchain_community` in recent versions, raises `ImportError`
+2. `chromadb.Client(Settings(chroma_db_impl="duckdb+parquet"))` — deprecated ChromaDB API, will error
+3. `api/main.py` imports `ModernPremierLeagueOracle` at top level — server fails to start
+
+**Must fix before any backend work can proceed.**
+
+### 5a. Fix backend imports and startup (NEW — BLOCKER)
+- [ ] Update LangChain imports from `langchain.*` to `langchain_community.*` (or make them optional/lazy)
+- [ ] Update ChromaDB API from deprecated `duckdb+parquet` settings to modern API
+- [ ] Make LangChain/ChromaDB optional — server should start without OpenAI key
+- [ ] Fix `auth.py` mock user lookup (line 434: "Get user from database (mock for now)")
+- [ ] Update `validators.py` `VALID_TEAMS` set from 2023/24 to current 2025/26 season teams
+- [ ] Fix `football_data_collector.py` missing `get_team_stats()` method (called from `modern_oracle.py` but doesn't exist)
+- [ ] Fix Dockerfile references to nonexistent `config.yml` and `models/` directory
+- [ ] Remove hardcoded PostgreSQL password `godmode123` from `docker-compose.yml`
+
+### 5b. BackendService (new file — frontend)
 No frontend code calls the Python backend.
 - [ ] Create `frontend/src/services/backendService.ts`
 - [ ] Implement: `isAvailable()` (pings `/health`), `predictMatch()`, `predictBatch()`, `getUpcomingPredictions()`, `queryNaturalLanguage()`
 - [ ] All methods graceful — throw `BackendUnavailableError` if backend down
 
-### 5b. Feature flag in Settings
+### 5c. Feature flag in Settings
 - [ ] Add `useBackend` toggle in `Settings.svelte` (persisted to localStorage as `use_backend`)
 - [ ] Show backend connection status (connected/disconnected indicator)
 - [ ] Add `oracle_api_token` input field
+- [ ] Fix fake cache size calculation in `Settings.svelte:126-128` (currently `localStorage.length × 0.005 MB`)
 
-### 5c. OptimizedPredictor integration
+### 5d. OptimizedPredictor integration
 - [ ] When `useBackend` is enabled and backend available, merge ML prediction with ensemble result
 - [ ] Silent fallback to TypeScript ensemble when backend unavailable
 
-### 5d. LiveService with WebSocket (spec 05)
+### 5e. LiveService with WebSocket (spec 05)
 No live service exists.
 - [ ] Create `frontend/src/services/liveService.ts` with Svelte store `liveMatchesStore`
 - [ ] WebSocket connection to `ws://localhost:8000/ws` when backend available
 - [ ] Falls back to polling when backend unavailable
 - [ ] `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to the store
 
-### 5e. MLPrediction type
+### 5f. MLPrediction type
 - [ ] Add `MLPrediction` interface to `frontend/src/types/index.ts`
 - [ ] Include: probabilities, confidence, predicted score, model breakdown (xgboost/lstm/transformer), feature importance
 
-### 5f. Real feature engineering (backend critical path)
-`advanced_engineering.py` defines 150+ features across 10 categories, but **every `_calculate_*()` method returns `np.random.uniform()` random values**. This is the single biggest backend blocker. At least 24 methods confirmed as stubs (lines 481-576).
+### 5g. Real feature engineering (backend critical path)
+`advanced_engineering.py` defines 150+ features across 10 categories, but **every `_calculate_*()` method returns `np.random.uniform()` random values**. This is the single biggest backend blocker. 102 occurrences of `np.random.*` confirmed.
 - [ ] Implement real feature calculations using match DataFrames from the data collector
 - [ ] Priority features: rolling goals scored/conceded, xG metrics, form streaks, H2H stats, rest days
 - [ ] Connect `FootballDataCollector` output to `AdvancedFeatureEngineer` input
 - [ ] Create train/validation/test splits (e.g. 2020-2023 train, 2024 validation)
 
-### 5g. Model training pipeline
+### 5h. Model training pipeline
 No training script or notebook exists.
 - [ ] Create `backend/train.py` that orchestrates: data collection → feature engineering → model training → evaluation
 - [ ] Implement `/admin/retrain` endpoint (currently returns mock response)
@@ -298,13 +364,13 @@ No training script or notebook exists.
 - [ ] Fix `optimize_ensemble_weights()` returning random performance scores
 - [ ] Add backend pytest tests (currently 0% coverage)
 
-### 5h. Historical data collection for training
+### 5i. Historical data collection for training
 `football_data_collector.py` is complete with rate limiting and caching. H2H method returns empty DataFrame.
 - [ ] Create a training script that calls `FootballDataCollector.get_historical_data()` for seasons 2020-2024
 - [ ] Fix `get_head_to_head()` returning empty DataFrame
 - [ ] Document training command in `AGENTS.md`
 
-### 5i. Trim requirements.txt
+### 5j. Trim requirements.txt
 130+ packages including unnecessary ones (Kafka, Azure, AWS, Graph Neural Networks, Computer Vision, Dash, etc.).
 - [ ] Audit imports across all `.py` files and trim to actually-used packages
 
@@ -334,6 +400,7 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 ### 6d. Mobile sidebar as Sheet
 - [ ] Replace `Sidebar.svelte` mobile CSS transform with shadcn `Sheet` (slide-in from left)
 - [ ] Ensure `MobileNav.svelte` has active state styling matching `currentView`
+- [ ] `MobileNav.svelte` only exposes 5 of 10+ views — add remaining views or use a "More" menu
 
 ### 6e. Accessibility
 - [ ] `role="meter"`, `aria-valuenow/min/max` on prediction probability bars
@@ -342,35 +409,57 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 - [ ] `aria-label` on theme toggle button and confidence indicators
 
 ### 6f. Dead code & cosmetic cleanup
-- [ ] Dashboard.svelte: remove unreachable code after `return` in `onMount` (profit chart setup)
 - [ ] Remove `Math.random()` star particle animation in `App.svelte:96-100` (cosmetic, low priority)
-- [ ] Fix hardcoded user profile in Header.svelte (lines 140-141: "Tom Butler", "tom@example.com")
-- [ ] Fix hardcoded notification tooltip "3 new predictions available" in Header.svelte (line 102)
+- [ ] Fix hardcoded user profile in Header.svelte (lines 140-141: "Tom Butler", "tom@example.com") — either remove or make configurable
+- [ ] Fix hardcoded notification tooltip "3 new predictions available" in Header.svelte (line 102) — either wire to real notification count or remove the bell
+- [ ] `ApiSetupWizard.svelte` Step 3 ("Choose Provider") shows single option then auto-advances — collapse the step or remove
+- [ ] Fix Header.svelte search bar — dispatches event but nothing handles it; either wire to match/team search or remove
+- [ ] Fix Header.svelte profile/logout actions — dispatched but unhandled; either implement or remove dropdown
+- [ ] Update `Help.svelte` to remove references to non-existent features (push notifications, offline caching beyond IndexedDB)
+- [ ] Update `Help.svelte` FAQ accuracy claim "60-65%" to use real accuracy from `predictionTracker`
+- [ ] `StandingsTable.svelte` position movement arrows are inferred from form wins, not real API data — either implement properly or remove
 
 ---
 
 ## Stubs & Hardcoded Values — Complete Audit
 
+### Active stubs (must fix)
+
 | Location | Problem | Fix Phase |
 |----------|---------|-----------|
-| `dataService.ts:299` | `season_id: '2024'` hardcoded TODO | Phase 1b |
-| `advancedPredictions.ts:454` | `avgPenalties: 0.2` placeholder | Phase 2b |
-| `Predictions.svelte:171-172` | `homeForm: 'WWDLW'`, `awayForm: 'LDWDL'` hardcoded | Phase 2h |
-| `ValueBets.svelte:64-97` | 9× `Math.random()` for fake odds/stats | Phase 4d |
-| `ValueBets.svelte:93` | Hardcoded h2h record `'W2 D1 L2'` | Phase 4d |
-| `ValueBets.svelte:395,405` | Hardcoded fallback form strings | Phase 2h |
-| `value.ts:74,99,112,143` | Empty `matchId: ''` in value bet creation | Phase 4f |
+| `ValueBets.svelte:64-70` | 7× `Math.random()` for fake bookmaker odds | Phase 4d |
+| `ValueBets.svelte:91-93` | `homeForm: 'N/A'`, `awayForm: 'N/A'`, `h2hRecord: 'N/A'` — static defaults | Phase 4d |
+| `ValueBets.svelte:420` | Hardcoded h2h fallback `'W2 D1 L2'` still present in template | Phase 4d |
+| `advancedPredictions.ts:557` | `avgPenalties: 0.2` placeholder — no penalty data from API | Phase 2d |
+| `optimizedPredictions.ts:415` | `cleanSheetRate: 0.3` — commented "Would need actual clean sheet data" | Phase 4e |
+| `optimizedPredictions.ts:573` | Standings fallback `{ homeWin: 0.40, draw: 0.30, awayWin: 0.30 }` hardcoded | N/A (acceptable fallback) |
+| `predictions.ts:261-262` | `leagueAvgHome = 1.5`, `leagueAvgAway = 1.2` — static, not computed | Low priority (fallback model) |
+| `betBuilder.ts:209` | `avgCorners = 9.5` hardcoded — no real corner data from free tier | Phase 4e |
+| `betBuilder.ts:236` | `expectedCards = 3.2` hardcoded — no real card data from free tier | Phase 4e |
 | `betBuilder.ts:269-276` | Only 6 hardcoded rivalries, case-sensitive matching | Phase 4e |
-| `betBuilder.ts:327-398` | Combo odds ignore market correlation | Phase 4e |
+| `betBuilder.ts:290` | HT `drawProb: 0.40` hardcoded | Phase 4e |
+| `betBuilder.ts:339-405` | Combo confidence values hardcoded (0.65, 0.45, 0.25, 0.40) | Phase 4e |
+| `betBuilder.ts:371, 393` | Inline probabilities: `1/0.3` (win-to-nil), `1/0.35` (first-half goals) | Phase 4e |
+| `value.ts:346` | `calculateCLV` returns `betId: ''` | Low priority |
+| `footballData.ts:369` | `season_id: ''` on every transformed Match | Phase 1g |
+| `dataService.ts:317-332` | `clean_sheets`, `failed_to_score`, all home/away splits always `0` | Phase 1g (free-tier limitation) |
 | `Header.svelte:140-141` | Hardcoded user "Tom Butler", "tom@example.com" | Phase 6f |
 | `Header.svelte:102` | Hardcoded "3 new predictions available" tooltip | Phase 6f |
 | `App.svelte:96-100` | `Math.random()` for star particles (cosmetic) | Phase 6f |
+| `Settings.svelte:126-128` | Fake cache size: `localStorage.length × 0.005 MB` | Phase 5c |
+| `StandingsTable.svelte:79-85` | Position movement from form wins proxy, not real data | Phase 6f |
+| `StandingsTable.svelte:103` | "2024/25 Season" hardcoded subtitle | Phase 1h |
+| `TopScorers.svelte:116` | "Premier League 2024/25 Season" hardcoded subtitle | Phase 1h |
+| `SeasonStats.svelte:260` | `totalPenalties = 0` — not available from free tier | N/A (free-tier limitation) |
+| `Predictions.svelte:177` | `recommendedStake` uses linear heuristic, not Kelly | Phase 2j |
+| `advanced_engineering.py:481-892` | 102× `np.random.*` — ALL feature calculations fake | Phase 5g |
+| `lstm_predictor.py:523` | `get_feature_importance()` returns random values | Phase 5h |
+| `modern_oracle.py:404-408` | `_calculate_betting_value()` mock odds (2.5, 3.2, 2.8) | Phase 5h |
+| `modern_oracle.py:463` | `optimize_ensemble_weights()` returns `np.random.random()` | Phase 5h |
+| `football_data_collector.py:501-506` | `get_head_to_head()` returns empty DataFrame | Phase 5i |
+| `api/main.py:524-529` | `/admin/retrain` returns mock response | Phase 5h |
+| `auth.py:434` | Mock user database lookup | Phase 5a |
 | `kelly.ts:214` | `Math.random()` in simulation (acceptable — Monte Carlo) | N/A |
-| `advanced_engineering.py:481-576` | 40+ `_calculate_*()` methods return `np.random.uniform()` | Phase 5f |
-| `lstm_predictor.py:523` | `get_feature_importance()` returns random values | Phase 5g |
-| `modern_oracle.py` | `_calculate_betting_value()` uses mock odds (2.5, 3.2, 2.8) | Phase 5g |
-| `modern_oracle.py` | `optimize_ensemble_weights()` returns random performance | Phase 5g |
-| `football_data_collector.py` | `get_head_to_head()` returns empty DataFrame | Phase 5h |
 
 ### Resolved stubs (removed from active list)
 | Location | What was fixed | Session |
@@ -387,7 +476,7 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `LiveMatches.svelte` | `getLiveMatches()` called on mount with smart polling; real scores/minute/status shown; "No live matches" state with countdown; `getMinute()` estimates from kick-off | Phase 1c/1d |
 | `LiveTicker.svelte` | Priority ordering (live > 24h results > 48h upcoming); pulsing live indicator; `Math.random()` removed | Phase 1e |
 | `KellyCalculator.svelte` | Fixed `calculation.edge` → `calculation.edgePercentage` (type error) | Phase 4c |
-| `ValueBets.svelte` | Fixed property mismatches (`odds→bookmakerOdds`, `matchTime→matchDate`, `goalsFor→goals_for`, `played→matches_played`); removed `Math.random()` for cleanSheets; removed hardcoded h2h `'W2 D1 L2'` | Phase 4d |
+| `ValueBets.svelte` | Fixed property mismatches (`odds→bookmakerOdds`, `matchTime→matchDate`, `goalsFor→goals_for`, `played→matches_played`); removed `Math.random()` for cleanSheets | Phase 4d |
 | `setup.ts` | Fixed `global` → `globalThis` (type error) | — |
 | `footballData.test.ts` | Fixed `Response` mock casts (type error) | — |
 | `Dashboard.svelte:169-214` | 7× `Math.random()` removed — all stats wired to `PredictionTracker` and `BetHistoryService` | Phase 3c |
@@ -401,6 +490,7 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `dataService.ts` | `reconcilePredictions(completedMatches)` added; auto-called on finished matches; calls `predictionTracker.updateWithResult()` per match; `dataService.test.ts` mock updated | Phase 3b |
 | `Predictions.svelte:182` | `storePrediction()` called for every match in batch loop — no missing single-prediction path; verified complete | Phase 3d |
 | `BettingHistory.svelte` | Fixed `onMount` not firing in tests (synchronous `loadBettingHistory()` call on init); fixed profit sign formatting (`-£10.00` not `£-10.00`); fixed "Pending" text collision in test | Phase 4b |
+| `value.ts:74,99,112,143` | `matchId` parameter added and passed through (uncommitted) | Phase 4f |
 
 ---
 
@@ -412,8 +502,9 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `services/liveService.ts` | 05 | WebSocket + polling for live data |
 | `services/aiAnalysis.ts` | 01 | AI-powered match analysis |
 | ~~`services/betting/betHistoryService.ts`~~ | ~~04~~ | ~~✅ Created — bet persistence (localStorage)~~ |
-| `components/BettingHistory.svelte` | 04 | Bet history UI (table, charts, ROI stats) |
 | `lib/backtest.ts` | 01 | Ensemble backtesting runner |
+| `lib/betBuilder.test.ts` | — | Tests for bet builder (0% coverage) |
+| `services/betting/value.test.ts` | — | Tests for value betting engine (0% coverage) |
 | `backend/train.py` | — | Training pipeline orchestrator |
 
 ---
@@ -423,9 +514,9 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | Test File | Tests | Quality | Notes |
 |-----------|-------|---------|-------|
 | `predictions.test.ts` | 11 | Good | Tests real prediction logic |
-| `types.test.ts` | 18 | Trivial | Type structure validation only |
+| `types.test.ts` | 18 | Trivial | Type structure validation only — redundant with `tsc`/`svelte-check` |
 | `advancedPredictions.test.ts` | 28 | Good | Covers ELO, Poisson, fatigue, referee, xG |
-| `Dashboard.test.ts` | 12 | Good | Component rendering tests — expanded from 8 this session |
+| `Dashboard.test.ts` | 12 | Good | Component rendering tests — expanded from 8 |
 | `kelly.test.ts` | 20 | Excellent | Thorough edge case coverage |
 | `footballData.test.ts` | 26 | Good | API client with error handling |
 | `dataService.test.ts` | 10 | Good | Service layer delegation |
@@ -436,9 +527,26 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | **Total** | **197** | — | All pass across 11 files, no skipped/flaky tests |
 
 ### Missing Test Coverage
-- `betBuilder.ts` — no tests
-- `value.ts` — no tests
+- `betBuilder.ts` — no tests (complex probability logic, high priority)
+- `value.ts` — no tests (betting engine, high priority)
+- `Predictions.svelte` — no component test
+- `LiveMatches.svelte` — no component test
+- `LiveTicker.svelte` — no component test
+- `ValueBets.svelte` — no component test
+- `KellyCalculator.svelte` — no component test
+- `StandingsTable.svelte` — no component test
+- `SeasonStats.svelte` — no component test
+- `MatchList.svelte` — no component test
+- `TopScorers.svelte` — no component test
+- `Settings.svelte` — no component test
+- `Header.svelte` — no component test
+- `App.svelte` — no component test
 - `backend/` — 0% test coverage (no pytest tests exist)
+- All tests use mocks exclusively — no integration tests exercise the IndexedDB cache layer
+
+### Test quality notes
+- `advancedPredictions.test.ts` validates the `avgPenalties: 0.2` stub rather than testing real logic
+- `predictions.test.ts` tests `analyzeFormTrend` by duplicating the implementation inline (function is not exported)
 
 ---
 

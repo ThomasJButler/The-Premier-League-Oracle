@@ -28,3 +28,4 @@ API_KEYS_GUIDE.md
 loop.sh
 .env
 /backend/app/api/__pycache__
+.claude/settings.json
