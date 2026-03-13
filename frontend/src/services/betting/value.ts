@@ -37,15 +37,29 @@ export interface ClosingLineValue {
   profitable: boolean;
 }
 
+/**
+ * Interface for future odds API integration.
+ * Implementations should fetch real-time bookmaker odds for a given match.
+ */
+export interface OddsProvider {
+  /** Human-readable name of the odds source (e.g. "Betfair", "Odds API") */
+  name: string;
+  /** Fetch current market odds for a match. Returns null if unavailable. */
+  getOdds(homeTeam: string, awayTeam: string, matchDate: Date): Promise<MarketOdds | null>;
+  /** Whether this provider is currently available and configured */
+  isAvailable(): boolean;
+}
+
 export class ValueBettingEngine {
   private static readonly MIN_VALUE_EDGE = 0.03; // 3% minimum edge
   private static readonly MIN_CONFIDENCE = 0.55; // 55% minimum confidence
   private static readonly MAX_ODDS_MOVEMENT = 0.15; // 15% max odds movement to consider
-  
+
   /**
    * Identify value bets for a match
    */
   public static async identifyValueBets(
+    matchId: string,
     homeTeam: string,
     awayTeam: string,
     matchDate: Date,
@@ -68,10 +82,10 @@ export class ValueBettingEngine {
         { type: 'draw' as const, prob: prediction.drawProb, odds: marketOdds.draw },
         { type: 'away' as const, prob: prediction.awayWinProb, odds: marketOdds.away }
       ];
-      
+
       for (const market of markets) {
         const valueBet = this.evaluateMarket(
-          '',
+          matchId,
           homeTeam,
           awayTeam,
           matchDate,
@@ -95,7 +109,7 @@ export class ValueBettingEngine {
         const under25Prob = 1 - over25Prob;
         
         const overBet = this.evaluateMarket(
-          '',
+          matchId,
           homeTeam,
           awayTeam,
           matchDate,
@@ -106,11 +120,11 @@ export class ValueBettingEngine {
           prediction.confidence,
           [`Expected ${totalGoalsExpected.toFixed(1)} goals`]
         );
-        
+
         if (overBet) valueBets.push(overBet);
-        
+
         const underBet = this.evaluateMarket(
-          '',
+          matchId,
           homeTeam,
           awayTeam,
           matchDate,
@@ -133,7 +147,7 @@ export class ValueBettingEngine {
         );
         
         const bttsBet = this.evaluateMarket(
-          '',
+          matchId,
           homeTeam,
           awayTeam,
           matchDate,
