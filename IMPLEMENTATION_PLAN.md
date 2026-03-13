@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 12 March 2026
+Last updated: 13 March 2026
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 12 March 2026
 - PredictionTracker (localStorage) in `frontend/src/services/predictionTracker.ts` — fully implemented
 - BetBuilder in `frontend/src/lib/betBuilder.ts` — multi-market predictions (partial)
 - Vite proxy for Football-Data.org in `frontend/vite.config.ts`
-- Test framework: Vitest with 182 tests across 10 test files, all passing
+- Test framework: Vitest with 197 tests across 11 test files, all passing
 - Python ML backend scaffolded: XGBoost, LSTM, Transformer models, FastAPI, feature engineering, security
 
 ### NOT Done (Incorrectly Marked or Assumed)
@@ -115,17 +115,20 @@ Two separate fatigue stubs fixed:
 - [x] Implement real fatigue factor based on days since last match
 - [x] Wire fatigue multiplier into `OptimizedPredictor.predictMatch()` to adjust confidence
 
-### 2d. Referee adjustment
-`advancedPredictions.ts:380` — referee stats calculated but never applied to prediction output. Also uses hardcoded bookmaker odds `{home: 2.1, draw: 3.4, away: 3.8}`.
-- [ ] Apply ±3% max adjustment to home win probability based on referee's historical home win rate vs league average
+### 2d. Referee adjustment ✅ (partial)
+`advancedPredictions.ts:380` — referee stats calculated but never applied to prediction output. Also used hardcoded bookmaker odds `{home: 2.1, draw: 3.4, away: 3.8}`.
+- [x] Apply ±3% max adjustment to home win probability based on referee's historical home win rate vs league average (0.46)
+- [x] `RefereeAnalyzer` imported into `optimizedPredictions.ts`; optional `referee` parameter added to `OptimizedPredictor.predictMatch()`
+- [x] Referee insight surfaced in predictions output
+- [x] Remove hardcoded bookmaker odds from `AdvancedMatchPredictor` — replaced with fair odds derived from model probabilities
+- [x] `Predictions.svelte` now passes `match.referee` to `predictMatch()`
 - [ ] Surface referee stats as tooltip/info panel in Predictions component
-- [ ] Remove hardcoded bookmaker odds from AdvancedMatchPredictor
 
-### 2e. Confidence calibration (partially complete)
-`OptimizedPredictor.calculateConfidence()` uses simple probability gap formula. Two quick wins landed this session; deeper calibration is future work.
+### 2e. Confidence calibration ✅ (partial)
+`OptimizedPredictor.calculateConfidence()` uses simple probability gap formula. Two quick wins landed in a prior session; ensemble disagreement implemented this session. Historical accuracy calibration is future work.
 - [x] Fix `.sort()` array mutation bug — use `[...probs].sort()` to avoid mutating the original
 - [x] Update hardcoded draw probability 0.25 to match actual PL stats (~26.5%)
-- [ ] Incorporate ensemble disagreement: if ELO and Poisson strongly disagree, lower confidence
+- [x] Incorporate ensemble disagreement: added `getTopOutcome()` helper; when ELO and Poisson disagree on the predicted outcome, confidence is reduced by 8%; disagreement surfaced as an insight (e.g. "Models split: ELO predicts H, Poisson predicts A — lower confidence")
 - [ ] Track historical accuracy by confidence band and apply calibration factor
 
 ### 2f. AI-assisted analysis (spec 01, new)
@@ -150,9 +153,9 @@ No backtesting capability exists.
 - [x] `Predictions.svelte` now uses `optimizedPrediction.homeForm` / `.awayForm` instead of hardcoded 'WWDLW'/'LDWDL'
 - [x] `ValueBets.svelte` fallbacks changed from 'WWDLL'/'LDWWL' to '?????' (no fabricated results)
 
-### 2i. Implement `savePrediction()` in predictions.ts
-`predictions.ts:456-458` — `savePrediction()` is a TODO stub with empty body.
-- [ ] Implement using `predictionTracker.storePrediction()` or remove if redundant with existing tracker calls
+### 2i. Implement `savePrediction()` in predictions.ts ✅
+`predictions.ts` — `savePrediction()` stub no longer exists; it was removed in a prior session.
+- [x] Stub removed — no action required
 
 ---
 
@@ -162,10 +165,11 @@ No backtesting capability exists.
 `dataService.ts:411` — `getPredictionAccuracy()` already delegates to `predictionTracker.getAccuracyStats()`.
 - [x] Replace stub with `predictionTracker.getAccuracyStats()` call (already done)
 
-### 3b. Auto-reconciliation
-- [ ] Add `reconcilePredictions(completedMatches)` to `dataService.ts`
-- [ ] On every `getMatches(status: 'FINISHED')` call, check for pending predictions and resolve them against actual results
-- [ ] Call `predictionTracker.updateWithResult()` for each resolved prediction
+### 3b. Auto-reconciliation ✅
+- [x] Add `reconcilePredictions(completedMatches)` to `dataService.ts`
+- [x] Automatically called whenever `getMatches()` returns finished matches
+- [x] Checks for unresolved predictions and calls `predictionTracker.updateWithResult()` for each
+- [x] Updated `dataService.test.ts` mock to include `getMatchPredictions` and `updateWithResult`
 
 ### 3c. Dashboard real stats ✅
 - [x] Wire `overallAccuracy` from `predictionTracker.getAccuracyStats().accuracy`
@@ -178,9 +182,9 @@ No backtesting capability exists.
 - [x] Fix stat card labels ("Active Users" → "Total Predictions")
 - [x] Replace hardcoded change strings with computed deltas
 
-### 3d. Prediction store on generate
-`Predictions.svelte:182` calls `predictionTracker.storePrediction()` in some paths but not all.
-- [ ] Ensure every prediction generated (single and batch) calls `storePrediction()`
+### 3d. Prediction store on generate ✅
+`Predictions.svelte:182` calls `predictionTracker.storePrediction()` in the batch loop for every match. Verified — there is no separate single-prediction path.
+- [x] Every prediction generated calls `storePrediction()` (confirmed — single path, batch loop)
 
 ### 3e. Per-gameweek accuracy
 - [ ] Store per-gameweek accuracy in localStorage under `gameweek_accuracy`
@@ -350,9 +354,7 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | Location | Problem | Fix Phase |
 |----------|---------|-----------|
 | `dataService.ts:299` | `season_id: '2024'` hardcoded TODO | Phase 1b |
-| `advancedPredictions.ts:381` | Bookmaker odds hardcoded `{home: 2.1, draw: 3.4, away: 3.8}` | Phase 2d |
 | `advancedPredictions.ts:454` | `avgPenalties: 0.2` placeholder | Phase 2b |
-| `predictions.ts:456-458` | `savePrediction()` entirely unimplemented | Phase 2i |
 | `Predictions.svelte:171-172` | `homeForm: 'WWDLW'`, `awayForm: 'LDWDL'` hardcoded | Phase 2h |
 | `ValueBets.svelte:64-97` | 9× `Math.random()` for fake odds/stats | Phase 4d |
 | `ValueBets.svelte:93` | Hardcoded h2h record `'W2 D1 L2'` | Phase 4d |
@@ -392,6 +394,13 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `Dashboard.svelte:252-260` | Hardcoded profit data removed — chart now uses `betHistoryService.getMonthlyPL()` | Phase 3c |
 | `Dashboard.svelte:onMount` | Dead code after `return` removed — profit chart now initialised properly | Phase 3c |
 | `services/betting/betHistoryService.ts` | Created with full localStorage persistence, 27 tests | Phase 4a |
+| `advancedPredictions.ts:381` | Hardcoded bookmaker odds `{home: 2.1, draw: 3.4, away: 3.8}` removed — replaced with fair odds derived from model probabilities | Phase 2d |
+| `optimizedPredictions.ts` | `RefereeAnalyzer` imported; optional `referee` param added; ±3% home win probability adjustment applied; referee insight surfaced in output; `Predictions.svelte` passes `match.referee` | Phase 2d |
+| `optimizedPredictions.ts` | Ensemble disagreement: `getTopOutcome()` helper added; `calculateConfidence()` reduces confidence by 8% when ELO and Poisson disagree on outcome; disagreement surfaced as insight | Phase 2e |
+| `predictions.ts:456-458` | `savePrediction()` stub — no longer exists, removed in a prior session | Phase 2i |
+| `dataService.ts` | `reconcilePredictions(completedMatches)` added; auto-called on finished matches; calls `predictionTracker.updateWithResult()` per match; `dataService.test.ts` mock updated | Phase 3b |
+| `Predictions.svelte:182` | `storePrediction()` called for every match in batch loop — no missing single-prediction path; verified complete | Phase 3d |
+| `BettingHistory.svelte` | Fixed `onMount` not firing in tests (synchronous `loadBettingHistory()` call on init); fixed profit sign formatting (`-£10.00` not `£-10.00`); fixed "Pending" text collision in test | Phase 4b |
 
 ---
 
@@ -423,7 +432,8 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `predictionTracker.test.ts` | 18 | Excellent | Comprehensive with import/export |
 | `optimizedPredictions.test.ts` | 12 | Good | Covers prediction structure, model weights, ELO integration, confidence, value odds, Dixon-Coles Poisson lambdas |
 | `betHistoryService.test.ts` | 27 | Excellent | Store, resolve, ROI, monthly P/L, win rate, export/import, persistence |
-| **Total** | **182** | — | All pass across 10 files, no skipped/flaky tests |
+| `BettingHistory.test.ts` | 15 | Good | Component rendering, filter dropdown, profit formatting, pending/resolved states |
+| **Total** | **197** | — | All pass across 11 files, no skipped/flaky tests |
 
 ### Missing Test Coverage
 - `betBuilder.ts` — no tests

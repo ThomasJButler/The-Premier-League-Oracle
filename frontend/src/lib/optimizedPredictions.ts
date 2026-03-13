@@ -1,6 +1,6 @@
 import { dataService } from '../services/dataService';
 import type { Match, Standing } from '../types';
-import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, sharedEloSystem } from './advancedPredictions';
+import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -158,9 +158,10 @@ export class OptimizedPredictor {
    * Main prediction method with enhanced algorithms
    */
   static async predictMatch(
-    homeTeam: string, 
+    homeTeam: string,
     awayTeam: string,
-    historicalMatches?: Match[]
+    historicalMatches?: Match[],
+    referee?: string | null
   ): Promise<EnhancedPredictionModel> {
     const insights: string[] = [];
     
@@ -239,23 +240,64 @@ export class OptimizedPredictor {
       const eloDrawClamped = Math.max(0.10, Math.min(0.35, eloDrawProb));
       const eloHomeProb = eloWinProbability * (1 - eloDrawClamped);
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
+
+      const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
       const combinedProbabilities = this.combineModels({
-        elo: { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb },
+        elo: eloProbs,
         poisson: poissonProbs,
         form: formAnalysis.probabilities,
         h2h: h2hAnalysis.probabilities,
         standings: this.getStandingsProbabilities(homePosition, awayPosition)
       });
 
+      // 8b. Apply referee adjustment (±3% max on home/away probabilities)
+      const LEAGUE_AVG_HOME_WIN_RATE = 0.46;
+      let adjustedProbabilities = { ...combinedProbabilities };
+
+      if (referee) {
+        try {
+          const refereeStats = await RefereeAnalyzer.getRefereeStats(referee);
+          const homeWinBias = refereeStats.homeWinRate - LEAGUE_AVG_HOME_WIN_RATE;
+          // Clamp adjustment to ±3%
+          const adjustment = Math.max(-0.03, Math.min(0.03, homeWinBias));
+
+          if (Math.abs(adjustment) > 0.005) {
+            adjustedProbabilities.homeWin += adjustment;
+            adjustedProbabilities.awayWin -= adjustment;
+
+            // Re-normalise to ensure probabilities sum to 1
+            const total = adjustedProbabilities.homeWin + adjustedProbabilities.draw + adjustedProbabilities.awayWin;
+            adjustedProbabilities.homeWin /= total;
+            adjustedProbabilities.draw /= total;
+            adjustedProbabilities.awayWin /= total;
+
+            const direction = adjustment > 0 ? 'favours home' : 'favours away';
+            insights.push(`Referee ${referee} ${direction} (${(refereeStats.homeWinRate * 100).toFixed(0)}% home win rate vs ${(LEAGUE_AVG_HOME_WIN_RATE * 100).toFixed(0)}% avg)`);
+          }
+        } catch {
+          // Referee data unavailable — skip adjustment
+        }
+      }
+
       // 9. Determine predicted outcome
-      const prediction = this.determinePrediction(combinedProbabilities);
-      
-      // 10. Calculate confidence score
+      const prediction = this.determinePrediction(adjustedProbabilities);
+
+      // 10. Calculate confidence score with ensemble disagreement detection
+      // Determine what each key model predicts independently
+      const eloTopOutcome = this.getTopOutcome(eloProbs.home, eloProbs.draw, eloProbs.away);
+      const poissonTopOutcome = this.getTopOutcome(poissonProbs.homeWin, poissonProbs.draw, poissonProbs.awayWin);
+      const modelsDisagree = eloTopOutcome !== poissonTopOutcome;
+
       const confidence = this.calculateConfidence(
-        combinedProbabilities,
+        adjustedProbabilities,
         prediction.result,
-        fatigueFactor
+        fatigueFactor,
+        modelsDisagree
       );
+
+      if (modelsDisagree) {
+        insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
+      }
 
       // 11. Predict goals with adjusted model
       const predictedGoals = this.predictGoals(
@@ -297,7 +339,7 @@ export class OptimizedPredictor {
       }
 
       // Calculate value odds
-      const valueOdds = this.calculateValueOdds(combinedProbabilities);
+      const valueOdds = this.calculateValueOdds(adjustedProbabilities);
 
       return {
         predictedResult: prediction.result,
@@ -611,10 +653,20 @@ export class OptimizedPredictor {
     }
   }
 
+  /**
+   * Determine which outcome a model predicts from its three probabilities.
+   */
+  private static getTopOutcome(home: number, draw: number, away: number): 'H' | 'D' | 'A' {
+    if (home > draw && home > away) return 'H';
+    if (away > draw && away > home) return 'A';
+    return 'D';
+  }
+
   private static calculateConfidence(
     probabilities: { homeWin: number; draw: number; awayWin: number },
     predictedResult: 'H' | 'D' | 'A',
-    fatigueFactor: { homeFatigue: number; awayFatigue: number }
+    fatigueFactor: { homeFatigue: number; awayFatigue: number },
+    modelsDisagree: boolean = false
   ): number {
     const probs = Object.values(probabilities);
     const sorted = [...probs].sort((a, b) => b - a); // Non-mutating sort
@@ -632,6 +684,11 @@ export class OptimizedPredictor {
       confidence += 0.1;
     } else if (probDifference < 0.1) {
       confidence -= 0.1;
+    }
+
+    // Penalise when key models (ELO & Poisson) disagree on the outcome
+    if (modelsDisagree) {
+      confidence -= 0.08;
     }
 
     // Apply fatigue adjustment — uncertain when teams are tired

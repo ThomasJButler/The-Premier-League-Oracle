@@ -216,13 +216,20 @@ class DataService {
         
         if (matches.length > 0) {
           await this.setCachedData('matches', cacheKey, matches);
+
+          // Auto-reconcile: resolve pending predictions against any completed matches
+          const finished = matches.filter(m => m.result !== null);
+          if (finished.length > 0) {
+            this.reconcilePredictions(finished);
+          }
+
           return matches;
         }
       } catch (error) {
         // Error fetching matches from API
       }
     }
-    
+
     // Provide helpful error message based on the situation
     if (!this.getActiveApi().hasApiKey()) {
       throw new Error('API key required. Please set up your Football-Data.org API key in Settings or through the setup wizard.');
@@ -486,6 +493,38 @@ class DataService {
     }
 
     return [];
+  }
+
+  /**
+   * Reconcile pending predictions against completed match results.
+   * Finds stored predictions whose matches have finished and updates them
+   * with actual results via predictionTracker.updateWithResult().
+   */
+  public reconcilePredictions(completedMatches: Match[]): number {
+    let reconciled = 0;
+
+    for (const match of completedMatches) {
+      // Only process matches with a definitive result
+      if (!match.result || match.home_goals === null || match.away_goals === null) {
+        continue;
+      }
+
+      // Check whether we have unresolved predictions for this match
+      const predictions = predictionTracker.getMatchPredictions(match.id);
+      const unresolvedPredictions = predictions.filter(p => p.actualResult === undefined);
+
+      if (unresolvedPredictions.length > 0) {
+        predictionTracker.updateWithResult(
+          match.id,
+          match.result,
+          match.home_goals,
+          match.away_goals
+        );
+        reconciled += unresolvedPredictions.length;
+      }
+    }
+
+    return reconciled;
   }
 
   // Cache management utilities

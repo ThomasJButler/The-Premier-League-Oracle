@@ -104,6 +104,6 @@ These specs are the single source of truth for requirements.
 - shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
 - Backend models are scaffolded but need training data and pipeline completion — all 40+ feature engineering methods return random values
 - Backend has 0% test coverage (no pytest tests)
-- Frontend has 182 Vitest tests across 10 test files, all passing
+- Frontend has 197 Vitest tests across 11 test files, all passing
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
 - MIT licensed for open-source collaboration

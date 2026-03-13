@@ -491,25 +491,15 @@ export class AdvancedMatchPredictor {
     const fatigueCertainty = homeRestDays >= 3 && awayRestDays >= 3 ? 0.9 : 0.7;
     const confidence = (ratingReliability + fatigueCertainty) / 2;
 
-    // 7. Value betting opportunities (placeholder odds - would fetch from API)
-    const bookmakerOdds = { home: 2.1, draw: 3.4, away: 3.8 };
-    const valueBets = [
-      {
-        outcome: 'Home Win',
-        odds: bookmakerOdds.home,
-        expectedValue: outcomes.homeWin * bookmakerOdds.home - 1
-      },
-      {
-        outcome: 'Draw',
-        odds: bookmakerOdds.draw,
-        expectedValue: outcomes.draw * bookmakerOdds.draw - 1
-      },
-      {
-        outcome: 'Away Win',
-        odds: bookmakerOdds.away,
-        expectedValue: outcomes.awayWin * bookmakerOdds.away - 1
-      }
-    ].filter(bet => bet.expectedValue > 0); // Only positive EV bets
+    // 7. Value betting — derive fair odds from model probabilities (no hardcoded bookmaker odds)
+    const margin = 1.05;
+    const fairOdds = {
+      home: outcomes.homeWin > 0 ? (1 / outcomes.homeWin) * margin : 10.0,
+      draw: outcomes.draw > 0 ? (1 / outcomes.draw) * margin : 4.0,
+      away: outcomes.awayWin > 0 ? (1 / outcomes.awayWin) * margin : 10.0,
+    };
+    // Without real bookmaker odds, value bets are empty — model odds ≈ fair odds by definition
+    const valueBets: Array<{ outcome: string; odds: number; expectedValue: number }> = [];
 
     // 8. Generate insights
     const insights: string[] = [];
@@ -523,10 +513,8 @@ export class AdvancedMatchPredictor {
     if (ratingDiff > 200) {
       insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(ratingDiff * 100).toFixed(0)} points higher`);
     }
-    if (valueBets.length > 0) {
-      const bestValue = valueBets.reduce((a, b) => a.expectedValue > b.expectedValue ? a : b);
-      insights.push(`Value bet detected: ${bestValue.outcome} at ${bestValue.odds} (EV: +${(bestValue.expectedValue * 100).toFixed(1)}%)`);
-    }
+    // Fair odds derived from model — shown for reference
+    insights.push(`Fair odds: H ${fairOdds.home.toFixed(2)} / D ${fairOdds.draw.toFixed(2)} / A ${fairOdds.away.toFixed(2)}`);
 
     return {
       homeWinProb: outcomes.homeWin,

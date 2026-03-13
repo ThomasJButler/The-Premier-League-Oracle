@@ -213,7 +213,9 @@ describe('BettingHistory Component', () => {
 
     expect(screen.getByText('Win')).toBeInTheDocument();
     expect(screen.getByText('Loss')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    // "Pending" also appears in the filter dropdown, so check for at least 2 instances
+    const pendingElements = screen.getAllByText('Pending');
+    expect(pendingElements.length).toBeGreaterThanOrEqual(2);
   });
 
   it('should show the monthly P/L chart section', () => {

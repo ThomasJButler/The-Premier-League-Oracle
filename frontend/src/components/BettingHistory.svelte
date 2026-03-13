@@ -165,7 +165,11 @@
     URL.revokeObjectURL(url);
   }
 
+  // Load immediately — all data sources are synchronous (localStorage)
+  loadBettingHistory();
+
   onMount(() => {
+    // Refresh on mount in case data changed since script initialisation
     loadBettingHistory();
   });
 
@@ -349,7 +353,7 @@
                 </td>
                 <td class="{bet.profit != null ? (bet.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-slate-400'}">
                   {#if bet.profit != null}
-                    {bet.profit >= 0 ? '+' : ''}£{bet.profit.toFixed(2)}
+                    {bet.profit >= 0 ? '+' : '-'}£{Math.abs(bet.profit).toFixed(2)}
                   {:else}
                     -
                   {/if}

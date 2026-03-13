@@ -122,8 +122,10 @@
         
         // Use optimized predictor for better accuracy
         const optimizedPrediction = await OptimizedPredictor.predictMatch(
-          match.home_team, 
-          match.away_team
+          match.home_team,
+          match.away_team,
+          undefined,
+          match.referee
         );
         
         // Convert to legacy format for compatibility

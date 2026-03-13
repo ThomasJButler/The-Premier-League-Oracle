@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Prediction Engine Refinement & Auto-Reconciliation (13 March 2026)
+- **Referee adjustment wired into ensemble**: `RefereeAnalyzer` is now called by `OptimizedPredictor.predictMatch()` — applies ±3% max adjustment to home/away probabilities based on referee's historical home win rate vs league average (46%). Insight surfaced in predictions output.
+- **Hardcoded bookmaker odds removed**: Replaced `{home: 2.1, draw: 3.4, away: 3.8}` in `AdvancedMatchPredictor` with fair odds derived from model probabilities — no more fictitious value bet calculations.
+- **Ensemble disagreement detection**: `calculateConfidence()` now detects when ELO and Poisson predict different outcomes and reduces confidence by 8%, surfacing the split as an insight.
+- **Auto-reconciliation**: New `reconcilePredictions()` method in `dataService.ts` automatically resolves pending predictions against completed match results whenever finished matches are fetched.
+- **BettingHistory test fixes**: Fixed 7 pre-existing test failures — `onMount` not firing in jsdom (moved to synchronous init), profit sign formatting (`£-10.00` → `-£10.00`), "Pending" text collision with filter dropdown.
+- **Tests**: 197 tests across 11 files, all passing; 0 type errors
+
 ### BetHistoryService & Dashboard Real Data (12 March 2026)
 - **BetHistoryService created**: New `services/betting/betHistoryService.ts` with full localStorage persistence — stores bets, calculates ROI, monthly P/L, win rate, and auto-resolves bets against match results
 - **Dashboard wired to real data**: Removed all 7 `Math.random()` calls from `Dashboard.svelte` — profit, accuracy, predictions, and bet counts now come from `PredictionTracker` and `BetHistoryService`
