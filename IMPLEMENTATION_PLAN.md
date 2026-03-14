@@ -574,3 +574,19 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 - Feature engineering has 150+ features defined but ALL return random values
 - No training script, no train/test splits, no evaluation framework
 - Need: spec for `specs/08-backend-training.md` covering data preparation, feature implementation, training pipeline, evaluation metrics, model versioning
+
+
+Playwright testing suite to get screenshots of the UI and UX and improve this 10 fold. It is good but can be so much better and interactive.
+
+Use /frontend-design skill to improve the UX. Make it neat, tidy, easy to use and navigate, and ShadCN esque. 
+
+No ralph loop for the time being. 
+
+
+the frontend loads well, and the main goal here is to make this look better and to get the backend working well. 
+
+
+ask claude how the backend is working and how I can start this. 
+I need to rewrite the documentation so it works correctly, it's a bit jumbled at the moment. I am stumped with the redis and mlflow stuff. 
+
+mobile is really bad at the moment
