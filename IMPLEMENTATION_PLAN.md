@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 14 March 2026
+Last updated: 14 March 2026 (P0b complete)
 Active branch: `v3.0-Development`
 Completed work archive: `COMPLETED_WORK.md`
 
@@ -34,13 +34,12 @@ The server **will not start** due to broken imports in `modern_oracle.py`.
 
 **Verify:** `cd backend && uvicorn app.api.main:app --reload --port 8000` then `curl http://localhost:8000/health` returns 200.
 
-### P0b. Backend requirements.txt Audit
+### P0b. Backend requirements.txt Audit ✅ DONE (14 March 2026)
 
-`backend/requirements.txt` still has packages that aren't imported anywhere.
-
-- [ ] Run `pipreqs backend/app/ --print` and cross-reference with current `requirements.txt`
-- [ ] Remove: Kafka, Azure SDK, AWS SDK, Graph Neural Networks, Computer Vision, Dash, LightGBM, CatBoost, Polars, DuckDB, FeatureTools, TensorFlow (not used), Plotly
-- [ ] Keep: FastAPI, uvicorn, xgboost, torch, transformers, scikit-learn, pandas, numpy, httpx, pydantic, python-dotenv, scipy, langchain-community, chromadb, mlflow, optuna, redis, shap, joblib, loguru, cryptography, passlib, python-jose
+- [x] Cross-referenced all imports against `requirements.txt` — no unused packages (Kafka, TensorFlow, LightGBM etc. were already absent)
+- [x] Bumped all pins to Python 3.13-compatible versions (scikit-learn 1.3.2→1.6.1, torch 2.1.2→2.5.0, numpy 1.26.2→2.1.3, etc.)
+- [x] Removed unused packages from `environment.yml` (catboost, featuretools, pymc, arviz, plotly)
+- [x] Rewrote backend docs (README, QUICKSTART, ANACONDA_SETUP, setup.sh) to reflect actual project status — removed false accuracy/ROI claims and "god mode" language
 
 ---
 

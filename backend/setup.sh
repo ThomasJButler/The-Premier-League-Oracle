@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# 🚀 God Mode Premier League Oracle - Quick Setup Script
+# Premier League Oracle - Backend Setup Script
 
-echo "🔮 Welcome to the Premier League Oracle God Mode Setup!"
-echo "========================================================"
+echo "Premier League Oracle - Backend Setup"
+echo "======================================"
 echo ""
 
 # Check Python version
 echo "📌 Checking Python version..."
 python_version=$(python3 --version 2>&1 | grep -Po '(?<=Python )\d+\.\d+')
-required_version="3.8"
+required_version="3.10"
 
-if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" = "$required_version" ]; then 
-    echo "✅ Python $python_version is installed (minimum 3.8 required)"
+if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" = "$required_version" ]; then
+    echo "✅ Python $python_version is installed (minimum 3.10 required)"
 else
-    echo "❌ Python 3.8+ is required. Please install it first."
+    echo "❌ Python 3.10+ is required. Please install it first."
     exit 1
 fi
 
@@ -82,21 +82,17 @@ fi
 
 # Start services
 echo ""
-echo "🚀 Setup complete! To start the god mode system:"
+echo "Setup complete! Next steps:"
 echo ""
-echo "1. Start Redis:"
-echo "   docker run -d -p 6379:6379 redis"
+echo "1. Start the API (Redis and MLflow are optional):"
+echo "   uvicorn app.api.main:app --reload --port 8000"
 echo ""
-echo "2. Start MLflow:"
-echo "   mlflow ui --port 5000"
-echo ""
-echo "3. Start the API:"
-echo "   uvicorn app.api.main:app --reload"
-echo ""
-echo "4. Open Jupyter notebooks:"
-echo "   jupyter notebook"
-echo ""
-echo "Or use Docker Compose for everything:"
+echo "2. Or start everything with Docker Compose:"
 echo "   docker-compose up"
 echo ""
-echo "🔮 Welcome to God Mode! Happy predicting!"
+echo "Optional services:"
+echo "   Redis:   docker run -d -p 6379:6379 redis"
+echo "   MLflow:  mlflow ui --port 5000"
+echo "   Jupyter: jupyter notebook"
+echo ""
+echo "API docs available at: http://localhost:8000/docs"
