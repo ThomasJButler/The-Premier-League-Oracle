@@ -15,6 +15,14 @@ export interface StoredPrediction {
   isCorrect?: boolean;
   timestamp: string;
   matchDate: string;
+  matchday?: number; // Gameweek number (1-38)
+}
+
+export interface GameweekAccuracy {
+  matchday: number;
+  totalPredictions: number;
+  correctPredictions: number;
+  accuracy: number;
 }
 
 export interface AccuracyStats {
@@ -82,7 +90,8 @@ class PredictionTracker {
       predictedAwayGoals: number;
       confidence: number;
     },
-    matchDate: string
+    matchDate: string,
+    matchday?: number
   ): void {
     PredictionTracker.idCounter++;
     const id = `${matchId}_${Date.now()}_${PredictionTracker.idCounter}`;
@@ -93,7 +102,8 @@ class PredictionTracker {
       awayTeam,
       ...prediction,
       timestamp: new Date().toISOString(),
-      matchDate
+      matchDate,
+      ...(matchday !== undefined ? { matchday } : {})
     };
 
     this.predictions.set(id, storedPrediction);
@@ -202,6 +212,35 @@ class PredictionTracker {
       averageConfidence: averageConfidence * 100,
       streak
     };
+  }
+
+  // Get accuracy broken down by gameweek
+  public getAccuracyByGameweek(): GameweekAccuracy[] {
+    const settled = Array.from(this.predictions.values())
+      .filter(p => p.actualResult !== undefined && p.matchday !== undefined);
+
+    if (settled.length === 0) return [];
+
+    // Group by matchday
+    const byGameweek = new Map<number, StoredPrediction[]>();
+    for (const pred of settled) {
+      const gw = pred.matchday!;
+      if (!byGameweek.has(gw)) byGameweek.set(gw, []);
+      byGameweek.get(gw)!.push(pred);
+    }
+
+    // Calculate accuracy per gameweek, sorted by matchday
+    return Array.from(byGameweek.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([matchday, preds]) => {
+        const correct = preds.filter(p => p.isCorrect).length;
+        return {
+          matchday,
+          totalPredictions: preds.length,
+          correctPredictions: correct,
+          accuracy: (correct / preds.length) * 100
+        };
+      });
   }
 
   // Calculate prediction streaks

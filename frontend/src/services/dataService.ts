@@ -1,6 +1,7 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
+import { betHistoryService } from './betting/betHistoryService';
 
 interface DataSource {
   type: 'api';
@@ -483,9 +484,10 @@ class DataService {
   }
 
   /**
-   * Reconcile pending predictions against completed match results.
+   * Reconcile pending predictions and bets against completed match results.
    * Finds stored predictions whose matches have finished and updates them
    * with actual results via predictionTracker.updateWithResult().
+   * Also resolves any placed bets for completed matches via betHistoryService.
    */
   public reconcilePredictions(completedMatches: Match[]): number {
     let reconciled = 0;
@@ -509,6 +511,14 @@ class DataService {
         );
         reconciled += unresolvedPredictions.length;
       }
+
+      // Also resolve any pending bets for this match
+      betHistoryService.resolveMatchBets(
+        match.id,
+        match.result,
+        match.home_goals,
+        match.away_goals
+      );
     }
 
     return reconciled;

@@ -11,7 +11,8 @@
   import { PoissonPredictor } from '../lib/advancedPredictions';
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
-  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database, Package } from 'lucide-svelte';
+  import type { AccuracyStats } from '../services/predictionTracker';
+  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database, Package, ChevronDown, ChevronUp } from 'lucide-svelte';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -29,6 +30,9 @@
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
   }> = [];
   let accuracy = { total: 0, correct: 0, accuracy: 0 };
+  let accuracyStats: AccuracyStats | null = null;
+  let showAccuracyPanel = false;
+  let rollingLast10Accuracy = 0;
   let loading = true;
   let selectedMatch: Match | null = null;
   let predictionInProgress = false;
@@ -81,6 +85,20 @@
       const currentAccuracy = await dataService.getPredictionAccuracy('2025-2026');
       if (currentAccuracy) {
         accuracy = currentAccuracy;
+      }
+
+      // Load full accuracy breakdown from PredictionTracker
+      const fullStats = predictionTracker.getAccuracyStats(90);
+      if (fullStats.totalPredictions > 0) {
+        accuracyStats = fullStats;
+      }
+
+      // Calculate rolling last-10 accuracy
+      const recent10 = predictionTracker.getRecentPredictions(10)
+        .filter(p => p.actualResult !== undefined);
+      if (recent10.length > 0) {
+        const correct10 = recent10.filter(p => p.isCorrect).length;
+        rollingLast10Accuracy = (correct10 / recent10.length) * 100;
       }
       
       visible = true;
@@ -184,7 +202,7 @@
           predictionStatus: 'complete'
         };
         
-        // Store in tracker (local storage)
+        // Store in tracker (local storage) with gameweek for per-matchday accuracy
         predictionTracker.storePrediction(
           match.id,
           match.home_team,
@@ -195,7 +213,8 @@
             predictedAwayGoals: prediction.predictedAwayGoals,
             confidence: prediction.confidence
           },
-          match.date
+          match.date,
+          selectedGameweek
         );
         
       } catch (error) {
@@ -269,6 +288,96 @@
     </div>
   </div>
   
+  <!-- Accuracy Breakdown Panel -->
+  {#if accuracyStats && accuracyStats.totalPredictions > 0}
+    <div class="card card-glass" in:fade={{ duration: 300 }}>
+      <button
+        on:click={() => showAccuracyPanel = !showAccuracyPanel}
+        class="w-full flex items-center justify-between p-4"
+      >
+        <div class="flex items-center gap-2">
+          <BarChart3 class="w-5 h-5 text-primary dark:text-primary-light" />
+          <span class="font-semibold text-slate-800 dark:text-slate-200">Prediction Accuracy</span>
+          <span class="badge badge-neutral text-xs">{accuracyStats.totalPredictions} predictions</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-lg font-bold text-primary dark:text-primary-light">{accuracyStats.accuracy.toFixed(1)}%</span>
+          {#if showAccuracyPanel}
+            <ChevronUp class="w-4 h-4 text-slate-500" />
+          {:else}
+            <ChevronDown class="w-4 h-4 text-slate-500" />
+          {/if}
+        </div>
+      </button>
+
+      {#if showAccuracyPanel}
+        <div class="px-4 pb-4 space-y-4" in:fade={{ duration: 200 }}>
+          <!-- Per-Outcome Accuracy -->
+          <div>
+            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Outcome</h4>
+            <div class="grid grid-cols-3 gap-3">
+              {#each [
+                { label: 'Home Win', value: accuracyStats.homeWinAccuracy, colour: 'bg-blue-500' },
+                { label: 'Draw', value: accuracyStats.drawAccuracy, colour: 'bg-amber-500' },
+                { label: 'Away Win', value: accuracyStats.awayWinAccuracy, colour: 'bg-emerald-500' }
+              ] as outcome}
+                <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                  <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{outcome.label}</div>
+                  <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{outcome.value.toFixed(0)}%</div>
+                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+                    <div class="{outcome.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(outcome.value, 100)}%"></div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Per-Confidence Band -->
+          <div>
+            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Confidence Band</h4>
+            <div class="grid grid-cols-3 gap-3">
+              {#each [
+                { label: 'High (>70%)', value: accuracyStats.highConfidenceAccuracy, colour: 'bg-green-500' },
+                { label: 'Medium (50-70%)', value: accuracyStats.mediumConfidenceAccuracy, colour: 'bg-yellow-500' },
+                { label: 'Low (<50%)', value: accuracyStats.lowConfidenceAccuracy, colour: 'bg-red-500' }
+              ] as band}
+                <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                  <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{band.label}</div>
+                  <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{band.value.toFixed(0)}%</div>
+                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+                    <div class="{band.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(band.value, 100)}%"></div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Rolling & Streaks -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Last 10</div>
+              <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{rollingLast10Accuracy.toFixed(0)}%</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Exact Score</div>
+              <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{accuracyStats.scoreAccuracy.toFixed(0)}%</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Best Streak</div>
+              <div class="text-lg font-bold text-green-600 dark:text-green-400">{accuracyStats.streak.best}</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Current Streak</div>
+              <div class="text-lg font-bold {accuracyStats.streak.current >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                {accuracyStats.streak.current >= 0 ? '+' : ''}{accuracyStats.streak.current}
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Batch Prediction Progress -->
   {#if isBatchPredicting}
     <div class="glass-card p-4" in:fade={{ duration: 300 }}>

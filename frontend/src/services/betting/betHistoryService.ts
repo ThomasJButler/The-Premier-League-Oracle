@@ -168,9 +168,80 @@ class BetHistoryService {
         if (bet.selection === 'under') return totalGoals < 3.5;
         return null;
 
+      case 'combo':
+        return this.resolveCombo(bet.selection, actualResult, homeGoals, awayGoals);
+
       default:
         return null;
     }
+  }
+
+  /**
+   * Resolve a combo bet by checking each leg in the selection string.
+   * Selections are joined with ' + ' (e.g. "Home Win + Over 2.5 Goals + BTTS Yes").
+   * All legs must win for the combo to win. Returns null if any leg is unresolvable.
+   */
+  private resolveCombo(
+    selection: string,
+    actualResult: 'H' | 'A' | 'D',
+    homeGoals: number,
+    awayGoals: number
+  ): boolean | null {
+    const totalGoals = homeGoals + awayGoals;
+    const bothScored = homeGoals > 0 && awayGoals > 0;
+    const legs = selection.split(' + ').map(s => s.trim().toLowerCase());
+
+    for (const leg of legs) {
+      const result = this.resolveSingleLeg(leg, actualResult, totalGoals, bothScored, homeGoals);
+      if (result === null) return null; // Can't determine — skip combo
+      if (!result) return false; // One leg lost — combo lost
+    }
+
+    return true; // All legs won
+  }
+
+  /**
+   * Resolve a single leg of a combo bet from its display text.
+   */
+  private resolveSingleLeg(
+    leg: string,
+    actualResult: 'H' | 'A' | 'D',
+    totalGoals: number,
+    bothScored: boolean,
+    homeGoals: number
+  ): boolean | null {
+    // Match result legs
+    if (leg === 'home win' || leg === 'home') return actualResult === 'H';
+    if (leg === 'away win' || leg === 'away') return actualResult === 'A';
+    if (leg === 'draw') return actualResult === 'D';
+
+    // BTTS legs
+    if (leg === 'btts yes' || leg === 'btts') return bothScored;
+    if (leg === 'btts no') return !bothScored;
+
+    // Over/Under goals legs
+    if (leg.includes('over 2.5') || leg === 'over 2.5 goals') return totalGoals > 2.5;
+    if (leg.includes('under 2.5') || leg === 'under 2.5 goals') return totalGoals < 2.5;
+    if (leg.includes('over 3.5') || leg === 'over 3.5 goals') return totalGoals > 3.5;
+    if (leg.includes('under 3.5') || leg === 'under 3.5 goals') return totalGoals < 3.5;
+    if (leg.includes('over 1.5') || leg === 'over 1.5 goals') return totalGoals > 1.5;
+    if (leg.includes('under 1.5') || leg === 'under 1.5 goals') return totalGoals < 1.5;
+
+    // Clean sheet legs
+    if (leg.includes('clean sheet')) {
+      if (leg.includes('home')) return homeGoals > 0 && totalGoals - homeGoals === 0;
+      // Generic clean sheet — at least one team kept a clean sheet
+      return homeGoals === 0 || (totalGoals - homeGoals) === 0;
+    }
+
+    // Win to nil
+    if (leg.includes('win to nil')) {
+      if (leg.includes('home')) return actualResult === 'H' && (totalGoals - homeGoals) === 0;
+      if (leg.includes('away')) return actualResult === 'A' && homeGoals === 0;
+    }
+
+    // Unrecognised leg — can't resolve
+    return null;
   }
 
   /** All bets, sorted newest first. */

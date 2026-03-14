@@ -187,19 +187,28 @@
       setTimeout(() => totalPredictions.set(accuracyStats.totalPredictions), 900);
       setTimeout(() => betsPlaced.set(allBets.length), 1200);
 
-      // Build accuracy trend from recent predictions (real data, no random noise)
-      const recentPreds = predictionTracker.getRecentPredictions(5);
-      if (recentPreds.length > 0) {
-        recentPerformance.labels = recentPreds
-          .reverse()
-          .map(p => format(new Date(p.timestamp), 'MMM d'));
-        recentPerformance.datasets[0].data = recentPreds.map(p => p.confidence * 100);
+      // Build accuracy trend from per-gameweek accuracy (real settled predictions)
+      const gameweekAccuracy = predictionTracker.getAccuracyByGameweek();
+      if (gameweekAccuracy.length > 0) {
+        // Show the most recent gameweeks (up to 10)
+        const recentGameweeks = gameweekAccuracy.slice(-10);
+        recentPerformance.labels = recentGameweeks.map(gw => `GW ${gw.matchday}`);
+        recentPerformance.datasets[0].data = recentGameweeks.map(gw => gw.accuracy);
       } else {
-        // Fallback: show match dates with the overall accuracy as a flat line
-        recentPerformance.labels = recentMatches
-          .slice(0, 5)
-          .map(match => format(new Date(match.date), 'MMM d'));
-        recentPerformance.datasets[0].data = recentMatches.slice(0, 5).map(() => realAccuracy);
+        // Fallback: show recent predictions' confidence as a proxy until results settle
+        const recentPreds = predictionTracker.getRecentPredictions(5);
+        if (recentPreds.length > 0) {
+          recentPerformance.labels = [...recentPreds]
+            .reverse()
+            .map(p => format(new Date(p.timestamp), 'MMM d'));
+          recentPerformance.datasets[0].data = [...recentPreds].reverse().map(p => p.confidence * 100);
+        } else {
+          // No predictions at all — flat line at overall accuracy
+          recentPerformance.labels = recentMatches
+            .slice(0, 5)
+            .map(match => format(new Date(match.date), 'MMM d'));
+          recentPerformance.datasets[0].data = recentMatches.slice(0, 5).map(() => realAccuracy);
+        }
       }
 
       // Top predictions from PredictionTracker (real stored predictions)

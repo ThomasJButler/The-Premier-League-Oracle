@@ -25,7 +25,9 @@ vi.mock('../services/predictionTracker', () => ({
       incorrectPredictions: 4
     })),
     updateWithResult: vi.fn(),
-    getRecentPredictions: vi.fn(() => [])
+    getRecentPredictions: vi.fn(() => []),
+    getMatchPredictions: vi.fn(() => []),
+    getAccuracyByGameweek: vi.fn(() => [])
   }
 }));
 
@@ -303,8 +305,10 @@ describe('Dashboard Component', () => {
     await (component as any).refresh();
     await act();
 
-    const iconWrappers = document.querySelectorAll('.stat-icon-wrapper');
-    expect(iconWrappers.length).toBe(4);
+    await waitFor(() => {
+      const iconWrappers = document.querySelectorAll('.stat-icon-wrapper');
+      expect(iconWrappers.length).toBe(4);
+    });
   });
 
   it('should apply responsive grid layout', () => {
