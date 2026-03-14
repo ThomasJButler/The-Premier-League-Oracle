@@ -30,8 +30,15 @@ import logging
 from pathlib import Path
 import os
 
-# Our modules
-from app.models.modern_oracle import ModernPremierLeagueOracle
+# Our modules — oracle import is optional so the server can start without all dependencies
+try:
+    from app.models.modern_oracle import ModernPremierLeagueOracle
+    ORACLE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"ModernPremierLeagueOracle unavailable ({e}) — ML features disabled")
+    ModernPremierLeagueOracle = None  # type: ignore
+    ORACLE_AVAILABLE = False
+
 from app.features.advanced_engineering import AdvancedFeatureEngineer
 from app.data.football_data_collector import FootballDataCollector
 
@@ -127,16 +134,29 @@ async def lifespan(app: FastAPI):
     global oracle, redis_client
     
     logger.info("🚀 Starting Premier League Oracle API...")
-    
-    # Initialize Redis
-    redis_client = await redis.from_url(REDIS_URL)
-    
-    # Initialize Oracle system
-    oracle = ModernPremierLeagueOracle(
-        api_key=FOOTBALL_API_KEY,
-        openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else None,
-        mlflow_tracking_uri=MLFLOW_URI
-    )
+
+    # Initialize Redis — optional, server starts without it
+    try:
+        redis_client = await redis.from_url(REDIS_URL)
+        await redis_client.ping()
+        logger.info("✅ Redis connected")
+    except Exception as e:
+        logger.warning(f"Redis unavailable ({e}) — caching disabled, running without Redis")
+        redis_client = None
+
+    # Initialize Oracle system — optional, endpoints degrade gracefully without it
+    if ORACLE_AVAILABLE and ModernPremierLeagueOracle is not None:
+        try:
+            oracle = ModernPremierLeagueOracle(
+                api_key=FOOTBALL_API_KEY,
+                openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else None,
+                mlflow_tracking_uri=MLFLOW_URI
+            )
+        except Exception as e:
+            logger.warning(f"Oracle system failed to initialise ({e}) — ML endpoints disabled")
+            oracle = None
+    else:
+        logger.warning("Oracle system not available — ML endpoints disabled")
     
     # Load pre-trained models if they exist
     model_dir = Path("models")
@@ -155,7 +175,8 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down...")
-    await redis_client.close()
+    if redis_client is not None:
+        await redis_client.close()
     
     # Close WebSocket connections
     for ws in active_websockets:

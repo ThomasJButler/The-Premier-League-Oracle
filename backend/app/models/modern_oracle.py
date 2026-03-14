@@ -18,23 +18,35 @@ import logging
 import asyncio
 from pathlib import Path
 
-# LangChain imports
-from langchain.agents import Tool, AgentExecutor, create_react_agent
-from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import LLMChain
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import DataFrameLoader
-from langchain.schema import Document
-from langchain_openai import ChatOpenAI
+logger = logging.getLogger(__name__)
 
-# MLflow for experiment tracking
-import mlflow
-import mlflow.sklearn
-import mlflow.pytorch
-import mlflow.xgboost
+# LangChain imports — optional, server starts without them
+LANGCHAIN_AVAILABLE = False
+try:
+    from langchain.agents import Tool, AgentExecutor, create_react_agent
+    from langchain.prompts import PromptTemplate
+    from langchain.memory import ConversationBufferMemory
+    from langchain.chains import LLMChain
+    from langchain_community.embeddings import OpenAIEmbeddings
+    from langchain_community.vectorstores import Chroma
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain_community.document_loaders import DataFrameLoader
+    from langchain.schema import Document
+    from langchain_openai import ChatOpenAI
+    LANGCHAIN_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"LangChain not available ({e}) — natural language queries disabled")
+
+# MLflow for experiment tracking — optional
+MLFLOW_AVAILABLE = False
+try:
+    import mlflow
+    import mlflow.sklearn
+    import mlflow.pytorch
+    import mlflow.xgboost
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    logger.warning("MLflow not available — experiment tracking disabled")
 
 # Our models
 from app.models.xgboost_model import XGBoostPredictor
@@ -43,9 +55,13 @@ from app.models.transformer_model import TransformerPredictor
 from app.features.advanced_engineering import AdvancedFeatureEngineer
 from app.data.football_data_collector import FootballDataCollector
 
-# Vector database
-import chromadb
-from chromadb.config import Settings
+# Vector database — optional
+CHROMADB_AVAILABLE = False
+try:
+    import chromadb
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    logger.warning("ChromaDB not available — vector similarity search disabled")
 
 # Additional imports
 import optuna
@@ -53,8 +69,6 @@ from sklearn.model_selection import cross_val_score
 import joblib
 import redis
 import json
-
-logger = logging.getLogger(__name__)
 
 
 class ModernPremierLeagueOracle:
@@ -200,10 +214,10 @@ class ModernPremierLeagueOracle:
     def _setup_vector_store(self):
         """Setup vector database for similarity search."""
         # Initialize ChromaDB
-        self.chroma_client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory="./chroma_db"
-        ))
+        if not CHROMADB_AVAILABLE:
+            logger.warning("ChromaDB unavailable — skipping vector DB setup")
+            return
+        self.chroma_client = chromadb.PersistentClient(path="./chroma_db")
         
         # Create collection for matches
         self.match_collection = self.chroma_client.get_or_create_collection(
