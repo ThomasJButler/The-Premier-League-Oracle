@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Test Coverage: betBuilder.ts & value.ts (14 March 2026)
+- **betBuilder.test.ts (40 tests)**: Comprehensive coverage for `BetBuilderPredictor.generateBetBuilder()` — tests match result prediction (H/D/A), BTTS calculation, total goals over/under thresholds, corner expectations with/without team stats, card predictions with rivalry detection (all 6 hardcoded pairs), half-time result correlation, clean sheet probabilities from score distributions, and all 4 suggested combo types (Safe/Value/High Risk/Goals Galore) with threshold verification
+- **value.test.ts (38 tests)**: Comprehensive coverage for `ValueBettingEngine` — tests value bet identification across 1X2/goals/BTTS markets, edge and confidence thresholds, expected value calculation, CLV tracking, arbitrage detection across multiple bookmakers, Sharpe ratio computation, performance metrics (ROI, yield, max drawdown, CLV rate), warning generation, and error handling (silent catch on API failure)
+- **Tests**: 275 tests across 13 files, all passing; 0 type errors
+
 ### Value Bets, Kelly Integration & Data Accuracy (14 March 2026)
 - **ValueBets.svelte overhaul (CRITICAL fix)**: Removed all 7 `Math.random()` calls that generated fake bookmaker odds — the feature was functionally useless. Replaced with manual odds entry: users now enter real bookmaker odds (Home/Draw/Away + optional Over 2.5/Under 2.5/BTTS) and the system analyses them for positive expected value using `ValueBettingEngine` and `KellyCalculator`
 - **Kelly Criterion in Predictions**: Replaced the arbitrary linear stake formula `Math.max(0, (confidence - 0.6) * 10)` with proper Kelly Criterion calculation from `kelly.ts`, using Poisson outcome probabilities and model confidence

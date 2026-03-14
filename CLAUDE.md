@@ -105,8 +105,8 @@ These specs are the single source of truth for requirements.
 - Backend server will NOT start — broken LangChain/ChromaDB imports in `modern_oracle.py` must be fixed first
 - Backend models are scaffolded but need training data and pipeline completion — 102 `np.random.*` calls in feature engineering return random values
 - Backend has 0% test coverage (no pytest tests)
-- Frontend has 197 Vitest tests across 11 test files, all passing
-- `betBuilder.ts` and `value.ts` have zero test coverage (complex logic, high priority)
+- Frontend has 275 Vitest tests across 13 test files, all passing
+- `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
 - `ValueBets.svelte` now uses manual odds entry — users input real bookmaker odds for value analysis (Math.random() removed)
 - Predictions.svelte uses Kelly Criterion for stake sizing (replaced arbitrary linear formula)

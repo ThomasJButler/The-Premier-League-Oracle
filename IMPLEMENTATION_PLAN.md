@@ -281,15 +281,11 @@ No backtesting capability exists.
 - [ ] Wire `betHistoryService.resolveMatchBets()` into `dataService.reconcilePredictions()` — currently only predictions are auto-reconciled, not bets
 - [ ] Add `combo` market resolution to `betHistoryService.didBetWin()` — currently returns `null` for combo bets
 
-### 4h. Add betBuilder tests (NEW)
-`betBuilder.ts` has zero test coverage despite containing complex probability calculations.
-- [ ] Create `frontend/src/lib/betBuilder.test.ts`
-- [ ] Test: match result probabilities, BTTS calculation, over/under goals, corner/card models, half-time result, combo generation, rivalry detection
+### 4h. Add betBuilder tests ✅
+- [x] Create `frontend/src/lib/betBuilder.test.ts` — 40 tests covering match result prediction (H/D/A branches), BTTS calculation, total goals over/under thresholds, corner expectations with/without team stats, card predictions with rivalry detection (all 6 pairs), half-time correlation, clean sheet probabilities, and all 4 combo types with threshold verification
 
-### 4i. Add value.ts tests (NEW)
-`value.ts` has zero test coverage.
-- [ ] Create `frontend/src/services/betting/value.test.ts`
-- [ ] Test: `identifyValueBets()`, `evaluateMarket()`, `calculateGoalsProbability()`, `calculateBTTSProbability()`, `generateWarnings()`, `calculateCLV()`, `findArbitrage()`, `calculateSharpeRatio()`, `calculatePerformanceMetrics()`
+### 4i. Add value.ts tests ✅
+- [x] Create `frontend/src/services/betting/value.test.ts` — 38 tests covering `identifyValueBets()` (1X2, goals, BTTS markets; edge/confidence thresholds; error handling), `calculateCLV()` (positive/negative/zero), `findArbitrage()` (arb detection, bookmaker attribution, tied odds), `calculateSharpeRatio()` (positive/negative/zero stddev), `calculatePerformanceMetrics()` (ROI, yield, max drawdown, CLV rate, all-win/all-loss), and warning generation
 
 ---
 
@@ -513,8 +509,8 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `services/aiAnalysis.ts` | 01 | AI-powered match analysis |
 | ~~`services/betting/betHistoryService.ts`~~ | ~~04~~ | ~~✅ Created — bet persistence (localStorage)~~ |
 | `lib/backtest.ts` | 01 | Ensemble backtesting runner |
-| `lib/betBuilder.test.ts` | — | Tests for bet builder (0% coverage) |
-| `services/betting/value.test.ts` | — | Tests for value betting engine (0% coverage) |
+| ~~`lib/betBuilder.test.ts`~~ | ~~—~~ | ~~✅ Created — 40 tests for bet builder~~ |
+| ~~`services/betting/value.test.ts`~~ | ~~—~~ | ~~✅ Created — 38 tests for value betting engine~~ |
 | `backend/train.py` | — | Training pipeline orchestrator |
 
 ---
@@ -534,11 +530,11 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `optimizedPredictions.test.ts` | 12 | Good | Covers prediction structure, model weights, ELO integration, confidence, value odds, Dixon-Coles Poisson lambdas |
 | `betHistoryService.test.ts` | 27 | Excellent | Store, resolve, ROI, monthly P/L, win rate, export/import, persistence |
 | `BettingHistory.test.ts` | 15 | Good | Component rendering, filter dropdown, profit formatting, pending/resolved states |
-| **Total** | **197** | — | All pass across 11 files, no skipped/flaky tests |
+| `betBuilder.test.ts` | 40 | Excellent | Match result (H/D/A), BTTS, total goals, corners, cards, rivalry detection, half-time, clean sheets, all 4 combo types |
+| `value.test.ts` | 38 | Excellent | Value bet identification (1X2/goals/BTTS), CLV, arbitrage, Sharpe ratio, performance metrics, warnings, error handling |
+| **Total** | **275** | — | All pass across 13 files, no skipped/flaky tests |
 
 ### Missing Test Coverage
-- `betBuilder.ts` — no tests (complex probability logic, high priority)
-- `value.ts` — no tests (betting engine, high priority)
 - `Predictions.svelte` — no component test
 - `LiveMatches.svelte` — no component test
 - `LiveTicker.svelte` — no component test
