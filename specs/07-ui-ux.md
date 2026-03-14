@@ -12,9 +12,8 @@ Keep the glassmorphism aesthetic. The dark/light theme system, the glow effects,
 
 ## ShadCN Setup
 
-shadcn-svelte is already initialised in `frontend/`. Components live in `frontend/src/lib/components/ui/`.
+shadcn-svelte is **not yet initialised** — run `npx shadcn-svelte@latest init` from `frontend/` to set it up. Components will live in `frontend/src/lib/components/ui/`.
 
-If shadcn is not yet initialised, run from `frontend/`:
 ```bash
 npx shadcn-svelte@latest init
 ```

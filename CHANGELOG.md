@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Prediction Tracking, Accuracy Breakdown & Bet Auto-Resolution (14 March 2026)
+- **Per-gameweek accuracy tracking**: Added `matchday` field to `StoredPrediction` and new `getAccuracyByGameweek()` method — predictions now record which gameweek they belong to, enabling accuracy breakdown by matchday
+- **Accuracy breakdown panel**: Collapsible panel in Predictions view showing per-outcome accuracy (Home/Draw/Away), per-confidence band (High/Medium/Low), rolling last-10 accuracy, exact score rate, and streak stats — all sourced from `predictionTracker.getAccuracyStats()`
+- **Dashboard accuracy chart fixed**: Was plotting `confidence * 100` as a misleading proxy for accuracy — now shows real per-gameweek accuracy when settled predictions exist, with a fallback chain to confidence scores then flat line
+- **Bet auto-resolution wired**: `betHistoryService.resolveMatchBets()` now called from `dataService.reconcilePredictions()` alongside prediction reconciliation — bets auto-resolve regardless of which component loads match results
+- **Combo bet resolution**: Added `resolveCombo()` and `resolveSingleLeg()` to `BetHistoryService` — combo bets (e.g. "Home Win + Over 2.5 Goals + BTTS Yes") can now be auto-resolved by parsing selection legs
+- **Dashboard test fix**: Fixed pre-existing `stat-icon-wrapper` test failure — added `waitFor` wrapper and missing `getAccuracyByGameweek` mock
+- **Spec inconsistency fixes**: Updated specs 03 (backend status), 05 (polling interval), and 07 (shadcn init status) to match reality
+- **Tests**: 275 tests across 13 files, all passing; 0 type errors
+
 ### Test Coverage: betBuilder.ts & value.ts (14 March 2026)
 - **betBuilder.test.ts (40 tests)**: Comprehensive coverage for `BetBuilderPredictor.generateBetBuilder()` — tests match result prediction (H/D/A), BTTS calculation, total goals over/under thresholds, corner expectations with/without team stats, card predictions with rivalry detection (all 6 hardcoded pairs), half-time result correlation, clean sheet probabilities from score distributions, and all 4 suggested combo types (Safe/Value/High Risk/Goals Galore) with threshold verification
 - **value.test.ts (38 tests)**: Comprehensive coverage for `ValueBettingEngine` — tests value bet identification across 1X2/goals/BTTS markets, edge and confidence thresholds, expected value calculation, CLV tracking, arbitrage detection across multiple bookmakers, Sharpe ratio computation, performance metrics (ROI, yield, max drawdown, CLV rate), warning generation, and error handling (silent catch on API failure)

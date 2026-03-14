@@ -210,15 +210,23 @@ No backtesting capability exists.
 `Predictions.svelte:182` calls `predictionTracker.storePrediction()` in the batch loop for every match. Verified — there is no separate single-prediction path.
 - [x] Every prediction generated calls `storePrediction()` (confirmed — single path, batch loop)
 
-### 3e. Per-gameweek accuracy
-- [ ] Store per-gameweek accuracy in localStorage under `gameweek_accuracy`
-- [ ] Display accuracy-over-time chart in Dashboard using Chart.js
-- [ ] Note: Dashboard accuracy trend chart currently plots `prediction.confidence * 100` as proxy — this should be replaced with actual accuracy per gameweek
+### 3e. Per-gameweek accuracy ✅
+- [x] Added `matchday` field to `StoredPrediction` interface
+- [x] Added `GameweekAccuracy` interface for per-gameweek stats
+- [x] Implemented `getAccuracyByGameweek()` method in `PredictionTracker` — groups settled predictions by matchday
+- [x] `Predictions.svelte` now passes `selectedGameweek` (matchday) to `storePrediction()`
+- [x] Dashboard accuracy trend chart now shows real per-gameweek accuracy instead of confidence scores
+- [x] Fallback chain: gameweek accuracy → recent predictions confidence → flat line at overall accuracy
+- Note: Dashboard accuracy trend chart previously plotted `prediction.confidence * 100` as proxy — now replaced with actual accuracy per gameweek
 
-### 3f. Accuracy breakdown panel
-- [ ] Add to Predictions component: per-outcome accuracy (Home/Draw/Away %)
-- [ ] Per-confidence band accuracy (65-70%, 70-80%, 80%+)
-- [ ] Last 10 predictions rolling accuracy
+### 3f. Accuracy breakdown panel ✅
+- [x] Collapsible accuracy panel added to Predictions component (toggle via chevron button)
+- [x] Per-outcome accuracy display: Home Win / Draw / Away Win with progress bars
+- [x] Per-confidence band accuracy: High (>70%) / Medium (50-70%) / Low (<50%) with progress bars
+- [x] Rolling last-10 predictions accuracy
+- [x] Exact score accuracy percentage
+- [x] Best streak and current streak display
+- [x] All data sourced from `predictionTracker.getAccuracyStats(90)` (90-day window)
 
 ### 3g. Fix Dashboard navigation ✅
 - [x] "View All Matches" button wired with `on:click` dispatching navigate event to 'Matches' view; `createEventDispatcher` added to Dashboard; `on:navigate={navigate}` added in App.svelte
@@ -277,9 +285,11 @@ No backtesting capability exists.
 - [x] `OddsProvider` interface added with JSDoc documentation
 - [x] `ValueBets.svelte` call site updated to pass `match.id` as first argument
 
-### 4g. Auto-resolve bets
-- [ ] Wire `betHistoryService.resolveMatchBets()` into `dataService.reconcilePredictions()` — currently only predictions are auto-reconciled, not bets
-- [ ] Add `combo` market resolution to `betHistoryService.didBetWin()` — currently returns `null` for combo bets
+### 4g. Auto-resolve bets ✅
+- [x] Wire `betHistoryService.resolveMatchBets()` into `dataService.reconcilePredictions()` — bets now auto-resolve alongside predictions when match results arrive
+- [x] Added `resolveCombo()` and `resolveSingleLeg()` methods to `BetHistoryService` — combo bets can now be auto-resolved by parsing selection legs (e.g. "Home Win + Over 2.5 Goals + BTTS Yes")
+- [x] Supported combo legs: match result (home/draw/away), BTTS (yes/no), over/under goals (1.5/2.5/3.5), clean sheet, win to nil
+- [x] `dataService.ts` now imports `betHistoryService` directly
 
 ### 4h. Add betBuilder tests ✅
 - [x] Create `frontend/src/lib/betBuilder.test.ts` — 40 tests covering match result prediction (H/D/A branches), BTTS calculation, total goals over/under thresholds, corner expectations with/without team stats, card predictions with rivalry detection (all 6 pairs), half-time correlation, clean sheet probabilities, and all 4 combo types with threshold verification
@@ -490,6 +500,7 @@ shadcn-svelte is NOT initialised despite being listed as "started".
 | `ValueBets.svelte:420` | Hardcoded h2h fallback `'W2 D1 L2'` removed — now `'No data available'` | Phase 4d |
 | `ValueBets.svelte` | Fixed `identifyValueBets` call to pass `match.id`; removed dead imports (`Target`, `Trophy`, `fade`) | Phase 4d |
 | `value.ts` | Dead `dataService` import removed | Phase 4d |
+| `Dashboard.test.ts:306-307` | Fixed `stat-icon-wrapper` test — added `waitFor` and missing `getAccuracyByGameweek` mock | Phase 3e |
 | `footballData.ts:369` | `season_id` now derived from match date instead of always `''` | Phase 1g |
 | `dataService.ts` | Dead `setDataSource()` no-op method and `ApiProvider` type removed; live match cache TTL corrected to 60s | Phase 1g |
 | `StandingsTable.svelte:103` | "2024/25 Season" hardcoded subtitle replaced with dynamic `getSeasonLabel()` | Phase 1h |

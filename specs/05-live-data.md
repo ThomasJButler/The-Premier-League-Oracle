@@ -59,6 +59,8 @@ function getPollingInterval(): number {
 - If live matches are found, maintain 60s polling
 - If 3 consecutive polls return empty, back off to 5-minute intervals
 
+> **Implementation note:** The actual implementation uses 30s polling when live matches exist, which is more aggressive than this spec.
+
 ---
 
 ## Requirement 3: LiveMatches Component
