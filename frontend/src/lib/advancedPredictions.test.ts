@@ -1,0 +1,584 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  PoissonPredictor,
+  EloRatingSystem,
+  ExpectedGoalsCalculator,
+  FatigueAnalyzer,
+  RefereeAnalyzer,
+  AdvancedMatchPredictor
+} from './advancedPredictions';
+import { dataService } from '../services/dataService';
+import type { Match } from '../types';
+
+vi.mock('../services/dataService', () => ({
+  dataService: {
+    getMatches: vi.fn()
+  }
+}));
+
+/** Creates a full Match object with sensible defaults. Override any field as needed. */
+function createMockMatch(overrides: Partial<Match> & { id: string; season_id: string; date: string; home_team: string; away_team: string; created_at: string }): Match {
+  return {
+    home_goals: null,
+    away_goals: null,
+    result: null,
+    home_odds: null,
+    draw_odds: null,
+    away_odds: null,
+    first_half_home_goals: null,
+    first_half_away_goals: null,
+    full_time_result: null,
+    half_time_result: null,
+    referee: null,
+    home_shots: null,
+    away_shots: null,
+    home_shots_target: null,
+    away_shots_target: null,
+    home_fouls: null,
+    away_fouls: null,
+    home_corners: null,
+    away_corners: null,
+    home_yellows: null,
+    away_yellows: null,
+    home_reds: null,
+    away_reds: null,
+    ...overrides
+  };
+}
+
+describe('Advanced Predictions Module', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('PoissonPredictor', () => {
+    describe('factorial', () => {
+      it('should calculate factorial correctly', () => {
+        expect(PoissonPredictor.factorial(0)).toBe(1);
+        expect(PoissonPredictor.factorial(1)).toBe(1);
+        expect(PoissonPredictor.factorial(5)).toBe(120);
+        expect(PoissonPredictor.factorial(10)).toBe(3628800);
+      });
+    });
+
+    describe('poissonProbability', () => {
+      it('should calculate Poisson probability correctly', () => {
+        // P(X=2) when λ=1.5
+        const prob = PoissonPredictor.poissonProbability(1.5, 2);
+        expect(prob).toBeCloseTo(0.251, 3);
+
+        // P(X=0) when λ=2.0
+        const prob0 = PoissonPredictor.poissonProbability(2.0, 0);
+        expect(prob0).toBeCloseTo(0.135, 3);
+
+        // P(X=3) when λ=3.0
+        const prob3 = PoissonPredictor.poissonProbability(3.0, 3);
+        expect(prob3).toBeCloseTo(0.224, 3);
+      });
+    });
+
+    describe('predictScoreProbabilities', () => {
+      it('should generate score probability matrix', () => {
+        const probs = PoissonPredictor.predictScoreProbabilities(1.8, 1.2, 5);
+        
+        // Check structure
+        expect(probs).toBeDefined();
+        expect(probs['0-0']).toBeDefined();
+        expect(probs['2-1']).toBeDefined();
+        expect(probs['5-5']).toBeDefined();
+
+        // Check probabilities sum to approximately 1
+        const sum = Object.values(probs).reduce((a, b) => a + b, 0);
+        expect(sum).toBeCloseTo(1, 1);
+
+        // Most likely scores for these parameters
+        expect(probs['2-1']).toBeGreaterThan(probs['5-5']);
+        expect(probs['1-1']).toBeGreaterThan(probs['4-4']);
+      });
+    });
+
+    describe('getOutcomeProbabilities', () => {
+      it('should calculate match outcome probabilities', () => {
+        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(2.0, 1.0, 5);
+        const outcomes = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+
+        expect(outcomes.homeWin).toBeDefined();
+        expect(outcomes.draw).toBeDefined();
+        expect(outcomes.awayWin).toBeDefined();
+
+        // Sum should equal 1
+        const sum = outcomes.homeWin + outcomes.draw + outcomes.awayWin;
+        expect(sum).toBeCloseTo(1, 1);
+
+        // Home should be favored with 2.0 vs 1.0 expected goals
+        expect(outcomes.homeWin).toBeGreaterThan(outcomes.awayWin);
+        expect(outcomes.homeWin).toBeGreaterThan(outcomes.draw);
+      });
+
+      it('should handle equal expected goals', () => {
+        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(1.5, 1.5, 5);
+        const outcomes = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+
+        // With equal expected goals, home and away wins should be similar
+        expect(Math.abs(outcomes.homeWin - outcomes.awayWin)).toBeLessThan(0.1);
+        
+        // Draw should be reasonably likely
+        expect(outcomes.draw).toBeGreaterThan(0.2);
+      });
+    });
+  });
+
+  describe('EloRatingSystem', () => {
+    describe('calculateExpectedScore', () => {
+      it('should calculate expected scores correctly', () => {
+        // Equal ratings
+        expect(EloRatingSystem.calculateExpectedScore(1500, 1500)).toBe(0.5);
+
+        // 100 point advantage
+        const exp100 = EloRatingSystem.calculateExpectedScore(1600, 1500);
+        expect(exp100).toBeCloseTo(0.64, 2);
+
+        // 200 point advantage
+        const exp200 = EloRatingSystem.calculateExpectedScore(1700, 1500);
+        expect(exp200).toBeCloseTo(0.76, 2);
+
+        // 400 point advantage
+        const exp400 = EloRatingSystem.calculateExpectedScore(1900, 1500);
+        expect(exp400).toBeCloseTo(0.91, 2);
+      });
+    });
+
+    describe('updateRatings', () => {
+      it('should update ratings after home win', () => {
+        const { newHomeRating, newAwayRating } = EloRatingSystem.updateRatings(1500, 1500, 'H');
+        
+        expect(newHomeRating).toBeGreaterThan(1500);
+        expect(newAwayRating).toBeLessThan(1500);
+        
+        // Ratings change should sum to zero
+        const homeChange = newHomeRating - 1500;
+        const awayChange = newAwayRating - 1500;
+        expect(homeChange + awayChange).toBeCloseTo(0, 5);
+      });
+
+      it('should update ratings after draw', () => {
+        const { newHomeRating, newAwayRating } = EloRatingSystem.updateRatings(1600, 1400, 'D');
+        
+        // Higher rated team loses points in a draw
+        expect(newHomeRating).toBeLessThan(1600);
+        // Lower rated team gains points in a draw
+        expect(newAwayRating).toBeGreaterThan(1400);
+      });
+
+      it('should update ratings after away win', () => {
+        const { newHomeRating, newAwayRating } = EloRatingSystem.updateRatings(1550, 1450, 'A');
+        
+        expect(newHomeRating).toBeLessThan(1550);
+        expect(newAwayRating).toBeGreaterThan(1450);
+        
+        // Away win against higher rated + home advantage = bigger gain
+        const awayGain = newAwayRating - 1450;
+        expect(awayGain).toBeGreaterThan(16); // More than half K-factor
+      });
+
+      it('should handle large rating differences', () => {
+        // Huge favourite wins — gains little
+        const { newHomeRating: home1, newAwayRating: away1 } =
+          EloRatingSystem.updateRatings(1800, 1200, 'H');
+
+        expect(home1 - 1800).toBeLessThan(5);
+        expect(1200 - away1).toBeLessThan(5);
+
+        // Huge underdog away team (1200) wins against 1800-rated home side
+        const { newHomeRating: home2, newAwayRating: away2 } =
+          EloRatingSystem.updateRatings(1800, 1200, 'A');
+
+        expect(away2 - 1200).toBeGreaterThan(25);
+        expect(1800 - home2).toBeGreaterThan(25);
+      });
+    });
+  });
+
+  describe('ExpectedGoalsCalculator', () => {
+    describe('calculateShotValue', () => {
+      it('should calculate penalty xG correctly', () => {
+        const penaltyXG = ExpectedGoalsCalculator.calculateShotValue('penalty', 12, 0, 'foot');
+        expect(penaltyXG).toBe(0.76);
+      });
+
+      it('should calculate open play shot xG', () => {
+        // Close range, central, with foot
+        const closeShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 8, 0, 'foot');
+        expect(closeShot).toBeGreaterThan(0.2);
+        expect(closeShot).toBeLessThan(0.5);
+
+        // Long range, angled, with foot
+        const longShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 25, 30, 'foot');
+        expect(longShot).toBeLessThan(0.1);
+
+        // Header from close range
+        const header = ExpectedGoalsCalculator.calculateShotValue('open-play', 6, 0, 'head');
+        expect(header).toBeGreaterThan(0.1);
+        expect(header).toBeLessThan(closeShot * 0.8);
+      });
+
+      it('should calculate corner and free kick xG', () => {
+        const corner = ExpectedGoalsCalculator.calculateShotValue('corner', 6, 10, 'head');
+        expect(corner).toBeGreaterThan(0.01);
+        expect(corner).toBeLessThan(0.1);
+
+        const freeKick = ExpectedGoalsCalculator.calculateShotValue('free-kick', 20, 0, 'foot');
+        expect(freeKick).toBeGreaterThan(0.02);
+        expect(freeKick).toBeLessThan(0.15);
+      });
+
+      it('should cap xG at 0.95', () => {
+        const impossibleShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 0.5, 0, 'foot');
+        expect(impossibleShot).toBeLessThanOrEqual(0.95);
+      });
+    });
+
+    describe('calculateMatchXG', () => {
+      it('should estimate xG from shots data', async () => {
+        const mockMatch: Match = createMockMatch({
+          id: 'match1',
+          season_id: '2025-26',
+          date: '2025-08-15',
+          home_team: 'Arsenal',
+          away_team: 'Chelsea',
+          home_goals: 2,
+          away_goals: 1,
+          home_shots: 15,
+          away_shots: 10,
+          home_shots_target: 6,
+          away_shots_target: 4,
+          result: 'H',
+          created_at: '2025-08-15'
+        });
+
+        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
+
+        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match1');
+        
+        // 6 shots on target * 0.38 + 9 off target * 0.03
+        expect(xG.homeXG).toBeCloseTo(2.28 + 0.27, 2);
+        // 4 shots on target * 0.38 + 6 off target * 0.03
+        expect(xG.awayXG).toBeCloseTo(1.52 + 0.18, 2);
+      });
+
+      it('should handle missing match data', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const xG = await ExpectedGoalsCalculator.calculateMatchXG('nonexistent');
+        
+        expect(xG.homeXG).toBe(0);
+        expect(xG.awayXG).toBe(0);
+      });
+
+      it('should handle null shot values', async () => {
+        const mockMatch: Match = createMockMatch({
+          id: 'match2',
+          season_id: '2025-26',
+          date: '2025-08-15',
+          home_team: 'Arsenal',
+          away_team: 'Chelsea',
+          home_goals: 1,
+          away_goals: 0,
+          result: 'H',
+          created_at: '2025-08-15'
+        });
+
+        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
+
+        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match2');
+        
+        expect(xG.homeXG).toBe(0);
+        expect(xG.awayXG).toBe(0);
+      });
+    });
+  });
+
+  describe('FatigueAnalyzer', () => {
+    describe('calculateRestDays', () => {
+      it('should calculate rest days between matches', async () => {
+        const mockMatches: Match[] = [
+          createMockMatch({
+            id: '1',
+            season_id: '2025-26',
+            date: '2025-08-10T15:00:00Z',
+            home_team: 'Arsenal',
+            away_team: 'Chelsea',
+            home_goals: 2,
+            away_goals: 1,
+            result: 'H',
+            created_at: '2025-08-10'
+          }),
+          createMockMatch({
+            id: '2',
+            season_id: '2025-26',
+            date: '2025-08-07T20:00:00Z',
+            home_team: 'Liverpool',
+            away_team: 'Arsenal',
+            home_goals: 1,
+            away_goals: 1,
+            result: 'D',
+            created_at: '2025-08-07'
+          })
+        ];
+
+        vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
+
+        const nextMatchDate = new Date('2025-08-13T15:00:00Z');
+        const restDays = await FatigueAnalyzer.calculateRestDays('Arsenal', nextMatchDate);
+        
+        expect(restDays).toBe(3); // 3 days between Aug 10 and Aug 13
+      });
+
+      it('should return default rest days for first match', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const restDays = await FatigueAnalyzer.calculateRestDays('NewTeam', new Date());
+        
+        expect(restDays).toBe(7);
+      });
+    });
+
+    describe('calculateFixtureDifficulty', () => {
+      it('should calculate average opponent ELO rating', async () => {
+        const mockMatches: Match[] = [
+          createMockMatch({
+            id: '1',
+            season_id: '2025-26',
+            date: '2025-08-10',
+            home_team: 'Arsenal FC',
+            away_team: 'Manchester City FC',
+            created_at: '2025-08-10'
+          }),
+          createMockMatch({
+            id: '2',
+            season_id: '2025-26',
+            date: '2025-08-15',
+            home_team: 'Liverpool FC',
+            away_team: 'Arsenal FC',
+            created_at: '2025-08-15'
+          })
+        ];
+
+        vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
+
+        // Create an ELO system with known ratings for the test
+        const elo = new EloRatingSystem();
+        const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
+          'Arsenal FC',
+          new Date('2025-08-01'),
+          new Date('2025-08-31'),
+          elo
+        );
+
+        // Opponents are Man City (1850) and Liverpool (1780) → average ~1815
+        const manCityRating = elo.getTeamRating('Manchester City FC');
+        const liverpoolRating = elo.getTeamRating('Liverpool FC');
+        const expectedAvg = (manCityRating + liverpoolRating) / 2;
+        expect(difficulty).toBeCloseTo(expectedAvg, 0);
+      });
+
+      it('should return 0 for no fixtures', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
+          'Arsenal FC',
+          new Date('2025-08-01'),
+          new Date('2025-08-31')
+        );
+
+        expect(difficulty).toBe(0);
+      });
+    });
+
+    describe('getFatigueMultiplier', () => {
+      it('should calculate fatigue multiplier correctly', () => {
+        // Optimal rest, few fixtures
+        expect(FatigueAnalyzer.getFatigueMultiplier(7, 1)).toBe(1);
+
+        // No rest, many fixtures
+        expect(FatigueAnalyzer.getFatigueMultiplier(2, 3)).toBeCloseTo(0.286 * 0.8, 3);
+
+        // Good rest, many fixtures
+        expect(FatigueAnalyzer.getFatigueMultiplier(7, 4)).toBe(0.7);
+
+        // Some rest, some fixtures
+        expect(FatigueAnalyzer.getFatigueMultiplier(4, 2)).toBeCloseTo(0.571 * 0.9, 3);
+      });
+    });
+  });
+
+  describe('RefereeAnalyzer', () => {
+    describe('getRefereeStats', () => {
+      it('should calculate referee statistics', async () => {
+        const mockMatches: Match[] = [
+          createMockMatch({
+            id: '1',
+            season_id: '2024-25',
+            date: '2024-12-01',
+            home_team: 'Arsenal',
+            away_team: 'Chelsea',
+            home_goals: 2,
+            away_goals: 1,
+            home_yellows: 2,
+            away_yellows: 3,
+            home_reds: 0,
+            away_reds: 1,
+            referee: 'Michael Oliver',
+            result: 'H',
+            created_at: '2024-12-01'
+          }),
+          createMockMatch({
+            id: '2',
+            season_id: '2024-25',
+            date: '2024-11-01',
+            home_team: 'Liverpool',
+            away_team: 'Man City',
+            home_yellows: 1,
+            away_yellows: 2,
+            home_reds: 0,
+            away_reds: 0,
+            referee: 'Michael Oliver',
+            result: 'D',
+            created_at: '2024-11-01'
+          })
+        ];
+
+        vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
+
+        const stats = await RefereeAnalyzer.getRefereeStats('Michael Oliver');
+        
+        expect(stats.avgYellowCards).toBe(4); // (5 + 3) / 2
+        expect(stats.avgRedCards).toBe(0.5); // 1 / 2
+        expect(stats.homeWinRate).toBe(0.5); // 1 / 2
+      });
+
+      it('should return default stats for unknown referee', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const stats = await RefereeAnalyzer.getRefereeStats('New Referee');
+        
+        expect(stats.avgYellowCards).toBe(4);
+        expect(stats.avgRedCards).toBe(0.1);
+        expect(stats.avgPenalties).toBe(0.2);
+        expect(stats.homeWinRate).toBe(0.46);
+      });
+
+      it('should handle matches with null card values', async () => {
+        const mockMatches: Match[] = [
+          createMockMatch({
+            id: '1',
+            season_id: '2024-25',
+            date: '2024-12-01',
+            home_team: 'Arsenal',
+            away_team: 'Chelsea',
+            home_goals: 2,
+            away_goals: 1,
+            referee: 'Michael Oliver',
+            result: 'H',
+            created_at: '2024-12-01'
+          })
+        ];
+
+        vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
+
+        const stats = await RefereeAnalyzer.getRefereeStats('Michael Oliver');
+        
+        expect(stats.avgYellowCards).toBe(0);
+        expect(stats.avgRedCards).toBe(0);
+        expect(stats.homeWinRate).toBe(1);
+      });
+    });
+  });
+
+  describe('AdvancedMatchPredictor', () => {
+    describe('predictMatch', () => {
+      it('should generate comprehensive match prediction', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'Arsenal',
+          'Chelsea',
+          new Date('2025-08-20')
+        );
+
+        // Check structure
+        expect(prediction).toHaveProperty('homeWinProb');
+        expect(prediction).toHaveProperty('drawProb');
+        expect(prediction).toHaveProperty('awayWinProb');
+        expect(prediction).toHaveProperty('expectedHomeGoals');
+        expect(prediction).toHaveProperty('expectedAwayGoals');
+        expect(prediction).toHaveProperty('confidence');
+        expect(prediction).toHaveProperty('valueBets');
+        expect(prediction).toHaveProperty('insights');
+
+        // Check probabilities sum to 1
+        const probSum = prediction.homeWinProb + prediction.drawProb + prediction.awayWinProb;
+        expect(probSum).toBeCloseTo(1, 5);
+
+        // Check confidence is reasonable
+        expect(prediction.confidence).toBeGreaterThan(0);
+        expect(prediction.confidence).toBeLessThanOrEqual(1);
+
+        // Check goals are reasonable
+        expect(prediction.expectedHomeGoals).toBeGreaterThan(0);
+        expect(prediction.expectedHomeGoals).toBeLessThan(5);
+        expect(prediction.expectedAwayGoals).toBeGreaterThan(0);
+        expect(prediction.expectedAwayGoals).toBeLessThan(5);
+      });
+
+      it('should identify value bets', async () => {
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'Man City',
+          'Luton',
+          new Date('2025-08-25')
+        );
+
+        // Should identify value in some markets
+        if (prediction.valueBets.length > 0) {
+          prediction.valueBets.forEach(bet => {
+            expect(bet.expectedValue).toBeGreaterThan(0);
+            expect(bet.odds).toBeGreaterThan(1);
+            expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
+          });
+        }
+      });
+
+      it('should generate meaningful insights', async () => {
+        // Mock matches to trigger fatigue insights
+        const recentMatch: Match = createMockMatch({
+          id: '1',
+          season_id: '2025-26',
+          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+          home_team: 'Arsenal',
+          away_team: 'Tottenham',
+          home_goals: 2,
+          away_goals: 1,
+          result: 'H',
+          created_at: '2025-08-15'
+        });
+
+        vi.mocked(dataService.getMatches).mockResolvedValue([recentMatch]);
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'Arsenal',
+          'Chelsea',
+          new Date()
+        );
+
+        expect(prediction.insights).toBeInstanceOf(Array);
+        expect(prediction.insights.length).toBeGreaterThan(0);
+        
+        // Should have fatigue insight
+        const fatigueInsight = prediction.insights.find(i => i.includes('rest'));
+        expect(fatigueInsight).toBeDefined();
+      });
+    });
+  });
+});

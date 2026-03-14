@@ -1,49 +1,31 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Build outputs
-dist/
-build/
-.svelte-kit/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS Files
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.sublime-workspace
-
-# Python
+# Python virtual environments
+/csv
 /myenv
 /PLOracle/myenv
-*.pyc
-__pycache__/
-
-# Data
-/csv
+/myenv/Lib
 /PLOracle/csv
 
-# Coverage
-coverage/
-*.lcov
+# Node
+node_modules
 
-# Testing
-.nyc_output
+# Environment files (contain API keys)
+/.env
+frontend/.env
 
-# Documentation (local only)
+# Build output
+/dist
+dist/assets/browser-Bmh3iUVW.js
+
+# Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
+oldestplan.md
+oldplan.md
+plan.md
+SAAS_OPERATION_GUIDE.md
 API_KEYS_GUIDE.md
+
+# Ralph loop (embedded git repo — has its own remote)
+/how-to-ralph-wiggum
+loop.sh
+.env
+/backend/app/api/__pycache__
+.claude/settings.json
