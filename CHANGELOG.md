@@ -4,6 +4,18 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v2.0-Development Branch
 
+### Value Bets, Kelly Integration & Data Accuracy (14 March 2026)
+- **ValueBets.svelte overhaul (CRITICAL fix)**: Removed all 7 `Math.random()` calls that generated fake bookmaker odds — the feature was functionally useless. Replaced with manual odds entry: users now enter real bookmaker odds (Home/Draw/Away + optional Over 2.5/Under 2.5/BTTS) and the system analyses them for positive expected value using `ValueBettingEngine` and `KellyCalculator`
+- **Kelly Criterion in Predictions**: Replaced the arbitrary linear stake formula `Math.max(0, (confidence - 0.6) * 10)` with proper Kelly Criterion calculation from `kelly.ts`, using Poisson outcome probabilities and model confidence
+- **BTTS precedence bug fixed**: `* 100` was only applied to the `noProb` branch of a ternary in `Predictions.svelte`, causing the "Yes" probability to display as a raw decimal instead of a percentage
+- **Gameweek filtering fixed**: Predictions view was slicing matches by array index (`(gameweek - 1) * 10`) assuming exactly 10 matches per gameweek — now uses the `matchday` field from the API, correctly handling blank/double gameweeks
+- **Dynamic season labels**: Replaced hardcoded "2024/25 Season" in `StandingsTable.svelte` and `TopScorers.svelte` with a computed `getSeasonLabel()` function that derives the season from the current date
+- **Dashboard navigation wired**: "View All Matches" button now dispatches a navigate event to the Matches view (was previously a dead button with no click handler)
+- **DataService cleanup**: Removed dead `setDataSource()`, `getApiProvider()`, and `ApiProvider` type; fixed live match cache using 5-min default instead of intended 60s TTL; fixed `season_id` always being empty string on every match
+- **Dead code removed**: Unused `predictMatch` import in `Predictions.svelte`, unused `dataService` import in `value.ts`, unused `apiProvider` variable in `Dashboard.svelte`, unused icon imports in `ValueBets.svelte`
+- **Real form data**: ValueBets now fetches team form from the standings API instead of hardcoded `'N/A'`; h2h fallback changed from fabricated `'W2 D1 L2'` to `'No data available'`
+- **Tests**: 197 tests across 11 files, all passing; 0 type errors
+
 ### Deep Audit & Plan Update (13 March 2026)
 - **Second comprehensive audit**: 7 parallel research agents studied specs, frontend libs/services/components, backend, tests, and stubs
 - **Discovered 12 new stubs** not previously documented: `cleanSheetRate: 0.3`, standings fallback probabilities, betBuilder half-time/combo hardcoded values, fake cache size calculation, position movement proxy, hardcoded season labels, non-functional UI elements

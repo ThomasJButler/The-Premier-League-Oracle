@@ -364,9 +364,13 @@ class FootballDataAPI {
                            fdMatch.score.halfTime.home > fdMatch.score.halfTime.away ? 'H' :
                            fdMatch.score.halfTime.home < fdMatch.score.halfTime.away ? 'A' : 'D';
     
+    // Derive season year from match date (July onwards = new season)
+    const matchDate = new Date(fdMatch.utcDate);
+    const seasonYear = matchDate.getMonth() >= 6 ? matchDate.getFullYear() : matchDate.getFullYear() - 1;
+
     return {
       id: fdMatch.id.toString(),
-      season_id: '', // Will be set separately
+      season_id: String(seasonYear),
       date: fdMatch.utcDate,
       home_team: fdMatch.homeTeam.name,
       away_team: fdMatch.awayTeam.name,

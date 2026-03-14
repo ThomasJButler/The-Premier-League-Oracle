@@ -53,7 +53,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `dataService.ts` - Singleton data layer (cache + API)
   - `predictionTracker.ts` - Prediction persistence (localStorage)
   - `betting/kelly.ts` - Kelly Criterion calculator
-  - `betting/value.ts` - Value bet detection (needs real odds source)
+  - `betting/value.ts` - Value bet detection engine (user-supplied odds via ValueBets UI)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
 - `types/index.ts` - Shared TypeScript types
 - `utils/teamLogos.ts` - Team logo URL mappings
@@ -108,6 +108,8 @@ These specs are the single source of truth for requirements.
 - Frontend has 197 Vitest tests across 11 test files, all passing
 - `betBuilder.ts` and `value.ts` have zero test coverage (complex logic, high priority)
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
-- `ValueBets.svelte` uses `Math.random()` for all bookmaker odds — the feature is functionally useless until real odds are provided
-- `value.ts` has uncommitted changes (OddsProvider interface + matchId parameter) — commit when ready
+- `ValueBets.svelte` now uses manual odds entry — users input real bookmaker odds for value analysis (Math.random() removed)
+- Predictions.svelte uses Kelly Criterion for stake sizing (replaced arbitrary linear formula)
+- Dynamic season labels in StandingsTable and TopScorers (replaced hardcoded "2024/25")
+- DataService dead methods removed (`setDataSource`, `getApiProvider`); live cache uses 60s TTL
 - MIT licensed for open-source collaboration

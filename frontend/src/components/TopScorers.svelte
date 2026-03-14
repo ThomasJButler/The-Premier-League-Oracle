@@ -27,6 +27,15 @@
   let loading = true;
   let error = '';
 
+  // Derive current season label from date (July onwards = new season)
+  function getSeasonLabel(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
+    return `${year - 1}/${year.toString().slice(-2)}`;
+  }
+
   function handleImageError(e: Event) {
     const target = e.currentTarget;
     if (target instanceof HTMLImageElement) target.style.display = 'none';
@@ -113,7 +122,7 @@
         </div>
         <div>
           <h1 class="text-2xl font-bold gradient-text">Top Scorers</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League 2024/25 Season</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League {getSeasonLabel()} Season</p>
         </div>
       </div>
       <button 

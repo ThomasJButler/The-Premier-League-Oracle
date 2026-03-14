@@ -1,5 +1,4 @@
 import { KellyCalculator, type KellyCalculation, type BettingOpportunity } from './kelly';
-import { dataService } from '../dataService';
 import { AdvancedMatchPredictor } from '../../lib/advancedPredictions';
 
 export interface ValueBet {

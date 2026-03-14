@@ -10,6 +10,15 @@
   let loading = true;
   let error = '';
   let showFullTable = false;
+
+  // Derive current season label from date (July onwards = new season)
+  function getSeasonLabel(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
+    return `${year - 1}/${year.toString().slice(-2)}`;
+  }
   
   onMount(async () => {
     await loadStandings();
@@ -98,7 +107,7 @@
         </div>
         <div>
           <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Premier League Table</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-400">2024/25 Season Standings</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400">{getSeasonLabel()} Season Standings</p>
         </div>
       </div>
       

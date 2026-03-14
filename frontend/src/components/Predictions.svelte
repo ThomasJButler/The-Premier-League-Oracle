@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
-  import { predictMatch } from '../lib/predictions';
+  import { calculateKelly } from '../services/betting/kelly';
   import { OptimizedPredictor } from '../lib/optimizedPredictions';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
@@ -54,10 +54,8 @@
       // Get all matches for the season
       const allMatches = await dataService.getCurrentSeasonMatches();
       
-      // Filter for selected gameweek (10 matches per gameweek)
-      const startIdx = (gameweek - 1) * 10;
-      const endIdx = startIdx + 10;
-      const gameweekMatches = allMatches.slice(startIdx, endIdx);
+      // Filter for selected gameweek using the matchday field from the API
+      const gameweekMatches = allMatches.filter(m => m.matchday === gameweek);
       
       // Filter to only show future matches (after current date/time)
       const now = new Date();
@@ -145,14 +143,20 @@
           6
         );
         const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
-        
+
+        // Calculate recommended stake using Kelly Criterion
+        // Uses the top outcome probability as our edge estimate against typical bookmaker odds
+        const topProb = Math.max(outcomeProbabilities.homeWin, outcomeProbabilities.draw, outcomeProbabilities.awayWin);
+        const estimatedBookmakerOdds = (1 / topProb) * 1.05; // Assume 5% edge over fair value
+        const kellyResult = calculateKelly(topProb, estimatedBookmakerOdds, 100, prediction.confidence);
+
         // Generate bet builder predictions
         const betBuilder = await BetBuilderPredictor.generateBetBuilder(
           match.home_team,
           match.away_team,
           match.id
         );
-        
+
         predictions[matchIndex] = {
           ...match,
           prediction: {
@@ -174,7 +178,7 @@
             awayForm: optimizedPrediction.awayForm,
             h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
             poissonProbs: outcomeProbabilities,
-            recommendedStake: Math.max(0, (prediction.confidence - 0.6) * 10)
+            recommendedStake: kellyResult.recommendedStake
           },
           betBuilder: betBuilder,
           predictionStatus: 'complete'
@@ -491,9 +495,9 @@
                           <span class="text-slate-600 dark:text-slate-400">BTTS:</span>
                           <span class="font-bold ml-1 {prediction.betBuilder.bothTeamsToScore.prediction ? 'text-green-600' : 'text-red-600'}">
                             {prediction.betBuilder.bothTeamsToScore.prediction ? 'Yes' : 'No'}
-                            ({(prediction.betBuilder.bothTeamsToScore.prediction ? 
-                              prediction.betBuilder.bothTeamsToScore.yesProb : 
-                              prediction.betBuilder.bothTeamsToScore.noProb * 100).toFixed(0)}%)
+                            ({((prediction.betBuilder.bothTeamsToScore.prediction ?
+                              prediction.betBuilder.bothTeamsToScore.yesProb :
+                              prediction.betBuilder.bothTeamsToScore.noProb) * 100).toFixed(0)}%)
                           </span>
                         </div>
                         <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">

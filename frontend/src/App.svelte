@@ -119,7 +119,7 @@
       <!-- Page content with smooth transitions -->
       <div class="page-content" class:transitioning={isTransitioning}>
         {#if currentView === 'Dashboard'}
-          <Dashboard bind:this={dashboardComponent} />
+          <Dashboard bind:this={dashboardComponent} on:navigate={navigate} />
         {:else if currentView === 'Matches'}
           <MatchList />
         {:else if currentView === 'Predictions'}

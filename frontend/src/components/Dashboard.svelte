@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { Line } from 'svelte-chartjs';
+
+  const dispatch = createEventDispatcher<{ navigate: { view: string } }>();
   import {
     Chart as ChartJS,
     Title,
@@ -40,7 +42,6 @@
   let profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
   let totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
   let betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
-  let apiProvider: 'football-data' = 'football-data';
 
   let recentPerformance: ChartData<"line", number[], string> = {
     labels: [] as string[],
@@ -118,8 +119,7 @@
       loading = true;
       error = null;
       
-      // Get current API provider
-      apiProvider = dataService.getApiProvider();
+      // Data provider is Football-Data.org (configured in Settings)
 
       // Get recent and upcoming matches from API
       const [recent, upcoming] = await Promise.all([
@@ -509,7 +509,7 @@
           <li class="text-sm text-slate-500 dark:text-slate-400">No upcoming matches</li>
         {/if}
       </ul>
-      <button class="btn btn-secondary btn-sm mt-4 w-full">View All Matches</button>
+      <button class="btn btn-secondary btn-sm mt-4 w-full" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
     </div>
   </div>
 </div>

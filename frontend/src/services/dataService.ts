@@ -7,11 +7,8 @@ interface DataSource {
   available: boolean;
 }
 
-type ApiProvider = 'football-data';
-
 class DataService {
   private apiSource: DataSource = { type: 'api', available: false };
-  private currentProvider: ApiProvider = 'football-data'; // Default to free version
   private useCache: boolean = true;
   private cacheDb: IDBDatabase | null = null;
   private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes default
@@ -73,9 +70,6 @@ class DataService {
   
   private async checkDataSources(): Promise<void> {
     try {
-      // Always use football-data now
-      this.currentProvider = 'football-data';
-      
       // Check if API key is available
       const activeApi = this.getActiveApi();
       
@@ -106,11 +100,8 @@ class DataService {
     return footballDataAPI;
   }
   
-  
-  public getApiProvider(): ApiProvider {
-    return this.currentProvider;
-  }
-  
+
+
   // Public API for checking data source status
   public getDataSourceStatus() {
     return {
@@ -128,23 +119,25 @@ class DataService {
   }
   
   // Cache management
-  private async getCachedData<T>(storeName: string, key: string): Promise<T | null> {
+  private async getCachedData<T>(storeName: string, key: string, ttlMs?: number): Promise<T | null> {
     if (!this.useCache || !this.cacheDb) return null;
-    
+
+    const timeout = ttlMs ?? this.cacheTimeout;
+
     return new Promise((resolve) => {
       const transaction = this.cacheDb!.transaction([storeName], 'readonly');
       const store = transaction.objectStore(storeName);
       const request = store.get(key);
-      
+
       request.onsuccess = () => {
         const result = request.result;
-        if (result && result.timestamp && Date.now() - result.timestamp < this.cacheTimeout) {
+        if (result && result.timestamp && Date.now() - result.timestamp < timeout) {
           resolve(result.data);
         } else {
           resolve(null);
         }
       };
-      
+
       request.onerror = () => resolve(null);
     });
   }
@@ -367,7 +360,7 @@ class DataService {
     return [];
   }
   
-  // Get all seasons
+  // Get all seasons — free tier only returns current season
   public async getAllSeasons(): Promise<Season[]> {
     const cacheKey = 'all_seasons';
     
@@ -392,16 +385,9 @@ class DataService {
     return [];
   }
 
-  // Get matches by season
+  // Get matches by season — currently returns all matches (free tier only has current season)
   public async getMatchesBySeason(seasonId: string): Promise<Match[]> {
-    // For now, just return all matches since we only have current season
     return this.getMatches();
-  }
-
-  // Set data source preference
-  public setDataSource(source: 'api'): void {
-    // Currently only API source is supported
-    // Data source set to specified source
   }
 
   // Refresh data source availability (useful after API key is set)
@@ -427,9 +413,10 @@ class DataService {
   // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
   public async getLiveMatches(): Promise<Match[]> {
     const cacheKey = 'live_matches';
+    const LIVE_CACHE_TTL = 60 * 1000; // 60 seconds for live data
 
     // Live data uses a short 60s cache
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey, LIVE_CACHE_TTL);
     if (cached) return cached;
 
     if (this.apiSource.available) {

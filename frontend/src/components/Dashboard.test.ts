@@ -5,11 +5,10 @@ import { dataService } from '../services/dataService';
 import { predictionTracker } from '../services/predictionTracker';
 import type { Match } from '../types';
 
-// Mock the dataService — the Dashboard calls getMatches, getApiProvider, and predictionTracker
+// Mock the dataService — the Dashboard calls getMatches and predictionTracker
 vi.mock('../services/dataService', () => ({
   dataService: {
     getMatches: vi.fn(),
-    getApiProvider: vi.fn(() => 'football-data'),
     getStatus: vi.fn(() => ({
       primarySource: { type: 'api', available: true },
       fallbackSource: { type: 'none', available: false }
@@ -189,7 +188,6 @@ describe('Dashboard Component', () => {
     vi.clearAllMocks();
     // Re-apply mock implementations cleared by clearAllMocks
     vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
-    vi.mocked(dataService.getApiProvider).mockReturnValue('football-data' as any);
     vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
       accuracy: 65,
       totalPredictions: 10,
