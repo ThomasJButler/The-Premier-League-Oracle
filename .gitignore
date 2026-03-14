@@ -23,6 +23,11 @@ plan.md
 SAAS_OPERATION_GUIDE.md
 API_KEYS_GUIDE.md
 
+# Playwright e2e test output
+frontend/playwright-report/
+frontend/playwright-screenshots/
+frontend/test-results/
+
 # Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
