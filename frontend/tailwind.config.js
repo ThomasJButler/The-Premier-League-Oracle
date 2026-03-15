@@ -1,49 +1,59 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
-  darkMode: 'class', // Enable class-based dark mode
+  darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+      },
       colors: {
-        // Custom semantic colors using CSS variables
-        'bg-base': 'var(--bg-base)',
-        'bg-alt': 'var(--bg-alt)',
-        'bg-sidebar': 'var(--bg-sidebar)',
-        'bg-navbar': 'var(--bg-navbar)',
-        'text-base': 'var(--text-base)',
-        'text-muted': 'var(--text-muted)',
-        'border-base': 'var(--border-base)',
-        'border-sidebar': 'var(--border-sidebar)',
-        'border-navbar': 'var(--border-navbar)',
+        // shadcn-svelte semantic tokens (HSL via CSS variables)
+        border: 'hsl(var(--border) / <alpha-value>)',
+        input: 'hsl(var(--input) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
         primary: {
-          DEFAULT: 'hsl(210, 90%, 50%)', // Brighter base blue
-          light: 'hsl(210, 90%, 65%)',
-          dark: 'hsl(210, 90%, 40%)',
-          '50': 'hsl(210, 90%, 95%)',
-          '100': 'hsl(210, 90%, 90%)',
-          '200': 'hsl(210, 90%, 80%)',
-          '300': 'hsl(210, 90%, 70%)',
-          '400': 'hsl(210, 90%, 60%)',
-          '500': 'hsl(210, 90%, 50%)', // Base
-          '600': 'hsl(210, 90%, 45%)',
-          '700': 'hsl(210, 90%, 40%)', // Dark
-          '800': 'hsl(210, 90%, 30%)',
-          '900': 'hsl(210, 90%, 20%)',
-          '950': 'hsl(210, 90%, 10%)',
-        },
-        accent: {
-          DEFAULT: 'hsl(260, 85%, 60%)', // Vibrant purple
-          light: 'hsl(260, 85%, 70%)',
-          dark: 'hsl(260, 85%, 50%)',
-          // Add shades 50-950 if needed
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
         },
         secondary: {
-          DEFAULT: 'hsl(180, 70%, 50%)', // Teal/Cyan
-          light: 'hsl(180, 70%, 65%)',
-          dark: 'hsl(180, 70%, 40%)',
-           // Add shades 50-950 if needed
+          DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+          foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
         },
-        slate: { // Slightly cooler slate
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+          foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+          foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+          foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+        },
+        // Extended palette for sports-specific UI
+        success: {
+          DEFAULT: 'hsl(var(--success) / <alpha-value>)',
+          foreground: 'hsl(var(--success-foreground) / <alpha-value>)',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+          foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
+        },
+        // Keep slate for direct usage
+        slate: {
           '50': '#f8fafc',
           '100': '#f1f5f9',
           '200': '#e2e8f0',
@@ -53,28 +63,19 @@ export default {
           '600': '#475569',
           '700': '#334155',
           '800': '#1e293b',
-          '900': '#0f172a', // Deeper dark base
-          '950': '#020617' // Almost black
-        },
-        // Keep success, warning, error as they are or adjust similarly
-        success: {
-          DEFAULT: 'hsl(145, 63%, 42%)', // Example: Keep or adjust
-          // ... shades
-        },
-        warning: {
-          DEFAULT: 'hsl(45, 100%, 51%)', // Example: Keep or adjust
-          // ... shades
-        },
-        error: {
-          DEFAULT: 'hsl(0, 72%, 51%)', // Example: Keep or adjust
-          // ... shades
+          '900': '#0f172a',
+          '950': '#020617',
         },
       },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
       boxShadow: {
-        'glow-primary-sm': '0 0 8px 0px hsla(210, 90%, 50%, 0.3)',
-        'glow-primary-md': '0 0 15px 2px hsla(210, 90%, 50%, 0.4)',
-        'glow-primary-lg': '0 0 25px 5px hsla(210, 90%, 50%, 0.5)',
-        'glow-accent-md': '0 0 15px 2px hsla(260, 85%, 60%, 0.4)',
+        'glow-primary-sm': '0 0 8px 0px hsl(var(--primary) / 0.3)',
+        'glow-primary-md': '0 0 15px 2px hsl(var(--primary) / 0.4)',
+        'glow-primary-lg': '0 0 25px 5px hsl(var(--primary) / 0.5)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
@@ -82,10 +83,8 @@ export default {
         'bounce-in': 'bounceIn 0.6s ease-out forwards',
         'float': 'float 6s ease-in-out infinite',
         'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
-        'gradient': 'gradient 10s ease infinite', // Slower default gradient
-        'gradient-fast': 'gradient 5s ease infinite', // Faster gradient animation
-        'pulse-glow-subtle': 'pulseGlowSubtle 3s ease-in-out infinite',
-        'float-subtle': 'float 10s ease-in-out infinite', // Slower float
+        'gradient': 'gradient 10s ease infinite',
+        'gradient-fast': 'gradient 5s ease infinite',
       },
       keyframes: {
         fadeIn: {
@@ -106,19 +105,15 @@ export default {
           '50%': { transform: 'translateY(-8px)' },
         },
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 10px hsla(var(--primary-hsl, 210 90%), 50%, 0.2)' },
-          '50%': { boxShadow: '0 0 20px hsla(var(--primary-hsl, 210 90%), 50%, 0.5)' },
+          '0%, 100%': { boxShadow: '0 0 10px hsl(var(--primary) / 0.2)' },
+          '50%': { boxShadow: '0 0 20px hsl(var(--primary) / 0.5)' },
         },
         gradient: {
           '0%, 100%': { 'background-position': '0% 50%' },
           '50%': { 'background-position': '100% 50%' },
         },
-        pulseGlowSubtle: { // More subtle glow pulse
-          '0%, 100%': { boxShadow: '0 0 5px hsla(210, 90%, 50%, 0.1)' },
-          '50%': { boxShadow: '0 0 12px hsla(210, 90%, 50%, 0.3)' }
-        }
-      }
-    }
+      },
+    },
   },
   plugins: [
     require('@tailwindcss/forms'),

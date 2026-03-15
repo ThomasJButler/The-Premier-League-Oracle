@@ -97,33 +97,17 @@
 
 </script>
 
-<!-- Animated Background with Particles -->
-<div class="animated-bg">
-  {#each Array(15) as _, i}
-    <div 
-      class="particle" 
-      style="
-        left: {Math.random() * 100}%;
-        width: {Math.random() * 4 + 2}px;
-        height: {Math.random() * 4 + 2}px;
-        animation-delay: {Math.random() * 20}s;
-        animation-duration: {Math.random() * 20 + 20}s;
-      "
-    ></div>
-  {/each}
-</div>
-
-<div class="flex h-screen bg-white/90 dark:bg-slate-950/90 text-slate-800 dark:text-slate-200 overflow-hidden relative">
+<div class="flex h-screen bg-background text-foreground overflow-hidden relative">
   <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
   <div class="flex-1 flex flex-col overflow-hidden">
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-950 p-4 sm:p-6 lg:p-8 relative">
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 relative">
       <!-- Page transition overlay -->
       {#if isTransitioning}
-        <div class="absolute inset-0 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
+        <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
       {/if}
       
       <!-- Page content with smooth transitions -->
