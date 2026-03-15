@@ -45,13 +45,17 @@ class AdvancedFeatureEngineer:
     def __init__(self, historical_data: Optional[pd.DataFrame] = None):
         """
         Initialize feature engineer with optional historical data.
-        
+
         Args:
             historical_data: DataFrame with historical match data
         """
         self.historical_data = historical_data
         self.scaler = StandardScaler()
         self.feature_names = []
+        self.current_match_date: Optional[datetime] = None
+        # Pre-filtered data and positions are computed at the start of each create_all_features call
+        self._filtered_data: Optional[pd.DataFrame] = None
+        self._league_positions: Dict[str, float] = {}
         
     def create_all_features(self, 
                           home_team: str, 
@@ -72,9 +76,27 @@ class AdvancedFeatureEngineer:
         """
         if match_date is None:
             match_date = datetime.now()
-            
+
+        self.current_match_date = match_date
+
+        # Pre-filter historical data strictly before match_date to prevent data leakage
+        if self.historical_data is not None and not self.historical_data.empty:
+            try:
+                dates = pd.to_datetime(self.historical_data['date'], utc=True)
+                cutoff = (pd.Timestamp(match_date, tz='UTC')
+                          if match_date.tzinfo is None
+                          else pd.Timestamp(match_date))
+                self._filtered_data = self.historical_data[dates < cutoff].copy()
+            except Exception:
+                self._filtered_data = self.historical_data.copy()
+        else:
+            self._filtered_data = None
+
+        # Pre-compute league positions once per feature set (used by many helpers)
+        self._league_positions = self._compute_league_positions()
+
         features = {}
-        
+
         # 1. Basic Statistics (20 features)
         features.update(self._get_basic_stats(home_team, away_team))
         
@@ -477,419 +499,547 @@ class AdvancedFeatureEngineer:
         
         return features
     
-    # Helper methods (simplified implementations)
+    # ==================== INTERNAL DATA HELPERS ====================
+
+    def _get_team_matches(self, team: str, venue: str = 'all') -> pd.DataFrame:
+        """
+        Return normalised historical matches for a team using pre-filtered data.
+
+        Adds columns: team_score, opponent_score, team_result (W/D/L), is_home, opponent.
+        """
+        df = self._filtered_data
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        frames = []
+        if venue in ('home', 'all'):
+            home = df[df['home_team'] == team].copy()
+            if not home.empty:
+                home['team_score'] = home['home_score']
+                home['opponent_score'] = home['away_score']
+                home['team_result'] = home['result'].map({'H': 'W', 'D': 'D', 'A': 'L'})
+                home['is_home'] = True
+                home['opponent'] = home['away_team']
+                frames.append(home)
+
+        if venue in ('away', 'all'):
+            away = df[df['away_team'] == team].copy()
+            if not away.empty:
+                away['team_score'] = away['away_score']
+                away['opponent_score'] = away['home_score']
+                away['team_result'] = away['result'].map({'H': 'L', 'D': 'D', 'A': 'W'})
+                away['is_home'] = False
+                away['opponent'] = away['home_team']
+                frames.append(away)
+
+        if not frames:
+            return pd.DataFrame()
+
+        combined = pd.concat(frames).sort_values('date').reset_index(drop=True)
+        return combined.dropna(subset=['team_score', 'opponent_score', 'team_result'])
+
+    def _get_h2h_matches(self, team1: str, team2: str, n: Optional[int] = None) -> pd.DataFrame:
+        """Return H2H matches between team1 and team2 in chronological order."""
+        df = self._filtered_data
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        mask = (((df['home_team'] == team1) & (df['away_team'] == team2)) |
+                ((df['home_team'] == team2) & (df['away_team'] == team1)))
+        h2h = df[mask].sort_values('date').reset_index(drop=True)
+        if n is not None:
+            h2h = h2h.tail(n)
+        return h2h
+
+    def _compute_league_positions(self) -> Dict[str, float]:
+        """Compute league table positions from filtered data."""
+        df = self._filtered_data
+        if df is None or df.empty:
+            return {}
+
+        team_points: Dict[str, int] = {}
+        for team in set(df['home_team'].tolist() + df['away_team'].tolist()):
+            home_pts = df[df['home_team'] == team]['result'].map({'H': 3, 'D': 1, 'A': 0}).sum()
+            away_pts = df[df['away_team'] == team]['result'].map({'H': 0, 'D': 1, 'A': 3}).sum()
+            team_points[team] = int(home_pts) + int(away_pts)
+
+        sorted_teams = sorted(team_points.items(), key=lambda x: (-x[1], x[0]))
+        return {team: float(pos + 1) for pos, (team, _) in enumerate(sorted_teams)}
+
+    def _points_series(self, matches: pd.DataFrame) -> pd.Series:
+        """Convert team_result column to a numeric points series."""
+        return matches['team_result'].map({'W': 3, 'D': 1, 'L': 0})
+
+    # ==================== BASIC STAT HELPERS ====================
+
     def _calculate_avg_goals_scored(self, team: str) -> float:
-        """Calculate average goals scored by team."""
-        if self.historical_data is None:
-            return np.random.uniform(1.0, 2.5)
-        # Actual implementation would query historical data
-        return np.random.uniform(1.0, 2.5)
-    
+        m = self._get_team_matches(team)
+        return float(m['team_score'].mean()) if not m.empty else 1.3
+
     def _calculate_avg_goals_conceded(self, team: str) -> float:
-        """Calculate average goals conceded by team."""
-        return np.random.uniform(0.8, 2.0)
-    
+        m = self._get_team_matches(team)
+        return float(m['opponent_score'].mean()) if not m.empty else 1.3
+
     def _calculate_points_per_game(self, team: str) -> float:
-        """Calculate points per game."""
-        return np.random.uniform(0.5, 2.5)
-    
+        m = self._get_team_matches(team)
+        return float(self._points_series(m).mean()) if not m.empty else 1.3
+
     def _get_league_position(self, team: str) -> float:
-        """Get current league position."""
-        return np.random.uniform(1, 20)
-    
+        return self._league_positions.get(team, 10.0)
+
     def _calculate_win_rate(self, team: str) -> float:
-        """Calculate overall win rate."""
-        return np.random.uniform(0.2, 0.7)
-    
+        m = self._get_team_matches(team)
+        return float((m['team_result'] == 'W').mean()) if not m.empty else 0.35
+
     def _calculate_draw_rate(self, team: str) -> float:
-        """Calculate draw rate."""
-        return np.random.uniform(0.15, 0.35)
-    
+        m = self._get_team_matches(team)
+        return float((m['team_result'] == 'D').mean()) if not m.empty else 0.26
+
     def _calculate_loss_rate(self, team: str) -> float:
-        """Calculate loss rate."""
-        return np.random.uniform(0.1, 0.5)
-    
+        m = self._get_team_matches(team)
+        return float((m['team_result'] == 'L').mean()) if not m.empty else 0.39
+
     def _calculate_home_win_rate(self, team: str) -> float:
-        """Calculate home win rate."""
-        return np.random.uniform(0.3, 0.8)
-    
+        m = self._get_team_matches(team, venue='home')
+        return float((m['team_result'] == 'W').mean()) if not m.empty else 0.45
+
     def _calculate_away_win_rate(self, team: str) -> float:
-        """Calculate away win rate."""
-        return np.random.uniform(0.1, 0.6)
-    
+        m = self._get_team_matches(team, venue='away')
+        return float((m['team_result'] == 'W').mean()) if not m.empty else 0.25
+
     def _calculate_home_goals_avg(self, team: str) -> float:
-        """Calculate average goals at home."""
-        return np.random.uniform(1.2, 3.0)
-    
+        m = self._get_team_matches(team, venue='home')
+        return float(m['team_score'].mean()) if not m.empty else 1.5
+
     def _calculate_away_goals_avg(self, team: str) -> float:
-        """Calculate average goals away."""
-        return np.random.uniform(0.8, 2.2)
-    
+        m = self._get_team_matches(team, venue='away')
+        return float(m['team_score'].mean()) if not m.empty else 1.1
+
     def _calculate_clean_sheet_rate(self, team: str) -> float:
-        """Calculate clean sheet rate."""
-        return np.random.uniform(0.15, 0.45)
-    
-    def _calculate_xg_for(self, team: str) -> float:
-        """Calculate expected goals for."""
-        return np.random.uniform(1.0, 2.5)
-    
-    def _calculate_xg_against(self, team: str) -> float:
-        """Calculate expected goals against."""
-        return np.random.uniform(0.8, 2.0)
-    
-    def _calculate_shots_per_game(self, team: str) -> float:
-        """Calculate shots per game."""
-        return np.random.uniform(8, 18)
-    
-    def _calculate_shot_accuracy(self, team: str) -> float:
-        """Calculate shot accuracy percentage."""
-        return np.random.uniform(0.25, 0.45)
-    
-    def _calculate_avg_possession(self, team: str) -> float:
-        """Calculate average possession."""
-        return np.random.uniform(0.35, 0.65)
-    
-    def _calculate_pass_accuracy(self, team: str) -> float:
-        """Calculate pass accuracy."""
-        return np.random.uniform(0.75, 0.90)
-    
-    def _calculate_tackles_per_game(self, team: str) -> float:
-        """Calculate tackles per game."""
-        return np.random.uniform(15, 25)
-    
-    def _calculate_interceptions_per_game(self, team: str) -> float:
-        """Calculate interceptions per game."""
-        return np.random.uniform(8, 15)
-    
-    def _calculate_yellow_cards_avg(self, team: str) -> float:
-        """Calculate average yellow cards."""
-        return np.random.uniform(1.0, 2.5)
-    
-    def _calculate_red_cards_total(self, team: str) -> float:
-        """Calculate total red cards."""
-        return np.random.uniform(0, 3)
-    
-    def _calculate_corners_for(self, team: str) -> float:
-        """Calculate corners won per game."""
-        return np.random.uniform(3, 8)
-    
-    def _calculate_corners_against(self, team: str) -> float:
-        """Calculate corners conceded per game."""
-        return np.random.uniform(3, 7)
-    
+        m = self._get_team_matches(team)
+        return float((m['opponent_score'] == 0).mean()) if not m.empty else 0.25
+
+    # ==================== ADVANCED METRICS — 0.0 where no data source ====================
+
+    def _calculate_xg_for(self, team: str) -> float: return 0.0
+    def _calculate_xg_against(self, team: str) -> float: return 0.0
+    def _calculate_shots_per_game(self, team: str) -> float: return 0.0
+    def _calculate_shot_accuracy(self, team: str) -> float: return 0.0
+    def _calculate_avg_possession(self, team: str) -> float: return 0.0
+    def _calculate_pass_accuracy(self, team: str) -> float: return 0.0
+    def _calculate_tackles_per_game(self, team: str) -> float: return 0.0
+    def _calculate_interceptions_per_game(self, team: str) -> float: return 0.0
+    def _calculate_yellow_cards_avg(self, team: str) -> float: return 0.0
+    def _calculate_red_cards_total(self, team: str) -> float: return 0.0
+    def _calculate_corners_for(self, team: str) -> float: return 0.0
+    def _calculate_corners_against(self, team: str) -> float: return 0.0
+    def _calculate_pressure_index(self, team: str) -> float: return 0.0
+
     def _calculate_goal_conversion(self, team: str) -> float:
-        """Calculate goal conversion rate."""
-        return np.random.uniform(0.08, 0.15)
-    
+        return self._calculate_avg_goals_scored(team) / 10.0
+
     def _calculate_defensive_efficiency(self, team: str) -> float:
-        """Calculate defensive efficiency."""
-        return np.random.uniform(0.6, 0.9)
-    
-    def _calculate_pressure_index(self, team: str) -> float:
-        """Calculate pressure index."""
-        return np.random.uniform(0.3, 0.8)
-    
+        return self._calculate_clean_sheet_rate(team)
+
+    # ==================== FORM HELPERS ====================
+
     def _calculate_form_last_n(self, team: str, n: int) -> float:
-        """Calculate form over last n games."""
-        return np.random.uniform(0.2, 0.8)
-    
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 1.0
+        last_n = m.tail(n)
+        return float(self._points_series(last_n).mean()) if not last_n.empty else 1.0
+
     def _calculate_weighted_form(self, team: str) -> float:
-        """Calculate weighted recent form."""
-        return np.random.uniform(0.3, 0.7)
-    
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 1.0
+        last = m.tail(15)
+        pts = self._points_series(last).values.astype(float)
+        n = len(pts)
+        if n == 0:
+            return 1.0
+        weights = np.array([0.85 ** (n - 1 - i) for i in range(n)])
+        weights /= weights.sum()
+        return float(np.dot(pts, weights))
+
     def _calculate_momentum(self, team: str) -> float:
-        """Calculate team momentum."""
-        return np.random.uniform(-1, 1)
-    
+        return self._calculate_form_last_n(team, 5) - self._calculate_form_last_n(team, 10)
+
     def _calculate_win_streak(self, team: str) -> float:
-        """Calculate current win streak."""
-        return np.random.uniform(0, 5)
-    
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 0.0
+        streak = 0
+        for r in reversed(m['team_result'].tolist()):
+            if r == 'W':
+                streak += 1
+            else:
+                break
+        return float(streak)
+
     def _calculate_unbeaten_streak(self, team: str) -> float:
-        """Calculate unbeaten streak."""
-        return np.random.uniform(0, 10)
-    
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 0.0
+        streak = 0
+        for r in reversed(m['team_result'].tolist()):
+            if r in ('W', 'D'):
+                streak += 1
+            else:
+                break
+        return float(streak)
+
     def _calculate_form_vs_top_teams(self, team: str) -> float:
-        """Calculate form against top teams."""
-        return np.random.uniform(0.1, 0.6)
-    
+        m = self._get_team_matches(team)
+        if m.empty or not self._league_positions:
+            return 1.0
+        top_6 = {t for t, pos in self._league_positions.items() if pos <= 6}
+        vs_top = m[m['opponent'].isin(top_6)]
+        return float(self._points_series(vs_top).mean()) if not vs_top.empty else 1.0
+
     def _calculate_form_vs_bottom_teams(self, team: str) -> float:
-        """Calculate form against bottom teams."""
-        return np.random.uniform(0.4, 0.9)
-    
+        m = self._get_team_matches(team)
+        if m.empty or not self._league_positions:
+            return 1.5
+        bottom_6 = {t for t, pos in self._league_positions.items() if pos >= 15}
+        vs_bottom = m[m['opponent'].isin(bottom_6)]
+        return float(self._points_series(vs_bottom).mean()) if not vs_bottom.empty else 1.5
+
     def _calculate_scoring_form(self, team: str) -> float:
-        """Calculate recent scoring form."""
-        return np.random.uniform(0.5, 2.5)
-    
+        m = self._get_team_matches(team).tail(5)
+        return float(m['team_score'].mean()) if not m.empty else 1.3
+
     def _calculate_defensive_form(self, team: str) -> float:
-        """Calculate recent defensive form."""
-        return np.random.uniform(0.5, 1.5)
-    
+        m = self._get_team_matches(team).tail(5)
+        return float(m['opponent_score'].mean()) if not m.empty else 1.3
+
     def _calculate_form_volatility(self, team: str) -> float:
-        """Calculate form volatility."""
-        return np.random.uniform(0.1, 0.5)
-    
+        m = self._get_team_matches(team).tail(10)
+        if len(m) < 3:
+            return 1.0
+        return float(np.std(self._points_series(m).values.astype(float)))
+
     def _calculate_bounce_back_rate(self, team: str) -> float:
-        """Calculate bounce back rate after losses."""
-        return np.random.uniform(0.3, 0.7)
-    
+        m = self._get_team_matches(team)
+        if len(m) < 2:
+            return 0.35
+        results = m['team_result'].tolist()
+        losses, bounce_backs = 0, 0
+        for i in range(len(results) - 1):
+            if results[i] == 'L':
+                losses += 1
+                if results[i + 1] == 'W':
+                    bounce_backs += 1
+        return float(bounce_backs / losses) if losses > 0 else 0.5
+
+    # ==================== H2H HELPERS ====================
+
     def _calculate_h2h_wins(self, team1: str, team2: str) -> float:
-        """Calculate head-to-head wins."""
-        return np.random.uniform(0, 10)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.0
+        wins = sum(
+            1 for _, r in h2h.iterrows()
+            if (r['home_team'] == team1 and r['result'] == 'H') or
+               (r['away_team'] == team1 and r['result'] == 'A')
+        )
+        return float(wins)
+
     def _calculate_h2h_draws(self, team1: str, team2: str) -> float:
-        """Calculate head-to-head draws."""
-        return np.random.uniform(0, 5)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        return float((h2h['result'] == 'D').sum()) if not h2h.empty else 0.0
+
     def _calculate_h2h_goals_avg(self, team1: str, team2: str) -> float:
-        """Calculate H2H goals average."""
-        return np.random.uniform(0.8, 2.2)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 1.2
+        goals = [
+            r['home_score'] if r['home_team'] == team1 else r['away_score']
+            for _, r in h2h.iterrows()
+        ]
+        return float(np.mean(goals)) if goals else 1.2
+
     def _calculate_h2h_form_recent(self, team1: str, team2: str, n: int) -> float:
-        """Calculate recent H2H form."""
-        return np.random.uniform(0.2, 0.8)
-    
+        h2h = self._get_h2h_matches(team1, team2, n=n)
+        if h2h.empty:
+            return 1.0
+        wins = sum(
+            1 for _, r in h2h.iterrows()
+            if (r['home_team'] == team1 and r['result'] == 'H') or
+               (r['away_team'] == team1 and r['result'] == 'A')
+        )
+        draws = int((h2h['result'] == 'D').sum())
+        return float((wins * 3 + draws) / len(h2h))
+
     def _calculate_h2h_unbeaten_streak(self, team1: str, team2: str) -> float:
-        """Calculate H2H unbeaten streak."""
-        return np.random.uniform(0, 5)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.0
+        streak = 0
+        for _, r in h2h.iloc[::-1].iterrows():
+            if (r['home_team'] == team1 and r['result'] == 'A') or \
+               (r['away_team'] == team1 and r['result'] == 'H'):
+                break
+            streak += 1
+        return float(streak)
+
     def _get_h2h_streak_holder(self, team1: str, team2: str) -> float:
-        """Get current H2H streak holder."""
-        return np.random.choice([0, 1])
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.5
+        last = h2h.iloc[-1]
+        if (last['home_team'] == team1 and last['result'] == 'H') or \
+           (last['away_team'] == team1 and last['result'] == 'A'):
+            return 1.0
+        return 0.5 if last['result'] == 'D' else 0.0
+
     def _calculate_h2h_venue_wins(self, team1: str, team2: str) -> float:
-        """Calculate H2H wins at this venue."""
-        return np.random.uniform(0, 5)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.0
+        home_h2h = h2h[(h2h['home_team'] == team1) & (h2h['away_team'] == team2)]
+        return float((home_h2h['result'] == 'H').sum())
+
     def _calculate_h2h_venue_goals(self, team1: str, team2: str) -> float:
-        """Calculate H2H goals at this venue."""
-        return np.random.uniform(1.0, 3.0)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 1.5
+        home_h2h = h2h[(h2h['home_team'] == team1) & (h2h['away_team'] == team2)]
+        return float(home_h2h['home_score'].mean()) if not home_h2h.empty else 1.5
+
     def _calculate_h2h_dominance(self, team1: str, team2: str) -> float:
-        """Calculate psychological dominance factor."""
-        return np.random.uniform(-1, 1)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.0
+        t1_wins = self._calculate_h2h_wins(team1, team2)
+        t2_wins = self._calculate_h2h_wins(team2, team1)
+        total = len(h2h)
+        return float((t1_wins - t2_wins) / total) if total > 0 else 0.0
+
     def _calculate_revenge_factor(self, team1: str, team2: str) -> float:
-        """Calculate revenge motivation factor."""
-        return np.random.uniform(0, 1)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        if h2h.empty:
+            return 0.0
+        last = h2h.iloc[-1]
+        if (last['home_team'] == team1 and last['result'] == 'A') or \
+           (last['away_team'] == team1 and last['result'] == 'H'):
+            return 1.0
+        return 0.0
+
     def _calculate_h2h_importance(self, team1: str, team2: str) -> float:
-        """Calculate H2H match importance."""
-        return np.random.uniform(0.5, 1.0)
-    
+        h2h = self._get_h2h_matches(team1, team2)
+        return float(min(len(h2h) / 20.0, 1.0))
+
+    # ==================== CONTEXTUAL HELPERS ====================
+
     def _calculate_days_since_last_match(self, team: str, match_date: datetime) -> float:
-        """Calculate days since last match."""
-        return np.random.uniform(3, 14)
-    
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 7.0
+        try:
+            last_date = pd.to_datetime(m['date'].max(), utc=True)
+            md = (pd.Timestamp(match_date, tz='UTC')
+                  if match_date.tzinfo is None else pd.Timestamp(match_date))
+            return float(max((md - last_date).days, 0))
+        except Exception:
+            return 7.0
+
     def _calculate_fatigue_index(self, team: str, match_date: datetime) -> float:
-        """Calculate team fatigue index."""
-        return np.random.uniform(0.2, 0.8)
-    
+        """Matches in last 30 days, normalised 0–1."""
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 0.0
+        try:
+            dates = pd.to_datetime(m['date'], utc=True)
+            md = (pd.Timestamp(match_date, tz='UTC')
+                  if match_date.tzinfo is None else pd.Timestamp(match_date))
+            return float(min(((md - dates).dt.days < 30).sum() / 5.0, 1.0))
+        except Exception:
+            return 0.0
+
     def _calculate_fixture_congestion(self, team: str, match_date: datetime) -> float:
-        """Calculate fixture congestion."""
-        return np.random.uniform(0.1, 0.7)
-    
+        """Number of matches in the last 14 days."""
+        m = self._get_team_matches(team)
+        if m.empty:
+            return 0.0
+        try:
+            dates = pd.to_datetime(m['date'], utc=True)
+            md = (pd.Timestamp(match_date, tz='UTC')
+                  if match_date.tzinfo is None else pd.Timestamp(match_date))
+            return float(((md - dates).dt.days < 14).sum())
+        except Exception:
+            return 0.0
+
     def _is_derby_match(self, team1: str, team2: str) -> float:
-        """Check if derby match."""
         derbies = {
             ('Manchester United FC', 'Manchester City FC'),
             ('Arsenal FC', 'Tottenham Hotspur FC'),
             ('Liverpool FC', 'Everton FC'),
+            ('Chelsea FC', 'Tottenham Hotspur FC'),
+            ('Arsenal FC', 'Chelsea FC'),
+            ('Manchester United FC', 'Liverpool FC'),
         }
         return 1.0 if (team1, team2) in derbies or (team2, team1) in derbies else 0.0
-    
+
     def _is_six_pointer(self, team1: str, team2: str) -> float:
-        """Check if six-pointer match."""
-        return np.random.choice([0.0, 1.0], p=[0.8, 0.2])
-    
+        pos1 = self._get_league_position(team1)
+        pos2 = self._get_league_position(team2)
+        return 1.0 if abs(pos1 - pos2) <= 3 else 0.0
+
     def _is_relegation_battle(self, team1: str, team2: str) -> float:
-        """Check if relegation battle."""
-        return np.random.choice([0.0, 1.0], p=[0.9, 0.1])
-    
+        pos1 = self._get_league_position(team1)
+        pos2 = self._get_league_position(team2)
+        return 1.0 if pos1 >= 15 or pos2 >= 15 else 0.0
+
     def _is_title_race(self, team1: str, team2: str) -> float:
-        """Check if title race match."""
-        return np.random.choice([0.0, 1.0], p=[0.85, 0.15])
-    
+        pos1 = self._get_league_position(team1)
+        pos2 = self._get_league_position(team2)
+        return 1.0 if pos1 <= 4 and pos2 <= 4 else 0.0
+
     def _calculate_season_progress(self, match_date: datetime) -> float:
-        """Calculate season progress."""
-        return np.random.uniform(0.1, 0.9)
-    
+        """0.0 = August, 1.0 = May."""
+        month = match_date.month
+        return (month - 8) / 10.0 if month >= 8 else (month + 4) / 10.0
+
     def _calculate_must_win_factor(self, team: str) -> float:
-        """Calculate must-win pressure."""
-        return np.random.uniform(0.2, 0.8)
-    
+        pos = self._get_league_position(team)
+        return float(max(0.0, (pos - 14) / 6.0)) if pos > 14 else 0.0
+
     def _get_manager_experience(self, team: str) -> float:
-        """Get manager experience score."""
-        return np.random.uniform(0.3, 0.9)
-    
+        return 0.0
+
     def _calculate_tactical_clash(self, team1: str, team2: str) -> float:
-        """Calculate tactical clash factor."""
-        return np.random.uniform(-0.5, 0.5)
-    
+        return 0.0
+
+    # ==================== BETTING FEATURES — all 0.0 (no data source) ====================
+
     def _get_market_probability(self, team1: str, team2: str, outcome: str) -> float:
-        """Get market-implied probability."""
-        if outcome == 'home':
-            return np.random.uniform(0.2, 0.7)
-        elif outcome == 'draw':
-            return np.random.uniform(0.2, 0.35)
-        else:
-            return np.random.uniform(0.15, 0.6)
-    
+        return 0.0
+
     def _calculate_value_bet(self, team: str, side: str) -> float:
-        """Calculate value betting indicator."""
-        return np.random.uniform(-0.2, 0.3)
-    
+        return 0.0
+
     def _calculate_odds_movement(self, team1: str, team2: str, side: str) -> float:
-        """Calculate odds movement."""
-        return np.random.uniform(-0.1, 0.1)
-    
+        return 0.0
+
     def _get_over_under_probability(self, line: float) -> float:
-        """Get over/under goals probability."""
-        return np.random.uniform(0.4, 0.6)
-    
+        df = self._filtered_data
+        if df is None or df.empty:
+            return 0.5
+        total = (df['home_score'] + df['away_score']).dropna()
+        return float((total > line).mean()) if len(total) > 0 else 0.5
+
     def _get_btts_probability(self, team1: str, team2: str) -> float:
-        """Get both teams to score probability."""
-        return np.random.uniform(0.4, 0.7)
-    
-    def _get_asian_handicap(self, team1: str, team2: str) -> float:
-        """Get Asian handicap line."""
-        return np.random.uniform(-1.5, 1.5)
-    
-    def _calculate_handicap_value(self, team1: str, team2: str) -> float:
-        """Calculate handicap value."""
-        return np.random.uniform(-0.2, 0.2)
-    
-    def _calculate_market_confidence(self, team1: str, team2: str) -> float:
-        """Calculate market confidence."""
-        return np.random.uniform(0.5, 0.9)
-    
-    def _calculate_smart_money(self, team1: str, team2: str) -> float:
-        """Calculate smart money indicator."""
-        return np.random.uniform(-0.3, 0.3)
-    
-    def _calculate_expected_value(self, team: str, side: str) -> float:
-        """Calculate expected value."""
-        return np.random.uniform(-0.1, 0.2)
-    
-    def _classify_attacking_style(self, team: str) -> float:
-        """Classify attacking style (0=defensive, 1=attacking)."""
-        return np.random.uniform(0.2, 0.8)
-    
-    def _classify_defensive_style(self, team: str) -> float:
-        """Classify defensive style (0=open, 1=compact)."""
-        return np.random.uniform(0.3, 0.7)
-    
-    def _calculate_tempo(self, team: str) -> float:
-        """Calculate playing tempo."""
-        return np.random.uniform(0.4, 0.8)
-    
-    def _calculate_pressing_intensity(self, team: str) -> float:
-        """Calculate pressing intensity."""
-        return np.random.uniform(0.3, 0.8)
-    
-    def _calculate_width_of_play(self, team: str) -> float:
-        """Calculate width of play."""
-        return np.random.uniform(0.4, 0.7)
-    
-    def _calculate_directness(self, team: str) -> float:
-        """Calculate playing directness."""
-        return np.random.uniform(0.3, 0.7)
-    
-    def _calculate_set_piece_strength(self, team: str, phase: str) -> float:
-        """Calculate set piece strength."""
-        return np.random.uniform(0.3, 0.8)
-    
-    def _calculate_counter_attack_strength(self, team: str) -> float:
-        """Calculate counter-attack strength."""
-        return np.random.uniform(0.4, 0.8)
-    
-    def _calculate_style_clash(self, team1: str, team2: str) -> float:
-        """Calculate style clash factor."""
-        return np.random.uniform(-0.3, 0.3)
-    
-    def _calculate_tactical_advantage(self, team1: str, team2: str) -> float:
-        """Calculate tactical advantage."""
-        return np.random.uniform(-0.5, 0.5)
-    
-    def _calculate_key_players_available(self, team: str) -> float:
-        """Calculate key players availability."""
-        return np.random.uniform(0.7, 1.0)
-    
-    def _get_top_scorer_form(self, team: str) -> float:
-        """Get top scorer's current form."""
-        return np.random.uniform(0.3, 0.9)
-    
-    def _calculate_squad_depth(self, team: str) -> float:
-        """Calculate squad depth score."""
-        return np.random.uniform(0.4, 0.9)
-    
-    def _calculate_injury_impact(self, team: str) -> float:
-        """Calculate injury impact."""
-        return np.random.uniform(0, 0.3)
-    
-    def _calculate_star_factor(self, team: str) -> float:
-        """Calculate star player factor."""
-        return np.random.uniform(0.3, 0.8)
-    
+        df = self._filtered_data
+        if df is None or df.empty:
+            return 0.5
+        mask = (((df['home_team'] == team1) & (df['away_team'] == team2)) |
+                ((df['home_team'] == team2) & (df['away_team'] == team1)))
+        subset = df[mask] if mask.sum() >= 3 else df
+        btts = ((subset['home_score'] > 0) & (subset['away_score'] > 0)).dropna()
+        return float(btts.mean()) if len(btts) > 0 else 0.5
+
+    def _get_asian_handicap(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_handicap_value(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_market_confidence(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_smart_money(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_expected_value(self, team: str, side: str) -> float: return 0.0
+
+    # ==================== TACTICAL FEATURES — all 0.0 (no data source) ====================
+
+    def _classify_attacking_style(self, team: str) -> float: return 0.0
+    def _classify_defensive_style(self, team: str) -> float: return 0.0
+    def _calculate_tempo(self, team: str) -> float: return 0.0
+    def _calculate_pressing_intensity(self, team: str) -> float: return 0.0
+    def _calculate_width_of_play(self, team: str) -> float: return 0.0
+    def _calculate_directness(self, team: str) -> float: return 0.0
+    def _calculate_set_piece_strength(self, team: str, phase: str) -> float: return 0.0
+    def _calculate_counter_attack_strength(self, team: str) -> float: return 0.0
+    def _calculate_style_clash(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_tactical_advantage(self, team1: str, team2: str) -> float: return 0.0
+
+    # ==================== PLAYER FEATURES — all 0.0 (no data source) ====================
+
+    def _calculate_key_players_available(self, team: str) -> float: return 0.0
+    def _get_top_scorer_form(self, team: str) -> float: return 0.0
+    def _calculate_squad_depth(self, team: str) -> float: return 0.0
+    def _calculate_injury_impact(self, team: str) -> float: return 0.0
+    def _calculate_star_factor(self, team: str) -> float: return 0.0
+
+    # ==================== TIME SERIES HELPERS ====================
+
     def _calculate_trend(self, team: str, window: int) -> float:
-        """Calculate performance trend."""
-        return np.random.uniform(-0.5, 0.5)
-    
+        m = self._get_team_matches(team)
+        if len(m) < window:
+            return 0.0
+        pts = self._points_series(m.tail(window)).values.astype(float)
+        if len(pts) < 2:
+            return 0.0
+        try:
+            return float(np.polyfit(np.arange(len(pts)), pts, 1)[0])
+        except Exception:
+            return 0.0
+
     def _calculate_monthly_performance(self, team: str) -> float:
-        """Calculate monthly performance."""
-        return np.random.uniform(0.4, 0.7)
-    
+        m = self._get_team_matches(team)
+        if m.empty or self.current_match_date is None:
+            return 1.0
+        try:
+            month = self.current_match_date.month
+            m = m.copy()
+            m['_month'] = pd.to_datetime(m['date'], utc=True).dt.month
+            same_month = m[m['_month'] == month]
+            return float(self._points_series(same_month).mean()) if not same_month.empty else 1.0
+        except Exception:
+            return 1.0
+
     def _calculate_performance_cycle(self, team: str) -> float:
-        """Calculate performance cycle position."""
-        return np.random.uniform(0, 1)
-    
+        return 0.0
+
     def _calculate_consistency(self, team: str) -> float:
-        """Calculate consistency score."""
-        return np.random.uniform(0.3, 0.8)
-    
+        m = self._get_team_matches(team).tail(15)
+        if len(m) < 3:
+            return 0.5
+        std = float(np.std(self._points_series(m).values.astype(float)))
+        return float(1.0 - min(std / 1.5, 1.0))
+
     def _calculate_mean_reversion(self, team: str) -> float:
-        """Calculate mean reversion factor."""
-        return np.random.uniform(-0.3, 0.3)
-    
+        return float(self._calculate_points_per_game(team) - self._calculate_form_last_n(team, 5))
+
     def _calculate_autocorrelation(self, team: str) -> float:
-        """Calculate performance autocorrelation."""
-        return np.random.uniform(-0.2, 0.5)
-    
-    def _estimate_temperature_impact(self, match_date: datetime) -> float:
-        """Estimate temperature impact."""
-        return np.random.uniform(-0.1, 0.1)
-    
-    def _estimate_rain_probability(self, match_date: datetime) -> float:
-        """Estimate rain probability."""
-        return np.random.uniform(0, 0.3)
-    
-    def _estimate_wind_factor(self, match_date: datetime) -> float:
-        """Estimate wind impact."""
-        return np.random.uniform(0, 0.2)
-    
-    def _get_stadium_capacity_factor(self, team: str) -> float:
-        """Get stadium capacity factor."""
-        return np.random.uniform(0.5, 1.0)
-    
-    def _calculate_crowd_impact(self, team: str) -> float:
-        """Calculate crowd impact."""
-        return np.random.uniform(0.1, 0.3)
-    
-    def _calculate_travel_distance(self, team1: str, team2: str) -> float:
-        """Calculate travel distance impact."""
-        return np.random.uniform(0, 300)
-    
-    def _calculate_media_pressure(self, team: str) -> float:
-        """Calculate media pressure."""
-        return np.random.uniform(0.2, 0.8)
-    
+        m = self._get_team_matches(team).tail(20)
+        if len(m) < 5:
+            return 0.0
+        pts = self._points_series(m).values.astype(float)
+        try:
+            corr = float(np.corrcoef(pts[:-1], pts[1:])[0, 1])
+            return corr if not np.isnan(corr) else 0.0
+        except Exception:
+            return 0.0
+
+    # ==================== EXTERNAL FEATURES — 0.0 where no data source ====================
+
+    def _estimate_temperature_impact(self, match_date: datetime) -> float: return 0.0
+    def _estimate_rain_probability(self, match_date: datetime) -> float: return 0.0
+    def _estimate_wind_factor(self, match_date: datetime) -> float: return 0.0
+    def _get_stadium_capacity_factor(self, team: str) -> float: return 0.0
+    def _calculate_crowd_impact(self, team: str) -> float: return 0.0
+    def _calculate_travel_distance(self, team1: str, team2: str) -> float: return 0.0
+    def _calculate_media_pressure(self, team: str) -> float: return 0.0
+
     def _calculate_venue_advantage(self, team: str) -> float:
-        """Calculate venue advantage."""
-        return np.random.uniform(0.1, 0.3)
-    
+        return self._calculate_home_win_rate(team)
+
     def _calculate_away_venue_record(self, away_team: str, home_team: str) -> float:
-        """Calculate away team's record at this venue."""
-        return np.random.uniform(0.1, 0.6)
+        """Away team's win rate when visiting this specific home team."""
+        h2h = self._get_h2h_matches(away_team, home_team)
+        if h2h.empty:
+            return 0.25
+        as_away = h2h[h2h['away_team'] == away_team]
+        if as_away.empty:
+            return 0.25
+        return float((as_away['result'] == 'A').sum() / len(as_away))
 
 
 # Example usage

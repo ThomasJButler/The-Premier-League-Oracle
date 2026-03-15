@@ -216,8 +216,7 @@ async def health_check():
 # Main prediction endpoint
 @app.post("/predict", response_model=PredictionResponse, tags=["Predictions"])
 async def predict_match(
-    request: PredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: PredictionRequest
 ):
     """
     Predict match outcome using ensemble of ML models.
@@ -306,8 +305,7 @@ async def predict_natural_language(
 # Batch prediction endpoint
 @app.post("/predict/batch", tags=["Predictions"])
 async def predict_batch(
-    request: BatchPredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: BatchPredictionRequest
 ):
     """
     Predict multiple matches in a single request.
@@ -356,12 +354,10 @@ async def get_team_stats(
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
     
     try:
-        stats = oracle.data_collector.get_team_stats(team_name)
         form = oracle.data_collector.get_team_form(team_name, last_n_matches)
-        
+
         return {
             'team': team_name,
-            'statistics': stats,
             'recent_form': form,
             'timestamp': datetime.now().isoformat()
         }
@@ -390,9 +386,7 @@ async def get_standings():
 
 # Model performance endpoint
 @app.get("/models/performance", tags=["Models"])
-async def get_model_performance(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
+async def get_model_performance():
     """Get performance metrics for all models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
@@ -469,9 +463,7 @@ async def websocket_predictions(websocket: WebSocket):
 
 # Feature importance endpoint
 @app.get("/features/importance", tags=["Features"])
-async def get_feature_importance(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
+async def get_feature_importance():
     """Get feature importance from the models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
@@ -500,8 +492,7 @@ async def get_feature_importance(
 # Betting value endpoint
 @app.post("/betting/value", tags=["Betting"])
 async def calculate_betting_value(
-    request: PredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: PredictionRequest
 ):
     """
     Calculate betting value for a match.

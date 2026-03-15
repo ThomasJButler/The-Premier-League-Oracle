@@ -123,8 +123,13 @@ class FootballDataCollector:
                     time.sleep(wait_time)
                     
                 elif response.status_code == 403:
-                    logger.error("API key invalid or insufficient permissions")
-                    raise ValueError("Invalid API key")
+                    logger.error("API returned 403 Forbidden — invalid/expired key or plan restriction")
+                    raise ValueError(
+                        "API returned 403 Forbidden. This usually means:\n"
+                        "  1. Your API key is invalid or expired, OR\n"
+                        "  2. Your plan (free tier) does not support this endpoint/season.\n"
+                        "Free tier only allows the current PL season — upgrade for historical data."
+                    )
                     
                 else:
                     logger.error(f"API error: {response.status_code} - {response.text}")

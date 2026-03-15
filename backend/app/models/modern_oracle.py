@@ -116,12 +116,21 @@ class ModernPremierLeagueOracle:
             'transformer': 0.3
         }
         
-        # MLflow setup
-        mlflow.set_tracking_uri(mlflow_tracking_uri)
-        mlflow.set_experiment("premier_league_oracle")
-        
-        # Redis for caching
-        self.redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+        # MLflow setup — optional, server starts without it
+        if MLFLOW_AVAILABLE:
+            try:
+                mlflow.set_tracking_uri(mlflow_tracking_uri)
+                mlflow.set_experiment("premier_league_oracle")
+            except Exception as e:
+                logger.warning(f"MLflow setup failed ({e}) — experiment tracking disabled")
+
+        # Redis for caching — optional, predictions continue without it
+        try:
+            self.redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+            self.redis_client.ping()
+        except Exception as e:
+            logger.warning(f"Redis unavailable ({e}) — result caching disabled")
+            self.redis_client = None
         
         # LangChain setup (if API key provided)
         self.langchain_enabled = openai_api_key is not None
@@ -263,53 +272,72 @@ class ModernPremierLeagueOracle:
             Comprehensive prediction with all model outputs
         """
         # Start MLflow run if enabled
-        if use_mlflow:
-            mlflow.start_run()
-            mlflow.log_param("home_team", home_team)
-            mlflow.log_param("away_team", away_team)
+        if use_mlflow and MLFLOW_AVAILABLE:
+            try:
+                mlflow.start_run()
+                mlflow.log_param("home_team", home_team)
+                mlflow.log_param("away_team", away_team)
+            except Exception:
+                use_mlflow = False
         
         try:
             # Generate features
             features = self.feature_engineer.create_all_features(home_team, away_team)
             features_df = pd.DataFrame([features])
-            
+
             # Log features to MLflow
-            if use_mlflow:
-                mlflow.log_metric("num_features", len(features))
-                for key, value in list(features.items())[:10]:  # Log first 10 features
-                    mlflow.log_metric(f"feature_{key}", value)
-            
-            # Get predictions from each model
+            if use_mlflow and MLFLOW_AVAILABLE:
+                try:
+                    mlflow.log_metric("num_features", len(features))
+                    for key, value in list(features.items())[:10]:
+                        mlflow.log_metric(f"feature_{key}", float(value))
+                except Exception:
+                    pass
+
+            # Get predictions from each trained model — skip any that are not yet trained
             predictions = {}
-            
-            # XGBoost prediction
-            xgb_pred = self.xgboost_model.predict_single_match(
-                home_team, away_team, features
-            )
-            predictions['xgboost'] = xgb_pred
-            
-            # LSTM prediction (needs sequence data - using mock for now)
-            lstm_features = pd.concat([features_df] * 10)  # Mock sequence
-            lstm_pred = self.lstm_model.predict_single_match(
-                home_team, away_team, lstm_features
-            )
-            predictions['lstm'] = lstm_pred
-            
-            # Transformer prediction
-            transformer_pred = self.transformer_model.predict_single_match(
-                home_team, away_team, lstm_features
-            )
-            predictions['transformer'] = transformer_pred
+
+            if self.xgboost_model.model is not None:
+                try:
+                    predictions['xgboost'] = self.xgboost_model.predict_single_match(
+                        home_team, away_team, features
+                    )
+                except Exception as e:
+                    logger.warning(f"XGBoost prediction failed: {e}")
+
+            if self.lstm_model.model is not None:
+                try:
+                    lstm_features = pd.concat([features_df] * 10)
+                    predictions['lstm'] = self.lstm_model.predict_single_match(
+                        home_team, away_team, lstm_features
+                    )
+                except Exception as e:
+                    logger.warning(f"LSTM prediction failed: {e}")
+
+            if self.transformer_model.model is not None:
+                try:
+                    lstm_features = pd.concat([features_df] * 10)
+                    predictions['transformer'] = self.transformer_model.predict_single_match(
+                        home_team, away_team, lstm_features
+                    )
+                except Exception as e:
+                    logger.warning(f"Transformer prediction failed: {e}")
+
+            if not predictions:
+                raise ValueError("No trained models available to make predictions")
             
             # Calculate ensemble prediction
             ensemble_probs = self._calculate_ensemble(predictions)
             
             # Log predictions to MLflow
-            if use_mlflow:
-                mlflow.log_metric("ensemble_home_win", ensemble_probs['home_win'])
-                mlflow.log_metric("ensemble_draw", ensemble_probs['draw'])
-                mlflow.log_metric("ensemble_away_win", ensemble_probs['away_win'])
-                mlflow.log_metric("confidence", ensemble_probs['confidence'])
+            if use_mlflow and MLFLOW_AVAILABLE:
+                try:
+                    mlflow.log_metric("ensemble_home_win", ensemble_probs['home_win'])
+                    mlflow.log_metric("ensemble_draw", ensemble_probs['draw'])
+                    mlflow.log_metric("ensemble_away_win", ensemble_probs['away_win'])
+                    mlflow.log_metric("confidence", ensemble_probs['confidence'])
+                except Exception:
+                    pass
             
             # Find similar historical matches
             similar_matches = self._find_similar_matches(features)
@@ -328,14 +356,21 @@ class ModernPremierLeagueOracle:
             }
             
             # Cache result
-            cache_key = f"prediction:{home_team}:{away_team}:{datetime.now().date()}"
-            self.redis_client.setex(cache_key, 3600, json.dumps(result))
-            
+            if self.redis_client is not None:
+                try:
+                    cache_key = f"prediction:{home_team}:{away_team}:{datetime.now().date()}"
+                    self.redis_client.setex(cache_key, 3600, json.dumps(result))
+                except Exception:
+                    pass
+
             return result
-            
+
         finally:
-            if use_mlflow:
-                mlflow.end_run()
+            if use_mlflow and MLFLOW_AVAILABLE:
+                try:
+                    mlflow.end_run()
+                except Exception:
+                    pass
     
     def _calculate_ensemble(self, predictions: Dict[str, Dict]) -> Dict[str, float]:
         """Calculate weighted ensemble prediction."""
@@ -381,25 +416,26 @@ class ModernPremierLeagueOracle:
     
     def _find_similar_matches(self, features: Dict[str, float], n: int = 5) -> List[Dict]:
         """Find similar historical matches using vector similarity."""
-        # Convert features to embedding
-        feature_text = " ".join([f"{k}:{v}" for k, v in features.items()])
-        
-        # Query vector store
-        results = self.match_collection.query(
-            query_texts=[feature_text],
-            n_results=n
-        )
-        
-        # Format results
-        similar_matches = []
-        if results and results['documents']:
-            for i, doc in enumerate(results['documents'][0]):
-                similar_matches.append({
-                    'match': doc,
-                    'similarity': 1 - results['distances'][0][i] if results['distances'] else 0
-                })
-        
-        return similar_matches
+        if not hasattr(self, 'match_collection'):
+            return []
+
+        try:
+            feature_text = " ".join([f"{k}:{v}" for k, v in features.items()])
+            results = self.match_collection.query(
+                query_texts=[feature_text],
+                n_results=n
+            )
+            similar_matches = []
+            if results and results['documents']:
+                for i, doc in enumerate(results['documents'][0]):
+                    similar_matches.append({
+                        'match': doc,
+                        'similarity': 1 - results['distances'][0][i] if results['distances'] else 0
+                    })
+            return similar_matches
+        except Exception as e:
+            logger.debug(f"Vector similarity search failed ({e})")
+            return []
     
     def _generate_recommendation(self, prediction: Dict[str, float]) -> str:
         """Generate betting recommendation based on prediction."""
