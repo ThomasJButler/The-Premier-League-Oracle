@@ -101,16 +101,16 @@
 </script>
 
 <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
     <div class="flex-shrink-0">
     <!-- Header -->
     <div class="p-8 pb-0">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold gradient-text">Premier League Oracle</h1>
+        <h1 class="text-3xl font-bold font-display text-foreground">Premier League Oracle</h1>
         <div class="flex items-center gap-2">
           {#each steps as step}
             <div 
-              class="w-3 h-3 rounded-full transition-all duration-300 {currentStep >= step.id ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}"
+              class="w-3 h-3 rounded-full transition-all duration-300 {currentStep >= step.id ? 'bg-primary' : 'bg-border'}"
             ></div>
           {/each}
         </div>
@@ -122,7 +122,7 @@
           <svelte:component this={steps[currentStep - 1].icon} class="w-6 h-6" />
         </div>
         <div>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Step {currentStep} of {steps.length}</p>
+          <p class="text-sm text-muted-foreground">Step {currentStep} of {steps.length}</p>
           <h2 class="text-xl font-semibold">{steps[currentStep - 1].title}</h2>
         </div>
       </div>
@@ -139,7 +139,7 @@
           </div>
           <div>
             <h3 class="text-2xl font-bold mb-4">Welcome to Premier League Oracle</h3>
-            <p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed">
+            <p class="text-muted-foreground text-lg leading-relaxed">
               Get AI-powered Premier League predictions using advanced statistical models, 
               ELO ratings, and real-time data analysis.
             </p>
@@ -151,7 +151,7 @@
                 <Zap class="w-4 h-4 text-blue-600" />
               </div>
               <h4 class="font-semibold mb-1">Live Predictions</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">Real-time match predictions with confidence scores</p>
+              <p class="text-sm text-muted-foreground">Real-time match predictions with confidence scores</p>
             </div>
             
             <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
@@ -159,7 +159,7 @@
                 <Shield class="w-4 h-4 text-green-600" />
               </div>
               <h4 class="font-semibold mb-1">Privacy First</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">Your API key stays local, never shared</p>
+              <p class="text-sm text-muted-foreground">Your API key stays local, never shared</p>
             </div>
             
             <div class="p-4 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl">
@@ -167,7 +167,7 @@
                 <BookOpen class="w-4 h-4 text-purple-600" />
               </div>
               <h4 class="font-semibold mb-1">Research Tool</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400">For educational and research purposes only</p>
+              <p class="text-sm text-muted-foreground">For educational and research purposes only</p>
             </div>
           </div>
         </div>
@@ -180,46 +180,46 @@
               <Shield class="w-6 h-6 text-green-600" />
             </div>
             <h3 class="text-xl font-bold mb-1">Privacy & Security</h3>
-            <p class="text-sm text-slate-600 dark:text-slate-300">Your data and privacy are our top priority</p>
+            <p class="text-sm text-muted-foreground">Your data and privacy are our top priority</p>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Key class="w-4 h-4 text-blue-600" />
                 Local Storage Only
               </h4>
-              <p class="text-xs text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-muted-foreground">
                 Your API key is stored locally in your browser and never transmitted to our servers.
               </p>
             </div>
             
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Shield class="w-4 h-4 text-green-600" />
                 No Data Collection
               </h4>
-              <p class="text-xs text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-muted-foreground">
                 We don't collect, store, or analyze your personal data or usage patterns.
               </p>
             </div>
             
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Zap class="w-4 h-4 text-purple-600" />
                 Direct API Calls
               </h4>
-              <p class="text-xs text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-muted-foreground">
                 All data comes directly from your chosen API provider, bypassing our servers.
               </p>
             </div>
             
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <BookOpen class="w-4 h-4 text-amber-600" />
                 Research Purpose
               </h4>
-              <p class="text-xs text-slate-600 dark:text-slate-400">
+              <p class="text-xs text-muted-foreground">
                 This tool is designed for educational and research purposes only.
               </p>
             </div>
@@ -243,7 +243,7 @@
         <div class="space-y-6">
           <div class="text-center">
             <h3 class="text-2xl font-bold mb-2">Football-Data.org API</h3>
-            <p class="text-slate-600 dark:text-slate-300">Free Premier League data with real-time updates</p>
+            <p class="text-muted-foreground">Free Premier League data with real-time updates</p>
           </div>
           
           <div class="max-w-md mx-auto">
@@ -255,7 +255,7 @@
                 </span>
               </div>
               <h4 class="font-bold text-lg mb-2">Football-Data.org</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              <p class="text-sm text-muted-foreground mb-4">
                 Perfect for Premier League predictions and analysis
               </p>
               <ul class="space-y-2 text-sm mb-6">
@@ -302,14 +302,14 @@
               <Key class="w-8 h-8 text-blue-600" />
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
-            <p class="text-slate-600 dark:text-slate-300">
+            <p class="text-muted-foreground">
               Enter your Football-Data.org key to get started
             </p>
           </div>
           
           <div class="space-y-4">
             <div>
-              <label for="apiKey" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label for="apiKey" class="block text-sm font-medium text-foreground mb-2">
                 Football-Data.org API Key
               </label>
               <input
@@ -317,7 +317,7 @@
                 type="password"
                 bind:value={apiKey}
                 placeholder="Enter your API key..."
-                class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary dark:bg-slate-800 dark:text-white"
+                class="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary bg-muted text-foreground"
                 class:border-red-300={apiKey.length > 0 && apiKey.length < 10}
               />
               {#if apiKey.length > 0 && apiKey.length < 10}
@@ -375,7 +375,7 @@
           </div>
           <div>
             <h3 class="text-2xl font-bold mb-4 text-green-600">{isRefreshing ? 'Setting Up...' : 'All Set!'}</h3>
-            <p class="text-slate-600 dark:text-slate-300 text-lg">
+            <p class="text-muted-foreground text-lg">
               {#if isRefreshing}
                 {validationMessage}
               {:else}
@@ -387,7 +387,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <div class="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
               <h4 class="font-semibold mb-2">💡 Recommended Usage</h4>
-              <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <ul class="text-sm text-muted-foreground space-y-1">
                 <li>• Check daily predictions</li>
                 <li>• Monitor team performance</li>
                 <li>• Use Kelly Calculator for betting</li>
@@ -396,7 +396,7 @@
             
             <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
               <h4 class="font-semibold mb-2">📚 Learn More</h4>
-              <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <ul class="text-sm text-muted-foreground space-y-1">
                 <li>• View tutorial documentation</li>
                 <li>• Understand prediction models</li>
                 <li>• Explore value betting</li>
@@ -410,7 +410,7 @@
     
     <!-- Navigation -->
     <div class="flex-shrink-0 px-8 pb-8">
-      <div class="flex justify-between items-center pt-6 border-t border-slate-200 dark:border-slate-700">
+      <div class="flex justify-between items-center pt-6 border-t border-border">
         <button
           on:click={prevStep}
           disabled={currentStep === 1}

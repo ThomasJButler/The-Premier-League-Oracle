@@ -131,14 +131,14 @@
 
 <div class="settings-container max-w-4xl mx-auto">
   <!-- Header -->
-  <div class="bg-gradient-to-r from-slate-500/10 to-slate-600/10 dark:from-slate-500/20 dark:to-slate-600/20 rounded-xl p-6 mb-6">
+  <div class="rounded-xl border border-border bg-muted p-6 mb-6">
     <div class="flex items-center space-x-3">
       <div class="p-3 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg">
         <SettingsIcon class="w-8 h-8 text-white" />
       </div>
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
-        <p class="text-sm text-slate-600 dark:text-slate-400">
+        <h1 class="text-2xl font-bold font-display text-foreground">Settings</h1>
+        <p class="text-sm text-muted-foreground">
           Configure your API provider and manage data
         </p>
       </div>
@@ -146,8 +146,8 @@
   </div>
   
   <!-- API Provider Selection -->
-  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 mb-6">
-    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Football-Data.org API Configuration</h2>
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground mb-4">Football-Data.org API Configuration</h2>
     
     <div class="max-w-2xl">
       <!-- Football-Data.org -->
@@ -162,13 +162,13 @@
           </span>
         </div>
         
-        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <p class="text-sm text-muted-foreground mb-4">
           Perfect for testing and demos. Premier League data with 10 requests per minute.
         </p>
         
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label class="block text-sm font-medium text-foreground mb-1">
               API Key
             </label>
             <div class="flex space-x-2">
@@ -176,7 +176,7 @@
                 type="password"
                 bind:value={footballDataKey}
                 placeholder="Enter your Football-Data.org key"
-                class="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
               />
               <button
                 on:click={saveFootballDataKey}
@@ -227,11 +227,11 @@
     {/if}
     
     <!-- API Status -->
-    <div class="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+    <div class="mt-6 p-4 bg-muted rounded-lg">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">API Status</p>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+          <p class="text-sm font-medium text-foreground">API Status</p>
+          <p class="text-xs text-muted-foreground mt-1">
             Football-Data.org - Premier League Data
           </p>
         </div>
@@ -242,7 +242,7 @@
               <span>Connected</span>
             </span>
           {:else}
-            <span class="flex items-center space-x-1 text-slate-500 dark:text-slate-400 text-sm">
+            <span class="flex items-center space-x-1 text-muted-foreground text-sm">
               <Wifi class="w-4 h-4" />
               <span>Not Connected</span>
             </span>
@@ -253,17 +253,17 @@
   </div>
   
   <!-- Cache Management -->
-  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
-    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2 mb-4">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
       <Database class="w-5 h-5 text-primary" />
       <span>Data Management</span>
     </h2>
     
     <div class="space-y-4">
-      <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Cache Size</p>
-          <p class="text-xs text-slate-600 dark:text-slate-400">{cacheSize}</p>
+          <p class="text-sm font-medium text-foreground">Cache Size</p>
+          <p class="text-xs text-muted-foreground">{cacheSize}</p>
         </div>
         <button
           on:click={clearCache}
@@ -273,10 +273,10 @@
         </button>
       </div>
       
-      <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Last Sync</p>
-          <p class="text-xs text-slate-600 dark:text-slate-400">{lastSync}</p>
+          <p class="text-sm font-medium text-foreground">Last Sync</p>
+          <p class="text-xs text-muted-foreground">{lastSync}</p>
         </div>
         <button
           on:click={syncData}

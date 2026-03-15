@@ -91,12 +91,12 @@
   }
 </script>
 
-<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-slate-200 dark:border-slate-700">
+<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border">
   {#if tickerContent.includes('(') && tickerContent.startsWith('\u26BD')}
     <!-- Pulsing indicator when live matches are showing -->
     <span class="live-dot"></span>
   {/if}
-  <div class="ticker-content text-sm font-medium text-slate-700 dark:text-slate-300">
+  <div class="ticker-content text-sm font-medium text-foreground">
     {tickerContent}
   </div>
 </div>

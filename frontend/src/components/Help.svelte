@@ -15,14 +15,14 @@
   ];
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+<div class="min-h-screen bg-background">
   <!-- Header -->
-  <div class="glass-effect sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
+  <div class="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold gradient-text">Help & Documentation</h1>
+        <h1 class="text-2xl font-bold font-display text-foreground">Help & Documentation</h1>
         <button
-          class="sm:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          class="sm:hidden p-2 rounded-lg hover:bg-muted"
           on:click={() => showMobileMenu = !showMobileMenu}
         >
           <ChevronRight class="w-5 h-5 transition-transform {showMobileMenu ? 'rotate-90' : ''}" />
@@ -35,8 +35,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Navigation -->
       <nav class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
-        <div class="glass-card p-4 sticky top-24">
-          <h2 class="font-semibold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 sticky top-24">
+          <h2 class="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
             Documentation
           </h2>
           <ul class="space-y-2">
@@ -46,7 +46,7 @@
                   class="w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-all
                     {selectedSection === section.id 
                       ? 'bg-primary/10 text-primary font-medium' 
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'}"
+                      : 'hover:bg-muted'}"
                   on:click={() => {
                     selectedSection = section.id;
                     showMobileMenu = false;
@@ -63,10 +63,10 @@
 
       <!-- Content Area -->
       <div class="lg:col-span-3">
-        <div class="glass-card p-6 sm:p-8" in:fade={{ duration: 200 }}>
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 sm:p-8" in:fade={{ duration: 200 }}>
           {#if selectedSection === 'getting-started'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Getting Started</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Getting Started</h2>
               
               <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">Quick Setup Guide</h3>
@@ -97,19 +97,19 @@
 
               <h3 class="text-xl font-semibold mb-4">Dashboard Overview</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">📊 Live Standings</h4>
                   <p class="text-sm">Current Premier League table with points, goals, and form indicators.</p>
                 </div>
-                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">⚽ Upcoming Fixtures</h4>
                   <p class="text-sm">Next matches with AI-powered predictions and confidence levels.</p>
                 </div>
-                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">📈 Team Stats</h4>
                   <p class="text-sm">Detailed performance metrics including xG, form, and trends.</p>
                 </div>
-                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">🎯 Predictions</h4>
                   <p class="text-sm">Multiple models including ELO, Poisson, and Expected Goals.</p>
                 </div>
@@ -127,7 +127,7 @@
 
           {:else if selectedSection === 'predictions'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Understanding Predictions</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Understanding Predictions</h2>
               
               <div class="mb-8">
                 <h3 class="text-xl font-semibold mb-4">Our Three-Model System</h3>
@@ -204,7 +204,7 @@
                 </div>
               </div>
 
-              <div class="bg-slate-100 dark:bg-slate-800 p-6 rounded-xl">
+              <div class="bg-muted p-6 rounded-xl">
                 <h3 class="text-lg font-semibold mb-3">Reading Prediction Confidence</h3>
                 <div class="space-y-2">
                   <div class="flex items-center gap-3">
@@ -225,7 +225,7 @@
 
           {:else if selectedSection === 'maximizing'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Maximizing Prediction Accuracy</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Maximizing Prediction Accuracy</h2>
               
               <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🎯 The Golden Rules</h3>
@@ -258,9 +258,9 @@
               </div>
 
               <h3 class="text-xl font-semibold mb-4">Kelly Criterion Calculator</h3>
-              <div class="p-6 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <div class="p-6 bg-muted rounded-xl">
                 <p class="mb-4">Use our Kelly Calculator to determine optimal stake sizes:</p>
-                <div class="bg-white dark:bg-slate-900 p-4 rounded-lg font-mono text-sm">
+                <div class="bg-card p-4 rounded-lg font-mono text-sm">
                   Stake % = (Probability × Odds - 1) / (Odds - 1)
                 </div>
                 <p class="text-sm mt-4 text-amber-600">⚠️ Never bet more than 25% of Kelly recommendation for safety.</p>
@@ -269,10 +269,10 @@
 
           {:else if selectedSection === 'features'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Features Guide</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Features Guide</h2>
               
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">📊 Dashboard</h3>
                   <p class="text-sm mb-3">Your command center for all Premier League data and predictions.</p>
                   <ul class="text-sm space-y-1">
@@ -283,7 +283,7 @@
                   </ul>
                 </div>
                 
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">🔮 Predictions</h3>
                   <p class="text-sm mb-3">Advanced statistical models for match outcome predictions.</p>
                   <ul class="text-sm space-y-1">
@@ -294,7 +294,7 @@
                   </ul>
                 </div>
                 
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">📈 Kelly Calculator</h3>
                   <p class="text-sm mb-3">Optimize your stake sizes using the Kelly Criterion formula.</p>
                   <ul class="text-sm space-y-1">
@@ -305,7 +305,7 @@
                   </ul>
                 </div>
                 
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">💎 Value Bets</h3>
                   <p class="text-sm mb-3">Identify opportunities where odds exceed true probability.</p>
                   <ul class="text-sm space-y-1">
@@ -316,7 +316,7 @@
                   </ul>
                 </div>
                 
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">🤖 AI Assistant</h3>
                   <p class="text-sm mb-3">Get intelligent insights and explanations for predictions.</p>
                   <ul class="text-sm space-y-1">
@@ -327,7 +327,7 @@
                   </ul>
                 </div>
                 
-                <div class="glass-card p-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
                   <h3 class="font-bold text-lg mb-3">📱 Mobile Features</h3>
                   <p class="text-sm mb-3">Full functionality on all devices with responsive design.</p>
                   <ul class="text-sm space-y-1">
@@ -342,7 +342,7 @@
 
           {:else if selectedSection === 'security'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Privacy & Security</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Privacy & Security</h2>
               
               <div class="bg-green-50 dark:bg-green-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🔒 Your Data is Safe</h3>
@@ -380,7 +380,7 @@
               </div>
 
               <h3 class="text-xl font-semibold mb-4">API Key Security</h3>
-              <div class="p-6 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <div class="p-6 bg-muted rounded-xl">
                 <h4 class="font-semibold mb-3">Best Practices:</h4>
                 <ul class="space-y-2 text-sm">
                   <li>✅ Use a dedicated API key for this app</li>
@@ -394,45 +394,45 @@
 
           {:else if selectedSection === 'faq'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 gradient-text">Frequently Asked Questions</h2>
+              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Frequently Asked Questions</h2>
               
               <div class="space-y-6">
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">How accurate are the predictions?</h3>
                   <p>Our models achieve 60-65% accuracy on average, with high-confidence predictions reaching 75-85% accuracy when all models agree.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Is this app free to use?</h3>
                   <p>Yes! The app is completely free. You just need an API key from Football-Data.org, which provides 10 requests per minute on the free tier.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Why am I seeing "Rate Limit Exceeded" errors?</h3>
                   <p>The free API tier allows 10 requests per minute. Wait 60 seconds and try again, or consider upgrading your API plan for more requests.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I use this for betting?</h3>
                   <p>The app provides statistical analysis for research and entertainment. Any betting decisions are your responsibility. Always gamble responsibly.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">How often is data updated?</h3>
                   <p>Match data updates in real-time during games. Statistics and predictions refresh every 5 minutes when you're using the app.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Does it work offline?</h3>
                   <p>The app caches recent data for offline viewing, but requires an internet connection for live updates and new predictions.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
                   <p>Currently, you can copy data from tables. Full export functionality is planned for a future update.</p>
                 </div>
                 
-                <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Will you add other leagues?</h3>
                   <p>We're focusing on perfecting Premier League predictions first. Other leagues are on our roadmap for future versions.</p>
                 </div>
@@ -446,32 +446,14 @@
 </div>
 
 <style>
-  .glass-effect {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-  
-  :global(.dark) .glass-effect {
-    background: rgba(15, 23, 42, 0.7);
-  }
-  
-  .glass-card {
-    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-xl shadow-lg border border-slate-200 dark:border-slate-700;
-  }
-  
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent;
-  }
-  
   .prose h2 {
     @apply text-2xl sm:text-3xl;
   }
-  
+
   .prose h3 {
     @apply text-lg sm:text-xl;
   }
-  
+
   .prose h4 {
     @apply text-base sm:text-lg;
   }

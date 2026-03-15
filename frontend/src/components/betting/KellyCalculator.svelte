@@ -99,7 +99,7 @@
   $: effectiveBankroll = Math.min(bankroll, maxBankroll);
 </script>
 
-<div class="kelly-calculator bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6">
+<div class="max-w-[1000px] rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
   <div class="header mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
@@ -107,14 +107,14 @@
           <Calculator class="w-6 h-6 text-white" />
         </div>
         <div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Kelly Calculator</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-400">Safe betting with £{maxBankroll} maximum</p>
+          <h2 class="text-xl font-bold font-display text-foreground">Kelly Calculator</h2>
+          <p class="text-sm text-muted-foreground">Safe betting with £{maxBankroll} maximum</p>
         </div>
       </div>
       
       <button
         on:click={() => showLimits = !showLimits}
-        class="btn btn-sm btn-secondary flex items-center gap-1"
+        class="px-3 py-1 text-sm rounded-lg font-medium transition-colors bg-muted text-foreground hover:bg-muted/80 flex items-center gap-1"
       >
         <Settings class="w-4 h-4" />
         Personal Limits
@@ -124,15 +124,15 @@
   
   <!-- Personal Limits Modal -->
   {#if showLimits}
-    <div class="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg" transition:slide>
+    <div class="mb-6 p-4 bg-muted rounded-lg" transition:slide>
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
+        <h3 class="text-lg font-semibold font-display flex items-center gap-2">
           <Shield class="w-5 h-5 text-blue-500" />
           Personal Betting Limits
         </h3>
         <button
           on:click={saveLimits}
-          class="btn btn-sm btn-primary flex items-center gap-1"
+          class="px-3 py-1 text-sm rounded-lg font-medium transition-colors bg-primary text-white hover:bg-primary/90 flex items-center gap-1"
         >
           <Save class="w-4 h-4" />
           Save Limits
@@ -141,69 +141,69 @@
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-sm font-medium text-foreground mb-1">
             Maximum Bankroll
           </label>
           <div class="relative">
-            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">£</span>
             <input
               type="number"
               bind:value={maxBankroll}
               min="50"
               max="500"
               step="50"
-              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-card"
             />
           </div>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-sm font-medium text-foreground mb-1">
             Max Stake Per Bet
           </label>
           <div class="relative">
-            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">£</span>
             <input
               type="number"
               bind:value={maxStakeAmount}
               min="5"
               max="100"
               step="5"
-              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-card"
             />
           </div>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-sm font-medium text-foreground mb-1">
             Daily Loss Limit
           </label>
           <div class="relative">
-            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">£</span>
             <input
               type="number"
               bind:value={dailyLossLimit}
               min="20"
               max="200"
               step="10"
-              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-card"
             />
           </div>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          <label class="block text-sm font-medium text-foreground mb-1">
             Weekly Loss Limit
           </label>
           <div class="relative">
-            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">£</span>
             <input
               type="number"
               bind:value={weeklyLossLimit}
               min="50"
               max="500"
               step="50"
-              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-card"
             />
           </div>
         </div>
@@ -223,20 +223,20 @@
   <div class="calculator-inputs grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
     <!-- Bankroll -->
     <div>
-      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-foreground mb-2">
         Your Bankroll
       </label>
       <div class="relative">
-        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
+        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">£</span>
         <input
           type="number"
           bind:value={bankroll}
           min="10"
           max={maxBankroll}
           step="10"
-          class="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+          class="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-card"
         />
-        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500">
+        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
           Max: £{maxBankroll}
         </span>
       </div>
@@ -244,7 +244,7 @@
     
     <!-- Your Probability -->
     <div>
-      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-foreground mb-2">
         Your Win Probability
       </label>
       <div class="relative">
@@ -257,16 +257,16 @@
           class="w-full"
         />
         <div class="flex justify-between items-center mt-1">
-          <span class="text-xs text-slate-500">1%</span>
+          <span class="text-xs text-muted-foreground">1%</span>
           <span class="text-sm font-medium text-primary">{ourProbability}%</span>
-          <span class="text-xs text-slate-500">99%</span>
+          <span class="text-xs text-muted-foreground">99%</span>
         </div>
       </div>
     </div>
     
     <!-- Bookmaker Odds -->
     <div>
-      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-foreground mb-2">
         Bookmaker Odds (Decimal)
       </label>
       <input
@@ -275,16 +275,16 @@
         min="1.01"
         max="100"
         step="0.01"
-        class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+        class="w-full px-4 py-2 rounded-lg border border-border bg-muted"
       />
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+      <p class="text-xs text-muted-foreground mt-1">
         Implied: {((1 / bookmakerOdds) * 100).toFixed(1)}%
       </p>
     </div>
     
     <!-- Kelly Fraction -->
     <div>
-      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+      <label class="block text-sm font-medium text-foreground mb-2">
         Risk Level
       </label>
       <div class="grid grid-cols-3 gap-2">
@@ -293,7 +293,7 @@
           class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
             kellyFraction === 'conservative'
               ? 'bg-green-500 text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              : 'bg-muted text-foreground hover:bg-muted/80'
           }"
         >
           Conservative
@@ -303,7 +303,7 @@
           class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
             kellyFraction === 'quarter'
               ? 'bg-amber-500 text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              : 'bg-muted text-foreground hover:bg-muted/80'
           }"
         >
           Standard
@@ -313,7 +313,7 @@
           class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {
             kellyFraction === 'half'
               ? 'bg-red-500 text-white'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              : 'bg-muted text-foreground hover:bg-muted/80'
           }"
         >
           Aggressive
@@ -325,38 +325,38 @@
   {#if calculation}
     <!-- Results -->
     <div class="results bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-6 mb-6" transition:fade>
-      <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+      <h3 class="text-lg font-bold font-display mb-4 flex items-center space-x-2">
         <Target class="w-5 h-5 text-primary" />
         <span>Recommended Bet</span>
       </h3>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Stake Amount</p>
+        <div class="bg-card/80 rounded-lg p-4">
+          <p class="text-sm text-muted-foreground mb-1">Stake Amount</p>
           <p class="text-2xl font-bold text-primary">
             {formatCurrency(getRecommendedStake())}
           </p>
-          <p class="text-xs text-slate-500 mt-1">
+          <p class="text-xs text-muted-foreground mt-1">
             {((getRecommendedStake() / effectiveBankroll) * 100).toFixed(1)}% of bankroll
           </p>
         </div>
         
-        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Expected Value</p>
+        <div class="bg-card/80 rounded-lg p-4">
+          <p class="text-sm text-muted-foreground mb-1">Expected Value</p>
           <p class="text-2xl font-bold {calculation.expectedValue > 0 ? 'text-green-600' : 'text-red-600'}">
             {calculation.expectedValue > 0 ? '+' : ''}{formatPercentage(calculation.expectedValue)}
           </p>
-          <p class="text-xs text-slate-500 mt-1">
+          <p class="text-xs text-muted-foreground mt-1">
             {calculation.expectedValue > 0 ? 'Positive EV' : 'Negative EV'}
           </p>
         </div>
         
-        <div class="bg-white/80 dark:bg-slate-800/80 rounded-lg p-4">
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-1">Potential Return</p>
+        <div class="bg-card/80 rounded-lg p-4">
+          <p class="text-sm text-muted-foreground mb-1">Potential Return</p>
           <p class="text-2xl font-bold text-blue-600">
             {formatCurrency(getRecommendedStake() * bookmakerOdds)}
           </p>
-          <p class="text-xs text-slate-500 mt-1">
+          <p class="text-xs text-muted-foreground mt-1">
             Profit: {formatCurrency(getRecommendedStake() * (bookmakerOdds - 1))}
           </p>
         </div>
@@ -392,39 +392,39 @@
     
     <!-- Details -->
     <div class="details grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-        <h4 class="text-sm font-semibold mb-2">Kelly Values</h4>
+      <div class="bg-muted rounded-lg p-4">
+        <h4 class="text-sm font-semibold font-display mb-2">Kelly Values</h4>
         <div class="space-y-1 text-sm">
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Full Kelly:</span>
+            <span class="text-muted-foreground">Full Kelly:</span>
             <span class="font-mono">{formatPercentage(calculation.fullKelly)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Half Kelly:</span>
+            <span class="text-muted-foreground">Half Kelly:</span>
             <span class="font-mono">{formatPercentage(calculation.halfKelly)}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Quarter Kelly:</span>
+            <span class="text-muted-foreground">Quarter Kelly:</span>
             <span class="font-mono">{formatPercentage(calculation.quarterKelly)}</span>
           </div>
         </div>
       </div>
       
-      <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-        <h4 class="text-sm font-semibold mb-2">Analysis</h4>
+      <div class="bg-muted rounded-lg p-4">
+        <h4 class="text-sm font-semibold font-display mb-2">Analysis</h4>
         <div class="space-y-1 text-sm">
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Your Edge:</span>
+            <span class="text-muted-foreground">Your Edge:</span>
             <span class="font-mono {calculation.edgePercentage > 0 ? 'text-green-600' : 'text-red-600'}">
               {calculation.edgePercentage > 0 ? '+' : ''}{formatPercentage(calculation.edgePercentage)}
             </span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Confidence:</span>
+            <span class="text-muted-foreground">Confidence:</span>
             <span class="font-mono">{(confidenceLevel * 100).toFixed(0)}%</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-600 dark:text-slate-400">Risk Level:</span>
+            <span class="text-muted-foreground">Risk Level:</span>
             <span class="font-mono capitalize">{kellyFraction}</span>
           </div>
         </div>
@@ -432,25 +432,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .kelly-calculator {
-    max-width: 1000px;
-  }
-  
-  .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors;
-  }
-  
-  .btn-primary {
-    @apply bg-primary text-white hover:bg-primary/90;
-  }
-  
-  .btn-secondary {
-    @apply bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700;
-  }
-  
-  .btn-sm {
-    @apply px-3 py-1 text-sm;
-  }
-</style>
