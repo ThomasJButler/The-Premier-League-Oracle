@@ -228,11 +228,13 @@ describe('Dashboard Component', () => {
   });
 
   it('should display stats cards after loading', async () => {
-    render(Dashboard);
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
 
     await waitFor(() => {
-      const statCards = document.querySelectorAll('.card-stats');
-      expect(statCards.length).toBeGreaterThan(0);
+      const accuracyElements = screen.queryAllByText(/Prediction Accuracy/i);
+      expect(accuracyElements.length).toBeGreaterThan(0);
     });
   });
 
@@ -277,8 +279,10 @@ describe('Dashboard Component', () => {
     render(Dashboard);
 
     await waitFor(() => {
-      const chartContainers = document.querySelectorAll('.chart-container');
-      expect(chartContainers.length).toBe(2);
+      const accuracyChart = screen.queryByText(/Prediction Accuracy Trend/i);
+      const profitChart = screen.queryByText(/Profit\/Loss Over Time/i);
+      expect(accuracyChart).toBeInTheDocument();
+      expect(profitChart).toBeInTheDocument();
     });
   });
 
@@ -300,14 +304,16 @@ describe('Dashboard Component', () => {
     });
   });
 
-  it('should render stat icon wrappers after loading', async () => {
+  it('should render all four stat cards after loading', async () => {
     const { component } = render(Dashboard);
     await (component as any).refresh();
     await act();
 
     await waitFor(() => {
-      const iconWrappers = document.querySelectorAll('.stat-icon-wrapper');
-      expect(iconWrappers.length).toBe(4);
+      expect(screen.queryAllByText(/Prediction Accuracy/i).length).toBeGreaterThan(0);
+      expect(screen.queryAllByText(/Total Profit/i).length).toBeGreaterThan(0);
+      expect(screen.queryAllByText(/Total Predictions/i).length).toBeGreaterThan(0);
+      expect(screen.queryAllByText(/Bets Placed/i).length).toBeGreaterThan(0);
     });
   });
 
