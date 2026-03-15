@@ -34,3 +34,6 @@ loop.sh
 .env
 /backend/app/api/__pycache__
 .claude/settings.json
+/spreadsheets
+*.pyc
+urgenttodo.txt
