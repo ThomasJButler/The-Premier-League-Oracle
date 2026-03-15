@@ -114,11 +114,11 @@
 
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold gradient-text">Match Schedule</h2>
+    <h2 class="text-2xl font-bold font-display text-foreground">Match Schedule</h2>
     
     <!-- Match count -->
     {#if !loading && filteredMatches.length > 0}
-      <span class="text-sm text-slate-500 dark:text-slate-400">
+      <span class="text-sm text-muted-foreground">
         Showing {filteredMatches.length} of {matches.length} matches
       </span>
     {/if}
@@ -126,11 +126,11 @@
   
   <!-- Filters and Sorting Controls -->
   {#if !loading && matches.length > 0}
-    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Status Filter -->
         <div class="space-y-2">
-          <label for="status-filter" class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <label for="status-filter" class="text-sm font-medium text-foreground flex items-center gap-2">
             <Filter class="w-4 h-4" />
             Status
           </label>
@@ -138,7 +138,7 @@
             id="status-filter" 
             bind:value={filterStatus} 
             on:change={handleFilterChange}
-            class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+            class="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="all">All Matches</option>
             <option value="completed">Completed</option>
@@ -148,7 +148,7 @@
         
         <!-- Team Filter -->
         <div class="space-y-2">
-          <label for="team-filter" class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <label for="team-filter" class="text-sm font-medium text-foreground flex items-center gap-2">
             <Users class="w-4 h-4" />
             Team
           </label>
@@ -156,7 +156,7 @@
             id="team-filter" 
             bind:value={filterTeam} 
             on:change={handleFilterChange}
-            class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+            class="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="">All Teams</option>
             {#each teams as team}
@@ -167,7 +167,7 @@
         
         <!-- Sort By -->
         <div class="space-y-2">
-          <div class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2" role="group" aria-label="Sort options">
+          <div class="text-sm font-medium text-foreground flex items-center gap-2" role="group" aria-label="Sort options">
             <ArrowUpDown class="w-4 h-4" />
             Sort By
           </div>
@@ -176,7 +176,7 @@
               on:click={() => handleSort('date')}
               class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'date' 
                 ? 'bg-primary text-white' 
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}"
+                : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Date {sortBy === 'date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
             </button>
@@ -184,7 +184,7 @@
               on:click={() => handleSort('team')}
               class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'team' 
                 ? 'bg-primary text-white' 
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}"
+                : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Team {sortBy === 'team' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
             </button>
@@ -193,7 +193,7 @@
         
         <!-- Quick Actions -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Quick Filters</label>
+          <label class="text-sm font-medium text-foreground">Quick Filters</label>
           <div class="flex gap-2">
             <button
               on:click={() => {
@@ -228,13 +228,13 @@
       <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
-    <div class="card card-error p-6 text-center">
-      <p class="text-error-content font-medium">{error}</p>
-      <button class="btn btn-primary mt-4" on:click={loadMatches}>Retry</button>
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
+      <p class="font-medium">{error}</p>
+      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={loadMatches}>Retry</button>
     </div>
   {:else if filteredMatches.length === 0}
-    <div class="card card-info p-6 text-center">
-      <p class="text-slate-500 dark:text-slate-400">No matches found with the current filters.</p>
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
+      <p class="text-muted-foreground">No matches found with the current filters.</p>
       <button 
         class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
         on:click={() => {
@@ -249,24 +249,24 @@
   {:else}
     <div class="space-y-4">
       {#each filteredMatches as match, i (match.id)}
-        <div class="match-card animate-slide-in-up" style="animation-delay: {i * 50}ms">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
           <!-- Team 1 -->
           <div class="flex items-center justify-end space-x-3">
-            <span class="font-semibold text-slate-800 dark:text-slate-200 text-right">{match.home_team}</span>
+            <span class="font-semibold text-foreground text-right">{match.home_team}</span>
             <img src={getTeamLogo(match.home_team, 30)} alt="{match.home_team} logo" class="w-7 h-7 object-contain rounded-full">
           </div>
 
           <!-- Score/Time -->
           <div class="text-center">
             {#if match.result}
-              <div class="match-score">
+              <div class="text-xl font-bold text-foreground px-3 py-1">
                 {match.home_goals ?? '?'} - {match.away_goals ?? '?'}
               </div>
             {:else}
-              <div class="text-sm font-medium text-slate-500 dark:text-slate-400">
+              <div class="text-sm font-medium text-muted-foreground">
                 {format(new Date(match.date), 'HH:mm')}
               </div>
-              <div class="text-xs text-slate-500 dark:text-slate-400">
+              <div class="text-xs text-muted-foreground">
                 {format(new Date(match.date), 'MMM d')}
               </div>
             {/if}
@@ -275,7 +275,7 @@
           <!-- Team 2 -->
           <div class="flex items-center justify-start space-x-3">
             <img src={getTeamLogo(match.away_team, 30)} alt="{match.away_team} logo" class="w-7 h-7 object-contain rounded-full">
-            <span class="font-semibold text-slate-800 dark:text-slate-200 text-left">{match.away_team}</span>
+            <span class="font-semibold text-foreground text-left">{match.away_team}</span>
           </div>
 
           <!-- Status/Actions -->
@@ -292,14 +292,3 @@
   {/if}
 </div>
 
-<style global lang="postcss">
-  /* Ensure match-card layout works well on smaller screens */
-  @media (max-width: 767px) {
-    .match-card {
-      @apply grid grid-cols-3 items-center gap-2 p-3;
-    }
-    .match-score {
-      @apply px-2 py-1 text-lg;
-    }
-  }
-</style>

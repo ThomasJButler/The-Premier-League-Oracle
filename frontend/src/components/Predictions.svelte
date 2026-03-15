@@ -252,7 +252,7 @@
 <div class="space-y-6 animate-fade-in">
   <!-- Header with Gameweek Selector -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold gradient-text">Match Predictions</h2>
+    <h2 class="text-2xl font-bold font-display text-foreground">Match Predictions</h2>
     
     <div class="flex items-center gap-4">
       <!-- Gameweek Selector -->
@@ -262,7 +262,7 @@
           id="gameweek"
           bind:value={selectedGameweek}
           on:change={handleGameweekChange}
-          class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+          class="px-3 py-1.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           disabled={isBatchPredicting}
         >
           {#each Array(38) as _, i}
@@ -290,22 +290,22 @@
   
   <!-- Accuracy Breakdown Panel -->
   {#if accuracyStats && accuracyStats.totalPredictions > 0}
-    <div class="card card-glass" in:fade={{ duration: 300 }}>
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" in:fade={{ duration: 300 }}>
       <button
         on:click={() => showAccuracyPanel = !showAccuracyPanel}
-        class="w-full flex items-center justify-between p-4"
+        class="w-full flex items-center justify-between"
       >
         <div class="flex items-center gap-2">
-          <BarChart3 class="w-5 h-5 text-primary dark:text-primary-light" />
-          <span class="font-semibold text-slate-800 dark:text-slate-200">Prediction Accuracy</span>
+          <BarChart3 class="w-5 h-5 text-primary" />
+          <span class="font-semibold text-foreground">Prediction Accuracy</span>
           <span class="badge badge-neutral text-xs">{accuracyStats.totalPredictions} predictions</span>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-lg font-bold text-primary dark:text-primary-light">{accuracyStats.accuracy.toFixed(1)}%</span>
+          <span class="text-lg font-bold text-primary">{accuracyStats.accuracy.toFixed(1)}%</span>
           {#if showAccuracyPanel}
-            <ChevronUp class="w-4 h-4 text-slate-500" />
+            <ChevronUp class="w-4 h-4 text-muted-foreground" />
           {:else}
-            <ChevronDown class="w-4 h-4 text-slate-500" />
+            <ChevronDown class="w-4 h-4 text-muted-foreground" />
           {/if}
         </div>
       </button>
@@ -314,17 +314,17 @@
         <div class="px-4 pb-4 space-y-4" in:fade={{ duration: 200 }}>
           <!-- Per-Outcome Accuracy -->
           <div>
-            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Outcome</h4>
+            <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Outcome</h4>
             <div class="grid grid-cols-3 gap-3">
               {#each [
                 { label: 'Home Win', value: accuracyStats.homeWinAccuracy, colour: 'bg-blue-500' },
                 { label: 'Draw', value: accuracyStats.drawAccuracy, colour: 'bg-amber-500' },
                 { label: 'Away Win', value: accuracyStats.awayWinAccuracy, colour: 'bg-emerald-500' }
               ] as outcome}
-                <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                  <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{outcome.label}</div>
-                  <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{outcome.value.toFixed(0)}%</div>
-                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+                <div class="text-center p-3 bg-muted rounded-lg">
+                  <div class="text-xs text-muted-foreground mb-1">{outcome.label}</div>
+                  <div class="text-lg font-bold text-foreground">{outcome.value.toFixed(0)}%</div>
+                  <div class="w-full bg-muted rounded-full h-1.5 mt-1">
                     <div class="{outcome.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(outcome.value, 100)}%"></div>
                   </div>
                 </div>
@@ -334,17 +334,17 @@
 
           <!-- Per-Confidence Band -->
           <div>
-            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">By Confidence Band</h4>
+            <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Confidence Band</h4>
             <div class="grid grid-cols-3 gap-3">
               {#each [
                 { label: 'High (>70%)', value: accuracyStats.highConfidenceAccuracy, colour: 'bg-green-500' },
                 { label: 'Medium (50-70%)', value: accuracyStats.mediumConfidenceAccuracy, colour: 'bg-yellow-500' },
                 { label: 'Low (<50%)', value: accuracyStats.lowConfidenceAccuracy, colour: 'bg-red-500' }
               ] as band}
-                <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                  <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{band.label}</div>
-                  <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{band.value.toFixed(0)}%</div>
-                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+                <div class="text-center p-3 bg-muted rounded-lg">
+                  <div class="text-xs text-muted-foreground mb-1">{band.label}</div>
+                  <div class="text-lg font-bold text-foreground">{band.value.toFixed(0)}%</div>
+                  <div class="w-full bg-muted rounded-full h-1.5 mt-1">
                     <div class="{band.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(band.value, 100)}%"></div>
                   </div>
                 </div>
@@ -354,20 +354,20 @@
 
           <!-- Rolling & Streaks -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Last 10</div>
-              <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{rollingLast10Accuracy.toFixed(0)}%</div>
+            <div class="text-center p-3 bg-muted rounded-lg">
+              <div class="text-xs text-muted-foreground mb-1">Last 10</div>
+              <div class="text-lg font-bold text-foreground">{rollingLast10Accuracy.toFixed(0)}%</div>
             </div>
-            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Exact Score</div>
-              <div class="text-lg font-bold text-slate-800 dark:text-slate-200">{accuracyStats.scoreAccuracy.toFixed(0)}%</div>
+            <div class="text-center p-3 bg-muted rounded-lg">
+              <div class="text-xs text-muted-foreground mb-1">Exact Score</div>
+              <div class="text-lg font-bold text-foreground">{accuracyStats.scoreAccuracy.toFixed(0)}%</div>
             </div>
-            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Best Streak</div>
+            <div class="text-center p-3 bg-muted rounded-lg">
+              <div class="text-xs text-muted-foreground mb-1">Best Streak</div>
               <div class="text-lg font-bold text-green-600 dark:text-green-400">{accuracyStats.streak.best}</div>
             </div>
-            <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">Current Streak</div>
+            <div class="text-center p-3 bg-muted rounded-lg">
+              <div class="text-xs text-muted-foreground mb-1">Current Streak</div>
               <div class="text-lg font-bold {accuracyStats.streak.current >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
                 {accuracyStats.streak.current >= 0 ? '+' : ''}{accuracyStats.streak.current}
               </div>
@@ -380,17 +380,17 @@
 
   <!-- Batch Prediction Progress -->
   {#if isBatchPredicting}
-    <div class="glass-card p-4" in:fade={{ duration: 300 }}>
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" in:fade={{ duration: 300 }}>
       <div class="space-y-3">
         <div class="flex justify-between items-center">
           <span class="text-sm font-medium">{batchPredictionMessage}</span>
-          <span class="text-sm text-slate-500 dark:text-slate-400">
+          <span class="text-sm text-muted-foreground">
             {batchPredictionProgress} / {batchPredictionTotal}
           </span>
         </div>
         
         <!-- Progress Bar -->
-        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+        <div class="w-full bg-muted rounded-full h-2 overflow-hidden">
           <div 
             class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 ease-out"
             style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
@@ -401,7 +401,7 @@
         
         <!-- Current Team Processing -->
         {#if currentProcessingTeam}
-          <div class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>Analyzing: {currentProcessingTeam}</span>
           </div>
@@ -415,9 +415,9 @@
       <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
-    <div class="card p-6 text-center bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700/50">
-      <p class="text-rose-700 dark:text-rose-300 font-medium">{error}</p>
-      <button class="btn btn-primary mt-4" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
+      <p class="font-medium">{error}</p>
+      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -426,7 +426,7 @@
           <!-- Status Indicator Overlay -->
           {#if prediction.predictionStatus === 'processing'}
             <div class="absolute inset-0 bg-blue-500/10 rounded-lg z-10 flex items-center justify-center pointer-events-none">
-              <div class="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-lg flex items-center gap-2">
+              <div class="bg-card rounded-lg p-3 shadow-lg flex items-center gap-2">
                 <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 <span class="text-sm font-medium">Analyzing...</span>
               </div>
@@ -451,9 +451,9 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front card card-glass">
+            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
               <div class="flex justify-between items-start mb-3">
-                <span class="text-sm text-slate-500 dark:text-slate-400">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
+                <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
                   <span class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}">
                     {(prediction.prediction.confidence_score * 100).toFixed(0)}%
@@ -465,34 +465,34 @@
                 <div class="flex justify-center items-center space-x-4 mb-3">
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.home_team, 40)} alt="{prediction.home_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
-                    <span class="text-sm font-medium text-slate-800 dark:text-slate-200 text-center">{prediction.home_team}</span>
+                    <span class="text-sm font-medium text-foreground text-center">{prediction.home_team}</span>
                   </div>
                   <div class="text-center">
-                    <span class="text-xl font-bold text-slate-500 dark:text-slate-400">vs</span>
+                    <span class="text-xl font-bold text-muted-foreground">vs</span>
                     {#if prediction.detailedAnalysis}
-                      <div class="text-2xl font-bold text-primary dark:text-primary-light mt-1">
+                      <div class="text-2xl font-bold text-primary mt-1">
                         {prediction.detailedAnalysis.predictedScore}
                       </div>
                     {/if}
                   </div>
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.away_team, 40)} alt="{prediction.away_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
-                    <span class="text-sm font-medium text-slate-800 dark:text-slate-200 text-center">{prediction.away_team}</span>
+                    <span class="text-sm font-medium text-foreground text-center">{prediction.away_team}</span>
                   </div>
                 </div>
               </div>
 
               {#if prediction.prediction}
                 <div class="mb-4">
-                  <div class="flex justify-around items-center bg-slate-100/50 dark:bg-slate-800/50 rounded-lg p-3">
+                  <div class="flex justify-around items-center bg-muted rounded-lg p-3">
                     {#each [
                       { label: 'Home', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin },
                       { label: 'Draw', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw },
                       { label: 'Away', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin }
                     ] as outcome}
                       <div class="text-center px-2">
-                        <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">{outcome.label}</span>
-                        <span class="block text-lg font-bold {prediction.prediction.predicted_result === outcome.value ? 'text-primary dark:text-primary-light' : 'text-slate-600 dark:text-slate-400'}">
+                        <span class="block text-xs font-medium text-muted-foreground">{outcome.label}</span>
+                        <span class="block text-lg font-bold {prediction.prediction.predicted_result === outcome.value ? 'text-primary' : 'text-muted-foreground'}">
                           {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
                         </span>
                       </div>
@@ -510,18 +510,18 @@
                   Tap for Analysis
                 </button>
               {:else}
-                <div class="w-full text-center text-sm text-slate-500 dark:text-slate-400 mt-3 py-2">
+                <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
                   Click "Predict Gameweek" to generate analysis
                 </div>
               {/if}
             </div>
 
             <!-- Back of Card -->
-            <div class="flip-card-back card card-glass p-6">
+            <div class="flip-card-back rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
               {#if prediction.detailedAnalysis}
                 <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Analysis</h3>
+                    <h3 class="text-lg font-bold text-foreground">Analysis</h3>
                     <button 
                       on:click={() => toggleCard(prediction.id)}
                       class="btn btn-ghost btn-sm">
@@ -538,7 +538,7 @@
                     <div class="text-2xl font-bold text-blue-700 dark:text-blue-300 text-center">
                       {prediction.detailedAnalysis.predictedScore}
                     </div>
-                    <div class="text-sm text-center text-slate-700 dark:text-slate-300 mt-1">
+                    <div class="text-sm text-center text-foreground mt-1">
                       Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
                   </div>
@@ -547,15 +547,15 @@
                   <div class="mb-4">
                     <div class="flex items-center gap-2 mb-2">
                       <TrendingUp class="w-4 h-4 text-emerald-600" />
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">Recent Form</span>
+                      <span class="font-semibold text-foreground">Recent Form</span>
                     </div>
                     <div class="space-y-2 text-sm">
                       <div class="flex justify-between">
-                        <span class="text-slate-600 dark:text-slate-400">{prediction.home_team}:</span>
+                        <span class="text-muted-foreground">{prediction.home_team}:</span>
                         <span class="font-mono">{prediction.detailedAnalysis.homeForm}</span>
                       </div>
                       <div class="flex justify-between">
-                        <span class="text-slate-600 dark:text-slate-400">{prediction.away_team}:</span>
+                        <span class="text-muted-foreground">{prediction.away_team}:</span>
                         <span class="font-mono">{prediction.detailedAnalysis.awayForm}</span>
                       </div>
                     </div>
@@ -565,13 +565,13 @@
                   <div class="mb-4">
                     <div class="flex items-center gap-2 mb-2">
                       <BarChart3 class="w-4 h-4 text-blue-600" />
-                      <span class="font-semibold text-slate-800 dark:text-slate-200">Key Factors</span>
+                      <span class="font-semibold text-foreground">Key Factors</span>
                     </div>
                     <ul class="text-sm space-y-1">
                       {#each prediction.detailedAnalysis.keyFactors as factor}
                         <li class="flex items-start gap-2">
                           <span class="text-primary mt-1">•</span>
-                          <span class="text-slate-600 dark:text-slate-400">{factor}</span>
+                          <span class="text-muted-foreground">{factor}</span>
                         </li>
                       {/each}
                     </ul>
@@ -600,8 +600,8 @@
                       
                       <!-- Quick Markets Grid -->
                       <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
-                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                          <span class="text-slate-600 dark:text-slate-400">BTTS:</span>
+                        <div class="bg-muted p-2 rounded">
+                          <span class="text-muted-foreground">BTTS:</span>
                           <span class="font-bold ml-1 {prediction.betBuilder.bothTeamsToScore.prediction ? 'text-green-600' : 'text-red-600'}">
                             {prediction.betBuilder.bothTeamsToScore.prediction ? 'Yes' : 'No'}
                             ({((prediction.betBuilder.bothTeamsToScore.prediction ?
@@ -609,21 +609,21 @@
                               prediction.betBuilder.bothTeamsToScore.noProb) * 100).toFixed(0)}%)
                           </span>
                         </div>
-                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                          <span class="text-slate-600 dark:text-slate-400">O/U 2.5:</span>
+                        <div class="bg-muted p-2 rounded">
+                          <span class="text-muted-foreground">O/U 2.5:</span>
                           <span class="font-bold ml-1 {prediction.betBuilder.totalGoals.over25.prediction ? 'text-green-600' : 'text-red-600'}">
                             {prediction.betBuilder.totalGoals.over25.prediction ? 'Over' : 'Under'}
                             ({(prediction.betBuilder.totalGoals.over25.probability * 100).toFixed(0)}%)
                           </span>
                         </div>
-                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                          <span class="text-slate-600 dark:text-slate-400">Corners:</span>
+                        <div class="bg-muted p-2 rounded">
+                          <span class="text-muted-foreground">Corners:</span>
                           <span class="font-bold ml-1">
                             O{prediction.betBuilder.corners.totalOver95.prediction ? '9.5' : '8.5'}
                           </span>
                         </div>
-                        <div class="bg-white/50 dark:bg-slate-800/50 p-2 rounded">
-                          <span class="text-slate-600 dark:text-slate-400">Cards:</span>
+                        <div class="bg-muted p-2 rounded">
+                          <span class="text-muted-foreground">Cards:</span>
                           <span class="font-bold ml-1">
                             O{prediction.betBuilder.cards.totalOver35.prediction ? '3.5' : '2.5'}
                           </span>
@@ -637,7 +637,7 @@
                             Suggested Builders:
                           </div>
                           {#each prediction.betBuilder.suggestedCombos.slice(0, 2) as combo}
-                            <div class="bg-white/40 dark:bg-slate-800/40 rounded p-2 mb-1">
+                            <div class="bg-muted rounded p-2 mb-1">
                               <div class="flex justify-between items-start mb-1">
                                 <span class="text-xs font-bold text-purple-700 dark:text-purple-300">
                                   {combo.name}
@@ -646,7 +646,7 @@
                                   @{combo.combinedOdds.toFixed(2)}
                                 </span>
                               </div>
-                              <div class="text-xs text-slate-600 dark:text-slate-400">
+                              <div class="text-xs text-muted-foreground">
                                 {combo.selections.join(' + ')}
                               </div>
                             </div>
@@ -659,12 +659,12 @@
               {:else}
                 <div class="h-full flex flex-col items-center justify-center text-center p-6">
                   <div class="mb-4">
-                    <Calculator class="w-16 h-16 text-slate-400 dark:text-slate-600" />
+                    <Calculator class="w-16 h-16 text-muted-foreground" />
                   </div>
-                  <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <h3 class="text-lg font-semibold text-foreground mb-2">
                     No Prediction Available
                   </h3>
-                  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                  <p class="text-sm text-muted-foreground mb-4">
                     Click the "Predict Gameweek" button to generate predictions and analysis for this match.
                   </p>
                   <button 
@@ -683,17 +683,6 @@
 </div>
 
 <style lang="postcss">
-  .card-glass {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.75rem;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
-  }
-
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out;
   }
@@ -732,20 +721,9 @@
     flex-direction: column;
   }
 
-  .flip-card-front {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
   .flip-card-back {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.98) 100%);
     transform: rotateY(180deg);
     overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  }
-  
-  :global(.dark) .flip-card-back {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(51, 65, 85, 0.98) 100%);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   }
 
   @keyframes fadeIn {
