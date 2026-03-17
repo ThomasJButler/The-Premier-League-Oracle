@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['DM Sans', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        sans: ['Figtree', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'system-ui', 'sans-serif'],
       },
       colors: {
         // shadcn-svelte semantic tokens (HSL via CSS variables)
@@ -52,20 +52,11 @@ export default {
           DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
           foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
         },
-        // Keep slate for direct usage
-        slate: {
-          '50': '#f8fafc',
-          '100': '#f1f5f9',
-          '200': '#e2e8f0',
-          '300': '#cbd5e1',
-          '400': '#94a3b8',
-          '500': '#64748b',
-          '600': '#475569',
-          '700': '#334155',
-          '800': '#1e293b',
-          '900': '#0f172a',
-          '950': '#020617',
-        },
+        // PL brand colours for direct usage
+        'pl-purple': '#38003c',
+        'pl-green': '#00ff87',
+        'pl-pink': '#e90052',
+        'pl-cyan': '#04f5ff',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -76,6 +67,10 @@ export default {
         'glow-primary-sm': '0 0 8px 0px hsl(var(--primary) / 0.3)',
         'glow-primary-md': '0 0 15px 2px hsl(var(--primary) / 0.4)',
         'glow-primary-lg': '0 0 25px 5px hsl(var(--primary) / 0.5)',
+        'glow-accent-sm': '0 0 8px 0px hsl(var(--accent) / 0.3)',
+        'glow-accent-md': '0 0 15px 2px hsl(var(--accent) / 0.4)',
+        'glow-green': '0 0 15px 2px rgba(0, 255, 135, 0.25)',
+        'inner-glow': 'inset 0 1px 0 0 hsl(var(--border) / 0.1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
@@ -85,6 +80,8 @@ export default {
         'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
         'gradient': 'gradient 10s ease infinite',
         'gradient-fast': 'gradient 5s ease infinite',
+        'shimmer': 'shimmer 2s linear infinite',
+        'stagger': 'staggerIn 0.5s ease-out forwards',
       },
       keyframes: {
         fadeIn: {
@@ -111,6 +108,14 @@ export default {
         gradient: {
           '0%, 100%': { 'background-position': '0% 50%' },
           '50%': { 'background-position': '100% 50%' },
+        },
+        shimmer: {
+          '0%': { 'background-position': '200% 0' },
+          '100%': { 'background-position': '-200% 0' },
+        },
+        staggerIn: {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
       },
     },

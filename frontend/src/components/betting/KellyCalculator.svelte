@@ -103,7 +103,7 @@
   <div class="header mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg">
+        <div class="p-2 rounded-lg" style="background: linear-gradient(135deg, #520058, #38003c);">
           <Calculator class="w-6 h-6 text-white" />
         </div>
         <div>

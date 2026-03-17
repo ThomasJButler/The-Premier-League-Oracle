@@ -47,13 +47,12 @@
       isSidebarOpen = true;
     }
 
-    // Restore saved theme, falling back to system preference
+    // Restore saved theme — default to dark (sports data looks better dark)
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (savedTheme === 'light') {
+    if (savedTheme === 'light') {
       document.documentElement.classList.remove('dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    } else {
+      // Default to dark mode unless explicitly set to light
       document.documentElement.classList.add('dark');
     }
 
@@ -97,7 +96,7 @@
 
 </script>
 
-<div class="flex h-screen bg-background text-foreground overflow-hidden relative">
+<div class="flex h-screen bg-background text-foreground overflow-hidden relative noise-bg">
   <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
   <div class="flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ease-in-out {isSidebarOpen ? 'lg:ml-64' : ''}">

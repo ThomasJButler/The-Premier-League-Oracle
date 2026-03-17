@@ -43,11 +43,11 @@
 <aside class="sidebar-container {isOpen ? 'translate-x-0' : '-translate-x-full'}">
   <nav class="flex flex-col h-full">
     <!-- Sidebar Header -->
-    <div class="px-4 py-5 border-b border-border">
+    <div class="px-4 py-5" style="border-bottom: 1px solid hsl(var(--border) / 0.3);">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-            <span class="text-primary-foreground font-bold text-sm">PL</span>
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #520058, #38003c);">
+            <span class="text-white font-bold text-sm">PL</span>
           </div>
           <div>
             <h2 class="text-sm font-display font-bold text-foreground">Premier League</h2>
@@ -66,7 +66,7 @@
 
     <!-- Main navigation -->
     <div class="flex-grow overflow-y-auto px-3 pt-4 space-y-1">
-      <p class="px-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Main</p>
+      <p class="px-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span>Main</p>
       {#each navItems as item}
         <button
           class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
@@ -80,7 +80,7 @@
 
       <Separator class="my-3" />
 
-      <p class="px-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Betting</p>
+      <p class="px-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Betting</p>
       {#each bettingItems as item}
         <button
           class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"

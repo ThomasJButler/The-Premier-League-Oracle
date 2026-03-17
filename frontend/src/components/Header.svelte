@@ -20,10 +20,12 @@
     dispatch('toggleDarkMode');
   }
 
-  // Initialise theme from saved preference
+  // Initialise theme — default to dark
   if (typeof window !== 'undefined') {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (savedTheme === 'light') {
+      isDarkMode = false;
+    } else {
       isDarkMode = true;
       document.documentElement.classList.add('dark');
     }
