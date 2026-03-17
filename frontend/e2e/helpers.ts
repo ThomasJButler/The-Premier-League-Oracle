@@ -32,7 +32,8 @@ export async function setupApp(page: Page, apiKey = 'test-api-key-e2e') {
  */
 export async function navigateTo(page: Page, viewName: string) {
   const viewport = page.viewportSize();
-  const isMobile = viewport && viewport.width < 768;
+  // Mobile nav is visible below lg breakpoint (1024px), sidebar above
+  const isMobile = viewport && viewport.width < 1024;
 
   if (isMobile) {
     // MobileNav primary items (shown directly on bottom bar)

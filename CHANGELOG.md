@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P1c E2E Test Maintenance — Complete (18 March 2026)
+- **Test count 27 → 123**: Expanded from 27 tests (2 skipped) to 41 unique tests × 3 viewports = 123 total (0 skipped)
+- **New `oracle-chat.spec.ts`**: 8 tests covering ChatBot component — container renders, API key setup, welcome message, input/send disabled states, key save/reject flows, clear chat, character counter
+- **Prediction tests unblocked**: Fixed 2 previously-skipped tests. `prediction generation` now clicks predict, waits for completion, verifies scores and card flip analysis. `accuracy panel toggle` seeds settled predictions via localStorage then reloads to reinitialise PredictionTracker singleton
+- **Kelly Calculator edge cases**: 2 new tests — no-value warning when probability < implied odds, edge percentage and value bet indicator with defaults
+- **Mobile detection fix**: `helpers.ts` threshold updated from 768px to 1024px to match P1d CSS breakpoint alignment
+- **123/123 E2E tests passing, 275/275 unit tests passing, 0 type errors**
+
 ### P1d Mobile UX Overhaul — Complete (18 March 2026)
 - **Navigation dead zone fixed**: Mobile nav CSS used `md:hidden` (768px) but sidebar auto-opens at 1024px — tablet users (768-1024px) had NO navigation. Changed to `lg:hidden` to match sidebar breakpoint
 - **Season Stats added to Sidebar**: Was only reachable via mobile "More" menu; desktop sidebar skipped it entirely

@@ -92,14 +92,14 @@ Fixed 7 mobile layout bugs across 7 files. 275/275 tests passing, 0 type errors.
 - [x] KellyCalculator: results grid stacks on mobile (`grid-cols-1 sm:grid-cols-2`); stake amount text scaled (`text-2xl sm:text-3xl`).
 - [x] Dashboard: chart heights responsive (`h-48 sm:h-56`); "How We Predict" grid gap tightened; recent predictions row stacks on mobile with match name truncation.
 
-### P1c. E2E Test Maintenance
+### P1c. E2E Test Maintenance — DONE (18 March 2026)
 
-27 Playwright E2E tests exist across 5 spec files. 2 tests are skipped (prediction generation flow).
+E2E coverage expanded from 27 tests (2 skipped) to 123 tests (0 skipped) across 6 spec files × 3 viewports (desktop 1280px, Pixel 5 393px, iPhone SE 375px).
 
-- [ ] Fix the 2 skipped prediction generation tests
-- [ ] Add E2E coverage for Oracle Chat (ChatBot.svelte)
-- [ ] Add E2E coverage for Kelly Calculator
-- [ ] Verify mobile viewport tests at 375px, 390px, 768px
+- [x] Fixed 2 skipped prediction tests: `prediction generation produces results on cards` (clicks Predict, waits for completion, verifies scores and card flip) and `accuracy panel toggle works` (seeds settled predictions via localStorage, reloads to reinitialise PredictionTracker singleton, verifies breakdown panels).
+- [x] Created `oracle-chat.spec.ts` with 8 tests: renders container, API key setup visible, welcome message, input/send disabled without key, save key flow, reject short keys, clear chat, character counter.
+- [x] Added 2 Kelly Calculator edge-case tests: `shows no-value warning when probability is below implied odds` (sets prob to 30% against 2.0 odds), `shows edge percentage and value bet indicator` (verifies edge display with default values).
+- [x] Fixed `helpers.ts` mobile detection threshold from 768px to 1024px to match CSS breakpoint change from P1d.
 
 ### P1e. Frontend Correctness Bugs — DONE (18 March 2026)
 
