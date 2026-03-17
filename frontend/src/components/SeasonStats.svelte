@@ -146,7 +146,7 @@
         label: 'Average Goals',
         value: avgGoalsPerMatch,
         icon: Target,
-        color: 'from-purple-600 to-fuchsia-500',
+        color: 'from-teal-500 to-emerald-400',
         description: 'Goals per match this season'
       },
       {
@@ -174,14 +174,14 @@
         label: 'Win Streak',
         value: longestStreak > 0 ? `${streakTeam} (${longestStreak})` : 'None',
         icon: Award,
-        color: 'from-purple-500 to-indigo-500',
+        color: 'from-slate-500 to-slate-400',
         description: 'Longest winning streak'
       },
       {
         label: 'Home Fortress',
         value: bestHomeTeam ? `${bestHomeTeam} (${bestHomePercentage.toFixed(0)}%)` : 'TBD',
         icon: Users,
-        color: 'from-indigo-500 to-blue-500',
+        color: 'from-cyan-500 to-blue-500',
         description: 'Best home win percentage'
       }
     ];
@@ -320,7 +320,7 @@
         label: 'Away Win Rate',
         value: `${awayWinPercentage}%`,
         icon: Home,
-        color: 'from-violet-500 to-purple-500',
+        color: 'from-cyan-500 to-teal-500',
         description: 'Visitor victory percentage'
       },
       {
@@ -348,7 +348,7 @@
         label: 'Over 2.5 Goals',
         value: `${over25Percentage}%`,
         icon: TrendingUp,
-        color: 'from-purple-500 to-fuchsia-500',
+        color: 'from-emerald-500 to-teal-400',
         description: 'Matches with 3+ goals'
       },
       {
@@ -362,7 +362,7 @@
         label: 'Second Half Goals',
         value: secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`,
         icon: Timer,
-        color: 'from-indigo-500 to-purple-500',
+        color: 'from-slate-500 to-cyan-500',
         description: secondHalfGoals > firstHalfGoals ? 'More goals after halftime' : 'More goals before halftime'
       },
       {

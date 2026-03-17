@@ -53,10 +53,10 @@ export default {
           foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
         },
         // PL brand colours for direct usage
-        'pl-purple': '#38003c',
         'pl-green': '#00ff87',
         'pl-pink': '#e90052',
         'pl-cyan': '#04f5ff',
+        'pl-gold': '#f59e0b',
       },
       borderRadius: {
         lg: 'var(--radius)',

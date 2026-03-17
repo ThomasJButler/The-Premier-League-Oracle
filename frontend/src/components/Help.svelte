@@ -133,7 +133,7 @@
                 <h3 class="text-xl font-semibold mb-4">Our Three-Model System</h3>
                 
                 <div class="space-y-6">
-                  <div class="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
+                  <div class="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
                     <h4 class="font-bold text-lg mb-2">🎲 ELO Rating System</h4>
                     <p class="mb-3">Dynamic team strength ratings that adjust based on match results and opposition quality.</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
@@ -179,7 +179,7 @@
                     </div>
                   </div>
 
-                  <div class="p-6 bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl">
+                  <div class="p-6 bg-gradient-to-r from-slate-50 to-teal-50 dark:from-slate-900/20 dark:to-teal-900/20 rounded-xl">
                     <h4 class="font-bold text-lg mb-2">⚡ Expected Goals (xG)</h4>
                     <p class="mb-3">Advanced metric that measures the quality of chances created and conceded by teams.</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
@@ -251,7 +251,7 @@
                   <p class="text-sm">Teams typically overperform after heavy defeats (3+ goals). Back them against weaker opposition.</p>
                 </div>
                 
-                <div class="p-4 border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-900/20">
+                <div class="p-4 border-l-4 border-teal-500 bg-teal-50 dark:bg-teal-900/20">
                   <h4 class="font-semibold mb-2">New Manager Bounce</h4>
                   <p class="text-sm">First 5 games show +15% win rate improvement. Fade after game 10 when reality sets in.</p>
                 </div>

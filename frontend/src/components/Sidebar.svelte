@@ -46,7 +46,7 @@
     <div class="px-4 py-5" style="border-bottom: 1px solid hsl(var(--border) / 0.3);">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #520058, #38003c);">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid rgba(0, 255, 135, 0.15);">
             <span class="text-white font-bold text-sm">PL</span>
           </div>
           <div>

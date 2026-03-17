@@ -251,8 +251,8 @@
     </div>
 
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 300ms">
-      <div class="stat-icon-wrapper bg-purple-100 dark:bg-purple-900/30">
-        <Trophy class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+      <div class="stat-icon-wrapper bg-teal-100 dark:bg-teal-900/30">
+        <Trophy class="w-5 h-5 text-teal-600 dark:text-teal-400" />
       </div>
       <div class="stat-label">Win Rate</div>
       <div class="stat-value">{$winRateTweened.toFixed(1)}%</div>

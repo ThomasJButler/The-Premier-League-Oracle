@@ -320,11 +320,11 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#520058] via-[#38003c] to-[#1a001c] p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e293b] p-6 sm:p-8 text-white animate-slide-in-up">
     <!-- Decorative elements -->
     <div class="absolute inset-0 dot-pattern opacity-[0.03]"></div>
     <div class="absolute -top-20 -right-20 w-64 h-64 bg-[#00ff87]/10 rounded-full blur-3xl"></div>
-    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-[#520058]/40 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-slate-800/40 rounded-full blur-3xl"></div>
 
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
@@ -424,9 +424,9 @@
     </h3>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {#each [
-        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
         { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-fuchsia-400 dark:text-fuchsia-300', bgColor: 'bg-fuchsia-500/10 dark:bg-fuchsia-500/20' },
+        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
         { icon: Target, label: 'Home Advantage', desc: 'Venue adjustments', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
       ] as method, i}
         <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50 animate-stagger" style="animation-delay: {1100 + i * 80}ms">
