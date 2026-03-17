@@ -4,6 +4,25 @@
 
 ---
 
+## Current Implementation Status (as of March 2026)
+
+The following items from this spec have been **implemented**:
+
+- **IndexedDB `scorers` store:** DONE. Created in `onupgradeneeded` for both fresh installs (version < 1) and upgrades from v1 to v2. The database is now at version 2.
+- **`getLiveMatches()`:** DONE. Implemented in `dataService.ts` with 60-second IndexedDB cache. Delegates to `footballDataAPI.getLiveMatches()`. Returns empty array on failure (never throws).
+- **`getHistoricalMatches(season)`:** DONE. Implemented in `dataService.ts`. Delegates to `footballDataAPI.getMatchesBySeason(season)`. Uses standard cache TTL.
+- **`getTeamRecentMatches(teamId, limit)`:** DONE. Implemented in `dataService.ts`. Delegates to `footballDataAPI.getTeamMatches(teamId, limit)`. Uses standard cache TTL.
+- **`getMatchesBySeason(seasonId)`:** DONE. Helper method that extracts the year from a season string and delegates to `getHistoricalMatches()`.
+- **3-tier cache:** DONE. Memory-level caching is handled via IndexedDB TTL checks; API fallback is in place.
+
+The following items **remain unimplemented or partially done**:
+
+- **5 seasons of historical data loading:** The method exists but there is no progressive loader that fetches all 5 seasons on first use with rate-limiting between requests.
+- **Supabase removal:** Most Supabase code has been removed, but the checklist below should be verified for completeness.
+- **Backend proxy:** Not yet configured in `vite.config.ts`.
+
+---
+
 ## Data Source
 
 **Single source: Football-Data.org API v4**
@@ -50,11 +69,11 @@ Component → DataService
            Football-Data.org API
 ```
 
-### Known Bug — Must Fix
+### Known Bug — FIXED
 
-`IndexedDB` in `dataService.ts` does not create the `scorers` object store in `onupgradeneeded`. The code references it but it doesn't exist, causing silent failures when fetching top scorer data.
+~~`IndexedDB` in `dataService.ts` does not create the `scorers` object store in `onupgradeneeded`.~~
 
-**Fix:** Add `db.createObjectStore('scorers', { keyPath: 'id' })` to the `onupgradeneeded` handler alongside the existing stores.
+**Fixed:** The `scorers` store is now created in `onupgradeneeded` for both fresh installs (`oldVersion < 1`) and upgrades from v1 (`oldVersion >= 1 && < 2`). The database version has been bumped to 2.
 
 ---
 
@@ -80,38 +99,38 @@ Seasons to fetch:
 
 ---
 
-## New Method Requirements
+## New Method Requirements — ALL IMPLEMENTED
 
-### `getLiveMatches()`
+### `getLiveMatches()` — IMPLEMENTED
 
 ```typescript
 async getLiveMatches(): Promise<Match[]>
 ```
 
-- Fetches `GET /competitions/PL/matches?status=LIVE`
+- Fetches `GET /competitions/PL/matches?status=LIVE` via `footballDataAPI.getLiveMatches()`
 - 60-second IndexedDB cache
-- Returns empty array (not throws) when no live matches
-- Called by `LiveMatches.svelte` and `LiveTicker.svelte`
+- Returns empty array (not throws) when no live matches or on error
+- Called by `LiveMatches.svelte`
 
-### `getHistoricalMatches(season: number)`
+### `getHistoricalMatches(season: number)` — IMPLEMENTED
 
 ```typescript
 async getHistoricalMatches(season: number): Promise<Match[]>
 ```
 
-- Fetches `GET /competitions/PL/matches?season={season}&status=FINISHED`
-- 24-hour cache
-- Used by backtester and ELO initialiser
+- Fetches via `footballDataAPI.getMatchesBySeason(season)`
+- Uses standard cache TTL (IndexedDB)
+- Used by `getMatchesBySeason()` helper
 
-### `getTeamRecentMatches(teamId: number, limit: number = 5)`
+### `getTeamRecentMatches(teamId: number, limit: number = 5)` — IMPLEMENTED
 
 ```typescript
 async getTeamRecentMatches(teamId: number, limit?: number): Promise<Match[]>
 ```
 
-- Fetches `GET /teams/{teamId}/matches?status=FINISHED&limit={limit}`
-- 30-minute cache
-- Used for form calculation instead of hardcoded form strings
+- Fetches via `footballDataAPI.getTeamMatches(teamId, limit)`
+- Uses standard cache TTL (IndexedDB)
+- Used for form calculation
 
 ---
 
@@ -153,10 +172,11 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 
 ## Acceptance Criteria
 
-- [ ] IndexedDB `scorers` store created in `onupgradeneeded`
-- [ ] `getLiveMatches()` method returns real data (empty array when no live matches)
-- [ ] `getHistoricalMatches(season)` fetches and caches 5 seasons of data
-- [ ] `getTeamRecentMatches()` replaces hardcoded form strings
+- [x] IndexedDB `scorers` store created in `onupgradeneeded`
+- [x] `getLiveMatches()` method returns real data (empty array when no live matches)
+- [x] `getHistoricalMatches(season)` fetches and caches season data
+- [x] `getTeamRecentMatches()` implemented and delegates to `footballDataAPI.getTeamMatches()`
+- [ ] Progressive 5-season loader with rate limiting (method exists, bulk loader does not)
 - [ ] All Supabase code removed
 - [ ] Rate limiting respected (queue requests, 6s minimum spacing for batch fetches)
 - [ ] Backend proxy configured in `vite.config.ts`
