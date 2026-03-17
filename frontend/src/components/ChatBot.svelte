@@ -240,7 +240,7 @@ Current data:\n`;
 <div class="max-w-2xl mx-auto space-y-4" data-testid="chatbot">
   <!-- API Key Setup -->
   {#if !hasApiKey}
-    <div class="card-glass p-6">
+    <div class="card-glass p-4 sm:p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="p-2 rounded-lg bg-primary/10">
           <Key class="w-5 h-5 text-primary" />
@@ -281,7 +281,7 @@ Current data:\n`;
   {/if}
 
   <!-- Chat Interface -->
-  <div class="card-glass overflow-hidden flex flex-col" style="height: calc(100vh - 14rem);">
+  <div class="card-glass overflow-hidden flex flex-col" style="height: calc(100vh - 18rem); min-height: 300px;">
     <!-- Chat Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-border/30">
       <div class="flex items-center gap-2">
@@ -315,7 +315,7 @@ Current data:\n`;
     >
       {#each messages as message}
         <div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
-          <div class="max-w-[85%] rounded-xl px-4 py-2.5 text-sm {
+          <div class="max-w-[85%] rounded-xl px-3 sm:px-4 py-2.5 text-sm break-words {
             message.role === 'user'
               ? 'bg-primary text-primary-foreground rounded-br-sm'
               : message.role === 'system'

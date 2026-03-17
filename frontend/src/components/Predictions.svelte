@@ -254,7 +254,7 @@
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <h2 class="text-2xl font-bold font-display text-foreground">Match Predictions</h2>
     
-    <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
       <!-- Gameweek Selector -->
       <div class="flex items-center gap-2">
         <label for="gameweek" class="text-sm font-medium">Gameweek:</label>
@@ -316,7 +316,7 @@
           <!-- Per-Outcome Accuracy -->
           <div>
             <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Outcome</h4>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
               {#each [
                 { label: 'Home Win', value: accuracyStats.homeWinAccuracy, colour: 'bg-blue-500' },
                 { label: 'Draw', value: accuracyStats.drawAccuracy, colour: 'bg-amber-500' },
@@ -336,7 +336,7 @@
           <!-- Per-Confidence Band -->
           <div>
             <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Confidence Band</h4>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
               {#each [
                 { label: 'High (>70%)', value: accuracyStats.highConfidenceAccuracy, colour: 'bg-green-500' },
                 { label: 'Medium (50-70%)', value: accuracyStats.mediumConfidenceAccuracy, colour: 'bg-yellow-500' },
@@ -421,7 +421,7 @@
       <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
     </div>
   {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {#each predictions as prediction, i (prediction.id)}
         <div class="flip-card relative" style="animation-delay: {i * 50}ms">
           <!-- Status Indicator Overlay -->
@@ -695,10 +695,16 @@
   .flip-card {
     background-color: transparent;
     width: 100%;
-    height: 400px;
+    height: 360px;
     perspective: 1000px;
     animation: slideInUp 0.6s ease-out forwards;
     opacity: 0;
+  }
+
+  @media (min-width: 640px) {
+    .flip-card {
+      height: 400px;
+    }
   }
 
   .flip-card-inner {

@@ -197,7 +197,7 @@
 
   /* Mobile navigation */
   .mobile-nav {
-    @apply fixed bottom-0 left-0 right-0 z-50 md:hidden;
+    @apply fixed bottom-0 left-0 right-0 z-50 lg:hidden;
     @apply bg-background/90 backdrop-blur-xl backdrop-saturate-150;
     @apply px-2 py-2;
     border-top: 1px solid hsl(var(--border) / 0.5);

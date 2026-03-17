@@ -415,13 +415,13 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
-      <div class="h-56">
+      <div class="h-48 sm:h-56">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
     </div>
     <div class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
-      <div class="h-56">
+      <div class="h-48 sm:h-56">
         <canvas bind:this={profitChartCanvas}></canvas>
       </div>
     </div>
@@ -433,7 +433,7 @@
       <Target class="w-4 h-4 text-accent" />
       How We Predict
     </h3>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {#each [
         { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
         { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
@@ -477,8 +477,8 @@
       {:else}
         <ul class="space-y-2">
           {#each topPredictions as prediction}
-            <li class="flex justify-between items-center p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
-              <span class="text-sm text-foreground">{prediction.match}</span>
+            <li class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <span class="text-sm text-foreground truncate">{prediction.match}</span>
               <div class="flex items-center gap-2">
                 <span class="text-xs text-muted-foreground">{prediction.confidence}%</span>
                 {#if prediction.wasCorrect !== null}

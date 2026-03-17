@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P1d Mobile UX Overhaul — Complete (18 March 2026)
+- **Navigation dead zone fixed**: Mobile nav CSS used `md:hidden` (768px) but sidebar auto-opens at 1024px — tablet users (768-1024px) had NO navigation. Changed to `lg:hidden` to match sidebar breakpoint
+- **Season Stats added to Sidebar**: Was only reachable via mobile "More" menu; desktop sidebar skipped it entirely
+- **Content hidden behind mobile nav**: Added `pb-20 lg:pb-8` bottom padding to main content area so last items aren't clipped by the fixed bottom navigation bar
+- **Prediction cards responsive**: Flip cards now 360px on mobile, 400px on `sm:+`; controls row wraps with `flex-wrap`; grid uses `sm:grid-cols-2` for earlier two-column layout; accuracy grids tightened to `gap-2 sm:gap-3`
+- **ChatBot mobile-safe**: Viewport height adjusted from `14rem` to `18rem` offset to account for mobile nav; API key card padding responsive; message bubbles get `break-words` for long URLs
+- **KellyCalculator stacks on mobile**: Results grid uses `grid-cols-1 sm:grid-cols-2`; stake amount text responsive `text-2xl sm:text-3xl`
+- **Dashboard charts responsive**: Chart heights use `h-48 sm:h-56`; "How We Predict" grid gap tightened; prediction list items stack vertically on mobile with `truncate`
+- **7 files changed, 275/275 tests passing, 0 type errors**
+
 ### P1e Frontend Correctness Bugs — Complete (18 March 2026)
 - **7 of 8 P1e bugs fixed** — all silent logic errors producing wrong data for users
 - **SeasonStats card stats**: Now show "N/A" with "Card data unavailable on free tier" explanation when Football-Data.org free tier returns null for yellow/red card fields (was silently showing 0)

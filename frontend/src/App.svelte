@@ -104,7 +104,7 @@
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 relative">
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative">
       <!-- Page transition overlay -->
       {#if isTransitioning}
         <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>

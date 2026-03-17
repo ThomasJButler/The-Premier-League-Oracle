@@ -110,7 +110,7 @@
         <!-- Primary result -->
         <div class="text-center mb-4 pb-4 border-b border-border/30">
           <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Stake Amount</p>
-          <p class="text-3xl font-bold font-display text-primary">
+          <p class="text-2xl sm:text-3xl font-bold font-display text-primary">
             {formatCurrency(getStake())}
           </p>
           <p class="text-xs text-muted-foreground mt-1">
@@ -119,7 +119,7 @@
         </div>
 
         <!-- Secondary results -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div class="text-center">
             <p class="text-xs text-muted-foreground mb-0.5">Expected Value</p>
             <p class="text-lg font-bold {calculation.expectedValue > 0 ? 'text-emerald-500' : 'text-red-500'}">

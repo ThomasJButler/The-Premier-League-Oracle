@@ -79,6 +79,19 @@ Merged into P1a. Shared theme store created at `frontend/src/stores/theme.ts` wi
 - [x] `prefers-color-scheme` media query fallback
 - [x] Shared store used by both Header.svelte and App.svelte
 
+### P1d. Mobile UX Overhaul — DONE (18 March 2026)
+
+Fixed 7 mobile layout bugs across 7 files. 275/275 tests passing, 0 type errors.
+
+- [x] Fix breakpoint mismatch: `.mobile-nav` CSS used `md:hidden` (768px) but sidebar opens at 1024px — users at 768-1024px had NO navigation. Changed to `lg:hidden` to match sidebar breakpoint.
+- [x] Add Season Stats to desktop Sidebar — was only reachable via mobile "More" menu, desktop sidebar skipped it entirely.
+- [x] Add bottom padding (`pb-20 lg:pb-8`) to `App.svelte` main content — fixed mobile nav overlapping last content items.
+- [x] Make prediction flip cards responsive (`360px` on mobile, `400px` on `sm:`+); controls row now wraps with `flex-wrap`; prediction grid uses `sm:grid-cols-2` instead of `md:grid-cols-2` for earlier two-column layout.
+- [x] Accuracy grids tightened: `gap-2 sm:gap-3` on outcome and confidence band panels.
+- [x] ChatBot: viewport height adjusted from `14rem` to `18rem` to account for mobile nav; API key card padding responsive (`p-4 sm:p-6`); message bubbles get `break-words` for long URLs/text.
+- [x] KellyCalculator: results grid stacks on mobile (`grid-cols-1 sm:grid-cols-2`); stake amount text scaled (`text-2xl sm:text-3xl`).
+- [x] Dashboard: chart heights responsive (`h-48 sm:h-56`); "How We Predict" grid gap tightened; recent predictions row stacks on mobile with match name truncation.
+
 ### P1c. E2E Test Maintenance
 
 27 Playwright E2E tests exist across 5 spec files. 2 tests are skipped (prediction generation flow).
@@ -88,16 +101,9 @@ Merged into P1a. Shared theme store created at `frontend/src/stores/theme.ts` wi
 - [ ] Add E2E coverage for Kelly Calculator
 - [ ] Verify mobile viewport tests at 375px, 390px, 768px
 
-### P1d. Mobile UX Overhaul
+### P1e. Frontend Correctness Bugs — DONE (18 March 2026)
 
-- [ ] Fix mobile sidebar — use CSS `translate` properly or migrate to shadcn `Sheet`
-- [ ] `MobileNav.svelte`: add missing views (currently only 5 of 10+ exposed), fix active state
-- [ ] Fix card overflow/scroll on small viewports
-- [ ] Ensure prediction probability bars are readable on mobile
-
-### P1e. Frontend Correctness Bugs (NEW — discovered in audit #4)
-
-These are silent logic bugs producing wrong data for users:
+These were silent logic bugs producing wrong data for users:
 
 - [x] ~~`SeasonStats.svelte`: lateDrama detection~~ — **False positive**: `full_time_result` exists on `Match` type (line 41) and is populated by `transformMatch`. The comparison `full_time_result !== half_time_result` correctly identifies matches where the result changed after halftime. Description updated from 'Late Drama' to 'Results changed after halftime' for accuracy.
 - [x] `SeasonStats.svelte`: card stats (`home_yellows`, `away_yellows`, `home_reds`, `away_reds`) always 0 — DONE — stats now show 'N/A' with explanation when free-tier API returns null card data
