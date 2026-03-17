@@ -320,7 +320,7 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#520058] via-[#38003c] to-[#1a001c] p-6 sm:p-8 text-white animate-slide-in-up">
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
         <div class="w-2.5 h-2.5 bg-green-400 rounded-full live-pulse"></div>

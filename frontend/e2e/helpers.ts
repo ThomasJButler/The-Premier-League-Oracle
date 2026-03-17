@@ -1,10 +1,17 @@
 import { type Page } from '@playwright/test';
+import { mockFootballApi } from './mockApi';
 
 /**
- * Sets a mock API key in localStorage so the setup wizard is skipped,
- * then navigates to the app root. Call this at the start of every test.
+ * Sets up API mocking and a mock API key in localStorage so the setup
+ * wizard is skipped. Call this at the start of every test.
+ *
+ * Route interception is registered BEFORE navigation so the app's
+ * initial data fetches hit the mock handler instead of the real API.
  */
 export async function setupApp(page: Page, apiKey = 'test-api-key-e2e') {
+  // Register API mocks before any navigation
+  await mockFootballApi(page);
+
   await page.goto('/');
   await page.evaluate((key) => {
     localStorage.setItem('football_data_api_key', key);
@@ -12,26 +19,40 @@ export async function setupApp(page: Page, apiKey = 'test-api-key-e2e') {
   // Reload so the app reads the key from localStorage
   await page.reload();
   // Wait for the main content area to appear (setup wizard dismissed)
-  await page.waitForSelector('.main-content, main, [class*="main"]', { timeout: 10000 });
+  await page.waitForSelector('main', { timeout: 10000 });
 }
 
 /**
- * Clicks a sidebar nav item by its visible name.
- * On desktop the sidebar is already open; on mobile we open it first.
+ * Navigates to a view by name.
+ *
+ * On desktop the sidebar is always visible, so we click the nav button directly.
+ * On mobile the app uses a bottom nav bar with a "More" popup for secondary items.
  */
 export async function navigateTo(page: Page, viewName: string) {
   const viewport = page.viewportSize();
   const isMobile = viewport && viewport.width < 768;
 
   if (isMobile) {
-    // Open the hamburger menu on mobile
-    const menuBtn = page.locator('button[aria-label*="menu"], button[aria-label*="Menu"], button[aria-label*="sidebar"]').first();
-    if (await menuBtn.isVisible()) {
-      await menuBtn.click();
-      await page.locator('aside, nav').first().waitFor({ state: 'visible' });
+    // MobileNav primary items (shown directly on bottom bar)
+    const primaryMap: Record<string, string> = {
+      'Dashboard': 'Dashboard',
+      'Live Matches': 'Live',
+      'Predictions': 'Predictions',
+      'Standings': 'Standings',
+    };
+
+    if (primaryMap[viewName]) {
+      // Click directly on the bottom nav button
+      await page.locator('.mobile-nav button').filter({ hasText: primaryMap[viewName] }).click();
+    } else {
+      // Open "More" menu, then click the target item
+      await page.locator('button[aria-label="More options"]').click();
+      await page.locator('.grid.grid-cols-4').waitFor({ state: 'visible' });
+      await page.locator('.grid.grid-cols-4 button').filter({ hasText: viewName }).click();
     }
+  } else {
+    await page.getByRole('button', { name: viewName }).click();
   }
 
-  await page.getByRole('button', { name: viewName }).click();
   await page.waitForLoadState('domcontentloaded');
 }

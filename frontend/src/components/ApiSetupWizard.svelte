@@ -298,8 +298,8 @@
         <!-- API Setup Step -->
         <div class="space-y-6">
           <div class="text-center">
-            <div class="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-full flex items-center justify-center mb-4">
-              <Key class="w-8 h-8 text-blue-600" />
+            <div class="w-16 h-16 mx-auto bg-gradient-to-r from-[#520058]/20 to-[#38003c]/20 rounded-full flex items-center justify-center mb-4">
+              <Key class="w-8 h-8 text-primary" />
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
             <p class="text-muted-foreground">

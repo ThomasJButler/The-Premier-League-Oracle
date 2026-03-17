@@ -100,7 +100,7 @@
 <div class="flex h-screen bg-background text-foreground overflow-hidden relative">
   <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
-  <div class="flex-1 flex flex-col overflow-hidden">
+  <div class="flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ease-in-out {isSidebarOpen ? 'lg:ml-64' : ''}">
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 

@@ -5,60 +5,62 @@
 /* ─── DESIGN TOKENS (shadcn-svelte compatible) ─── */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
+    /* PL-inspired palette: deep purple + electric green */
+    --background: 0 0% 99%;
+    --foreground: 285 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
+    --card-foreground: 285 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 262 83% 58%;
-    --accent-foreground: 0 0% 100%;
+    --popover-foreground: 285 30% 12%;
+    --primary: 286 72% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 280 15% 95%;
+    --secondary-foreground: 285 30% 12%;
+    --muted: 280 12% 95%;
+    --muted-foreground: 280 10% 46%;
+    --accent: 155 100% 42%;
+    --accent-foreground: 155 80% 8%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 152 69% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 155 100% 35%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 280 20% 90%;
+    --input: 280 20% 90%;
+    --ring: 286 72% 35%;
     --radius: 0.625rem;
 
-    /* Legacy gradient tokens (for hero sections only) */
-    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
-    --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    /* PL gradient tokens */
+    --gradient-primary: linear-gradient(135deg, #520058 0%, #38003c 100%);
+    --gradient-success: linear-gradient(135deg, #00cc6a 0%, #00ff87 100%);
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 222 47% 6.5%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222 47% 6.5%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 262 83% 68%;
-    --accent-foreground: 0 0% 100%;
+    /* Rich purple-black dark theme */
+    --background: 280 45% 5%;
+    --foreground: 280 5% 95%;
+    --card: 280 35% 8%;
+    --card-foreground: 280 5% 95%;
+    --popover: 280 35% 8%;
+    --popover-foreground: 280 5% 95%;
+    --primary: 280 70% 62%;
+    --primary-foreground: 280 60% 8%;
+    --secondary: 280 25% 14%;
+    --secondary-foreground: 280 5% 95%;
+    --muted: 280 22% 13%;
+    --muted-foreground: 280 8% 58%;
+    --accent: 155 100% 50%;
+    --accent-foreground: 155 60% 8%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --success: 152 69% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 155 100% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 217.2 91.2% 59.8%;
+    --border: 280 22% 16%;
+    --input: 280 22% 16%;
+    --ring: 280 70% 62%;
   }
 
   * {

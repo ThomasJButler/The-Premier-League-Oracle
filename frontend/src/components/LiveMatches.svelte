@@ -207,7 +207,7 @@
         <button
           on:click={() => showSection = 'recent'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'recent'
-            ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-lg'
+            ? 'bg-gradient-to-r from-[#520058] to-[#38003c] text-white font-semibold shadow-lg'
             : 'bg-muted hover:bg-muted/80 text-muted-foreground'}"
         >
           <div class="flex items-center justify-center gap-2">

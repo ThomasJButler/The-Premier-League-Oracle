@@ -276,7 +276,7 @@
         on:click={predictGameweek}
         disabled={isBatchPredicting || loading}
         data-testid="predict-gameweek"
-        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        class="px-4 py-2 bg-gradient-to-r from-[#520058] to-[#38003c] text-white rounded-lg hover:from-[#430047] hover:to-[#2a0030] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
         {#if isBatchPredicting}
           <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -393,7 +393,7 @@
         <!-- Progress Bar -->
         <div class="w-full bg-muted rounded-full h-2 overflow-hidden">
           <div 
-            class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 ease-out"
+            class="h-full bg-gradient-to-r from-[#6b21a8] to-[#520058] rounded-full transition-all duration-300 ease-out"
             style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
           >
             <div class="h-full bg-white/30 animate-pulse"></div>

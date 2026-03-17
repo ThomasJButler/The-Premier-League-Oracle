@@ -146,7 +146,7 @@
         label: 'Average Goals',
         value: avgGoalsPerMatch,
         icon: Target,
-        color: 'from-blue-500 to-cyan-500',
+        color: 'from-purple-600 to-fuchsia-500',
         description: 'Goals per match this season'
       },
       {
@@ -348,7 +348,7 @@
         label: 'Over 2.5 Goals',
         value: `${over25Percentage}%`,
         icon: TrendingUp,
-        color: 'from-blue-500 to-indigo-500',
+        color: 'from-purple-500 to-fuchsia-500',
         description: 'Matches with 3+ goals'
       },
       {
