@@ -64,8 +64,8 @@ REDIS_URL=redis://localhost:6379
 # MLflow
 MLFLOW_TRACKING_URI=http://localhost:5000
 
-# Database (optional)
-DATABASE_URL=postgresql://oracle:godmode123@localhost:5432/premier_league
+# Database (optional) — IMPORTANT: Change the default password before use
+DATABASE_URL=postgresql://oracle:changeme@localhost:5432/premier_league
 EOF
     echo "✅ Created .env file - please add your API keys"
 fi
