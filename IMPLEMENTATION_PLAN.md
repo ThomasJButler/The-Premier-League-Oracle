@@ -1,7 +1,7 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 14 March 2026 (P0b complete)
-Active branch: `v3.0-Development`
+Last updated: 17 March 2026
+Active branch: `v3.0-Frontend`
 Completed work archive: `COMPLETED_WORK.md`
 
 ---
@@ -126,8 +126,8 @@ No tests exist for these components:
 
 - [ ] `Predictions.svelte` — generate, gameweek nav, Kelly stake display
 - [ ] `LiveMatches.svelte` — polling state, no live matches, score display
-- [ ] `ValueBets.svelte` — odds entry form, EV calculation output
-- [ ] `KellyCalculator.svelte` — input validation, stake output
+- [ ] `KellyCalculator.svelte` — input validation, stake output (simplified to 3-input card)
+- [ ] `ChatBot.svelte` — API key setup, message send/receive, context building
 - [ ] `Settings.svelte` — toggle persistence, cache clear
 
 ### P2e. Backtest Runner
@@ -146,6 +146,19 @@ No tests exist for these components:
 - [ ] For confidence ≥ 65% + positive EV: generate Kelly suggestions
 - [ ] Display as "Suggested Bets" list above manual calculator
 - [ ] Add confidence threshold slider (currently hardcoded at 0.7)
+
+### P2g. Oracle Chat — Backend Integration
+
+**File:** `frontend/src/components/ChatBot.svelte` (component exists, needs enrichment)
+
+The Oracle Chat frontend component is built with OpenAI Chat Completions API support.
+When the Python backend is ready, extend it to query ML models via `backendService.ts`
+and include ML confidence scores in the system prompt context.
+
+- [ ] Add backend prediction results to system prompt when backend is available
+- [ ] Add OpenAI API key configuration to Settings.svelte (currently only in ChatBot)
+- [ ] Add web search context for injury/suspension news (requires backend proxy)
+- [ ] Persist chat sessions to localStorage with configurable history length
 
 ---
 
@@ -195,11 +208,16 @@ Connect `FootballDataCollector` output to `AdvancedFeatureEngineer` input. Write
 
 **New file:** `frontend/src/services/aiAnalysis.ts`
 
+Note: The Oracle Chat component (`ChatBot.svelte`) already provides a conversational
+interface powered by OpenAI. This service would provide structured per-match analysis
+that feeds into both the chat and the prediction cards.
+
 - [ ] `AIAnalysisService` — takes `MatchPrediction`, returns natural language analysis
 - [ ] User configures OpenAI/Anthropic key in Settings
 - [ ] Supplementary only — does NOT modify numerical probabilities
 - [ ] 24h cache per match
 - [ ] Update `Help.svelte` to reflect actual AI capabilities
+- [ ] Feed analysis context into ChatBot system prompt for richer responses
 
 ---
 
@@ -277,3 +295,15 @@ Write `specs/08-backend-training.md` before starting P3.
 | `modern_oracle.py:404-408` | `_calculate_betting_value()` uses mock odds | P3b |
 | `modern_oracle.py:463` | `optimize_ensemble_weights()` returns random | P3b |
 | `auth.py:434` | Mock user database lookup | P3b |
+| `ChatBot.svelte` | OpenAI API key required, no backend ML integration yet | P2g |
+
+---
+
+## Recent Changes (17 March 2026)
+
+- **Theme overhaul**: Removed all purple/fuchsia/violet. Shifted to deep slate/teal palette ("Stadium at Night")
+- **Predictions**: Now defaults to current gameweek from API (was hardcoded to week 1)
+- **Value Bets removed**: Deleted entirely — manual-only odds entry was pointless without an odds API
+- **Kelly Calculator simplified**: Stripped from 435 lines to 155 — three inputs, half-Kelly default, no risk toggles
+- **Oracle Chat added**: New ChatBot.svelte with OpenAI Chat Completions API, context-aware system prompt
+- **E2E tests fixed**: 99 passing (was 36), DataService race condition resolved, strict mode violations fixed
