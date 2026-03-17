@@ -2,6 +2,20 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## [Unreleased] - v3.0-BackendMLTraining Branch
+
+### Comprehensive Planning Audit (17 March 2026)
+- **21-agent deep audit**: Parallel analysis of all 7 specs, all frontend libs/services/components, all backend files, test suites, and project documentation
+- **IMPLEMENTATION_PLAN.md rewritten**: Synthesised findings into prioritised bullet list (P0-P4) with 80+ action items, expanded stubs table (33 entries), test coverage matrix, and spec implementation status percentages
+- **Backend feature engineering corrected**: `advanced_engineering.py` no longer has `np.random.*` calls (was 102 in prior audit), but 49 methods now return hardcoded `0.0` — a different but equally blocking pattern for ML training
+- **Test count corrected**: Actual count is ~244 Vitest tests (was documented as 275); 27 Playwright E2E tests (2 skipped)
+- **20+ new bugs documented**: `betBuilder.ts` rivalry dead code, `calculateHalfTimeResult` probability sum bug, fatigue not applied to Poisson lambda, Dashboard Chart.js memory leak, `dataService.getMatchesBySeason()` ignoring argument, CLV sign inversion in `value.ts`, and more
+- **Spec gap analysis**: spec 03 (backend integration) at 0%, spec 07 (UI/UX) at ~10%, spec 06 (prediction tracking) at ~90%
+- **Stale files identified**: 5 backend docs still exist on this branch that were deleted on v2.0-Development; SUPABASE_SETUP_GUIDE.md still at root
+- **CLAUDE.md updated**: Corrected test counts, backend feature engineering status, shadcn-svelte state, active branch references
+
+---
+
 ## [Unreleased] - v2.0-Development Branch
 
 ### Prediction Tracking, Accuracy Breakdown & Bet Auto-Resolution (14 March 2026)

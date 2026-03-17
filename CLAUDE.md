@@ -97,22 +97,22 @@ These specs are the single source of truth for requirements.
 
 ### Current Focus Areas
 - See `IMPLEMENTATION_PLAN.md` for the prioritised task list
-- Active development on branch `v2.0-Development`
+- Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured in `how-to-ralph-wiggum/`
 
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
-- shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
-- Backend server will NOT start — broken LangChain/ChromaDB imports in `modern_oracle.py` must be fixed first
-- Backend models are scaffolded but need training data and pipeline completion — 102 `np.random.*` calls in feature engineering return random values
+- shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; no `components.json` config file
+- Backend server will NOT start — broken imports in `modern_oracle.py`, `xgboost_model.py` (unguarded shap/optuna/redis); lifespan null-check bug in `main.py`
+- Backend feature engineering: 0 `np.random.*` calls remain (was 102), but 49 methods return hardcoded `0.0` — tactics, player-level, betting market, weather features all stubbed
 - Backend has 0% test coverage (no pytest tests)
-- Frontend has 275 Vitest tests across 13 test files, all passing
+- Frontend has ~244 Vitest tests across 13 test files, all passing (documented as 275 — count drifted)
+- 27 Playwright E2E tests across 5 spec files (2 skipped)
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
-- `ValueBets.svelte` now uses manual odds entry — users input real bookmaker odds for value analysis (Math.random() removed)
-- Predictions.svelte uses Kelly Criterion for stake sizing (replaced arbitrary linear formula)
-- Dynamic season labels in StandingsTable and TopScorers (replaced hardcoded "2024/25")
-- DataService dead methods removed (`setDataSource`, `getApiProvider`); live cache uses 60s TTL
+- `betBuilder.ts` rivalry check uses short names that never match API canonical names — dead code
+- `ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab)
+- Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
