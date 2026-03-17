@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Fix Backend Startup — P0a Complete (17 March 2026)
+- **Backend now starts gracefully** without all ML dependencies installed — all optional imports (`shap`, `optuna`, `redis`, `sklearn`, `joblib`, `langchain`, `chromadb`, `torch`) wrapped in try/except with availability flags
+- **`main.py`**: Guarded `redis.asyncio`, `AdvancedFeatureEngineer`, and `FootballDataCollector` imports; fixed lifespan null-check crash (`oracle.xgboost_model` called when `oracle is None`); fixed model performance endpoint null-checking LSTM/Transformer; fixed invalid CORS config (`allow_origins=["*"]` + `allow_credentials=True` → explicit frontend origins)
+- **`xgboost_model.py`**: `shap` and `joblib` imports guarded with `SHAP_AVAILABLE`/`JOBLIB_AVAILABLE` flags; SHAP explainer creation and model save/load now check availability before use
+- **`modern_oracle.py`**: `optuna`, `sklearn`, `joblib`, `redis` imports guarded; `XGBoostPredictor`, `AdvancedFeatureEngineer`, `FootballDataCollector` imports guarded; `train_all_models` checks `MLFLOW_AVAILABLE` and null-checks LSTM/Transformer; `optimize_ensemble_weights` returns defaults when optuna unavailable; LangChain setup checks `LANGCHAIN_AVAILABLE`
+- **P0c confirmed done**: All 5 stale documentation files already absent from this branch
+- **Test count corrected**: 275 Vitest tests (was documented as ~244)
+- **Verified**: `python3 -c "from app.api.main import app"` succeeds; uvicorn lifespan completes; `/health` endpoint returns 200
+
 ### Comprehensive Planning Audit (17 March 2026)
 - **21-agent deep audit**: Parallel analysis of all 7 specs, all frontend libs/services/components, all backend files, test suites, and project documentation
 - **IMPLEMENTATION_PLAN.md rewritten**: Synthesised findings into prioritised bullet list (P0-P4) with 80+ action items, expanded stubs table (33 entries), test coverage matrix, and spec implementation status percentages

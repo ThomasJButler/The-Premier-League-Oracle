@@ -103,10 +103,10 @@ These specs are the single source of truth for requirements.
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
 - shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; no `components.json` config file
-- Backend server will NOT start — broken imports in `modern_oracle.py`, `xgboost_model.py` (unguarded shap/optuna/redis); lifespan null-check bug in `main.py`
+- Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
 - Backend feature engineering: 0 `np.random.*` calls remain (was 102), but 49 methods return hardcoded `0.0` — tactics, player-level, betting market, weather features all stubbed
 - Backend has 0% test coverage (no pytest tests)
-- Frontend has ~244 Vitest tests across 13 test files, all passing (documented as 275 — count drifted)
+- Frontend has 275 Vitest tests across 13 test files, all passing
 - 27 Playwright E2E tests across 5 spec files (2 skipped)
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
 - 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
