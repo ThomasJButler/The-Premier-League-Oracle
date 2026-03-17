@@ -14,10 +14,19 @@ test.describe('Navigation', () => {
   });
 
   test('renders the sidebar with nav items', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Predictions' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Standings' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Live Matches' })).toBeVisible();
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 768;
+
+    if (isMobile) {
+      // On mobile, open the sidebar first
+      await page.getByRole('button', { name: 'Toggle menu' }).click();
+    }
+
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
+    await expect(sidebar.getByRole('button', { name: 'Predictions' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Standings' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Live Matches' })).toBeVisible();
   });
 
   test('navigates to Predictions view', async ({ page }) => {
@@ -51,8 +60,8 @@ test.describe('Navigation', () => {
 
   test('navigates to Settings', async ({ page }) => {
     await navigateTo(page, 'Settings');
-    // "API Key" label is unique to Settings
-    await expect(page.getByText('API Key')).toBeVisible();
+    // Settings has an API Key input section
+    await expect(page.getByText('API Key', { exact: true })).toBeVisible();
   });
 
   test('navigates to Help', async ({ page }) => {

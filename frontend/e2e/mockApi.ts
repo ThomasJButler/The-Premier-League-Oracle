@@ -170,7 +170,7 @@ function buildCompetitionResponse() {
  * Must be called BEFORE any page.goto() so requests are intercepted immediately.
  */
 export async function mockFootballApi(page: Page) {
-  await page.route('**/api/football-data/**', (route) => {
+  await page.route(/\/api\/football-data\//, async (route) => {
     const url = route.request().url();
 
     let body: unknown;
@@ -182,14 +182,15 @@ export async function mockFootballApi(page: Page) {
     } else if (url.includes('/competitions/2021')) {
       body = buildCompetitionResponse();
     } else {
-      route.fulfill({ status: 404, body: 'Not found' });
+      await route.fulfill({ status: 404, body: 'Not found' });
       return;
     }
 
-    route.fulfill({
+    await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(body),
     });
   });
 }
+

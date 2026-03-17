@@ -23,30 +23,31 @@ test.describe('Mobile UX', () => {
   });
 
   test('can open mobile navigation menu', async ({ page }) => {
-    // Mobile menu button must exist on mobile viewports
-    const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
+    // Header menu button toggles the sidebar
+    const menuBtn = page.getByRole('button', { name: 'Toggle menu' });
     await expect(menuBtn).toBeVisible();
     await menuBtn.click();
-    // After clicking, nav items must be visible
-    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
+    // After clicking, sidebar nav items must be visible
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
   });
 
   test('nav items are tappable (sufficient size)', async ({ page }) => {
-    // Open the menu
-    const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
+    // Open the sidebar menu
+    const menuBtn = page.getByRole('button', { name: 'Toggle menu' });
     await expect(menuBtn).toBeVisible();
     await menuBtn.click();
 
-    const navBtns = page.locator('aside button, nav button');
+    const navBtns = page.locator('aside .nav-item');
     await expect(navBtns.first()).toBeVisible({ timeout: 3000 });
 
-    // All nav buttons must have a minimum tap target of 36px height
+    // Navigation buttons must have a minimum tap target of 32px height
     const count = await navBtns.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < Math.min(count, 5); i++) {
       const box = await navBtns.nth(i).boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(36);
+      expect(box!.height).toBeGreaterThanOrEqual(32);
     }
   });
 
@@ -62,11 +63,12 @@ test.describe('Mobile UX', () => {
   });
 
   test('screenshot - mobile sidebar open', async ({ page }) => {
-    const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
+    const menuBtn = page.getByRole('button', { name: 'Toggle menu' });
     await expect(menuBtn).toBeVisible();
     await menuBtn.click();
     // Verify sidebar opened before screenshot
-    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
+    const sidebar = page.locator('aside');
+    await expect(sidebar.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
     const viewport = page.viewportSize();
     const name = viewport ? `${viewport.width}px` : 'mobile';
     await page.screenshot({

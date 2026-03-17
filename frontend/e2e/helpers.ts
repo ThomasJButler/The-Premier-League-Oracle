@@ -20,6 +20,8 @@ export async function setupApp(page: Page, apiKey = 'test-api-key-e2e') {
   await page.reload();
   // Wait for the main content area to appear (setup wizard dismissed)
   await page.waitForSelector('main', { timeout: 10000 });
+  // Allow time for API data to load (the app rate-limits requests at 6s intervals)
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -54,5 +56,7 @@ export async function navigateTo(page: Page, viewName: string) {
     await page.getByRole('button', { name: viewName }).click();
   }
 
+  // Wait for the view transition to complete (App.svelte uses 200ms + 50ms delays)
+  await page.waitForTimeout(400);
   await page.waitForLoadState('domcontentloaded');
 }
