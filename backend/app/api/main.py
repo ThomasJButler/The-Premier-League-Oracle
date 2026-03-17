@@ -30,6 +30,10 @@ import logging
 from pathlib import Path
 import os
 
+# Setup logging — must be before any logger calls
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Our modules — oracle import is optional so the server can start without all dependencies
 try:
     from app.models.modern_oracle import ModernPremierLeagueOracle
@@ -41,10 +45,6 @@ except ImportError as e:
 
 from app.features.advanced_engineering import AdvancedFeatureEngineer
 from app.data.football_data_collector import FootballDataCollector
-
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")

@@ -48,10 +48,20 @@ try:
 except ImportError:
     logger.warning("MLflow not available — experiment tracking disabled")
 
-# Our models
+# XGBoost — always available (in requirements.txt)
 from app.models.xgboost_model import XGBoostPredictor
-from app.models.lstm_predictor import LSTMPredictor
-from app.models.transformer_model import TransformerPredictor
+
+# LSTM and Transformer require torch — optional, not in requirements.txt
+TORCH_AVAILABLE = False
+try:
+    from app.models.lstm_predictor import LSTMPredictor
+    from app.models.transformer_model import TransformerPredictor
+    TORCH_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"PyTorch not available ({e}) — LSTM and Transformer models disabled")
+    LSTMPredictor = None  # type: ignore
+    TransformerPredictor = None  # type: ignore
+
 from app.features.advanced_engineering import AdvancedFeatureEngineer
 from app.data.football_data_collector import FootballDataCollector
 
@@ -106,8 +116,8 @@ class ModernPremierLeagueOracle:
         
         # Models
         self.xgboost_model = XGBoostPredictor()
-        self.lstm_model = LSTMPredictor()
-        self.transformer_model = TransformerPredictor()
+        self.lstm_model = LSTMPredictor() if TORCH_AVAILABLE else None
+        self.transformer_model = TransformerPredictor() if TORCH_AVAILABLE else None
         
         # Model weights for ensemble (will be optimized)
         self.ensemble_weights = {
@@ -305,7 +315,7 @@ class ModernPremierLeagueOracle:
                 except Exception as e:
                     logger.warning(f"XGBoost prediction failed: {e}")
 
-            if self.lstm_model.model is not None:
+            if self.lstm_model is not None and self.lstm_model.model is not None:
                 try:
                     lstm_features = pd.concat([features_df] * 10)
                     predictions['lstm'] = self.lstm_model.predict_single_match(
@@ -314,7 +324,7 @@ class ModernPremierLeagueOracle:
                 except Exception as e:
                     logger.warning(f"LSTM prediction failed: {e}")
 
-            if self.transformer_model.model is not None:
+            if self.transformer_model is not None and self.transformer_model.model is not None:
                 try:
                     lstm_features = pd.concat([features_df] * 10)
                     predictions['transformer'] = self.transformer_model.predict_single_match(
