@@ -15,6 +15,7 @@
   import TopScorers from './components/TopScorers.svelte';
   import LiveMatches from './components/LiveMatches.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
+  import ChatBot from './components/ChatBot.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -136,6 +137,8 @@
           <LiveMatches />
         {:else if currentView === 'Standings'}
           <StandingsTable />
+        {:else if currentView === 'Oracle Chat'}
+          <ChatBot />
         {/if}
       </div>
     </main>
