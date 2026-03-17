@@ -58,15 +58,31 @@ LABEL_NAMES = {0: "Home win", 1: "Draw", 2: "Away win"}
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _prior_match_count(df: pd.DataFrame, team: str, before_date) -> int:
-    """Count matches played by `team` strictly before `before_date`."""
-    ts = pd.Timestamp(before_date)
-    cutoff = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
-    mask = (
-        ((df["home_team"] == team) | (df["away_team"] == team))
-        & (pd.to_datetime(df["date"], utc=True) < cutoff)
-    )
-    return int(mask.sum())
+def _build_match_counts(df: pd.DataFrame) -> pd.DataFrame:
+    """Pre-compute cumulative match count for each team at each row.
+
+    Returns the input DataFrame (sorted chronologically) with two new
+    columns: ``home_prior`` and ``away_prior`` containing the number
+    of matches each team has played prior to that row.
+
+    Single O(n) pass instead of per-row DataFrame scans.
+    """
+    df = df.sort_values("date").reset_index(drop=True)
+    counts: dict[str, int] = {}
+    home_prior: list[int] = []
+    away_prior: list[int] = []
+
+    for _, row in df.iterrows():
+        home = row["home_team"]
+        away = row["away_team"]
+        home_prior.append(counts.get(home, 0))
+        away_prior.append(counts.get(away, 0))
+        counts[home] = counts.get(home, 0) + 1
+        counts[away] = counts.get(away, 0) + 1
+
+    df["home_prior"] = home_prior
+    df["away_prior"] = away_prior
+    return df
 
 
 def build_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
@@ -76,7 +92,7 @@ def build_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     Returns (X, y) where X is a DataFrame of floats and y is a Series of
     integer labels (0=Home, 1=Draw, 2=Away).
     """
-    df = df.sort_values("date").reset_index(drop=True)
+    df = _build_match_counts(df)
     engineer = AdvancedFeatureEngineer(historical_data=df)
 
     rows: list[dict] = []
@@ -95,9 +111,7 @@ def build_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
             continue
 
         # Warmup — skip if insufficient history for either team
-        home_prior = _prior_match_count(df, home, match_date)
-        away_prior = _prior_match_count(df, away, match_date)
-        if home_prior < MIN_PRIOR_MATCHES or away_prior < MIN_PRIOR_MATCHES:
+        if row["home_prior"] < MIN_PRIOR_MATCHES or row["away_prior"] < MIN_PRIOR_MATCHES:
             skipped += 1
             continue
 
@@ -120,7 +134,7 @@ def build_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
 
     logger.info(f"Dataset built: {len(rows)} usable rows, {skipped} skipped")
 
-    X = pd.DataFrame(rows).fillna(0.0)
+    X = pd.DataFrame(rows)  # XGBoost handles NaN natively — do not fill
     y = pd.Series(labels, dtype=int, name="result")
     return X, y
 
