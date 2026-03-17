@@ -117,7 +117,7 @@
   <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center">
           <Trophy class="w-6 h-6 text-white" />
         </div>
         <div>

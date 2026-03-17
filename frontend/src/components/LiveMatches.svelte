@@ -151,7 +151,7 @@
       case 'EXTRA_TIME':
         return { text: 'EXTRA TIME', class: 'bg-red-600 animate-pulse' };
       case 'PENALTY_SHOOTOUT':
-        return { text: 'PENALTIES', class: 'bg-purple-500 animate-pulse' };
+        return { text: 'PENALTIES', class: 'bg-amber-500 animate-pulse' };
       default:
         return { text: 'IN PLAY', class: 'bg-green-500' };
     }
@@ -207,7 +207,7 @@
         <button
           on:click={() => showSection = 'recent'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'recent'
-            ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-lg'
+            ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold shadow-lg'
             : 'bg-muted hover:bg-muted/80 text-muted-foreground'}"
         >
           <div class="flex items-center justify-center gap-2">

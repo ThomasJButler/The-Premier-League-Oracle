@@ -3,63 +3,142 @@
 @tailwind utilities;
 
 /* ─── DESIGN TOKENS (shadcn-svelte compatible) ─── */
+/* "Stadium Nightfall" — PL-inspired, dark-first, broadcast-quality */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
+    --background: 210 15% 97%;
+    --foreground: 220 15% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
+    --card-foreground: 220 15% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 262 83% 58%;
-    --accent-foreground: 0 0% 100%;
+    --popover-foreground: 220 15% 10%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 12% 93%;
+    --secondary-foreground: 220 15% 10%;
+    --muted: 215 10% 94%;
+    --muted-foreground: 215 8% 45%;
+    --accent: 155 100% 40%;
+    --accent-foreground: 155 80% 8%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 152 69% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 155 100% 35%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.625rem;
+    --border: 215 12% 89%;
+    --input: 215 12% 89%;
+    --ring: 160 84% 39%;
+    --radius: 0.75rem;
 
-    /* Legacy gradient tokens (for hero sections only) */
-    --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
-    --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --gradient-accent: linear-gradient(135deg, #00cc6a 0%, #00ff87 100%);
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 222 47% 6.5%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222 47% 6.5%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 262 83% 68%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --success: 152 69% 31%;
+    --background: 222 30% 5%;
+    --foreground: 210 5% 93%;
+    --card: 222 25% 7%;
+    --card-foreground: 210 5% 93%;
+    --popover: 222 25% 7%;
+    --popover-foreground: 210 5% 93%;
+    --primary: 160 72% 45%;
+    --primary-foreground: 222 40% 6%;
+    --secondary: 222 20% 12%;
+    --secondary-foreground: 210 5% 93%;
+    --muted: 222 18% 10%;
+    --muted-foreground: 215 6% 55%;
+    --accent: 155 100% 50%;
+    --accent-foreground: 155 60% 8%;
+    --destructive: 0 62% 35%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 155 100% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 217.2 91.2% 59.8%;
+    --border: 222 18% 13%;
+    --input: 222 18% 13%;
+    --ring: 160 72% 45%;
+
+    --gradient-primary: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --gradient-accent: linear-gradient(135deg, #00cc6a 0%, #00ff87 100%);
   }
+
+  /* ─── TEAM THEMES ─── */
+  /* Override primary/accent/ring per favourite team. Dark variants lighten
+     colours that would be invisible on dark backgrounds (< 30% lightness). */
+
+  /* Liverpool — the premium Red theme */
+  [data-team="Liverpool"] { --primary: 354 89% 42%; --accent: 354 89% 52%; --ring: 354 89% 42%; }
+  [data-team="Liverpool"].dark { --primary: 354 85% 50%; --accent: 354 89% 55%; --gradient-primary: linear-gradient(135deg, #2a0a0f 0%, #1a0609 100%); }
+
+  /* Arsenal */
+  [data-team="Arsenal"] { --primary: 0 99% 47%; --accent: 0 90% 55%; --ring: 0 99% 47%; }
+  [data-team="Arsenal"].dark { --primary: 0 90% 52%; --accent: 0 85% 58%; }
+
+  /* Aston Villa */
+  [data-team="Aston Villa"] { --primary: 330 75% 23%; --accent: 330 65% 35%; --ring: 330 75% 23%; }
+  [data-team="Aston Villa"].dark { --primary: 330 65% 40%; --accent: 330 60% 48%; }
+
+  /* Bournemouth */
+  [data-team="Bournemouth"] { --primary: 357 98% 43%; --accent: 357 90% 52%; --ring: 357 98% 43%; }
+
+  /* Brentford */
+  [data-team="Brentford"] { --primary: 0 100% 50%; --accent: 0 90% 58%; --ring: 0 100% 50%; }
+
+  /* Brighton */
+  [data-team="Brighton"] { --primary: 211 100% 36%; --accent: 211 90% 48%; --ring: 211 100% 36%; }
+  [data-team="Brighton"].dark { --primary: 211 85% 48%; --accent: 211 80% 55%; }
+
+  /* Chelsea */
+  [data-team="Chelsea"] { --primary: 214 96% 29%; --accent: 214 80% 42%; --ring: 214 96% 29%; }
+  [data-team="Chelsea"].dark { --primary: 214 80% 45%; --accent: 214 75% 52%; }
+
+  /* Crystal Palace */
+  [data-team="Crystal Palace"] { --primary: 219 68% 33%; --accent: 219 60% 45%; --ring: 219 68% 33%; }
+  [data-team="Crystal Palace"].dark { --primary: 219 60% 48%; --accent: 219 55% 55%; }
+
+  /* Everton */
+  [data-team="Everton"] { --primary: 219 100% 30%; --accent: 219 80% 42%; --ring: 219 100% 30%; }
+  [data-team="Everton"].dark { --primary: 219 80% 45%; --accent: 219 75% 52%; }
+
+  /* Fulham */
+  [data-team="Fulham"] { --primary: 0 0% 15%; --accent: 0 0% 30%; --ring: 0 0% 15%; }
+  [data-team="Fulham"].dark { --primary: 0 0% 55%; --accent: 0 0% 65%; }
+
+  /* Ipswich Town */
+  [data-team="Ipswich Town"] { --primary: 240 100% 50%; --accent: 240 85% 60%; --ring: 240 100% 50%; }
+
+  /* Leicester City */
+  [data-team="Leicester City"] { --primary: 220 100% 28%; --accent: 220 80% 42%; --ring: 220 100% 28%; }
+  [data-team="Leicester City"].dark { --primary: 220 80% 45%; --accent: 220 75% 52%; }
+
+  /* Manchester City */
+  [data-team="Manchester City"] { --primary: 205 55% 64%; --accent: 205 65% 55%; --ring: 205 55% 64%; }
+
+  /* Manchester United */
+  [data-team="Manchester United"] { --primary: 357 98% 43%; --accent: 357 90% 52%; --ring: 357 98% 43%; }
+
+  /* Newcastle United */
+  [data-team="Newcastle United"] { --primary: 0 4% 13%; --accent: 0 0% 25%; --ring: 0 4% 13%; }
+  [data-team="Newcastle United"].dark { --primary: 0 0% 55%; --accent: 0 0% 65%; }
+
+  /* Nottingham Forest */
+  [data-team="Nottingham Forest"] { --primary: 0 100% 43%; --accent: 0 90% 52%; --ring: 0 100% 43%; }
+
+  /* Southampton */
+  [data-team="Southampton"] { --primary: 357 82% 47%; --accent: 357 75% 55%; --ring: 357 82% 47%; }
+
+  /* Tottenham */
+  [data-team="Tottenham"] { --primary: 230 68% 21%; --accent: 230 55% 35%; --ring: 230 68% 21%; }
+  [data-team="Tottenham"].dark { --primary: 230 55% 42%; --accent: 230 50% 50%; }
+
+  /* West Ham United */
+  [data-team="West Ham United"] { --primary: 346 52% 31%; --accent: 346 50% 42%; --ring: 346 52% 31%; }
+  [data-team="West Ham United"].dark { --primary: 346 50% 45%; --accent: 346 48% 52%; }
+
+  /* Wolverhampton */
+  [data-team="Wolverhampton"] { --primary: 43 98% 54%; --accent: 43 90% 48%; --ring: 43 98% 54%; }
 
   * {
     @apply border-border;
@@ -78,58 +157,115 @@
 
 /* ─── LAYOUT COMPONENTS ─── */
 @layer components {
-  /* Header / Navbar */
+  /* Header */
   .header-container {
-    @apply sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16;
-    @apply bg-background/80 backdrop-blur-xl;
-    @apply border-b border-border;
+    @apply sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 lg:px-8 h-14;
+    @apply bg-background/80 backdrop-blur-xl backdrop-saturate-150;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+  }
+  .header-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), hsl(var(--accent) / 0.2), transparent);
   }
 
   /* Sidebar */
   .sidebar-container {
-    @apply h-screen fixed top-0 left-0 z-40 w-64 bg-card border-r border-border shadow-lg transition-transform duration-300 ease-in-out;
+    @apply h-screen fixed top-0 left-0 z-40 w-64 transition-transform duration-300 ease-in-out;
+    background: hsl(var(--card));
+    border-right: 1px solid hsl(var(--border) / 0.5);
+  }
+  .dark .sidebar-container {
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(222 30% 5%) 100%);
   }
 
   /* Navigation items */
   .nav-item {
-    @apply flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
-    @apply text-muted-foreground hover:text-foreground hover:bg-muted;
+    @apply flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200;
+    @apply text-muted-foreground hover:text-foreground hover:bg-muted/80;
   }
 
   .nav-item-active {
-    @apply text-primary bg-primary/10 border-l-4 border-primary;
+    @apply text-accent bg-accent/10;
+    border-left: 3px solid hsl(var(--accent));
+    box-shadow: -2px 0 8px hsl(var(--accent) / 0.15);
   }
 
   /* Mobile navigation */
   .mobile-nav {
     @apply fixed bottom-0 left-0 right-0 z-50 md:hidden;
-    @apply bg-background/90 backdrop-blur-xl;
-    @apply border-t border-border;
+    @apply bg-background/90 backdrop-blur-xl backdrop-saturate-150;
     @apply px-2 py-2;
+    border-top: 1px solid hsl(var(--border) / 0.5);
+  }
+  .mobile-nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), hsl(var(--accent) / 0.2), transparent);
   }
 
   .mobile-nav-item {
     @apply flex flex-col items-center justify-center py-2 px-3 rounded-lg;
     @apply text-xs font-medium text-muted-foreground;
-    @apply hover:bg-muted;
+    @apply hover:bg-muted/60;
     @apply transition-all duration-200;
   }
 
   .mobile-nav-item-active {
-    @apply text-primary bg-primary/10;
+    @apply text-accent;
+    background: hsl(var(--accent) / 0.1);
   }
 }
 
-/* ─── STAT CARDS ─── */
+/* ─── CARD SYSTEM ─── */
 @layer components {
-  .card-stats {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6;
-    @apply flex flex-col items-center justify-center text-center;
-    @apply transition-all duration-300;
+  /* Base card */
+  .card {
+    @apply rounded-xl p-6 transition-all duration-300;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
+  }
+  .card:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
+    border-color: hsl(var(--border));
   }
 
+  /* Glassmorphism card */
+  .card-glass {
+    @apply rounded-xl p-6 transition-all duration-300;
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid hsl(var(--border) / 0.3);
+    box-shadow: 0 4px 24px hsl(var(--primary) / 0.04), inset 0 1px 0 hsl(var(--foreground) / 0.03);
+  }
+  .card-glass:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 8px 32px hsl(var(--primary) / 0.08), inset 0 1px 0 hsl(var(--foreground) / 0.05);
+    border-color: hsl(var(--primary) / 0.2);
+  }
+
+  /* Stat card */
+  .card-stats {
+    @apply rounded-xl p-6 transition-all duration-300;
+    @apply flex flex-col items-center justify-center text-center;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
+  }
   .card-stats:hover {
-    @apply -translate-y-1 shadow-md;
+    @apply -translate-y-1;
+    box-shadow: 0 8px 24px hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary) / 0.25);
   }
 
   .stat-value {
@@ -143,56 +279,45 @@
   .stat-icon-wrapper {
     @apply mb-3 p-3 rounded-full;
   }
-}
-
-/* ─── LEGACY COMPONENT CLASSES (used by existing components) ─── */
-@layer components {
-  /* Card — solid, readable */
-  .card {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6;
-    @apply transition-all duration-300;
-  }
-
-  .card:hover {
-    @apply -translate-y-1 shadow-md;
-  }
-
-  /* Glass card — only for overlay contexts like hero sections */
-  .card-glass {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6;
-    @apply transition-all duration-300;
-  }
-
-  .card-glass:hover {
-    @apply -translate-y-1 shadow-md;
-  }
 
   /* Match card */
   .match-card {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm;
+    @apply rounded-xl transition-all duration-300;
     @apply p-4 sm:p-5 flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-3 sm:gap-4;
-    @apply transition-all duration-300;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
   }
-
   .match-card:hover {
-    @apply -translate-y-1 shadow-md border-primary/30;
+    @apply -translate-y-0.5;
+    box-shadow: 0 4px 16px hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary) / 0.3);
   }
 
   .match-score {
     @apply text-xl sm:text-2xl font-bold font-display px-3 py-1 rounded-lg bg-muted;
   }
+}
 
-  /* Buttons */
+/* ─── BUTTONS ─── */
+@layer components {
   .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium;
-    @apply px-4 py-2 transition-colors;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold;
+    @apply px-4 py-2.5 transition-all duration-200;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
     @apply disabled:pointer-events-none disabled:opacity-50;
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply bg-primary text-primary-foreground;
+  }
+  .btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
   }
 
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply bg-primary text-primary-foreground;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
   }
 
   .btn-secondary {
@@ -200,11 +325,14 @@
   }
 
   .btn-outline {
-    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+    @apply border border-input bg-transparent text-foreground;
+  }
+  .btn-outline:hover {
+    @apply bg-muted/60;
   }
 
   .btn-ghost {
-    @apply bg-transparent hover:bg-muted transition-all duration-200;
+    @apply bg-transparent hover:bg-muted/60 transition-all duration-200;
   }
 
   .btn-sm {
@@ -216,13 +344,19 @@
   }
 
   .btn-neon {
-    @apply relative px-6 py-3 font-bold text-white rounded-lg;
-    background: var(--gradient-primary);
-    @apply shadow-glow-primary-sm hover:shadow-glow-primary-md;
-    @apply transform hover:scale-105 transition-all duration-200;
+    @apply relative px-6 py-3 font-bold rounded-lg;
+    background: var(--gradient-accent);
+    color: hsl(var(--accent-foreground));
+    box-shadow: 0 0 12px rgba(0, 255, 135, 0.2);
+    @apply transform hover:scale-[1.03] transition-all duration-200;
   }
+  .btn-neon:hover {
+    box-shadow: 0 0 24px rgba(0, 255, 135, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}
 
-  /* Badges */
+/* ─── BADGES ─── */
+@layer components {
   .badge {
     @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold;
     @apply transition-colors;
@@ -247,25 +381,26 @@
   .badge-neutral {
     @apply bg-muted text-muted-foreground border-border;
   }
+}
 
-  /* Forms */
+/* ─── FORMS ─── */
+@layer components {
   .form-input, .form-select {
-    @apply block w-full rounded-md border border-input bg-background text-foreground;
-    @apply shadow-sm focus:border-primary focus:ring focus:ring-primary/30 focus:ring-opacity-50;
+    @apply block w-full rounded-lg border border-input bg-background text-foreground;
+    @apply shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20;
     @apply transition duration-150 ease-in-out;
   }
 
-  /* Chart container */
   .chart-container {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6;
-    @apply transition-all duration-300;
+    @apply rounded-xl p-6 transition-all duration-300;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
   }
-
   .chart-container:hover {
-    @apply -translate-y-1 shadow-md;
+    @apply -translate-y-0.5;
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
   }
 
-  /* Gradient text (for hero headings) */
   .gradient-text {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -283,36 +418,60 @@
 
 /* ─── ANIMATIONS & EFFECTS ─── */
 @layer components {
-  /* Skeleton loading */
+  /* Skeleton — shimmer instead of flat pulse */
   .skeleton {
-    @apply animate-pulse rounded-md bg-muted;
+    @apply rounded-md;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
   }
 
-  /* Live pulse indicator */
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Live pulse indicator — PL green */
   .live-pulse {
     animation: livePulse 2s ease-in-out infinite;
   }
 
   @keyframes livePulse {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.6);
       transform: scale(1);
     }
     50% {
-      box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+      box-shadow: 0 0 0 8px rgba(0, 255, 135, 0);
       transform: scale(1.05);
     }
   }
 
   /* Slide in animation */
   .animate-slide-in-up {
-    animation: slideInUp 0.5s ease-out forwards;
+    animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     opacity: 0;
   }
 
   @keyframes slideInUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(24px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Stagger entrance — use with animation-delay inline styles */
+  .animate-stagger {
+    opacity: 0;
+    animation: staggerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes staggerIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   /* Floating animation (subtle) */
@@ -337,7 +496,7 @@
 
   /* Ticker scroll */
   .live-ticker {
-    @apply overflow-hidden whitespace-nowrap;
+    @apply overflow-hidden whitespace-nowrap relative;
   }
 
   .ticker-content {
@@ -358,11 +517,76 @@
   .stat-change {
     @apply text-xs font-medium;
   }
+
+  /* Loading spinner — branded and visible */
+  .spinner-branded {
+    @apply rounded-full;
+    border: 3px solid hsl(var(--border));
+    border-top-color: hsl(var(--primary));
+    animation: spin 0.8s linear infinite;
+  }
+  .dark .spinner-branded {
+    border-color: hsl(var(--muted));
+    border-top-color: hsl(var(--accent));
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 }
 
-/* ─── UTILITY CLASSES ─── */
+/* ─── ATMOSPHERE & TEXTURE ─── */
 @layer utilities {
+  /* Noise texture overlay — adds organic warmth to flat surfaces */
+  .noise-bg {
+    position: relative;
+  }
+  .noise-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+    border-radius: inherit;
+  }
+  .dark .noise-bg::before {
+    opacity: 0.04;
+  }
+
+  /* Text glow */
   .text-glow-primary {
-    text-shadow: 0 0 8px hsl(var(--primary) / 0.5);
+    text-shadow: 0 0 12px hsl(var(--primary) / 0.4);
+  }
+  .text-glow-accent {
+    text-shadow: 0 0 12px hsl(var(--accent) / 0.4);
+  }
+
+  /* Gradient border — for premium card edges */
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.4), hsl(var(--accent) / 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Decorative dot grid pattern */
+  .dot-pattern {
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .dark .dot-pattern {
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
   }
 }

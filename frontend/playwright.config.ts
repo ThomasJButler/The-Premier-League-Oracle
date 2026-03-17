@@ -18,6 +18,7 @@ export default defineConfig({
     {
       name: 'desktop-chrome',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /mobile\.spec\.ts/,
     },
     {
       name: 'mobile-chrome',
@@ -25,7 +26,7 @@ export default defineConfig({
     },
     {
       name: 'iphone-se',
-      use: { ...devices['iPhone SE'] },
+      use: { ...devices['iPhone SE'], browserName: 'chromium' },
     },
   ],
 

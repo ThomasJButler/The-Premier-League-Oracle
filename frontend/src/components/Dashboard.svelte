@@ -320,40 +320,40 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e293b] p-6 sm:p-8 text-white animate-slide-in-up">
+    <!-- Decorative elements -->
+    <div class="absolute inset-0 dot-pattern opacity-[0.03]"></div>
+    <div class="absolute -top-20 -right-20 w-64 h-64 bg-[#00ff87]/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-slate-800/40 rounded-full blur-3xl"></div>
+
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-2.5 h-2.5 bg-green-400 rounded-full live-pulse"></div>
-        <span class="text-green-200 text-xs font-semibold tracking-wider uppercase">Live Predictions</span>
-        <span class="text-blue-200 text-xs ml-auto hidden sm:inline">
+        <div class="w-2.5 h-2.5 bg-[#00ff87] rounded-full live-pulse"></div>
+        <span class="text-[#00ff87]/80 text-xs font-semibold tracking-wider uppercase">Live Predictions</span>
+        <span class="text-white/50 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
-      <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2">
+      <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2 tracking-tight">
         Premier League Oracle
       </h1>
-      <p class="text-blue-100 text-sm sm:text-base mb-6 max-w-xl">
+      <p class="text-white/60 text-sm sm:text-base mb-6 max-w-xl">
         AI-powered predictions using ELO ratings, Poisson models, and real-time data analysis
       </p>
 
       <!-- Quick stats -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="text-center p-3 bg-white/10 rounded-lg">
-          <div class="text-xl sm:text-2xl font-display font-bold">{$overallAccuracy.toFixed(1)}%</div>
-          <div class="text-xs text-blue-200 mt-0.5">Accuracy</div>
-        </div>
-        <div class="text-center p-3 bg-white/10 rounded-lg">
-          <div class="text-xl sm:text-2xl font-display font-bold">&pound;{$profitMargin.toFixed(0)}</div>
-          <div class="text-xs text-blue-200 mt-0.5">Profit</div>
-        </div>
-        <div class="text-center p-3 bg-white/10 rounded-lg">
-          <div class="text-xl sm:text-2xl font-display font-bold">{upcomingPredictions}</div>
-          <div class="text-xs text-blue-200 mt-0.5">Upcoming</div>
-        </div>
-        <div class="text-center p-3 bg-white/10 rounded-lg">
-          <div class="text-xl sm:text-2xl font-display font-bold">{recentMatches.length}</div>
-          <div class="text-xs text-blue-200 mt-0.5">Matches</div>
-        </div>
+        {#each [
+          { value: `${$overallAccuracy.toFixed(1)}%`, label: 'Accuracy' },
+          { value: `£${$profitMargin.toFixed(0)}`, label: 'Profit' },
+          { value: upcomingPredictions, label: 'Upcoming' },
+          { value: recentMatches.length, label: 'Matches' },
+        ] as stat, i}
+          <div class="text-center p-3 bg-white/[0.07] rounded-lg border border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
+            <div class="text-xl sm:text-2xl font-display font-bold">{stat.value}</div>
+            <div class="text-xs text-white/40 mt-0.5">{stat.label}</div>
+          </div>
+        {/each}
       </div>
     </div>
   </div>
@@ -362,7 +362,7 @@
   {#if loading}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each Array(4) as _, i}
-        <div class="rounded-xl border border-border bg-card p-5">
+        <div class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
           <div class="skeleton w-10 h-10 rounded-lg mb-3"></div>
           <div class="skeleton h-3 w-20 mb-2"></div>
           <div class="skeleton h-7 w-28 mb-2"></div>
@@ -371,16 +371,20 @@
       {/each}
     </div>
   {:else if error}
-    <div class="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
-      <p class="text-destructive font-medium">{error}</p>
-      <button on:click={loadDashboardData} class="btn btn-primary mt-4">Retry</button>
+    <div class="card-glass p-8 text-center border-destructive/20 animate-stagger">
+      <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+        <Target class="w-6 h-6 text-destructive" />
+      </div>
+      <p class="text-destructive font-medium mb-1">{error}</p>
+      <p class="text-sm text-muted-foreground mb-4">Check your API connection or try again</p>
+      <button on:click={loadDashboardData} class="btn btn-primary">Retry</button>
     </div>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
       {#each stats as stat, i}
         <div
-          class="rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-          style="animation-delay: {i * 80}ms"
+          class="card-glass p-5 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
+          style="animation-delay: {400 + i * 100}ms"
           data-testid="stat-card"
         >
           <div class="flex items-center gap-3 mb-3">
@@ -398,13 +402,13 @@
 
   <!-- Charts Row -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 200ms">
+    <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
       <div class="h-56">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
     </div>
-    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 300ms">
+    <div class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
       <div class="h-56">
         <canvas bind:this={profitChartCanvas}></canvas>
@@ -413,19 +417,19 @@
   </div>
 
   <!-- How We Predict -->
-  <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 400ms">
+  <div class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
     <h3 class="text-sm font-display font-semibold text-foreground mb-4 flex items-center gap-2">
-      <Target class="w-4 h-4 text-primary" />
+      <Target class="w-4 h-4 text-accent" />
       How We Predict
     </h3>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {#each [
-        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
-        { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/30' },
-        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-900/30' },
-        { icon: Target, label: 'Home Advantage', desc: 'Venue adjustments', iconColor: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
-      ] as method}
-        <div class="text-center p-3 rounded-lg bg-muted/50">
+        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
+        { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+        { icon: Target, label: 'Home Advantage', desc: 'Venue adjustments', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+      ] as method, i}
+        <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50 animate-stagger" style="animation-delay: {1100 + i * 80}ms">
           <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
             <svelte:component this={method.icon} class="w-4 h-4 {method.iconColor}" />
           </div>
@@ -434,9 +438,9 @@
         </div>
       {/each}
     </div>
-    <div class="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
+    <div class="mt-4 p-3 bg-accent/5 rounded-lg border border-accent/10">
       <p class="text-xs text-muted-foreground">
-        <strong class="text-foreground">Live Calculation:</strong> Processing {recentMatches.length} recent matches,
+        <strong class="text-accent">Live Calculation:</strong> Processing {recentMatches.length} recent matches,
         current standings, and {upcomingPredictions} upcoming fixtures with statistical models.
       </p>
     </div>
@@ -444,7 +448,7 @@
 
   <!-- Recent Predictions + Upcoming Matches -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="lg:col-span-2 rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 500ms">
+    <div class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Recent Predictions</h3>
       {#if loading}
         <div class="space-y-3">
@@ -479,7 +483,7 @@
         </ul>
       {/if}
     </div>
-    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 600ms">
+    <div class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Upcoming Matches</h3>
       <ul class="space-y-3">
         {#each realMatchData.slice(0, 5) as match}

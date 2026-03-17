@@ -242,7 +242,17 @@
     flippedCards = new Set(flippedCards);
   }
 
-  onMount(() => loadGameweekMatches(selectedGameweek));
+  onMount(async () => {
+    try {
+      const season = await dataService.getCurrentSeason();
+      if (season?.currentMatchday) {
+        selectedGameweek = season.currentMatchday;
+      }
+    } catch {
+      // Fall back to week 1 if API unavailable
+    }
+    loadGameweekMatches(selectedGameweek);
+  });
   
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
@@ -276,7 +286,7 @@
         on:click={predictGameweek}
         disabled={isBatchPredicting || loading}
         data-testid="predict-gameweek"
-        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        class="btn-neon px-5 py-2.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
       >
         {#if isBatchPredicting}
           <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -393,7 +403,7 @@
         <!-- Progress Bar -->
         <div class="w-full bg-muted rounded-full h-2 overflow-hidden">
           <div 
-            class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 ease-out"
+            class="h-full bg-gradient-to-r from-[#00cc6a] to-[#00ff87] rounded-full transition-all duration-300 ease-out"
             style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
           >
             <div class="h-full bg-white/30 animate-pulse"></div>
@@ -593,10 +603,10 @@
                   
                   <!-- Bet Builder Section -->
                   {#if prediction.betBuilder}
-                    <div class="mt-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                    <div class="mt-4 p-3 bg-gradient-to-br from-slate-50 to-teal-50 dark:from-slate-950/30 dark:to-teal-950/30 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div class="flex items-center gap-2 mb-3">
-                        <Package class="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        <span class="font-semibold text-purple-800 dark:text-purple-200">Bet Builder Markets</span>
+                        <Package class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">Bet Builder Markets</span>
                       </div>
                       
                       <!-- Quick Markets Grid -->
@@ -634,13 +644,13 @@
                       <!-- Suggested Combos -->
                       {#if prediction.betBuilder.suggestedCombos.length > 0}
                         <div class="mt-2">
-                          <div class="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-1">
+                          <div class="text-xs font-semibold text-teal-700 dark:text-teal-300 mb-1">
                             Suggested Builders:
                           </div>
                           {#each prediction.betBuilder.suggestedCombos.slice(0, 2) as combo}
                             <div class="bg-muted rounded p-2 mb-1">
                               <div class="flex justify-between items-start mb-1">
-                                <span class="text-xs font-bold text-purple-700 dark:text-purple-300">
+                                <span class="text-xs font-bold text-teal-700 dark:text-teal-300">
                                   {combo.name}
                                 </span>
                                 <span class="text-xs font-mono bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-1 rounded">

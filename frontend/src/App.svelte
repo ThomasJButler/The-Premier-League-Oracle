@@ -9,13 +9,13 @@
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
-  import ValueBets from './components/betting/ValueBets.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
   import TopScorers from './components/TopScorers.svelte';
   import LiveMatches from './components/LiveMatches.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
+  import ChatBot from './components/ChatBot.svelte';
   import { onMount } from 'svelte';
 
   let currentView = 'Dashboard'; // Default view
@@ -47,14 +47,19 @@
       isSidebarOpen = true;
     }
 
-    // Restore saved theme, falling back to system preference
+    // Restore saved theme — default to dark (sports data looks better dark)
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (savedTheme === 'light') {
+    if (savedTheme === 'light') {
       document.documentElement.classList.remove('dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    } else {
+      // Default to dark mode unless explicitly set to light
       document.documentElement.classList.add('dark');
+    }
+
+    // Restore favourite team theme
+    const savedTeam = localStorage.getItem('favourite_team');
+    if (savedTeam) {
+      document.documentElement.dataset.team = savedTeam;
     }
 
     // Check for API key on load
@@ -97,10 +102,10 @@
 
 </script>
 
-<div class="flex h-screen bg-background text-foreground overflow-hidden relative">
+<div class="flex h-screen bg-background text-foreground overflow-hidden relative noise-bg">
   <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
-  <div class="flex-1 flex flex-col overflow-hidden">
+  <div class="flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ease-in-out {isSidebarOpen ? 'lg:ml-64' : ''}">
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
@@ -120,8 +125,6 @@
           <Predictions />
         {:else if currentView === 'Kelly Calculator'}
           <KellyCalculator />
-        {:else if currentView === 'Value Bets'}
-          <ValueBets />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
         {:else if currentView === 'Season Stats'}
@@ -140,6 +143,8 @@
           <LiveMatches />
         {:else if currentView === 'Standings'}
           <StandingsTable />
+        {:else if currentView === 'Oracle Chat'}
+          <ChatBot />
         {/if}
       </div>
     </main>

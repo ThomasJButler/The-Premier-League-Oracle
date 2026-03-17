@@ -109,7 +109,9 @@ class FootballDataAPI {
   private config: FootballDataConfig;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
-  private rateLimitDelay = 6000; // 10 requests per minute for free tier
+  // Real API needs 6s between requests (free tier: 10/min).
+  // Dev proxy has no rate limit, so use a shorter delay to keep the UI snappy.
+  private rateLimitDelay = import.meta.env.DEV ? 200 : 6000;
   private lastRequestTime = 0;
   
   constructor() {
@@ -225,7 +227,8 @@ class FootballDataAPI {
       start_date: season.startDate,
       end_date: season.endDate,
       is_current: true,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      currentMatchday: season.currentMatchday
     };
   }
   

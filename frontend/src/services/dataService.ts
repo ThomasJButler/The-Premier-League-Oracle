@@ -13,10 +13,16 @@ class DataService {
   private useCache: boolean = true;
   private cacheDb: IDBDatabase | null = null;
   private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes default
-  
+  private readyPromise: Promise<void>;
+
   constructor() {
     this.initializeIndexedDB();
-    this.checkDataSources();
+    this.readyPromise = this.checkDataSources();
+  }
+
+  /** Wait for initial data source check to complete before querying */
+  private async ensureReady(): Promise<void> {
+    await this.readyPromise;
   }
   
   private async initializeIndexedDB(): Promise<void> {
@@ -158,6 +164,7 @@ class DataService {
   
   // Main data fetching methods - API only
   public async getCurrentSeason(): Promise<Season | null> {
+    await this.ensureReady();
     const cacheKey = 'current_season';
     
     // Try cache first
@@ -186,6 +193,7 @@ class DataService {
     days?: number;
     matchday?: number;
   } = {}): Promise<Match[]> {
+    await this.ensureReady();
     const { upcoming = false, recent = false, days = 7, matchday } = options;
     const cacheKey = `matches_${upcoming ? 'upcoming' : 'recent'}_${days}_${matchday || 'all'}`;
     
@@ -237,6 +245,7 @@ class DataService {
   }
   
   public async getStandings(): Promise<Standing[]> {
+    await this.ensureReady();
     const cacheKey = 'current_standings';
     
     // Try cache first
@@ -260,6 +269,7 @@ class DataService {
   }
   
   public async getTopScorers(limit: number = 20): Promise<any[]> {
+    await this.ensureReady();
     const cacheKey = `top_scorers_${limit}`;
     
     // Try cache first
@@ -283,6 +293,7 @@ class DataService {
   }
   
   public async getTeamStats(teamName: string): Promise<TeamStats | null> {
+    await this.ensureReady();
     const cacheKey = `team_stats_${teamName}`;
     
     // Try cache first
@@ -338,6 +349,7 @@ class DataService {
   }
   
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[]> {
+    await this.ensureReady();
     const cacheKey = `team_form_${teamName}_${matches?.length || 5}`;
     
     // Try cache first
@@ -363,6 +375,7 @@ class DataService {
   
   // Get all seasons — free tier only returns current season
   public async getAllSeasons(): Promise<Season[]> {
+    await this.ensureReady();
     const cacheKey = 'all_seasons';
     
     // Try cache first
@@ -393,7 +406,8 @@ class DataService {
 
   // Refresh data source availability (useful after API key is set)
   public async refreshDataSources(): Promise<void> {
-    await this.checkDataSources();
+    this.readyPromise = this.checkDataSources();
+    await this.readyPromise;
   }
   
   // Alias for refreshDataSources for backward compatibility
@@ -413,6 +427,7 @@ class DataService {
 
   // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
   public async getLiveMatches(): Promise<Match[]> {
+    await this.ensureReady();
     const cacheKey = 'live_matches';
     const LIVE_CACHE_TTL = 60 * 1000; // 60 seconds for live data
 
@@ -438,6 +453,7 @@ class DataService {
 
   // Get completed matches for a given season year (e.g. 2024 for 2024/25)
   public async getHistoricalMatches(season: number): Promise<Match[]> {
+    await this.ensureReady();
     const cacheKey = `historical_matches_${season}`;
 
     // Historical data rarely changes — use 24h cache
@@ -463,6 +479,7 @@ class DataService {
 
   // Get a team's recent finished matches — 30min cache
   public async getTeamRecentMatches(teamId: number, limit: number = 5): Promise<Match[]> {
+    await this.ensureReady();
     const cacheKey = `team_recent_${teamId}_${limit}`;
 
     const cached = await this.getCachedData<Match[]>('matches', cacheKey);

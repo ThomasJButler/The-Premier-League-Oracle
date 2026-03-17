@@ -146,7 +146,7 @@
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-            <div class="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
+            <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
               <div class="w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-lg flex items-center justify-center mb-3">
                 <Zap class="w-4 h-4 text-blue-600" />
               </div>
@@ -162,9 +162,9 @@
               <p class="text-sm text-muted-foreground">Your API key stays local, never shared</p>
             </div>
             
-            <div class="p-4 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl">
-              <div class="w-8 h-8 bg-purple-100 dark:bg-purple-800 rounded-lg flex items-center justify-center mb-3">
-                <BookOpen class="w-4 h-4 text-purple-600" />
+            <div class="p-4 bg-gradient-to-br from-slate-50 to-teal-50 dark:from-slate-900/20 dark:to-teal-900/20 rounded-xl">
+              <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mb-3">
+                <BookOpen class="w-4 h-4 text-teal-600" />
               </div>
               <h4 class="font-semibold mb-1">Research Tool</h4>
               <p class="text-sm text-muted-foreground">For educational and research purposes only</p>
@@ -206,7 +206,7 @@
             
             <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
-                <Zap class="w-4 h-4 text-purple-600" />
+                <Zap class="w-4 h-4 text-teal-600" />
                 Direct API Calls
               </h4>
               <p class="text-xs text-muted-foreground">
@@ -298,8 +298,8 @@
         <!-- API Setup Step -->
         <div class="space-y-6">
           <div class="text-center">
-            <div class="w-16 h-16 mx-auto bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-full flex items-center justify-center mb-4">
-              <Key class="w-8 h-8 text-blue-600" />
+            <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-800/20 to-slate-900/20 rounded-full flex items-center justify-center mb-4">
+              <Key class="w-8 h-8 text-primary" />
             </div>
             <h3 class="text-2xl font-bold mb-2">API Configuration</h3>
             <p class="text-muted-foreground">
@@ -385,7 +385,7 @@
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            <div class="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
+            <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
               <h4 class="font-semibold mb-2">💡 Recommended Usage</h4>
               <ul class="text-sm text-muted-foreground space-y-1">
                 <li>• Check daily predictions</li>
