@@ -12,7 +12,7 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database, Package, ChevronDown, ChevronUp } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp } from 'lucide-svelte';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -33,10 +33,6 @@
   let showAccuracyPanel = false;
   let rollingLast10Accuracy = 0;
   let loading = true;
-  let selectedMatch: Match | null = null;
-  let predictionInProgress = false;
-  let currentPrediction: any = null;
-  let visible = false;
   let error: string | null = null;
   let flippedCards = new Set<string>(); // Track which cards are flipped
   
@@ -95,7 +91,6 @@
         rollingLast10Accuracy = (correct10 / recent10.length) * 100;
       }
       
-      visible = true;
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
       // Error loading predictions

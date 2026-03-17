@@ -99,14 +99,14 @@ Merged into P1a. Shared theme store created at `frontend/src/stores/theme.ts` wi
 
 These are silent logic bugs producing wrong data for users:
 
-- [ ] `SeasonStats.svelte`: lateDrama detection references `match.full_time_result` which doesn't exist on `Match` type — `undefined !== undefined` is always `false`, so lateDrama count is permanently 0. Fix: compute from `home_goals`/`away_goals` comparing HT vs FT outcome
-- [ ] `SeasonStats.svelte`: card stats (`home_yellows`, `away_yellows`, `home_reds`, `away_reds`) always 0 — these fields are `null` from free-tier API. Either remove the card stats section or document that it requires paid tier
-- [ ] `dataService.ts` / `footballData.ts`: season boundary inconsistency — `footballData.ts:372` uses `month >= 6` (July) while `dataService.ts:311` uses `month >= 7` (August). Unify to a single constant
-- [ ] `optimizedPredictions.ts`: model weights declared twice (in `combineModels` and in returned `modelWeights` object) — if one changes without the other, reported weights will be a lie. Extract to a shared constant
-- [ ] `optimizedPredictions.ts`: H2H no-data fallback is inconsistent — `homeWinRate: 0.33` but `probabilities: { homeWin: 0.40, draw: 0.30, awayWin: 0.30 }`. These should agree
-- [ ] `Predictions.svelte`: 4 dead state variables (`selectedMatch`, `predictionInProgress`, `currentPrediction`, `visible`) — remove
-- [ ] `dataService.ts`: `setCachedData` awaits an IDBRequest directly which isn't a real Promise — the `await` resolves immediately. Wrap in a proper Promise or use `idb` library
-- [ ] `dataService.ts`: `initializeIndexedDB` is async but called without `await` in constructor — `cacheDb` could be `null` during first few calls
+- [x] ~~`SeasonStats.svelte`: lateDrama detection~~ — **False positive**: `full_time_result` exists on `Match` type (line 41) and is populated by `transformMatch`. The comparison `full_time_result !== half_time_result` correctly identifies matches where the result changed after halftime. Description updated from 'Late Drama' to 'Results changed after halftime' for accuracy.
+- [x] `SeasonStats.svelte`: card stats (`home_yellows`, `away_yellows`, `home_reds`, `away_reds`) always 0 — DONE — stats now show 'N/A' with explanation when free-tier API returns null card data
+- [x] `dataService.ts` / `footballData.ts`: season boundary inconsistency — DONE — unified to `month >= 6` (July) in both files
+- [x] `optimizedPredictions.ts`: model weights declared twice (in `combineModels` and in returned `modelWeights` object) — DONE — extracted to shared `MODEL_WEIGHTS` constant at module level
+- [x] `optimizedPredictions.ts`: H2H no-data fallback is inconsistent — DONE — homeWinRate/awayWinRate now consistent with probabilities (0.40/0.30)
+- [x] `Predictions.svelte`: 4 dead state variables (`selectedMatch`, `predictionInProgress`, `currentPrediction`, `visible`) — DONE — removed `selectedMatch`, `predictionInProgress`, `currentPrediction`, `visible`; also removed dead imports `Clock`, `Database`
+- [x] `dataService.ts`: `setCachedData` awaits an IDBRequest directly which isn't a real Promise — DONE — wrapped in proper Promise with onsuccess/onerror callbacks; also fixed `clearCache` same issue
+- [x] `dataService.ts`: `initializeIndexedDB` is async but called without `await` in constructor — DONE — returns proper Promise, wired into `readyPromise` chain so DB is guaranteed open before first query
 
 ---
 
@@ -339,13 +339,13 @@ Priority features to implement with real data:
 
 Multiple components have dead imports that should be cleaned up:
 
-- [ ] `Predictions.svelte`: remove dead imports `Database`, `Clock`
+- [x] `Predictions.svelte`: remove dead imports `Database`, `Clock` — DONE
 - [ ] `StandingsTable.svelte`: remove dead imports `TrendingUp`, `TrendingDown`, `fade`
 - [ ] `TopScorers.svelte`: remove dead imports `Target`, `User`
 - [ ] `Settings.svelte`: remove dead import `Sparkles`
 - [ ] `ApiSetupWizard.svelte`: remove dead import `Sparkles`; clean up stale test comments
 - [ ] `MatchList.svelte`: remove dead import `Check`
-- [ ] `SeasonStats.svelte`: remove unused `animatedValue` tweened store
+- [x] `SeasonStats.svelte`: remove unused `animatedValue` tweened store — DONE
 - [ ] `BettingHistory.svelte`: remove dead `.th`/`.td` CSS classes in `<style global>`
 - [ ] Extract `getSeasonLabel()` to shared utility — duplicated in StandingsTable, TopScorers, SeasonStats
 - [ ] `ApiSetupWizard.svelte`: fix double `window.location.reload()` (5s delay + button click)
@@ -384,8 +384,8 @@ Write `specs/08-backend-training.md` before starting P3.
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
 | `advancedPredictions.ts` | `ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}` (no shots data from free tier) | Low |
 | `optimizedPredictions.ts` | `cleanSheetRate: 0.3` — derivable from match results but not computed | P1e |
-| `optimizedPredictions.ts` | Model weights duplicated in two places — can silently diverge | P1e |
-| `optimizedPredictions.ts` | H2H fallback `homeWinRate: 0.33` inconsistent with `homeWin: 0.40` | P1e |
+| ~~`optimizedPredictions.ts`~~ | ~~Model weights duplicated in two places — can silently diverge~~ | ~~P1e~~ FIXED |
+| ~~`optimizedPredictions.ts`~~ | ~~H2H fallback `homeWinRate: 0.33` inconsistent with `homeWin: 0.40`~~ | ~~P1e~~ FIXED |
 | `optimizedPredictions.ts` | Error fallback returns different weights than success path | Low |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | P4d |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | P4d |
@@ -403,11 +403,11 @@ Write `specs/08-backend-training.md` before starting P3.
 | `ChatBot.svelte` | OpenAI API key exposed in browser network tab | P2h |
 | `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | P2h |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated | Low |
-| `SeasonStats.svelte` | `lateDrama` always 0 — references non-existent field | P1e |
-| `SeasonStats.svelte` | Card stats always 0 — free-tier API has no card data | P1e |
+| ~~`SeasonStats.svelte`~~ | ~~`lateDrama` always 0 — references non-existent field~~ | ~~P1e~~ FALSE POSITIVE — `full_time_result` exists |
+| ~~`SeasonStats.svelte`~~ | ~~Card stats always 0 — free-tier API has no card data~~ | ~~P1e~~ FIXED — shows 'N/A' with explanation |
 | `value.ts` | `calculateCLV` returns `betId: ''` (stub) | Low |
 | `kelly.ts` | `Math.random()` in `simulate()` — non-deterministic Monte Carlo | Low |
-| `dataService.ts` | Season boundary inconsistency (month >= 6 vs >= 7) | P1e |
+| ~~`dataService.ts`~~ | ~~Season boundary inconsistency (month >= 6 vs >= 7)~~ | ~~P1e~~ FIXED |
 
 ### Backend
 
@@ -469,6 +469,8 @@ Write `specs/08-backend-training.md` before starting P3.
 - `footballData.test.ts`: normalisation test re-implements logic instead of testing actual function
 - IndexedDB cache layer completely untested
 - Only 2 components have unit tests (Dashboard, BettingHistory) — 14 components untested
+
+**Test infrastructure note:** Test setup (`setup.ts`) updated to properly mock IndexedDB async callback pattern — all IDB operations now resolve correctly in tests.
 
 ### Frontend (Playwright E2E)
 

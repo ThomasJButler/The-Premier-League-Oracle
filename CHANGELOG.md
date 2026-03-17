@@ -4,6 +4,18 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P1e Frontend Correctness Bugs — Complete (18 March 2026)
+- **7 of 8 P1e bugs fixed** — all silent logic errors producing wrong data for users
+- **SeasonStats card stats**: Now show "N/A" with "Card data unavailable on free tier" explanation when Football-Data.org free tier returns null for yellow/red card fields (was silently showing 0)
+- **Season boundary unified**: Both `footballData.ts` and `dataService.ts` now use `getMonth() >= 6` (July onwards = new season). Previously `dataService.ts` used `>= 7` (August), causing season ID mismatches for July matches
+- **Model weights extracted**: `optimizedPredictions.ts` now uses a single `MODEL_WEIGHTS` constant — was duplicated in `combineModels()`, return value, and error fallback (which had DIFFERENT weights: form 0.25 vs 0.20, h2h 0.15 vs 0.10)
+- **H2H fallback consistency**: When no head-to-head data, `homeWinRate` (0.40) and `awayWinRate` (0.30) now match probabilities. Previously rates were 0.33/0.33 but probabilities were 0.40/0.30
+- **Dead code removed**: 4 dead state variables from `Predictions.svelte` (`selectedMatch`, `predictionInProgress`, `currentPrediction`, `visible`), 2 dead imports (`Clock`, `Database`), unused `animatedValue` tweened store from `SeasonStats.svelte` (plus `tweened`/`cubicOut` imports)
+- **IndexedDB cache fixed**: `setCachedData` and `clearCache` now properly wrap IDB operations in Promises (was `await`-ing `IDBRequest` which resolves immediately). `initializeIndexedDB` returns a real Promise wired into `readyPromise` chain — DB guaranteed open before first query
+- **Test setup improved**: Mock IndexedDB in `setup.ts` updated to simulate async callback pattern (fires `onsuccess` on next microtask) so Promise-based IDB wrappers resolve correctly
+- **lateDrama false positive**: Audit #4 reported `full_time_result` doesn't exist on `Match` type — it does (line 41 of `types/index.ts`), and `transformMatch` populates it. No fix needed; updated description to "Results changed after halftime"
+- **275/275 tests passing, 0 type errors**
+
 ### Deep Audit #4 — 9-Agent Comprehensive Sweep (17 March 2026)
 - **9-agent parallel audit**: Studied all 7 specs, all 17 Svelte components, all frontend lib/services/types/stores/utils, all 10 backend Python files, all 13 unit test files + 5 E2E specs, and root documentation
 - **8 new correctness bugs discovered**: `SeasonStats.svelte` lateDrama always 0 (references non-existent `full_time_result` field), `SeasonStats.svelte` card stats always 0 (free-tier returns null), season boundary inconsistency between `footballData.ts` (month >= 6) and `dataService.ts` (month >= 7), `optimizedPredictions.ts` model weights duplicated in two places, H2H fallback probabilities inconsistent (0.33 vs 0.40), `dataService.ts` `setCachedData` awaits IDBRequest (not a real Promise), `dataService.ts` `initializeIndexedDB` not awaited in constructor

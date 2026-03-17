@@ -39,6 +39,19 @@ interface LeagueAverages {
   teamStrengths: Map<string, TeamStrengths>;
 }
 
+/**
+ * Single source of truth for ensemble model weights.
+ * Used by combineModels() for computation and returned in predictions for transparency.
+ * If you change these, the actual model behaviour AND reported weights stay in sync.
+ */
+const MODEL_WEIGHTS = {
+  elo: 0.25,
+  poisson: 0.30,
+  form: 0.20,
+  h2h: 0.10,
+  standings: 0.15
+} as const;
+
 export class OptimizedPredictor {
   // Use the shared ELO system — single source of truth for team ratings
   private static eloSystem = sharedEloSystem;
@@ -354,20 +367,14 @@ export class OptimizedPredictor {
         predictedAwayGoals: predictedGoals.away,
         homeForm: formAnalysis.homeFormString,
         awayForm: formAnalysis.awayFormString,
-        modelWeights: {
-          elo: 0.25,
-          poisson: 0.30,
-          form: 0.20,
-          h2h: 0.10,
-          standings: 0.15
-        },
+        modelWeights: { ...MODEL_WEIGHTS },
         insights,
         valueOdds
       };
 
     } catch (error) {
       // Error in optimized prediction, using fallback
-      // Fallback to simple prediction
+      // Fallback to simple prediction — still report the real weights for consistency
       return {
         predictedResult: 'D',
         confidence: 0.33,
@@ -375,13 +382,7 @@ export class OptimizedPredictor {
         predictedAwayGoals: 1,
         homeForm: '?????',
         awayForm: '?????',
-        modelWeights: {
-          elo: 0.25,
-          poisson: 0.30,
-          form: 0.25,
-          h2h: 0.15,
-          standings: 0.05
-        },
+        modelWeights: { ...MODEL_WEIGHTS },
         insights: ['Using simplified prediction due to data limitations'],
         valueOdds: { home: 3.0, draw: 3.3, away: 3.0 }
       };
@@ -496,13 +497,14 @@ export class OptimizedPredictor {
     ).slice(0, 10); // Last 10 H2H matches
 
     if (h2hMatches.length === 0) {
+      // No H2H data — use slight home advantage as default (consistent rates and probabilities)
       return {
         totalMatches: 0,
         homeWins: 0,
         awayWins: 0,
         draws: 0,
-        homeWinRate: 0.33,
-        awayWinRate: 0.33,
+        homeWinRate: 0.40,
+        awayWinRate: 0.30,
         probabilities: {
           homeWin: 0.40,
           draw: 0.30,
@@ -608,34 +610,26 @@ export class OptimizedPredictor {
     h2h: { homeWin: number; draw: number; awayWin: number };
     standings: { homeWin: number; draw: number; awayWin: number };
   }) {
-    const weights = {
-      elo: 0.25,
-      poisson: 0.30,
-      form: 0.20,
-      h2h: 0.10,
-      standings: 0.15
-    };
+    const homeWin =
+      models.elo.home * MODEL_WEIGHTS.elo +
+      models.poisson.homeWin * MODEL_WEIGHTS.poisson +
+      models.form.homeWin * MODEL_WEIGHTS.form +
+      models.h2h.homeWin * MODEL_WEIGHTS.h2h +
+      models.standings.homeWin * MODEL_WEIGHTS.standings;
 
-    const homeWin = 
-      models.elo.home * weights.elo +
-      models.poisson.homeWin * weights.poisson +
-      models.form.homeWin * weights.form +
-      models.h2h.homeWin * weights.h2h +
-      models.standings.homeWin * weights.standings;
+    const draw =
+      models.elo.draw * MODEL_WEIGHTS.elo +
+      models.poisson.draw * MODEL_WEIGHTS.poisson +
+      models.form.draw * MODEL_WEIGHTS.form +
+      models.h2h.draw * MODEL_WEIGHTS.h2h +
+      models.standings.draw * MODEL_WEIGHTS.standings;
 
-    const draw = 
-      models.elo.draw * weights.elo +
-      models.poisson.draw * weights.poisson +
-      models.form.draw * weights.form +
-      models.h2h.draw * weights.h2h +
-      models.standings.draw * weights.standings;
-
-    const awayWin = 
-      models.elo.away * weights.elo +
-      models.poisson.awayWin * weights.poisson +
-      models.form.awayWin * weights.form +
-      models.h2h.awayWin * weights.h2h +
-      models.standings.awayWin * weights.standings;
+    const awayWin =
+      models.elo.away * MODEL_WEIGHTS.elo +
+      models.poisson.awayWin * MODEL_WEIGHTS.poisson +
+      models.form.awayWin * MODEL_WEIGHTS.form +
+      models.h2h.awayWin * MODEL_WEIGHTS.h2h +
+      models.standings.awayWin * MODEL_WEIGHTS.standings;
 
     // Normalize to ensure sum equals 1
     const total = homeWin + draw + awayWin;

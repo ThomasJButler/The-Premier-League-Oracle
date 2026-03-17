@@ -1,7 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { tweened } from 'svelte/motion';
-  import { cubicOut } from 'svelte/easing';
   import { Calendar, Target, TrendingUp, Award, Users, Zap, Shield, AlertTriangle, Percent, Activity, Timer, Home } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
@@ -18,11 +16,6 @@
   let matches: Match[] = [];
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
-  
-  const animatedValue = tweened(0, {
-    duration: 1000,
-    easing: cubicOut
-  });
 
   async function loadSeasonStats() {
     try {
@@ -68,19 +61,29 @@
       }
     });
 
-    // Calculate late drama (goals after 85th minute)
+    // Matches where the result changed between halftime and fulltime
+    // (best proxy for drama without minute-by-minute event data from the free API tier)
     const lateDramaMatches = completedMatches.filter(match => {
-      // This is a simplified check - in real data you'd have minute-by-minute events
-      return match.full_time_result !== match.half_time_result; // Result changed from halftime
+      return match.full_time_result !== null &&
+        match.half_time_result !== null &&
+        match.full_time_result !== match.half_time_result;
     }).length;
 
-    // Find most cards in a match
-    let mostCardsMatch = completedMatches.reduce((prev, curr) => {
-      const currCards = (curr.home_yellows || 0) + (curr.away_yellows || 0) + (curr.home_reds || 0) + (curr.away_reds || 0);
-      const prevCards = (prev.home_yellows || 0) + (prev.away_yellows || 0) + (prev.home_reds || 0) + (prev.away_reds || 0);
-      return currCards > prevCards ? curr : prev;
-    });
-    const mostCards = (mostCardsMatch.home_yellows || 0) + (mostCardsMatch.away_yellows || 0) + (mostCardsMatch.home_reds || 0) + (mostCardsMatch.away_reds || 0);
+    // Find most cards in a match (free-tier API returns null for card data)
+    const hasCardData = completedMatches.some(m =>
+      m.home_yellows !== null || m.away_yellows !== null ||
+      m.home_reds !== null || m.away_reds !== null
+    );
+    let mostCardsMatch = completedMatches[0] || ({} as Match);
+    let mostCards = 0;
+    if (hasCardData) {
+      mostCardsMatch = completedMatches.reduce((prev, curr) => {
+        const currCards = (curr.home_yellows || 0) + (curr.away_yellows || 0) + (curr.home_reds || 0) + (curr.away_reds || 0);
+        const prevCards = (prev.home_yellows || 0) + (prev.away_yellows || 0) + (prev.home_reds || 0) + (prev.away_reds || 0);
+        return currCards > prevCards ? curr : prev;
+      });
+      mostCards = (mostCardsMatch.home_yellows || 0) + (mostCardsMatch.away_yellows || 0) + (mostCardsMatch.home_reds || 0) + (mostCardsMatch.away_reds || 0);
+    }
 
     // Find longest winning streak
     let currentStreak = 0;
@@ -157,18 +160,20 @@
         description: 'Most goals overcome to win'
       },
       {
-        label: 'Late Drama',
+        label: 'Second-Half Turnarounds',
         value: `${lateDramaMatches} matches`,
         icon: Zap,
         color: 'from-yellow-500 to-orange-500',
-        description: 'Results changed after halftime'
+        description: 'Result changed between halftime and fulltime'
       },
       {
         label: 'Most Cards',
-        value: `${mostCards} cards`,
+        value: hasCardData ? `${mostCards} cards` : 'N/A',
         icon: Calendar,
         color: 'from-red-500 to-pink-500',
-        description: `${mostCardsMatch.home_team} vs ${mostCardsMatch.away_team}`
+        description: hasCardData && mostCardsMatch.home_team
+          ? `${mostCardsMatch.home_team} vs ${mostCardsMatch.away_team}`
+          : 'Card data unavailable on free tier'
       },
       {
         label: 'Win Streak',
@@ -224,10 +229,13 @@
       ? ((awayWins / completedMatches.length) * 100).toFixed(1) 
       : 0;
     
-    // Red cards total
-    const totalRedCards = completedMatches.reduce((sum, m) => 
-      sum + (m.home_reds || 0) + (m.away_reds || 0), 0
+    // Red cards total (free-tier API returns null for card data)
+    const hasRedCardData = completedMatches.some(m =>
+      m.home_reds !== null || m.away_reds !== null
     );
+    const totalRedCards = hasRedCardData
+      ? completedMatches.reduce((sum, m) => sum + (m.home_reds || 0) + (m.away_reds || 0), 0)
+      : -1; // Sentinel: -1 means no data available
     
     // Most goals in a single match
     let highestScoringMatch = completedMatches.reduce((prev, curr) => {
@@ -328,10 +336,10 @@
       },
       {
         label: 'Red Cards',
-        value: totalRedCards,
+        value: totalRedCards >= 0 ? totalRedCards : 'N/A',
         icon: AlertTriangle,
         color: 'from-red-600 to-rose-600',
-        description: 'Total dismissals this season'
+        description: totalRedCards >= 0 ? 'Total dismissals this season' : 'Card data unavailable on free tier'
       },
       {
         label: 'Goal Fest',

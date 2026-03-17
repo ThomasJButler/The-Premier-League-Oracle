@@ -16,8 +16,8 @@ class DataService {
   private readyPromise: Promise<void>;
 
   constructor() {
-    this.initializeIndexedDB();
-    this.readyPromise = this.checkDataSources();
+    // Initialise IndexedDB first, then check data sources — both must complete before queries
+    this.readyPromise = this.initializeIndexedDB().then(() => this.checkDataSources());
   }
 
   /** Wait for initial data source check to complete before querying */
@@ -25,54 +25,57 @@ class DataService {
     await this.readyPromise;
   }
   
-  private async initializeIndexedDB(): Promise<void> {
-    if (!('indexedDB' in window)) {
-      // IndexedDB not available
-      return;
+  private initializeIndexedDB(): Promise<void> {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      // IndexedDB not available (SSR or unsupported browser)
+      return Promise.resolve();
     }
-    
-    const request = indexedDB.open('PremierLeagueOracle', 2);
 
-    request.onerror = () => {
-      // Failed to open IndexedDB
-    };
+    return new Promise((resolve) => {
+      const request = indexedDB.open('PremierLeagueOracle', 2);
 
-    request.onsuccess = () => {
-      this.cacheDb = request.result;
-      // IndexedDB initialized
-    };
+      request.onerror = () => {
+        // Failed to open IndexedDB — cache will be disabled but app still works
+        resolve();
+      };
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      const oldVersion = event.oldVersion;
+      request.onsuccess = () => {
+        this.cacheDb = request.result;
+        resolve();
+      };
 
-      if (oldVersion < 1) {
-        // Fresh install — create all stores with correct keyPath
-        const matchStore = db.createObjectStore('matches', { keyPath: 'id' });
-        matchStore.createIndex('date', 'date', { unique: false });
-        db.createObjectStore('standings', { keyPath: 'id' });
-        db.createObjectStore('teamStats', { keyPath: 'id' });
-        db.createObjectStore('scorers', { keyPath: 'id' });
-      }
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
-      if (oldVersion >= 1 && oldVersion < 2) {
-        // Upgrade from v1: fix keyPaths (standings used 'team_id', teamStats used 'team_name')
-        // and add missing scorers store
-        if (db.objectStoreNames.contains('standings')) {
-          db.deleteObjectStore('standings');
-        }
-        db.createObjectStore('standings', { keyPath: 'id' });
-
-        if (db.objectStoreNames.contains('teamStats')) {
-          db.deleteObjectStore('teamStats');
-        }
-        db.createObjectStore('teamStats', { keyPath: 'id' });
-
-        if (!db.objectStoreNames.contains('scorers')) {
+        if (oldVersion < 1) {
+          // Fresh install — create all stores with correct keyPath
+          const matchStore = db.createObjectStore('matches', { keyPath: 'id' });
+          matchStore.createIndex('date', 'date', { unique: false });
+          db.createObjectStore('standings', { keyPath: 'id' });
+          db.createObjectStore('teamStats', { keyPath: 'id' });
           db.createObjectStore('scorers', { keyPath: 'id' });
         }
-      }
-    };
+
+        if (oldVersion >= 1 && oldVersion < 2) {
+          // Upgrade from v1: fix keyPaths (standings used 'team_id', teamStats used 'team_name')
+          // and add missing scorers store
+          if (db.objectStoreNames.contains('standings')) {
+            db.deleteObjectStore('standings');
+          }
+          db.createObjectStore('standings', { keyPath: 'id' });
+
+          if (db.objectStoreNames.contains('teamStats')) {
+            db.deleteObjectStore('teamStats');
+          }
+          db.createObjectStore('teamStats', { keyPath: 'id' });
+
+          if (!db.objectStoreNames.contains('scorers')) {
+            db.createObjectStore('scorers', { keyPath: 'id' });
+          }
+        }
+      };
+    });
   }
   
   private async checkDataSources(): Promise<void> {
@@ -151,14 +154,18 @@ class DataService {
   
   private async setCachedData<T>(storeName: string, key: string, data: T): Promise<void> {
     if (!this.useCache || !this.cacheDb) return;
-    
-    const transaction = this.cacheDb.transaction([storeName], 'readwrite');
-    const store = transaction.objectStore(storeName);
-    
-    await store.put({
-      id: key,
-      data,
-      timestamp: Date.now()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.cacheDb!.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put({
+        id: key,
+        data,
+        timestamp: Date.now()
+      });
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
     });
   }
   
@@ -308,7 +315,8 @@ class DataService {
           // Transform Football API stats to our TeamStats format
           const currentYear = new Date().getFullYear();
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
-          const seasonYear = new Date().getMonth() >= 7 ? currentYear : currentYear - 1;
+          // July onwards (getMonth() >= 6) = new season — matches footballData.ts boundary
+          const seasonYear = new Date().getMonth() >= 6 ? currentYear : currentYear - 1;
           // Compute home/away splits from recent matches
           let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
           let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
@@ -583,14 +591,17 @@ class DataService {
   // Cache management utilities
   public async clearCache(): Promise<void> {
     if (!this.cacheDb) return;
-    
+
     const storeNames = ['matches', 'standings', 'teamStats', 'scorers'];
     const transaction = this.cacheDb.transaction(storeNames, 'readwrite');
-    
-    for (const storeName of storeNames) {
+
+    // IDBRequest.clear() doesn't return a Promise — wrap each in one
+    await Promise.all(storeNames.map(storeName => new Promise<void>((resolve, reject) => {
       const store = transaction.objectStore(storeName);
-      await store.clear();
-    }
+      const request = store.clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    })));
     
     // Clear API key when clearing cache
     localStorage.removeItem('football_data_api_key');
