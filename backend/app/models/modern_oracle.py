@@ -288,6 +288,7 @@ class ModernPremierLeagueOracle:
                 mlflow.log_param("home_team", home_team)
                 mlflow.log_param("away_team", away_team)
             except Exception:
+                logger.debug("MLflow start_run failed — tracking disabled for this prediction")
                 use_mlflow = False
         
         try:
@@ -302,7 +303,7 @@ class ModernPremierLeagueOracle:
                     for key, value in list(features.items())[:10]:
                         mlflow.log_metric(f"feature_{key}", float(value))
                 except Exception:
-                    pass
+                    logger.debug("Failed to log features to MLflow")
 
             # Get predictions from each trained model — skip any that are not yet trained
             predictions = {}
@@ -347,7 +348,7 @@ class ModernPremierLeagueOracle:
                     mlflow.log_metric("ensemble_away_win", ensemble_probs['away_win'])
                     mlflow.log_metric("confidence", ensemble_probs['confidence'])
                 except Exception:
-                    pass
+                    logger.debug("Failed to log prediction metrics to MLflow")
             
             # Find similar historical matches
             similar_matches = self._find_similar_matches(features)
@@ -371,7 +372,7 @@ class ModernPremierLeagueOracle:
                     cache_key = f"prediction:{home_team}:{away_team}:{datetime.now().date()}"
                     self.redis_client.setex(cache_key, 3600, json.dumps(result))
                 except Exception:
-                    pass
+                    logger.debug("Failed to cache prediction in Redis")
 
             return result
 
@@ -380,7 +381,7 @@ class ModernPremierLeagueOracle:
                 try:
                     mlflow.end_run()
                 except Exception:
-                    pass
+                    logger.debug("Failed to end MLflow run")
     
     def _calculate_ensemble(self, predictions: Dict[str, Dict]) -> Dict[str, float]:
         """Calculate weighted ensemble prediction."""
