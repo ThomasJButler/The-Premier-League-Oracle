@@ -16,41 +16,43 @@ test.describe('Mobile UX', () => {
     expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 5); // 5px tolerance
   });
 
-  test('main content is visible without scrolling sideways', async ({ page }) => {
-    // Key elements should be visible without horizontal scroll
-    await expect(page.getByText(/Dashboard|Oracle/i).first()).toBeVisible();
+  test('dashboard stat cards are visible', async ({ page }) => {
+    // On mobile, stat cards should still render (stacked vertically)
+    const statCards = page.locator('[data-testid="stat-card"]');
+    await expect(statCards.first()).toBeVisible();
   });
 
   test('can open mobile navigation menu', async ({ page }) => {
-    // Find the hamburger/menu button (typically a button in the header)
+    // Mobile menu button must exist on mobile viewports
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
-    if (await menuBtn.isVisible()) {
-      await menuBtn.click();
-      // After clicking, nav items should be visible
-      await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
-    }
+    await expect(menuBtn).toBeVisible();
+    await menuBtn.click();
+    // After clicking, nav items must be visible
+    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
   });
 
   test('nav items are tappable (sufficient size)', async ({ page }) => {
-    // All nav buttons should have a minimum tap target of 44px height
+    // Open the menu
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
-    if (await menuBtn.isVisible()) {
-      await menuBtn.click();
-      await page.locator('aside button, nav button').first().waitFor({ state: 'visible', timeout: 3000 });
-    }
+    await expect(menuBtn).toBeVisible();
+    await menuBtn.click();
 
     const navBtns = page.locator('aside button, nav button');
+    await expect(navBtns.first()).toBeVisible({ timeout: 3000 });
+
+    // All nav buttons must have a minimum tap target of 36px height
     const count = await navBtns.count();
+    expect(count).toBeGreaterThan(0);
     for (let i = 0; i < Math.min(count, 5); i++) {
       const box = await navBtns.nth(i).boundingBox();
-      if (box) {
-        expect(box.height).toBeGreaterThanOrEqual(36);
-      }
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(36);
     }
   });
 
   test('screenshot - mobile dashboard', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    // Verify content loaded before screenshot
+    await expect(page.locator('[data-testid="stat-card"]').first()).toBeVisible();
     const viewport = page.viewportSize();
     const name = viewport ? `${viewport.width}px` : 'mobile';
     await page.screenshot({
@@ -61,10 +63,10 @@ test.describe('Mobile UX', () => {
 
   test('screenshot - mobile sidebar open', async ({ page }) => {
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
-    if (await menuBtn.isVisible()) {
-      await menuBtn.click();
-      await page.locator('aside, nav').first().waitFor({ state: 'visible', timeout: 3000 });
-    }
+    await expect(menuBtn).toBeVisible();
+    await menuBtn.click();
+    // Verify sidebar opened before screenshot
+    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
     const viewport = page.viewportSize();
     const name = viewport ? `${viewport.width}px` : 'mobile';
     await page.screenshot({

@@ -8,11 +8,21 @@ test.describe('Dashboard', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('renders stat cards', async ({ page }) => {
-    // All four stat cards should be present
-    await expect(page.getByText(/Total Predictions/i)).toBeVisible();
-    await expect(page.getByText(/Accuracy|Win Rate/i)).toBeVisible();
-    await expect(page.getByText(/Bets Placed/i)).toBeVisible();
+  test('renders all 4 stat cards with values', async ({ page }) => {
+    const statCards = page.locator('[data-testid="stat-card"]');
+    await expect(statCards).toHaveCount(4);
+
+    // Verify each card has a rendered value (not blank)
+    for (let i = 0; i < 4; i++) {
+      const value = statCards.nth(i).locator('.text-2xl');
+      await expect(value).toBeVisible();
+      await expect(value).not.toBeEmpty();
+    }
+
+    // Check specific stat labels exist
+    await expect(page.getByText('Prediction Accuracy')).toBeVisible();
+    await expect(page.getByText('Total Predictions')).toBeVisible();
+    await expect(page.getByText('Bets Placed')).toBeVisible();
   });
 
   test('stat values are not NaN or blank', async ({ page }) => {
@@ -22,19 +32,20 @@ test.describe('Dashboard', () => {
     expect(body).not.toContain('undefined');
   });
 
-  test('accuracy section shows a percentage', async ({ page }) => {
-    // Accuracy should render as a number, even if 0%
-    const accuracyText = page.locator('text=/\\d+(\\.\\d+)?%/').first();
-    await expect(accuracyText).toBeVisible();
+  test('accuracy stat card shows a percentage', async ({ page }) => {
+    // Scope to the specific stat card, not the entire page
+    const statCards = page.locator('[data-testid="stat-card"]');
+    const accuracyCard = statCards.filter({ hasText: 'Prediction Accuracy' });
+    await expect(accuracyCard).toBeVisible();
+    await expect(accuracyCard.locator('.text-2xl')).toContainText('%');
   });
 
-  test('"View All Matches" button exists and is clickable', async ({ page }) => {
-    const viewBtn = page.getByRole('button', { name: /View All|All Matches/i }).first();
-    if (await viewBtn.isVisible()) {
-      await viewBtn.click();
-      // Should have navigated away from Dashboard
-      await expect(page.getByText(/Matches|Fixtures/i)).toBeVisible();
-    }
+  test('"View All Matches" button exists and navigates', async ({ page }) => {
+    const viewBtn = page.locator('[data-testid="view-all-matches"]');
+    await expect(viewBtn).toBeVisible();
+    await viewBtn.click();
+    // Should have navigated away from Dashboard
+    await expect(page.getByText(/Matches|Fixtures/i)).toBeVisible();
   });
 
   test('profit/loss chart renders', async ({ page }) => {
@@ -43,7 +54,8 @@ test.describe('Dashboard', () => {
   });
 
   test('screenshot - full dashboard', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    // Verify stat cards loaded before taking screenshot
+    await expect(page.locator('[data-testid="stat-card"]').first()).toBeVisible();
     await page.screenshot({
       path: 'playwright-screenshots/dashboard-full.png',
       fullPage: true,

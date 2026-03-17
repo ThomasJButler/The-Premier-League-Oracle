@@ -22,37 +22,42 @@ test.describe('Navigation', () => {
 
   test('navigates to Predictions view', async ({ page }) => {
     await navigateTo(page, 'Predictions');
-    await expect(page.getByText(/Predictions|Gameweek|Generate/i)).toBeVisible();
+    // Gameweek select is unique to Predictions view
+    await expect(page.locator('select#gameweek')).toBeVisible();
   });
 
   test('navigates to Standings view', async ({ page }) => {
     await navigateTo(page, 'Standings');
-    await expect(page.getByText(/Standings|Position|Points/i)).toBeVisible();
+    // Standings renders a data table
+    await expect(page.locator('table').first()).toBeVisible();
   });
 
   test('navigates to Value Bets view', async ({ page }) => {
     await navigateTo(page, 'Value Bets');
-    await expect(page.getByText(/Value Bets|odds|Expected Value/i)).toBeVisible();
+    // Odds input section is unique to Value Bets
+    await expect(page.locator('[data-testid="odds-inputs"]').first()).toBeVisible();
   });
 
   test('navigates to Kelly Calculator', async ({ page }) => {
     await navigateTo(page, 'Kelly Calculator');
-    await expect(page.getByText(/Kelly|Bankroll|Stake/i)).toBeVisible();
+    // Kelly calculator container is unique to this view
+    await expect(page.locator('[data-testid="kelly-calculator"]')).toBeVisible();
   });
 
   test('navigates to Betting History', async ({ page }) => {
     await navigateTo(page, 'Betting History');
-    await expect(page.getByText(/Betting History|No bets|P\/L/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Betting History/i })).toBeVisible();
   });
 
   test('navigates to Settings', async ({ page }) => {
     await navigateTo(page, 'Settings');
-    await expect(page.getByText(/Settings|API|Cache/i)).toBeVisible();
+    // "API Key" label is unique to Settings
+    await expect(page.getByText('API Key')).toBeVisible();
   });
 
   test('navigates to Help', async ({ page }) => {
     await navigateTo(page, 'Help');
-    await expect(page.getByText(/Help|FAQ|Getting Started/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Getting Started/i })).toBeVisible();
   });
 
   test('takes screenshot of all main views', async ({ page }) => {
@@ -60,6 +65,8 @@ test.describe('Navigation', () => {
     for (const view of views) {
       await navigateTo(page, view);
       await page.waitForLoadState('networkidle');
+      // Verify page content loaded before screenshot
+      await expect(page.locator('.main-content, main, [class*="main"]').first()).toBeVisible();
       await page.screenshot({ path: `playwright-screenshots/${view.toLowerCase().replace(' ', '-')}.png`, fullPage: true });
     }
   });
