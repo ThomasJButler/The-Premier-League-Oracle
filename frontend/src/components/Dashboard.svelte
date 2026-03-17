@@ -318,178 +318,154 @@
   });
 </script>
 
-<div class="space-y-8">
-  <!-- 🚀 STUNNING HERO SECTION -->
-  <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 p-8 text-white animate-slide-in-up">
-    <!-- Animated background elements -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full animate-float" style="animation-delay: 0s;"></div>
-      <div class="absolute top-20 -right-10 w-32 h-32 bg-white/5 rounded-full animate-float" style="animation-delay: 2s;"></div>
-      <div class="absolute -bottom-10 left-20 w-36 h-36 bg-white/5 rounded-full animate-float" style="animation-delay: 4s;"></div>
-    </div>
-    
-    <!-- Hero content -->
+<div class="space-y-6">
+  <!-- Hero Section -->
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-6 sm:p-8 text-white animate-slide-in-up">
     <div class="relative z-10">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div class="flex-1">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-3 h-3 bg-green-400 rounded-full live-pulse"></div>
-            <span class="text-green-200 text-sm font-semibold tracking-wide uppercase">LIVE PREDICTIONS</span>
-            <span class="text-blue-200 text-sm ml-auto">
-              {formattedDate} • {formattedTime}
-            </span>
-          </div>
-          <h1 class="text-4xl md:text-5xl font-black mb-3 text-transparent bg-gradient-to-r from-white to-blue-100 bg-clip-text">
-            Premier League Oracle
-          </h1>
-          <p class="text-blue-100 text-lg md:text-xl mb-6 max-w-2xl">
-            AI-powered predictions using advanced statistical models, ELO ratings, and real-time data analysis
-          </p>
-          
-          <!-- Quick stats row -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-              <div class="text-2xl font-bold">{$overallAccuracy.toFixed(1)}%</div>
-              <div class="text-xs text-blue-200">Accuracy</div>
-            </div>
-            <div class="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-              <div class="text-2xl font-bold">£{$profitMargin.toLocaleString()}</div>
-              <div class="text-xs text-blue-200">Profit</div>
-            </div>
-            <div class="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-              <div class="text-2xl font-bold">{upcomingPredictions}</div>
-              <div class="text-xs text-blue-200">Upcoming</div>
-            </div>
-            <div class="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-              <div class="text-2xl font-bold">{recentMatches.length}</div>
-              <div class="text-xs text-blue-200">Matches</div>
-            </div>
-          </div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-2.5 h-2.5 bg-green-400 rounded-full live-pulse"></div>
+        <span class="text-green-200 text-xs font-semibold tracking-wider uppercase">Live Predictions</span>
+        <span class="text-blue-200 text-xs ml-auto hidden sm:inline">
+          {formattedDate} &middot; {formattedTime}
+        </span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2">
+        Premier League Oracle
+      </h1>
+      <p class="text-blue-100 text-sm sm:text-base mb-6 max-w-xl">
+        AI-powered predictions using ELO ratings, Poisson models, and real-time data analysis
+      </p>
+
+      <!-- Quick stats -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="text-center p-3 bg-white/10 rounded-lg">
+          <div class="text-xl sm:text-2xl font-display font-bold">{$overallAccuracy.toFixed(1)}%</div>
+          <div class="text-xs text-blue-200 mt-0.5">Accuracy</div>
         </div>
-        
+        <div class="text-center p-3 bg-white/10 rounded-lg">
+          <div class="text-xl sm:text-2xl font-display font-bold">&pound;{$profitMargin.toFixed(0)}</div>
+          <div class="text-xs text-blue-200 mt-0.5">Profit</div>
+        </div>
+        <div class="text-center p-3 bg-white/10 rounded-lg">
+          <div class="text-xl sm:text-2xl font-display font-bold">{upcomingPredictions}</div>
+          <div class="text-xs text-blue-200 mt-0.5">Upcoming</div>
+        </div>
+        <div class="text-center p-3 bg-white/10 rounded-lg">
+          <div class="text-xl sm:text-2xl font-display font-bold">{recentMatches.length}</div>
+          <div class="text-xs text-blue-200 mt-0.5">Matches</div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Stats Grid -->
   {#if loading}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each Array(4) as _, i}
-        <div class="card-stats">
-          <div class="skeleton w-12 h-12 rounded-lg mb-3"></div>
-          <div class="skeleton h-4 w-24 mb-2"></div>
-          <div class="skeleton h-8 w-32 mb-2"></div>
-          <div class="skeleton h-3 w-20"></div>
+        <div class="rounded-xl border border-border bg-card p-5">
+          <div class="skeleton w-10 h-10 rounded-lg mb-3"></div>
+          <div class="skeleton h-3 w-20 mb-2"></div>
+          <div class="skeleton h-7 w-28 mb-2"></div>
+          <div class="skeleton h-3 w-16"></div>
         </div>
       {/each}
     </div>
   {:else if error}
-    <div class="p-8 text-center bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-      <p class="text-red-600 dark:text-red-400">{error}</p>
+    <div class="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+      <p class="text-destructive font-medium">{error}</p>
       <button on:click={loadDashboardData} class="btn btn-primary mt-4">Retry</button>
     </div>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
       {#each stats as stat, i}
-        <div class="card-stats animate-float-subtle" style="animation-delay: {i * 100}ms">
-          <div class="stat-icon-wrapper {stat.bgColor}">
-            <svelte:component this={stat.icon} class="w-6 h-6 {stat.color}" />
+        <div
+          class="rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+          style="animation-delay: {i * 80}ms"
+          data-testid="stat-card"
+        >
+          <div class="flex items-center gap-3 mb-3">
+            <div class="rounded-lg p-2 {stat.bgColor}">
+              <svelte:component this={stat.icon} class="w-5 h-5 {stat.color}" />
+            </div>
+            <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">{stat.title}</span>
           </div>
-          <div class="stat-label">{stat.title}</div>
-          <div class="stat-value">{stat.value}</div>
-          <div class="stat-change {stat.change.startsWith('+') ? 'text-success dark:text-success-light' : 'text-error dark:text-error-light'}">
-            {stat.change}
-          </div>
+          <div class="text-2xl font-display font-bold text-foreground">{stat.value}</div>
+          <div class="text-xs text-muted-foreground mt-1">{stat.change}</div>
         </div>
       {/each}
     </div>
   {/if}
 
   <!-- Charts Row -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="chart-container animate-slide-in-up" style="animation-delay: 400ms">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Prediction Accuracy Trend</h3>
-      <div class="h-64">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 200ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
+      <div class="h-56">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
     </div>
-    <div class="chart-container animate-slide-in-up" style="animation-delay: 500ms">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Profit/Loss Over Time</h3>
-      <div class="h-64">
+    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 300ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
+      <div class="h-56">
         <canvas bind:this={profitChartCanvas}></canvas>
       </div>
     </div>
   </div>
 
-  <!-- How We Predict Section -->
-  <div class="card card-glass animate-slide-in-up p-6" style="animation-delay: 800ms">
-    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-      <Target class="w-5 h-5 text-primary" />
+  <!-- How We Predict -->
+  <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 400ms">
+    <h3 class="text-sm font-display font-semibold text-foreground mb-4 flex items-center gap-2">
+      <Target class="w-4 h-4 text-primary" />
       How We Predict
     </h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg mx-auto mb-2 flex items-center justify-center">
-          <BarChart2 class="w-4 h-4 text-blue-600" />
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {#each [
+        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
+        { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/30' },
+        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-900/30' },
+        { icon: Target, label: 'Home Advantage', desc: 'Venue adjustments', iconColor: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
+      ] as method}
+        <div class="text-center p-3 rounded-lg bg-muted/50">
+          <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
+            <svelte:component this={method.icon} class="w-4 h-4 {method.iconColor}" />
+          </div>
+          <h4 class="font-semibold text-xs mb-0.5">{method.label}</h4>
+          <p class="text-xs text-muted-foreground">{method.desc}</p>
         </div>
-        <h4 class="font-semibold text-sm mb-1">ELO Ratings</h4>
-        <p class="text-xs text-slate-600 dark:text-slate-400">Dynamic team strength based on results</p>
-      </div>
-      <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-        <div class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg mx-auto mb-2 flex items-center justify-center">
-          <TrendingUp class="w-4 h-4 text-green-600" />
-        </div>
-        <h4 class="font-semibold text-sm mb-1">Poisson Model</h4>
-        <p class="text-xs text-slate-600 dark:text-slate-400">Goal probability distribution</p>
-      </div>
-      <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-        <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg mx-auto mb-2 flex items-center justify-center">
-          <Users class="w-4 h-4 text-purple-600" />
-        </div>
-        <h4 class="font-semibold text-sm mb-1">Form Analysis</h4>
-        <p class="text-xs text-slate-600 dark:text-slate-400">Recent performance trends</p>
-      </div>
-      <div class="text-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-        <div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg mx-auto mb-2 flex items-center justify-center">
-          <Target class="w-4 h-4 text-amber-600" />
-        </div>
-        <h4 class="font-semibold text-sm mb-1">Home Advantage</h4>
-        <p class="text-xs text-slate-600 dark:text-slate-400">Venue-specific adjustments</p>
-      </div>
+      {/each}
     </div>
-    <div class="mt-4 p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
-      <p class="text-sm text-slate-700 dark:text-slate-300">
-        <strong>Live Calculation:</strong> Our algorithm processes {recentMatches.length} recent matches, 
-        current standings, and {upcomingPredictions} upcoming fixtures to generate real-time predictions with 
-        confidence scores based on statistical models.
+    <div class="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
+      <p class="text-xs text-muted-foreground">
+        <strong class="text-foreground">Live Calculation:</strong> Processing {recentMatches.length} recent matches,
+        current standings, and {upcomingPredictions} upcoming fixtures with statistical models.
       </p>
     </div>
   </div>
 
-  <!-- Recent Activity/Matches -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 card card-glass animate-slide-in-up" style="animation-delay: 600ms">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Recent Predictions</h3>
+  <!-- Recent Predictions + Upcoming Matches -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 500ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Recent Predictions</h3>
       {#if loading}
         <div class="space-y-3">
           {#each Array(3) as _}
             <div class="flex justify-between items-center p-2">
               <div class="skeleton h-4 w-48"></div>
-              <div class="skeleton h-6 w-20 rounded-full"></div>
+              <div class="skeleton h-5 w-16 rounded-full"></div>
             </div>
           {/each}
         </div>
       {:else if topPredictions.length === 0}
-        <div class="text-center py-8 text-slate-500 dark:text-slate-400">
-          <p>No predictions available yet</p>
+        <div class="text-center py-8">
+          <p class="text-sm text-muted-foreground">No predictions available yet</p>
         </div>
       {:else}
-        <ul class="space-y-3">
-          {#each topPredictions as prediction, i}
-            <li class="flex justify-between items-center p-2 rounded hover:bg-primary/5" style="animation-delay: {i * 100}ms">
-              <span class="text-sm">{prediction.match}</span>
+        <ul class="space-y-2">
+          {#each topPredictions as prediction}
+            <li class="flex justify-between items-center p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <span class="text-sm text-foreground">{prediction.match}</span>
               <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-500">{prediction.confidence}%</span>
+                <span class="text-xs text-muted-foreground">{prediction.confidence}%</span>
                 {#if prediction.wasCorrect !== null}
                   <span class="badge {prediction.wasCorrect ? 'badge-success' : 'badge-error'}">
                     {prediction.wasCorrect ? 'Correct' : 'Incorrect'}
@@ -503,31 +479,22 @@
         </ul>
       {/if}
     </div>
-    <div class="card card-glass animate-slide-in-up" style="animation-delay: 700ms">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Upcoming Matches</h3>
-      <ul class="space-y-2">
+    <div class="rounded-xl border border-border bg-card p-5 animate-slide-in-up" style="animation-delay: 600ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Upcoming Matches</h3>
+      <ul class="space-y-3">
         {#each realMatchData.slice(0, 5) as match}
-          <li class="text-sm text-slate-500 dark:text-slate-400">
-            {match.home_team} vs {match.away_team}
-            <span class="block text-xs text-slate-400">
-              {format(new Date(match.date), 'MMM d, HH:mm')}
+          <li class="text-sm">
+            <span class="text-foreground">{match.home_team} vs {match.away_team}</span>
+            <span class="block text-xs text-muted-foreground mt-0.5">
+              {format(new Date(match.date), 'EEE d MMM, HH:mm')}
             </span>
           </li>
         {/each}
         {#if realMatchData.length === 0}
-          <li class="text-sm text-slate-500 dark:text-slate-400">No upcoming matches</li>
+          <li class="text-sm text-muted-foreground">No upcoming matches</li>
         {/if}
       </ul>
-      <button class="btn btn-secondary btn-sm mt-4 w-full" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
+      <button class="btn btn-secondary btn-sm mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
     </div>
   </div>
 </div>
-
-<style global lang="postcss">
-  .shadow-glow-warning-sm {
-    box-shadow: 0 0 8px hsla(39, 90%, 55%, 0.3), inset 0 0 10px hsla(39, 90%, 55%, 0.05);
-  }
-  .shadow-glow-warning-md {
-    box-shadow: 0 0 15px hsla(39, 90%, 55%, 0.4), inset 0 0 15px hsla(39, 90%, 55%, 0.1);
-  }
-</style>

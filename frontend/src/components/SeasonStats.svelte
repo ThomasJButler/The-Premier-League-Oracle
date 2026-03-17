@@ -389,28 +389,28 @@
 
 <div class="season-stats">
   <div class="mb-8">
-    <h2 class="text-2xl font-bold gradient-text mb-2">Season Stats</h2>
-    <p class="text-slate-600 dark:text-slate-400">Discover unique insights from this season's data</p>
+    <h2 class="text-2xl font-bold font-display text-foreground mb-2">Season Stats</h2>
+    <p class="text-muted-foreground">Discover unique insights from this season's data</p>
   </div>
 
   {#if loading}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {#each Array(6) as _}
-        <div class="card p-6 animate-pulse">
-          <div class="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full mb-4"></div>
-          <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
-          <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 animate-pulse">
+          <div class="w-12 h-12 bg-muted rounded-full mb-4"></div>
+          <div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
+          <div class="h-6 bg-muted rounded w-1/2"></div>
         </div>
       {/each}
     </div>
   {:else}
     <!-- Primary Stats -->
     <div class="mb-12">
-      <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">Key Insights</h3>
+      <h3 class="text-lg font-semibold font-display text-foreground mb-4">Key Insights</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each stats as stat, i}
           <div 
-            class="stat-card card p-6 hover:scale-105 transition-all duration-300 cursor-pointer"
+            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300 cursor-pointer"
             style="animation-delay: {i * 100}ms"
           >
             <div class="flex items-start justify-between mb-4">
@@ -419,15 +419,15 @@
               </div>
             </div>
             
-            <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {stat.label}
             </h3>
             
-            <p class="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            <p class="text-2xl font-bold text-foreground mb-2">
               {stat.value}
             </p>
             
-            <p class="text-xs text-slate-500 dark:text-slate-500">
+            <p class="text-xs text-muted-foreground">
               {stat.description}
             </p>
           </div>
@@ -438,27 +438,27 @@
     <!-- Additional Stats -->
     {#if additionalStats.length > 0}
       <div class="mb-8">
-        <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">Extended Analytics</h3>
+        <h3 class="text-lg font-semibold font-display text-foreground mb-4">Extended Analytics</h3>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {#each additionalStats as stat, i}
             <div 
-              class="stat-card-small card p-4 hover:scale-105 transition-all duration-300 cursor-pointer"
+              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300 cursor-pointer"
               style="animation-delay: {(stats.length + i) * 50}ms"
             >
               <div class="flex items-center gap-3 mb-2">
                 <div class="p-2 rounded-lg bg-gradient-to-br {stat.color} bg-opacity-10">
                   <svelte:component this={stat.icon} class="w-4 h-4 text-white drop-shadow-lg" />
                 </div>
-                <h4 class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">
+                <h4 class="text-xs font-semibold text-muted-foreground uppercase">
                   {stat.label}
                 </h4>
               </div>
               
-              <p class="text-lg font-bold text-slate-900 dark:text-white mb-1">
+              <p class="text-lg font-bold text-foreground mb-1">
                 {stat.value}
               </p>
               
-              <p class="text-xs text-slate-500 dark:text-slate-500 line-clamp-2">
+              <p class="text-xs text-muted-foreground line-clamp-2">
                 {stat.description}
               </p>
             </div>
@@ -468,8 +468,8 @@
     {/if}
   {/if}
 
-  <div class="mt-8 p-6 card-glass text-center">
-    <p class="text-sm text-slate-600 dark:text-slate-400">
+  <div class="mt-8 p-6 rounded-xl border border-border bg-card text-card-foreground shadow-sm text-center">
+    <p class="text-sm text-muted-foreground">
       <span class="font-semibold">Did you know?</span> These statistics are updated in real-time as matches are played.
       Check back regularly for the latest insights!
     </p>

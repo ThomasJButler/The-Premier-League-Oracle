@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: premier_league
       POSTGRES_USER: oracle
-      POSTGRES_PASSWORD: godmode123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
@@ -54,7 +54,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - DATABASE_URL=postgresql://oracle:godmode123@postgres:5432/premier_league
+      - DATABASE_URL=postgresql://oracle:${POSTGRES_PASSWORD}@postgres:5432/premier_league
     depends_on:
       redis:
         condition: service_healthy
@@ -76,7 +76,7 @@ services:
       - "8888:8888"
     environment:
       - JUPYTER_ENABLE_LAB=yes
-      - JUPYTER_TOKEN=godmode
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:-changeme}
     volumes:
       - ./notebooks:/app/notebooks
       - ./app:/app/app

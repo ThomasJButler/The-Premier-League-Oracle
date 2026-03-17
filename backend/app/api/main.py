@@ -30,14 +30,21 @@ import logging
 from pathlib import Path
 import os
 
-# Our modules
-from app.models.modern_oracle import ModernPremierLeagueOracle
-from app.features.advanced_engineering import AdvancedFeatureEngineer
-from app.data.football_data_collector import FootballDataCollector
-
-# Setup logging
+# Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Our modules — oracle import is optional so the server can start without all dependencies
+try:
+    from app.models.modern_oracle import ModernPremierLeagueOracle
+    ORACLE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"ModernPremierLeagueOracle unavailable ({e}) — ML features disabled")
+    ModernPremierLeagueOracle = None  # type: ignore
+    ORACLE_AVAILABLE = False
+
+from app.features.advanced_engineering import AdvancedFeatureEngineer
+from app.data.football_data_collector import FootballDataCollector
 
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
@@ -127,16 +134,29 @@ async def lifespan(app: FastAPI):
     global oracle, redis_client
     
     logger.info("🚀 Starting Premier League Oracle API...")
-    
-    # Initialize Redis
-    redis_client = await redis.from_url(REDIS_URL)
-    
-    # Initialize Oracle system
-    oracle = ModernPremierLeagueOracle(
-        api_key=FOOTBALL_API_KEY,
-        openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else None,
-        mlflow_tracking_uri=MLFLOW_URI
-    )
+
+    # Initialize Redis — optional, server starts without it
+    try:
+        redis_client = await redis.from_url(REDIS_URL)
+        await redis_client.ping()
+        logger.info("✅ Redis connected")
+    except Exception as e:
+        logger.warning(f"Redis unavailable ({e}) — caching disabled, running without Redis")
+        redis_client = None
+
+    # Initialize Oracle system — optional, endpoints degrade gracefully without it
+    if ORACLE_AVAILABLE and ModernPremierLeagueOracle is not None:
+        try:
+            oracle = ModernPremierLeagueOracle(
+                api_key=FOOTBALL_API_KEY,
+                openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else None,
+                mlflow_tracking_uri=MLFLOW_URI
+            )
+        except Exception as e:
+            logger.warning(f"Oracle system failed to initialise ({e}) — ML endpoints disabled")
+            oracle = None
+    else:
+        logger.warning("Oracle system not available — ML endpoints disabled")
     
     # Load pre-trained models if they exist
     model_dir = Path("models")
@@ -155,7 +175,8 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down...")
-    await redis_client.close()
+    if redis_client is not None:
+        await redis_client.close()
     
     # Close WebSocket connections
     for ws in active_websockets:
@@ -180,6 +201,12 @@ app.add_middleware(
 )
 
 
+# --------------------------------------------------------------------------
+# Auth policy: read-only prediction endpoints are public. Endpoints that
+# invoke external AI services (OpenAI via LangChain) or trigger admin
+# operations (model retraining) require a Bearer token via HTTPBearer.
+# --------------------------------------------------------------------------
+
 # Health check endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
@@ -195,8 +222,7 @@ async def health_check():
 # Main prediction endpoint
 @app.post("/predict", response_model=PredictionResponse, tags=["Predictions"])
 async def predict_match(
-    request: PredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: PredictionRequest
 ):
     """
     Predict match outcome using ensemble of ML models.
@@ -255,7 +281,7 @@ async def predict_match(
 @app.post("/predict/natural", tags=["Predictions"])
 async def predict_natural_language(
     request: NaturalLanguageRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: invokes OpenAI API
 ):
     """
     Make predictions using natural language queries powered by LangChain.
@@ -285,8 +311,7 @@ async def predict_natural_language(
 # Batch prediction endpoint
 @app.post("/predict/batch", tags=["Predictions"])
 async def predict_batch(
-    request: BatchPredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: BatchPredictionRequest
 ):
     """
     Predict multiple matches in a single request.
@@ -335,12 +360,10 @@ async def get_team_stats(
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
     
     try:
-        stats = oracle.data_collector.get_team_stats(team_name)
         form = oracle.data_collector.get_team_form(team_name, last_n_matches)
-        
+
         return {
             'team': team_name,
-            'statistics': stats,
             'recent_form': form,
             'timestamp': datetime.now().isoformat()
         }
@@ -369,9 +392,7 @@ async def get_standings():
 
 # Model performance endpoint
 @app.get("/models/performance", tags=["Models"])
-async def get_model_performance(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
+async def get_model_performance():
     """Get performance metrics for all models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
@@ -448,9 +469,7 @@ async def websocket_predictions(websocket: WebSocket):
 
 # Feature importance endpoint
 @app.get("/features/importance", tags=["Features"])
-async def get_feature_importance(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
+async def get_feature_importance():
     """Get feature importance from the models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
@@ -479,8 +498,7 @@ async def get_feature_importance(
 # Betting value endpoint
 @app.post("/betting/value", tags=["Betting"])
 async def calculate_betting_value(
-    request: PredictionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    request: PredictionRequest
 ):
     """
     Calculate betting value for a match.
@@ -511,7 +529,7 @@ async def calculate_betting_value(
 # Admin endpoint to retrain models
 @app.post("/admin/retrain", tags=["Admin"])
 async def retrain_models(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: admin-only operation
 ):
     """
     Retrain all models with latest data.

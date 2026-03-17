@@ -144,7 +144,7 @@
     switch (result) {
       case 'win': return 'text-emerald-600 dark:text-emerald-400';
       case 'loss': return 'text-rose-600 dark:text-rose-400';
-      default: return 'text-slate-500 dark:text-slate-400';
+      default: return 'text-muted-foreground';
     }
   }
 
@@ -214,11 +214,11 @@
 </script>
 
 <div class="space-y-6 animate-fade-in">
-  <h2 class="text-2xl font-bold gradient-text">Betting History</h2>
+  <h2 class="text-2xl font-bold font-display text-foreground">Betting History</h2>
 
   <!-- Summary Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-    <div class="card-stats animate-float-subtle">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-blue-100 dark:bg-blue-900/30">
         <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
       </div>
@@ -226,7 +226,7 @@
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
     </div>
 
-    <div class="card-stats animate-float-subtle" style="animation-delay: 100ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 100ms">
       <div class="stat-icon-wrapper {$totalProfitLoss >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         {#if $totalProfitLoss >= 0}
           <TrendingUp class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -240,7 +240,7 @@
       </div>
     </div>
 
-    <div class="card-stats animate-float-subtle" style="animation-delay: 200ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 200ms">
       <div class="stat-icon-wrapper {$roiTweened >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         <Percent class="w-5 h-5 {$roiTweened >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}" />
       </div>
@@ -250,7 +250,7 @@
       </div>
     </div>
 
-    <div class="card-stats animate-float-subtle" style="animation-delay: 300ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 300ms">
       <div class="stat-icon-wrapper bg-purple-100 dark:bg-purple-900/30">
         <Trophy class="w-5 h-5 text-purple-600 dark:text-purple-400" />
       </div>
@@ -258,7 +258,7 @@
       <div class="stat-value">{$winRateTweened.toFixed(1)}%</div>
     </div>
 
-    <div class="card-stats animate-float-subtle" style="animation-delay: 400ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
       <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
         <DollarSign class="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
@@ -268,34 +268,34 @@
   </div>
 
   <!-- Profit/Loss Chart -->
-  <div class="chart-container animate-slide-in-up" style="animation-delay: 300ms">
-    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Monthly Profit/Loss</h3>
+  <div class="rounded-xl border border-border bg-card p-5" style="animation-delay: 300ms">
+    <h3 class="text-lg font-semibold font-display text-foreground mb-3">Monthly Profit/Loss</h3>
     {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
       <div class="h-64">
         <Bar data={monthlyPerformance} options={chartOptions} />
       </div>
     {:else}
-      <div class="h-64 flex items-center justify-center text-slate-500 dark:text-slate-400">
+      <div class="h-64 flex items-center justify-center text-muted-foreground">
         <p>No resolved bets yet — place and resolve bets to see monthly performance.</p>
       </div>
     {/if}
   </div>
 
   <!-- Bet History Table -->
-  <div class="card card-glass animate-slide-in-up" style="animation-delay: 400ms">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Detailed History</h3>
+      <h3 class="text-lg font-semibold font-display text-foreground">Detailed History</h3>
       <div class="flex space-x-2">
         <select
           bind:value={filterResult}
-          class="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 focus:ring-2 focus:ring-blue-500"
+          class="text-sm rounded-lg border border-border bg-card text-foreground px-3 py-1.5 focus:ring-2 focus:ring-primary"
         >
           <option value="all">All</option>
           <option value="win">Wins</option>
           <option value="loss">Losses</option>
           <option value="pending">Pending</option>
         </select>
-        <button class="btn btn-secondary btn-sm" on:click={handleExport}>
+        <button class="px-3 py-1 text-sm rounded-lg font-medium transition-colors bg-muted text-foreground hover:bg-muted/80 flex items-center" on:click={handleExport}>
           <Download class="w-4 h-4 mr-1" /> Export
         </button>
       </div>
@@ -306,13 +306,13 @@
         <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     {:else if bets.length === 0}
-      <div class="flex-grow flex flex-col justify-center items-center text-center text-slate-500 dark:text-slate-400 py-12">
+      <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-12">
         <DollarSign class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>
         <p class="text-sm">Place some bets via the Kelly Calculator or Value Bets page to see them here.</p>
       </div>
     {:else if filteredBets.length === 0}
-      <div class="flex-grow flex flex-col justify-center items-center text-center text-slate-500 dark:text-slate-400 py-8">
+      <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-8">
         <p>No bets match the current filter.</p>
       </div>
     {:else}
@@ -332,13 +332,13 @@
           </thead>
           <tbody>
             {#each filteredBets as bet (bet.id)}
-              <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                <td class="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              <tr class="hover:bg-muted/50 transition-colors duration-150">
+                <td class="text-xs text-muted-foreground whitespace-nowrap">
                   {formatDistanceToNow(new Date(bet.createdAt), { addSuffix: true })}
                 </td>
                 <td class="whitespace-nowrap">{bet.homeTeam} vs {bet.awayTeam}</td>
                 <td>
-                  <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                  <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-foreground">
                     {formatMarket(bet.market)}
                   </span>
                 </td>
@@ -351,7 +351,7 @@
                     {getResultLabel(bet.result)}
                   </span>
                 </td>
-                <td class="{bet.profit != null ? (bet.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-slate-400'}">
+                <td class="{bet.profit != null ? (bet.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-muted-foreground'}">
                   {#if bet.profit != null}
                     {bet.profit >= 0 ? '+' : '-'}£{Math.abs(bet.profit).toFixed(2)}
                   {:else}
@@ -382,7 +382,7 @@
   }
 
   .th {
-    @apply px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider;
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
   }
   .td {
     @apply px-4 py-3 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300;

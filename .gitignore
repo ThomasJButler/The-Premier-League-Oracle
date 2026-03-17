@@ -13,8 +13,11 @@ node_modules
 frontend/.env
 
 # Build output
-/dist
-dist/assets/browser-Bmh3iUVW.js
+frontend/dist/
+
+# Backend generated files
+backend/chroma_db/
+backend/models/*.pkl
 
 # Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
@@ -23,9 +26,17 @@ plan.md
 SAAS_OPERATION_GUIDE.md
 API_KEYS_GUIDE.md
 
+# Playwright e2e test output
+frontend/playwright-report/
+frontend/playwright-screenshots/
+frontend/test-results/
+
 # Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
 .env
 /backend/app/api/__pycache__
 .claude/settings.json
+/spreadsheets
+*.pyc
+urgenttodo.txt

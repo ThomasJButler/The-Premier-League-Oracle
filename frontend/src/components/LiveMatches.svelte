@@ -160,21 +160,21 @@
 
 <div class="max-w-7xl mx-auto">
   <!-- Header -->
-  <div class="glass-card p-6 mb-6">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center {liveMatches.length > 0 ? 'animate-pulse' : ''}">
           <Tv class="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold gradient-text">Match Centre</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">
+          <h1 class="text-2xl font-bold font-display text-foreground">Match Centre</h1>
+          <p class="text-sm text-muted-foreground">
             Live, recent and upcoming Premier League matches
           </p>
         </div>
       </div>
       <div class="flex items-center gap-4">
-        <div class="text-sm text-slate-500 dark:text-slate-400">
+        <div class="text-sm text-muted-foreground">
           Last update: {lastRefresh.toLocaleTimeString()}
         </div>
         <button
@@ -190,13 +190,13 @@
 
   <!-- Tab Navigation -->
   {#if !loading}
-    <div class="glass-card p-2 mb-6">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-2 mb-6">
       <div class="grid grid-cols-3 gap-2">
         <button
           on:click={() => showSection = 'live'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'live'
             ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold shadow-lg'
-            : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white/70 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-300'}"
+            : 'bg-muted hover:bg-muted/80 text-muted-foreground'}"
         >
           <div class="flex items-center justify-center gap-2">
             <Activity class="w-4 h-4" />
@@ -208,7 +208,7 @@
           on:click={() => showSection = 'recent'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'recent'
             ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-lg'
-            : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white/70 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-300'}"
+            : 'bg-muted hover:bg-muted/80 text-muted-foreground'}"
         >
           <div class="flex items-center justify-center gap-2">
             <Check class="w-4 h-4" />
@@ -220,7 +220,7 @@
           on:click={() => showSection = 'upcoming'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'upcoming'
             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg'
-            : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white/70 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-300'}"
+            : 'bg-muted hover:bg-muted/80 text-muted-foreground'}"
         >
           <div class="flex items-center justify-center gap-2">
             <Calendar class="w-4 h-4" />
@@ -233,10 +233,10 @@
 
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div class="loading-spinner"></div>
+      <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
     </div>
   {:else if error}
-    <div class="glass-card p-6 text-center">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
       <AlertCircle class="w-12 h-12 mx-auto mb-4 text-red-500" />
       <p class="text-red-500">{error}</p>
       <button
@@ -250,7 +250,7 @@
     <div class="grid gap-4">
       {#each liveMatches as match, index}
         <div
-          class="glass-card p-6 hover:shadow-xl transition-all duration-300 border-l-4 border-red-500"
+          class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-l-4 border-red-500"
           in:scale={{ delay: index * 100, duration: 300 }}
         >
           <!-- Live Badge -->
@@ -259,7 +259,7 @@
               <span class="{getStatusBadge(match).class} text-white text-xs px-2 py-1 rounded-full font-semibold">
                 {getStatusBadge(match).text}
               </span>
-              <span class="text-sm font-mono font-semibold text-slate-600 dark:text-slate-400">
+              <span class="text-sm font-mono font-semibold text-muted-foreground">
                 {getMinute(match)}
               </span>
             </div>
@@ -274,14 +274,14 @@
                 <span class="font-semibold text-lg">{match.home_team}</span>
                 <img src={getTeamLogo(match.home_team)} alt="" class="w-8 h-8 object-contain" />
               </div>
-              <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Home</div>
+              <div class="text-xs text-muted-foreground mt-1">Home</div>
             </div>
 
             <!-- Score -->
             <div class="text-center">
               <div class="text-3xl font-bold">
                 <span class="text-primary">{match.home_goals ?? 0}</span>
-                <span class="mx-2 text-slate-400">-</span>
+                <span class="mx-2 text-muted-foreground">-</span>
                 <span class="text-primary">{match.away_goals ?? 0}</span>
               </div>
             </div>
@@ -292,14 +292,14 @@
                 <img src={getTeamLogo(match.away_team)} alt="" class="w-8 h-8 object-contain" />
                 <span class="font-semibold text-lg">{match.away_team}</span>
               </div>
-              <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Away</div>
+              <div class="text-xs text-muted-foreground mt-1">Away</div>
             </div>
           </div>
 
           <!-- Half-time score if available -->
           {#if match.first_half_home_goals != null && match.first_half_away_goals != null}
-            <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-              <div class="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <div class="mt-3 pt-3 border-t border-border">
+              <div class="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock class="w-4 h-4" />
                 <span>HT: {match.first_half_home_goals} - {match.first_half_away_goals}</span>
               </div>
@@ -311,7 +311,7 @@
 
     <!-- Auto-refresh indicator -->
     <div class="mt-6 text-center">
-      <p class="text-sm text-slate-500 dark:text-slate-400">
+      <p class="text-sm text-muted-foreground">
         Auto-refreshing every 30 seconds
       </p>
     </div>
@@ -321,11 +321,11 @@
       <div class="grid gap-4">
         {#each recentMatches as match, index}
           <div
-            class="glass-card p-4 hover:shadow-xl transition-all duration-300"
+            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             in:scale={{ delay: index * 50, duration: 300 }}
           >
             <div class="flex items-center justify-between mb-3">
-              <span class="text-xs text-slate-500 dark:text-slate-400">
+              <span class="text-xs text-muted-foreground">
                 {format(new Date(match.date), 'EEEE, MMMM d, yyyy')}
               </span>
               <span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded-full font-semibold">
@@ -345,9 +345,9 @@
               <!-- Score -->
               <div class="text-center">
                 <div class="text-2xl font-bold">
-                  <span class="{match.result === 'H' ? 'text-green-600' : 'text-slate-600'}">{match.home_goals ?? 0}</span>
-                  <span class="mx-1 text-slate-400">-</span>
-                  <span class="{match.result === 'A' ? 'text-green-600' : 'text-slate-600'}">{match.away_goals ?? 0}</span>
+                  <span class="{match.result === 'H' ? 'text-green-600' : 'text-muted-foreground'}">{match.home_goals ?? 0}</span>
+                  <span class="mx-1 text-muted-foreground">-</span>
+                  <span class="{match.result === 'A' ? 'text-green-600' : 'text-muted-foreground'}">{match.away_goals ?? 0}</span>
                 </div>
               </div>
 
@@ -363,9 +363,9 @@
         {/each}
       </div>
     {:else}
-      <div class="glass-card p-8 text-center">
-        <Calendar class="w-12 h-12 mx-auto mb-4 text-slate-400" />
-        <p class="text-slate-500 dark:text-slate-400">No recent matches in the last 3 days</p>
+      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-8 text-center">
+        <Calendar class="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+        <p class="text-muted-foreground">No recent matches in the last 3 days</p>
       </div>
     {/if}
   {:else if showSection === 'upcoming'}
@@ -374,11 +374,11 @@
       <div class="grid gap-4">
         {#each upcomingMatches as match, index}
           <div
-            class="glass-card p-4 hover:shadow-xl transition-all duration-300"
+            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             in:scale={{ delay: index * 50, duration: 300 }}
           >
             <div class="flex items-center justify-between mb-3">
-              <span class="text-xs text-slate-500 dark:text-slate-400">
+              <span class="text-xs text-muted-foreground">
                 {format(new Date(match.date), 'EEEE, MMMM d')}
               </span>
               <span class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full font-semibold">
@@ -397,7 +397,7 @@
 
               <!-- VS -->
               <div class="text-center">
-                <div class="text-lg font-bold text-slate-400">VS</div>
+                <div class="text-lg font-bold text-muted-foreground">VS</div>
               </div>
 
               <!-- Away Team -->
@@ -412,29 +412,29 @@
         {/each}
       </div>
     {:else}
-      <div class="glass-card p-8 text-center">
-        <Calendar class="w-12 h-12 mx-auto mb-4 text-slate-400" />
-        <p class="text-slate-500 dark:text-slate-400">No upcoming matches in the next 7 days</p>
+      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-8 text-center">
+        <Calendar class="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+        <p class="text-muted-foreground">No upcoming matches in the next 7 days</p>
       </div>
     {/if}
   {:else}
     <!-- No live matches — show countdown to next kickoff -->
-    <div class="glass-card p-12 text-center">
-      <Tv class="w-16 h-16 mx-auto mb-4 text-slate-400" />
-      <h3 class="text-xl font-semibold mb-2">No Live Matches</h3>
-      <p class="text-slate-500 dark:text-slate-400">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-12 text-center">
+      <Tv class="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+      <h3 class="text-xl font-semibold font-display mb-2 text-foreground">No Live Matches</h3>
+      <p class="text-muted-foreground">
         There are no Premier League matches in play right now.
       </p>
       {#if nextKickoff && countdownText}
         <div class="mt-4 p-4 bg-primary/5 rounded-lg">
-          <p class="text-sm text-slate-500 dark:text-slate-400">Next kickoff</p>
+          <p class="text-sm text-muted-foreground">Next kickoff</p>
           <p class="text-lg font-semibold text-primary mt-1">{countdownText}</p>
-          <p class="text-xs text-slate-400 mt-1">
+          <p class="text-xs text-muted-foreground mt-1">
             {format(nextKickoff, 'EEEE d MMMM, HH:mm')}
           </p>
         </div>
       {:else}
-        <p class="text-sm text-slate-400 dark:text-slate-500 mt-2">
+        <p class="text-sm text-muted-foreground dark:text-slate-500 mt-2">
           Check back during match times for live updates.
         </p>
       {/if}
@@ -442,16 +442,3 @@
   {/if}
 </div>
 
-<style>
-  .glass-card {
-    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-xl shadow-lg border border-slate-200 dark:border-slate-700;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-red-600 to-orange-600 dark:from-red-400 dark:to-orange-400 bg-clip-text text-transparent;
-  }
-
-  .loading-spinner {
-    @apply w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin;
-  }
-</style>

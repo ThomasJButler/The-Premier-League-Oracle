@@ -114,15 +114,15 @@
 
 <div class="max-w-7xl mx-auto">
   <!-- Header -->
-  <div class="glass-card p-6 mb-6">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
           <Trophy class="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold gradient-text">Top Scorers</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Premier League {getSeasonLabel()} Season</p>
+          <h1 class="text-2xl font-bold font-display text-foreground">Top Scorers</h1>
+          <p class="text-sm text-muted-foreground">Premier League {getSeasonLabel()} Season</p>
         </div>
       </div>
       <button 
@@ -137,10 +137,10 @@
   
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div class="loading-spinner"></div>
+      <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
     </div>
   {:else if error}
-    <div class="glass-card p-6 text-center">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
       <p class="text-red-500">{error}</p>
       <button 
         on:click={loadTopScorers}
@@ -153,7 +153,7 @@
     <div class="grid gap-4">
       {#each scorers as scorer, index}
         <div 
-          class="glass-card p-4 hover:shadow-xl transition-all duration-300 group"
+          class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 group"
           in:fly={{ y: 20, delay: index * 50, duration: 300 }}
         >
           <div class="flex items-center gap-4">
@@ -174,11 +174,11 @@
                 <h3 class="font-semibold text-lg group-hover:text-primary transition-colors">
                   {scorer.player.name}
                 </h3>
-                <span class="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+                <span class="text-xs px-2 py-0.5 bg-muted rounded-full">
                   {scorer.player.position}
                 </span>
               </div>
-              <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <div class="flex items-center gap-4 text-sm text-muted-foreground">
                 <span class="flex items-center gap-1">
                   {#if scorer.team.crest}
                     <img 
@@ -203,18 +203,18 @@
             <div class="flex gap-6 text-center">
               <div>
                 <div class="text-2xl font-bold text-primary">{scorer.goals}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Goals</div>
+                <div class="text-xs text-muted-foreground">Goals</div>
               </div>
               {#if scorer.assists !== null}
                 <div>
                   <div class="text-2xl font-bold text-blue-500">{scorer.assists}</div>
-                  <div class="text-xs text-slate-500 dark:text-slate-400">Assists</div>
+                  <div class="text-xs text-muted-foreground">Assists</div>
                 </div>
               {/if}
               {#if scorer.penalties != null && scorer.penalties > 0}
                 <div>
                   <div class="text-2xl font-bold text-amber-500">{scorer.penalties}</div>
-                  <div class="text-xs text-slate-500 dark:text-slate-400">Pens</div>
+                  <div class="text-xs text-muted-foreground">Pens</div>
                 </div>
               {/if}
             </div>
@@ -223,23 +223,10 @@
       {/each}
     </div>
   {:else}
-    <div class="glass-card p-8 text-center">
-      <Trophy class="w-12 h-12 mx-auto mb-4 text-slate-400" />
-      <p class="text-slate-500 dark:text-slate-400">No scorer data available</p>
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-8 text-center">
+      <Trophy class="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+      <p class="text-muted-foreground">No scorer data available</p>
     </div>
   {/if}
 </div>
 
-<style>
-  .glass-card {
-    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-xl shadow-lg border border-slate-200 dark:border-slate-700;
-  }
-  
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent;
-  }
-  
-  .loading-spinner {
-    @apply w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin;
-  }
-</style>
