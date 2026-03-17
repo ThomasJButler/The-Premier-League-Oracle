@@ -4,6 +4,23 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Deep Audit #4 — 9-Agent Comprehensive Sweep (17 March 2026)
+- **9-agent parallel audit**: Studied all 7 specs, all 17 Svelte components, all frontend lib/services/types/stores/utils, all 10 backend Python files, all 13 unit test files + 5 E2E specs, and root documentation
+- **8 new correctness bugs discovered**: `SeasonStats.svelte` lateDrama always 0 (references non-existent `full_time_result` field), `SeasonStats.svelte` card stats always 0 (free-tier returns null), season boundary inconsistency between `footballData.ts` (month >= 6) and `dataService.ts` (month >= 7), `optimizedPredictions.ts` model weights duplicated in two places, H2H fallback probabilities inconsistent (0.33 vs 0.40), `dataService.ts` `setCachedData` awaits IDBRequest (not a real Promise), `dataService.ts` `initializeIndexedDB` not awaited in constructor
+- **Backend runtime bugs confirmed**: `modern_oracle.py` calls non-existent `data_collector.get_team_stats()` (AttributeError) and uses wrong kwarg `last_n` instead of `n_matches` (TypeError); bearer tokens on 2 endpoints never verified; global exception handler leaks raw error strings
+- **Dead code catalogued**: 3 unused backend security modules (`auth.py`, `secrets.py`, `validators.py` — none imported by `main.py`); `ValueBettingEngine` tested (38 tests) but has zero UI consumers; 11 dead imports across 7 components; `getSeasonLabel()` duplicated in 3 files; `Predictions.svelte` has 4 dead state variables; `footballData.ts` has 2 uncalled methods
+- **Help.svelte accuracy audit**: 5 inaccurate claims identified (push notifications, xG on dashboard, 3-model system, 5-min polling, export "planned" when already implemented)
+- **New P1e section added**: 8 frontend correctness bugs that produce wrong data for users
+- **New P2i section added**: Wire `ValueBettingEngine` to UI (tested but entirely unwired)
+- **New P4f section added**: Dead imports and code duplication cleanup across 12 files
+- **Stubs table expanded**: 29 frontend entries (was 26), 27 backend entries (was 17) — now includes all discovered issues
+- **CLAUDE.md updated**: Added 2 remaining `np.random` calls in backend, unused security modules note, dead `Prediction` type, broken lateDrama, `ValueBettingEngine` unwired, `Help.svelte` inaccuracies, component test coverage gap (14/16 untested)
+
+### P1a Frontend Bug Fixes — Complete (18 March 2026)
+- All 20 correctness bugs fixed across components, prediction engine, and services
+- Tests updated to match corrected behaviour. 275/275 passing, 0 type errors
+- `betBuilder.ts` rivalry normalisation, `optimizedPredictions.ts` fatigue in Poisson lambda, `kelly.ts` half/quarter-Kelly fractions, `value.ts` CLV formula corrected, dark mode shared store, Chart.js memory leak fixed, and more
+
 ### Fix Backend Startup — P0a Complete (17 March 2026)
 - **Backend now starts gracefully** without all ML dependencies installed — all optional imports (`shap`, `optuna`, `redis`, `sklearn`, `joblib`, `langchain`, `chromadb`, `torch`) wrapped in try/except with availability flags
 - **`main.py`**: Guarded `redis.asyncio`, `AdvancedFeatureEngineer`, and `FootballDataCollector` imports; fixed lifespan null-check crash (`oracle.xgboost_model` called when `oracle is None`); fixed model performance endpoint null-checking LSTM/Transformer; fixed invalid CORS config (`allow_origins=["*"]` + `allow_credentials=True` → explicit frontend origins)
