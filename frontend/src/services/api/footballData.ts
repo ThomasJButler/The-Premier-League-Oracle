@@ -227,7 +227,8 @@ class FootballDataAPI {
       start_date: season.startDate,
       end_date: season.endDate,
       is_current: true,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      currentMatchday: season.currentMatchday
     };
   }
   

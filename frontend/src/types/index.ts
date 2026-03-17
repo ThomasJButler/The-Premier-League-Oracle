@@ -8,6 +8,7 @@ export interface Season {
   is_current: boolean;
   created_at: string;
   year?: number; // Year of the season
+  currentMatchday?: number; // Current matchday from the API
 }
 
 export type MatchStatus =

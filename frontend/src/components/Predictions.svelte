@@ -242,7 +242,17 @@
     flippedCards = new Set(flippedCards);
   }
 
-  onMount(() => loadGameweekMatches(selectedGameweek));
+  onMount(async () => {
+    try {
+      const season = await dataService.getCurrentSeason();
+      if (season?.currentMatchday) {
+        selectedGameweek = season.currentMatchday;
+      }
+    } catch {
+      // Fall back to week 1 if API unavailable
+    }
+    loadGameweekMatches(selectedGameweek);
+  });
   
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
