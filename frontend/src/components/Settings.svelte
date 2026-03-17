@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles, Heart } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { onMount } from 'svelte';
@@ -17,6 +17,38 @@
   let testResult: { success: boolean; message: string } | null = null;
   let isRefreshing = false;
   
+  // Favourite team
+  let favouriteTeam = '';
+  const plTeams = [
+    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
+    'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
+    'Leicester City', 'Liverpool', 'Manchester City', 'Manchester United',
+    'Newcastle United', 'Nottingham Forest', 'Southampton', 'Tottenham',
+    'West Ham United', 'Wolverhampton'
+  ];
+
+  const teamColors: Record<string, string> = {
+    'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
+    'Brentford': '#FF0000', 'Brighton': '#0057B8', 'Chelsea': '#034694',
+    'Crystal Palace': '#1B458F', 'Everton': '#003399', 'Fulham': '#000000',
+    'Ipswich Town': '#0000FF', 'Leicester City': '#003090', 'Liverpool': '#C8102E',
+    'Manchester City': '#6CABDD', 'Manchester United': '#DA020E',
+    'Newcastle United': '#241F20', 'Nottingham Forest': '#DD0000',
+    'Southampton': '#D71920', 'Tottenham': '#132257',
+    'West Ham United': '#7A263A', 'Wolverhampton': '#FDB913'
+  };
+
+  function setFavouriteTeam(team: string) {
+    favouriteTeam = team;
+    if (team) {
+      localStorage.setItem('favourite_team', team);
+      document.documentElement.dataset.team = team;
+    } else {
+      localStorage.removeItem('favourite_team');
+      delete document.documentElement.dataset.team;
+    }
+  }
+
   // Cache management
   let cacheSize = '0 MB';
   let lastSync = 'Never';
@@ -123,6 +155,12 @@
       lastSync = savedLastSync;
     }
     
+    // Load favourite team
+    const savedTeam = localStorage.getItem('favourite_team');
+    if (savedTeam) {
+      favouriteTeam = savedTeam;
+    }
+
     // Check cache size (mock calculation)
     const cacheEntries = localStorage.length;
     cacheSize = `${(cacheEntries * 0.005).toFixed(2)} MB`;
@@ -252,6 +290,36 @@
     </div>
   </div>
   
+  <!-- Favourite Team -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Heart class="w-5 h-5 text-primary" />
+      <span>Favourite Team</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Pick your club and the app's accent colours will match their home shirt.
+    </p>
+
+    <div class="flex items-center gap-3">
+      {#if favouriteTeam && teamColors[favouriteTeam]}
+        <div
+          class="w-5 h-5 rounded-full border border-border flex-shrink-0"
+          style="background-color: {teamColors[favouriteTeam]};"
+        ></div>
+      {/if}
+      <select
+        bind:value={favouriteTeam}
+        on:change={() => setFavouriteTeam(favouriteTeam)}
+        class="flex-1 max-w-xs px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
+      >
+        <option value="">None (PL Default)</option>
+        {#each plTeams as team}
+          <option value={team}>{team}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
   <!-- Cache Management -->
   <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
     <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
