@@ -56,6 +56,12 @@
       document.documentElement.classList.add('dark');
     }
 
+    // Restore favourite team theme
+    const savedTeam = localStorage.getItem('favourite_team');
+    if (savedTeam) {
+      document.documentElement.dataset.team = savedTeam;
+    }
+
     // Check for API key on load
     checkApiKey();
   });
