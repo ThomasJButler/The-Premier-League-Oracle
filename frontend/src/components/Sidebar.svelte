@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart3, History, Settings, LogOut, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
   import { createEventDispatcher } from 'svelte';
 

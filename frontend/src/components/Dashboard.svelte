@@ -73,6 +73,7 @@
   }
 
   let profitChartCanvas: HTMLCanvasElement;
+  let profitChartInstance: ChartJS | null = null;
 
   // Reactive stats that update with animations
   $: stats = [
@@ -202,6 +203,8 @@
             .reverse()
             .map(p => format(new Date(p.timestamp), 'MMM d'));
           recentPerformance.datasets[0].data = [...recentPreds].reverse().map(p => p.confidence * 100);
+          // Label correctly — this is confidence, not measured accuracy
+          recentPerformance.datasets[0].label = 'Model Confidence (awaiting results)';
         } else {
           // No predictions at all — flat line at overall accuracy
           recentPerformance.labels = recentMatches
@@ -257,7 +260,11 @@
 
     const ctx = profitChartCanvas.getContext('2d');
     if (ctx) {
-      new ChartJS(ctx as ChartItem, {
+      // Destroy any previous instance to prevent memory leaks on re-render
+      if (profitChartInstance) {
+        profitChartInstance.destroy();
+      }
+      profitChartInstance = new ChartJS(ctx as ChartItem, {
         type: 'line',
         data: {
           labels,
@@ -314,6 +321,10 @@
     return () => {
       clearInterval(timeInterval);
       clearInterval(retryInterval);
+      if (profitChartInstance) {
+        profitChartInstance.destroy();
+        profitChartInstance = null;
+      }
     };
   });
 </script>

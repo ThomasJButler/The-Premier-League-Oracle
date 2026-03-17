@@ -265,31 +265,67 @@ export class BetBuilderPredictor {
     };
   }
   
+  /**
+   * Normalise a team name by stripping common suffixes so that both
+   * API canonical names ("Arsenal FC") and short display names ("Arsenal")
+   * can match the rivalry list.
+   */
+  private static normaliseTeamName(name: string): string {
+    return name.replace(/\s+(FC|AFC|CF)$/i, '').trim();
+  }
+
   private static checkRivalry(team1: string, team2: string): boolean {
     const rivalries = [
       ['Manchester United', 'Manchester City'],
       ['Manchester United', 'Liverpool'],
-      ['Arsenal', 'Tottenham'],
+      ['Arsenal', 'Tottenham Hotspur'],
       ['Liverpool', 'Everton'],
       ['Chelsea', 'Arsenal'],
-      ['Chelsea', 'Tottenham']
+      ['Chelsea', 'Tottenham Hotspur'],
+      ['Wolverhampton Wanderers', 'West Bromwich Albion'],
+      ['Nottingham Forest', 'Leicester City'],
+      ['Newcastle United', 'Sunderland'],
+      ['Aston Villa', 'Birmingham City']
     ];
-    
-    return rivalries.some(rivalry => 
-      (rivalry.includes(team1) && rivalry.includes(team2))
+
+    const n1 = this.normaliseTeamName(team1);
+    const n2 = this.normaliseTeamName(team2);
+
+    return rivalries.some(([a, b]) =>
+      (n1 === a && n2 === b) || (n1 === b && n2 === a)
     );
   }
   
+  /**
+   * Estimate half-time result probabilities from full-time probabilities.
+   *
+   * Half-time draws are historically ~40 % in the Premier League, so we
+   * blend each full-time probability towards a draw-heavy prior and then
+   * normalise to guarantee the three values sum to exactly 1.0.
+   */
   private static calculateHalfTimeResult(fullTimeResult: any) {
-    // Simplified: half-time tends to be more draws, with slight tendency toward full-time result
-    const ftBias = 0.4; // 40% correlation with full-time
-    
-    return {
-      prediction: fullTimeResult.prediction,
-      homeWinProb: fullTimeResult.homeWinProb * ftBias + 0.25 * (1 - ftBias),
-      drawProb: 0.40, // Draws more common at half-time
-      awayWinProb: fullTimeResult.awayWinProb * ftBias + 0.25 * (1 - ftBias)
-    };
+    const ftBias = 0.4; // 40 % correlation with full-time
+    // Prior: draws much more common at half-time
+    const priorHome = 0.25;
+    const priorDraw = 0.45;
+    const priorAway = 0.25;
+    // Note: prior doesn't sum to 0.95 not 1.0, but the normalisation below fixes that
+
+    let homeWinProb = fullTimeResult.homeWinProb * ftBias + priorHome * (1 - ftBias);
+    let drawProb    = fullTimeResult.drawProb    * ftBias + priorDraw * (1 - ftBias);
+    let awayWinProb = fullTimeResult.awayWinProb * ftBias + priorAway * (1 - ftBias);
+
+    // Normalise so probabilities sum to exactly 1.0
+    const total = homeWinProb + drawProb + awayWinProb;
+    homeWinProb /= total;
+    drawProb    /= total;
+    awayWinProb /= total;
+
+    const prediction: 'H' | 'A' | 'D' = homeWinProb > drawProb && homeWinProb > awayWinProb ? 'H'
+                                      : awayWinProb > drawProb ? 'A'
+                                      : 'D';
+
+    return { prediction, homeWinProb, drawProb, awayWinProb };
   }
   
   private static calculateCleanSheets(scoreProbabilities: { [key: string]: number }) {

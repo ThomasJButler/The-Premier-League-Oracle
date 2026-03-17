@@ -84,9 +84,16 @@
     return form.split(',').slice(-5);
   }
   
+  /**
+   * Approximate movement indicator based on recent form.
+   *
+   * The Football-Data.org free tier does not expose per-matchday position
+   * history, so we cannot compute real "moved up/down N places" deltas.
+   * Instead we infer momentum from the last 5 results — 3+ wins shows
+   * an upward arrow, 0-1 wins shows a downward arrow. This is a proxy
+   * for likely table movement rather than actual movement.
+   */
   function getMovementIcon(team: Standing) {
-    // This would need actual movement data from the API
-    // For now, return a placeholder based on recent form
     const form = formatForm(team.form);
     const recentWins = form.filter(r => r === 'W').length;
     if (recentWins >= 3) return { icon: ChevronUp, color: 'text-green-500' };

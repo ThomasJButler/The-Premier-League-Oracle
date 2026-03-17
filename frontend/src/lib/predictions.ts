@@ -353,8 +353,8 @@ export async function predictMatch(homeTeam: string, awayTeam: string): Promise<
     confidence = confidence * 0.8 + formConsistency * 0.2;
   }
   
-  // Cap confidence between 15% and 85%
-  confidence = Math.max(0.15, Math.min(0.85, confidence));
+  // Cap confidence — unified with OptimizedPredictor [0.25, 0.95]
+  confidence = Math.max(0.25, Math.min(0.95, confidence));
   
   // 10. Generate detailed insights
   const insights: string[] = [];

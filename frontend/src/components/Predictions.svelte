@@ -29,7 +29,6 @@
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
   }> = [];
-  let accuracy = { total: 0, correct: 0, accuracy: 0 };
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
   let rollingLast10Accuracy = 0;
@@ -48,6 +47,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
+  let totalGameweeks = 38; // Updated from API season data if available
 
   async function loadGameweekMatches(gameweek: number) {
     loading = true;
@@ -81,12 +81,6 @@
         predictionStatus: 'pending' as const
       }));
       
-      // Get accuracy stats
-      const currentAccuracy = await dataService.getPredictionAccuracy('2025-2026');
-      if (currentAccuracy) {
-        accuracy = currentAccuracy;
-      }
-
       // Load full accuracy breakdown from PredictionTracker
       const fullStats = predictionTracker.getAccuracyStats(90);
       if (fullStats.totalPredictions > 0) {
@@ -248,8 +242,9 @@
       if (season?.currentMatchday) {
         selectedGameweek = season.currentMatchday;
       }
+      // PL always has 38 gameweeks; totalGameweeks defaults to 38 above
     } catch {
-      // Fall back to week 1 if API unavailable
+      // Fall back to week 1 / 38 gameweeks if API unavailable
     }
     loadGameweekMatches(selectedGameweek);
   });
@@ -275,7 +270,7 @@
           class="px-3 py-1.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           disabled={isBatchPredicting}
         >
-          {#each Array(38) as _, i}
+          {#each Array(totalGameweeks) as _, i}
             <option value={i + 1}>Week {i + 1}</option>
           {/each}
         </select>
@@ -593,10 +588,13 @@
                     <div class="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-700">
                       <div class="flex items-center gap-2 mb-1">
                         <Users class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                        <span class="font-semibold text-amber-800 dark:text-amber-200">Betting Tip</span>
+                        <span class="font-semibold text-amber-800 dark:text-amber-200">Estimated Stake</span>
                       </div>
                       <div class="text-sm text-amber-700 dark:text-amber-300">
-                        Recommended stake: {prediction.detailedAnalysis.recommendedStake.toFixed(1)}% of bankroll
+                        Kelly stake: {prediction.detailedAnalysis.recommendedStake.toFixed(1)}% of bankroll
+                      </div>
+                      <div class="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">
+                        Based on model-estimated odds — not real bookmaker prices
                       </div>
                     </div>
                   {/if}

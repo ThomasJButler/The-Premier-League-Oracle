@@ -70,8 +70,8 @@
   </div>
 {/if}
 
-<!-- Bottom nav bar -->
-<nav class="mobile-nav">
+<!-- Bottom nav bar — hidden on large screens where the sidebar is visible -->
+<nav class="mobile-nav lg:hidden">
   <div class="flex justify-around items-center">
     {#each primaryItems as item}
       <button

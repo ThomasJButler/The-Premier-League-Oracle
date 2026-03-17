@@ -206,7 +206,10 @@ export class OptimizedPredictor {
         awayElo
       );
 
-      // 4. Calculate Poisson predictions using Dixon-Coles lambdas
+      // 4. Calculate fatigue factor (needed before Poisson lambdas)
+      const fatigueFactor = await this.calculateFatigueFactor(homeTeam, awayTeam);
+
+      // 5. Calculate Poisson predictions using Dixon-Coles lambdas
       let allMatches: Match[] = [];
       try {
         allMatches = await dataService.getMatches();
@@ -214,8 +217,14 @@ export class OptimizedPredictor {
         // No match data available — lambdas will use fallback path
       }
       const leagueAvgs = this.computeLeagueAverages(allMatches);
-      const { lambdaHome: homeGoalsExpected, lambdaAway: awayGoalsExpected } =
+      const rawLambdas =
         this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
+
+      // Apply fatigue: tired teams score less (lambda × fatigue) and concede
+      // more (opponent lambda ÷ fatigue). Multipliers are in [0.85, 1.0] so
+      // the adjustment is modest but data-driven per spec 01.
+      const homeGoalsExpected = Math.max(0.3, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
+      const awayGoalsExpected = Math.max(0.3, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
@@ -224,14 +233,11 @@ export class OptimizedPredictor {
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
-      // 5. Analyze recent form
+      // 6. Analyze recent form
       const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam);
-      
-      // 6. Head-to-head analysis
+
+      // 7. Head-to-head analysis
       const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
-      
-      // 7. Calculate fatigue factor
-      const fatigueFactor = await this.calculateFatigueFactor(homeTeam, awayTeam);
       
       // 8. Combine all models with weighted approach
       // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)

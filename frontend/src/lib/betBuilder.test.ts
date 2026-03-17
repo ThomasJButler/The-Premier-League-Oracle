@@ -391,7 +391,7 @@ describe('BetBuilderPredictor', () => {
     it('should increase expected cards for rivalry matches', async () => {
       vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
 
-      const rivalryResult = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Tottenham');
+      const rivalryResult = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Tottenham Hotspur');
 
       // Reset and test non-rivalry
       vi.clearAllMocks();
@@ -409,16 +409,20 @@ describe('BetBuilderPredictor', () => {
       );
     });
 
-    it('should detect all six hardcoded rivalries', async () => {
+    it('should detect all ten hardcoded rivalries', async () => {
       vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
 
       const rivalries = [
         ['Manchester United', 'Manchester City'],
         ['Manchester United', 'Liverpool'],
-        ['Arsenal', 'Tottenham'],
+        ['Arsenal', 'Tottenham Hotspur'],
         ['Liverpool', 'Everton'],
         ['Chelsea', 'Arsenal'],
-        ['Chelsea', 'Tottenham']
+        ['Chelsea', 'Tottenham Hotspur'],
+        ['Wolverhampton Wanderers', 'West Bromwich Albion'],
+        ['Nottingham Forest', 'Leicester City'],
+        ['Newcastle United', 'Sunderland'],
+        ['Aston Villa', 'Birmingham City']
       ];
 
       for (const [home, away] of rivalries) {
@@ -477,24 +481,31 @@ describe('BetBuilderPredictor', () => {
       expect(result.halfTimeResult.prediction).toBe(result.matchResult.prediction);
     });
 
-    it('should always have drawProb of 0.40 (hardcoded)', async () => {
+    it('should produce normalised HT probabilities that sum to 1.0', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.50, '1-0': 0.30, '0-0': 0.10, '0-1': 0.10 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      expect(result.halfTimeResult.drawProb).toBe(0.40);
+      const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
+      expect(sum).toBeCloseTo(1.0, 6);
     });
 
-    it('should apply 40% correlation bias to full-time probabilities', async () => {
+    it('should apply 40% correlation bias to full-time probabilities with normalisation', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.60, '0-0': 0.20, '0-1': 0.20 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // homeWinProb FT = 0.60
-      // HT homeWinProb = 0.60 * 0.4 + 0.25 * 0.6 = 0.24 + 0.15 = 0.39
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.39, 2);
+      // Priors: home=0.25, draw=0.45, away=0.25 (sum=0.95, normalisation required)
+      // FT homeWin=0.60: raw = 0.60*0.4 + 0.25*0.6 = 0.39
+      // FT draw=0.20:    raw = 0.20*0.4 + 0.45*0.6 = 0.35
+      // FT away=0.20:    raw = 0.20*0.4 + 0.25*0.6 = 0.23
+      // total = 0.97, homeWinProb = 0.39/0.97 ≈ 0.4021
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4021, 2);
+      // And sum to 1
+      const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
+      expect(sum).toBeCloseTo(1.0, 6);
     });
   });
 

@@ -17,6 +17,7 @@
   import StandingsTable from './components/StandingsTable.svelte';
   import ChatBot from './components/ChatBot.svelte';
   import { onMount } from 'svelte';
+  import { isDarkMode } from './stores/theme';
 
   let currentView = 'Dashboard'; // Default view
   let isSidebarOpen = false; // Start with sidebar closed
@@ -47,14 +48,8 @@
       isSidebarOpen = true;
     }
 
-    // Restore saved theme — default to dark (sports data looks better dark)
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      // Default to dark mode unless explicitly set to light
-      document.documentElement.classList.add('dark');
-    }
+    // Initialise shared theme store — respects localStorage then prefers-color-scheme
+    isDarkMode.init();
 
     // Restore favourite team theme
     const savedTeam = localStorage.getItem('favourite_team');

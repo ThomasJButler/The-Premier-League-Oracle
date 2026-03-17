@@ -1,35 +1,8 @@
 <script lang="ts">
   import { Sun, Moon, Github, Menu } from 'lucide-svelte';
-  import { createEventDispatcher } from 'svelte';
+  import { isDarkMode } from '../stores/theme';
 
   export let toggleSidebar: () => void;
-
-  const dispatch = createEventDispatcher();
-
-  let isDarkMode = false;
-
-  function toggleTheme() {
-    isDarkMode = !isDarkMode;
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-    dispatch('toggleDarkMode');
-  }
-
-  // Initialise theme — default to dark
-  if (typeof window !== 'undefined') {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      isDarkMode = false;
-    } else {
-      isDarkMode = true;
-      document.documentElement.classList.add('dark');
-    }
-  }
 </script>
 
 <header class="header-container">
@@ -58,11 +31,11 @@
     </a>
 
     <button
-      on:click={toggleTheme}
+      on:click={isDarkMode.toggle}
       class="p-2 rounded-lg hover:bg-muted transition-colors"
       aria-label="Toggle dark mode"
     >
-      {#if isDarkMode}
+      {#if $isDarkMode}
         <Sun class="w-5 h-5 text-muted-foreground" />
       {:else}
         <Moon class="w-5 h-5 text-muted-foreground" />

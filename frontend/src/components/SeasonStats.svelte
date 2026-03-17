@@ -256,9 +256,6 @@
       ? ((over25Matches / completedMatches.length) * 100).toFixed(1)
       : 0;
     
-    // Penalty count — not available from Football-Data.org free tier
-    const totalPenalties = 0;
-    
     // First half goals vs second half
     const firstHalfGoals = completedMatches.reduce((sum, m) => 
       sum + (m.first_half_home_goals || 0) + (m.first_half_away_goals || 0), 0
@@ -277,15 +274,21 @@
     completedMatches.forEach(match => {
       if (!teamUnbeaten[match.home_team]) teamUnbeaten[match.home_team] = 0;
       if (!teamUnbeaten[match.away_team]) teamUnbeaten[match.away_team] = 0;
-      
-      if (match.result === 'H' || match.result === 'D') {
+
+      if (match.result === 'H') {
+        // Home win: home team extends streak, away team's streak is broken
         teamUnbeaten[match.home_team]++;
         teamUnbeaten[match.away_team] = 0;
-      } else {
+      } else if (match.result === 'A') {
+        // Away win: away team extends streak, home team's streak is broken
         teamUnbeaten[match.away_team]++;
         teamUnbeaten[match.home_team] = 0;
+      } else {
+        // Draw: BOTH teams extend their unbeaten runs
+        teamUnbeaten[match.home_team]++;
+        teamUnbeaten[match.away_team]++;
       }
-      
+
       Object.entries(teamUnbeaten).forEach(([team, streak]) => {
         if (streak > longestUnbeaten) {
           longestUnbeaten = streak;
@@ -352,13 +355,6 @@
         description: 'Matches with 3+ goals'
       },
       {
-        label: 'Penalties',
-        value: totalPenalties || 0,
-        icon: Target,
-        color: 'from-pink-500 to-rose-500',
-        description: 'Spot kicks awarded'
-      },
-      {
         label: 'Second Half Goals',
         value: secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`,
         icon: Timer,
@@ -370,7 +366,7 @@
         value: unbeatenTeam ? `${unbeatenTeam} (${longestUnbeaten})` : 'N/A',
         icon: Award,
         color: 'from-emerald-500 to-green-500',
-        description: 'Current unbeaten streak'
+        description: 'Longest unbeaten run this season'
       },
       {
         label: 'Total Matches',
