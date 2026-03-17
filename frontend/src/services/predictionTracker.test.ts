@@ -388,16 +388,11 @@ describe('PredictionTracker Service', () => {
       stored[oldPrediction.id] = oldPrediction;
       localStorageMock['pl_oracle_predictions'] = JSON.stringify(stored);
       
-      // Reload tracker to pick up old prediction
+      // Reload tracker — constructor now auto-cleans old predictions
       tracker = new PredictionTracker();
-      
-      let allPredictions = tracker.getRecentPredictions(100);
-      expect(allPredictions).toHaveLength(2);
-      
-      // Clean old predictions
-      tracker.cleanOldPredictions();
-      
-      allPredictions = tracker.getRecentPredictions(100);
+
+      // Old prediction should already be cleaned by the constructor
+      const allPredictions = tracker.getRecentPredictions(100);
       expect(allPredictions).toHaveLength(1);
       expect(allPredictions[0].matchId).toBe('newmatch');
     });

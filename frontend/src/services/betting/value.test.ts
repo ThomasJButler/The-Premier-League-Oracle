@@ -239,19 +239,21 @@ describe('ValueBettingEngine', () => {
   });
 
   describe('calculateCLV', () => {
-    it('should calculate positive CLV when closing odds rise', () => {
-      const result = ValueBettingEngine.calculateCLV(2.00, 2.20);
-      // CLV = ((2.20 - 2.00) / 2.00) * 100 = 10%
-      expect(result.clv).toBeCloseTo(10, 1);
+    it('should calculate positive CLV when closing odds drop (we beat the market)', () => {
+      const result = ValueBettingEngine.calculateCLV(2.00, 1.80);
+      // We placed at 2.00, market closed at 1.80 — we got better odds
+      // CLV = ((2.00 - 1.80) / 1.80) * 100 ≈ 11.11%
+      expect(result.clv).toBeCloseTo(11.11, 1);
       expect(result.profitable).toBe(true);
       expect(result.openingOdds).toBe(2.00);
-      expect(result.closingOdds).toBe(2.20);
+      expect(result.closingOdds).toBe(1.80);
     });
 
-    it('should calculate negative CLV when closing odds drop', () => {
-      const result = ValueBettingEngine.calculateCLV(2.00, 1.80);
-      // CLV = ((1.80 - 2.00) / 2.00) * 100 = -10%
-      expect(result.clv).toBeCloseTo(-10, 1);
+    it('should calculate negative CLV when closing odds rise (market moved against us)', () => {
+      const result = ValueBettingEngine.calculateCLV(2.00, 2.20);
+      // We placed at 2.00, market closed at 2.20 — we got worse odds
+      // CLV = ((2.00 - 2.20) / 2.20) * 100 ≈ -9.09%
+      expect(result.clv).toBeCloseTo(-9.09, 1);
       expect(result.profitable).toBe(false);
     });
 

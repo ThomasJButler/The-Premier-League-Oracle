@@ -81,16 +81,13 @@ export class KellyCalculator {
     // Cap at maximum Kelly
     const fullKelly = Math.min(rawKelly, this.MAX_KELLY);
     
-    // Apply confidence adjustment
-    const confidenceAdjustedKelly = fullKelly * confidenceLevel;
-    
-    // Calculate fractional Kelly variants
-    const halfKelly = confidenceAdjustedKelly * 0.5;
-    const quarterKelly = confidenceAdjustedKelly * 0.25;
-    
-    // Apply maximum stake limit
+    // Calculate fractional Kelly variants (pure fractions of fullKelly)
+    const halfKelly = fullKelly * 0.5;
+    const quarterKelly = fullKelly * 0.25;
+
+    // Recommended stake: half-Kelly adjusted by model confidence, capped at limit
     const maxAllowedKelly = Math.min(this.MAX_KELLY, maxStakePercentage);
-    const recommendedKelly = Math.min(halfKelly, maxAllowedKelly);
+    const recommendedKelly = Math.min(halfKelly * confidenceLevel, maxAllowedKelly);
     
     // Calculate actual stake amount
     const recommendedStake = recommendedKelly * bankroll;

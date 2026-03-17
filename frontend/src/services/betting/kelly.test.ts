@@ -15,8 +15,8 @@ describe('KellyCalculator', () => {
       const result = KellyCalculator.calculate(opportunity);
 
       expect(result.fullKelly).toBeCloseTo(0.25, 4); // Capped at MAX_KELLY
-      expect(result.halfKelly).toBeCloseTo(0.075, 4); // 0.25 * 0.6 * 0.5
-      expect(result.quarterKelly).toBeCloseTo(0.0375, 4); // 0.25 * 0.6 * 0.25
+      expect(result.halfKelly).toBeCloseTo(0.125, 4); // 0.25 * 0.5
+      expect(result.quarterKelly).toBeCloseTo(0.0625, 4); // 0.25 * 0.25
       expect(result.isValueBet).toBe(true);
       expect(result.expectedValue).toBeCloseTo(0.5, 2);
       expect(result.edgePercentage).toBeCloseTo(20, 1);

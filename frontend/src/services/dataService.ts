@@ -309,6 +309,39 @@ class DataService {
           const currentYear = new Date().getFullYear();
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
           const seasonYear = new Date().getMonth() >= 7 ? currentYear : currentYear - 1;
+          // Compute home/away splits from recent matches
+          let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          let totalCleanSheets = 0;
+          let totalFailedToScore = 0;
+
+          try {
+            const allMatches = await this.getMatches();
+            const teamMatches = allMatches.filter(m =>
+              m.home_team.toLowerCase() === teamName.toLowerCase() ||
+              m.away_team.toLowerCase() === teamName.toLowerCase()
+            ).filter(m => m.result !== null); // only finished matches
+
+            for (const m of teamMatches) {
+              const isHome = m.home_team.toLowerCase() === teamName.toLowerCase();
+              const gf = isHome ? (m.home_goals ?? 0) : (m.away_goals ?? 0);
+              const ga = isHome ? (m.away_goals ?? 0) : (m.home_goals ?? 0);
+              const bucket = isHome ? homeStats : awayStats;
+
+              bucket.played++;
+              bucket.goalsFor += gf;
+              bucket.goalsAgainst += ga;
+              if (ga === 0) { bucket.cleanSheets++; totalCleanSheets++; }
+              if (gf === 0) totalFailedToScore++;
+
+              if (m.result === 'D') { bucket.draws++; }
+              else if ((isHome && m.result === 'H') || (!isHome && m.result === 'A')) { bucket.wins++; }
+              else { bucket.losses++; }
+            }
+          } catch {
+            // If match fetch fails, splits stay at 0 — overall stats still correct
+          }
+
           const stats: TeamStats = {
             id: `${teamName}_${currentYear}`,
             season_id: String(seasonYear),
@@ -319,21 +352,21 @@ class DataService {
             losses: teamStats.losses,
             goals_for: teamStats.goalsFor,
             goals_against: teamStats.goalsAgainst,
-            clean_sheets: 0, // Not available from API
-            failed_to_score: 0, // Not available from API
+            clean_sheets: totalCleanSheets,
+            failed_to_score: totalFailedToScore,
             points: teamStats.points,
-            home_matches_played: 0, // Calculate separately if needed
-            home_wins: 0,
-            home_draws: 0,
-            home_losses: 0,
-            home_goals_for: 0,
-            home_goals_against: 0,
-            away_matches_played: 0,
-            away_wins: 0,
-            away_draws: 0,
-            away_losses: 0,
-            away_goals_for: 0,
-            away_goals_against: 0,
+            home_matches_played: homeStats.played,
+            home_wins: homeStats.wins,
+            home_draws: homeStats.draws,
+            home_losses: homeStats.losses,
+            home_goals_for: homeStats.goalsFor,
+            home_goals_against: homeStats.goalsAgainst,
+            away_matches_played: awayStats.played,
+            away_wins: awayStats.wins,
+            away_draws: awayStats.draws,
+            away_losses: awayStats.losses,
+            away_goals_for: awayStats.goalsFor,
+            away_goals_against: awayStats.goalsAgainst,
             updated_at: new Date().toISOString()
           };
           
@@ -399,8 +432,14 @@ class DataService {
     return [];
   }
 
-  // Get matches by season — currently returns all matches (free tier only has current season)
+  // Get matches by season — extracts year and delegates to getHistoricalMatches
   public async getMatchesBySeason(seasonId: string): Promise<Match[]> {
+    // seasonId is "2024-2025" or "2024/25" — extract the starting year
+    const yearMatch = seasonId.match(/^(\d{4})/);
+    if (yearMatch) {
+      return this.getHistoricalMatches(parseInt(yearMatch[1], 10));
+    }
+    // Fallback: return current season matches
     return this.getMatches();
   }
 
