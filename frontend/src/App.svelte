@@ -9,7 +9,6 @@
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
-  import ValueBets from './components/betting/ValueBets.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
@@ -119,8 +118,6 @@
           <Predictions />
         {:else if currentView === 'Kelly Calculator'}
           <KellyCalculator />
-        {:else if currentView === 'Value Bets'}
-          <ValueBets />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
         {:else if currentView === 'Season Stats'}

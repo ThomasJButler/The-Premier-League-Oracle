@@ -41,12 +41,6 @@ test.describe('Navigation', () => {
     await expect(page.locator('table').first()).toBeVisible();
   });
 
-  test('navigates to Value Bets view', async ({ page }) => {
-    await navigateTo(page, 'Value Bets');
-    // Odds input section is unique to Value Bets
-    await expect(page.locator('[data-testid="odds-inputs"]').first()).toBeVisible();
-  });
-
   test('navigates to Kelly Calculator', async ({ page }) => {
     await navigateTo(page, 'Kelly Calculator');
     // Kelly calculator container is unique to this view
@@ -70,7 +64,7 @@ test.describe('Navigation', () => {
   });
 
   test('takes screenshot of all main views', async ({ page }) => {
-    const views = ['Dashboard', 'Predictions', 'Standings', 'Live Matches', 'Value Bets'];
+    const views = ['Dashboard', 'Predictions', 'Standings', 'Live Matches', 'Kelly Calculator'];
     for (const view of views) {
       await navigateTo(page, view);
       await page.waitForLoadState('networkidle');
