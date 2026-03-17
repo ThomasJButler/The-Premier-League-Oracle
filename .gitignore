@@ -13,8 +13,11 @@ node_modules
 frontend/.env
 
 # Build output
-/dist
-dist/assets/browser-Bmh3iUVW.js
+frontend/dist/
+
+# Backend generated files
+backend/chroma_db/
+backend/models/*.pkl
 
 # Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
