@@ -275,6 +275,7 @@
       <button
         on:click={predictGameweek}
         disabled={isBatchPredicting || loading}
+        data-testid="predict-gameweek"
         class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
         {#if isBatchPredicting}
@@ -290,7 +291,7 @@
   
   <!-- Accuracy Breakdown Panel -->
   {#if accuracyStats && accuracyStats.totalPredictions > 0}
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" in:fade={{ duration: 300 }}>
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" data-testid="accuracy-panel" in:fade={{ duration: 300 }}>
       <button
         on:click={() => showAccuracyPanel = !showAccuracyPanel}
         class="w-full flex items-center justify-between"

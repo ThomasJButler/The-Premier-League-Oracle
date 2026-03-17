@@ -356,7 +356,7 @@
               </div>
 
               <!-- 1X2 Odds Inputs -->
-              <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex items-center gap-2 flex-shrink-0" data-testid="odds-inputs">
                 <div class="flex flex-col items-center">
                   <label class="text-xs text-muted-foreground mb-1">Home</label>
                   <input

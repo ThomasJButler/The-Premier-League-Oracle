@@ -376,11 +376,12 @@
       <button on:click={loadDashboardData} class="btn btn-primary mt-4">Retry</button>
     </div>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
       {#each stats as stat, i}
         <div
           class="rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
           style="animation-delay: {i * 80}ms"
+          data-testid="stat-card"
         >
           <div class="flex items-center gap-3 mb-3">
             <div class="rounded-lg p-2 {stat.bgColor}">
@@ -493,7 +494,7 @@
           <li class="text-sm text-muted-foreground">No upcoming matches</li>
         {/if}
       </ul>
-      <button class="btn btn-secondary btn-sm mt-4 w-full" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
+      <button class="btn btn-secondary btn-sm mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
     </div>
   </div>
 </div>

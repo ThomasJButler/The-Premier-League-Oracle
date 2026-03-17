@@ -99,7 +99,7 @@
   $: effectiveBankroll = Math.min(bankroll, maxBankroll);
 </script>
 
-<div class="max-w-[1000px] rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
+<div class="max-w-[1000px] rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" data-testid="kelly-calculator">
   <div class="header mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
@@ -324,7 +324,7 @@
   
   {#if calculation}
     <!-- Results -->
-    <div class="results bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-6 mb-6" transition:fade>
+    <div class="results bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-6 mb-6" data-testid="kelly-results" transition:fade>
       <h3 class="text-lg font-bold font-display mb-4 flex items-center space-x-2">
         <Target class="w-5 h-5 text-primary" />
         <span>Recommended Bet</span>
