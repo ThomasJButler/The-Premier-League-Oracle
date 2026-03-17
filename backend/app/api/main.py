@@ -201,6 +201,12 @@ app.add_middleware(
 )
 
 
+# --------------------------------------------------------------------------
+# Auth policy: read-only prediction endpoints are public. Endpoints that
+# invoke external AI services (OpenAI via LangChain) or trigger admin
+# operations (model retraining) require a Bearer token via HTTPBearer.
+# --------------------------------------------------------------------------
+
 # Health check endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
@@ -275,7 +281,7 @@ async def predict_match(
 @app.post("/predict/natural", tags=["Predictions"])
 async def predict_natural_language(
     request: NaturalLanguageRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: invokes OpenAI API
 ):
     """
     Make predictions using natural language queries powered by LangChain.
@@ -523,7 +529,7 @@ async def calculate_betting_value(
 # Admin endpoint to retrain models
 @app.post("/admin/retrain", tags=["Admin"])
 async def retrain_models(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: admin-only operation
 ):
     """
     Retrain all models with latest data.
