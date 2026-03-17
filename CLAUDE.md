@@ -73,6 +73,7 @@ uvicorn app.api.main:app --reload --port 8000
 - **localStorage persistence**: ELO ratings, predictions, bets, settings all in localStorage.
 - **Vite proxy**: `/api/football-data` proxies to `https://api.football-data.org/v4`
 
+
 ## Specifications
 
 All feature specifications live in `specs/`:
@@ -113,3 +114,5 @@ These specs are the single source of truth for requirements.
 - Dynamic season labels in StandingsTable and TopScorers (replaced hardcoded "2024/25")
 - DataService dead methods removed (`setDataSource`, `getApiProvider`); live cache uses 60s TTL
 - MIT licensed for open-source collaboration
+
+### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
