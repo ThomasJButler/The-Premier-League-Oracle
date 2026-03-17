@@ -5,7 +5,7 @@ test.describe('Predictions', () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
     await navigateTo(page, 'Predictions');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
   });
 
   test('renders the predictions panel', async ({ page }) => {
@@ -22,9 +22,8 @@ test.describe('Predictions', () => {
     const generateBtn = page.getByRole('button', { name: /Generate|Predict|Run/i }).first();
     if (await generateBtn.isVisible()) {
       await generateBtn.click();
-      await page.waitForTimeout(2000);
       // After generating, should see match predictions listed
-      await expect(page.getByText(/Win|Draw|Home|Away/i)).toBeVisible();
+      await expect(page.getByText(/Win|Draw|Home|Away/i)).toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -33,9 +32,8 @@ test.describe('Predictions', () => {
     const toggle = page.locator('button').filter({ hasText: /Accuracy|accuracy/ }).first();
     if (await toggle.isVisible()) {
       await toggle.click();
-      await page.waitForTimeout(300);
       // Panel should now show accuracy breakdown
-      await expect(page.getByText(/Home Win|Draw|Away Win/i)).toBeVisible();
+      await expect(page.getByText(/Home Win|Draw|Away Win/i)).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -44,14 +42,13 @@ test.describe('Predictions', () => {
     const generateBtn = page.getByRole('button', { name: /Generate|Predict/i }).first();
     if (await generateBtn.isVisible()) {
       await generateBtn.click();
-      await page.waitForTimeout(2000);
       const stakeText = page.locator('text=/\\d+(\\.\\d+)?%/').first();
       await expect(stakeText).toBeVisible();
     }
   });
 
   test('screenshot - predictions view', async ({ page }) => {
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
     await page.screenshot({
       path: 'playwright-screenshots/predictions.png',
       fullPage: true,

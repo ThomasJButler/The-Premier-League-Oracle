@@ -5,7 +5,7 @@ test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
     // Dashboard is the default view
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
   });
 
   test('renders stat cards', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Dashboard', () => {
   });
 
   test('screenshot - full dashboard', async ({ page }) => {
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
     await page.screenshot({
       path: 'playwright-screenshots/dashboard-full.png',
       fullPage: true,

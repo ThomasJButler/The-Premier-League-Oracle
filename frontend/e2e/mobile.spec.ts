@@ -7,7 +7,7 @@ import { setupApp } from './helpers';
 test.describe('Mobile UX', () => {
   test.beforeEach(async ({ page }) => {
     await setupApp(page);
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
   });
 
   test('no horizontal overflow on dashboard', async ({ page }) => {
@@ -26,9 +26,8 @@ test.describe('Mobile UX', () => {
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
     if (await menuBtn.isVisible()) {
       await menuBtn.click();
-      await page.waitForTimeout(300);
       // After clicking, nav items should be visible
-      await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -37,7 +36,7 @@ test.describe('Mobile UX', () => {
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
     if (await menuBtn.isVisible()) {
       await menuBtn.click();
-      await page.waitForTimeout(300);
+      await page.locator('aside button, nav button').first().waitFor({ state: 'visible', timeout: 3000 });
     }
 
     const navBtns = page.locator('aside button, nav button');
@@ -51,7 +50,7 @@ test.describe('Mobile UX', () => {
   });
 
   test('screenshot - mobile dashboard', async ({ page }) => {
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
     const viewport = page.viewportSize();
     const name = viewport ? `${viewport.width}px` : 'mobile';
     await page.screenshot({
@@ -64,7 +63,7 @@ test.describe('Mobile UX', () => {
     const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first();
     if (await menuBtn.isVisible()) {
       await menuBtn.click();
-      await page.waitForTimeout(400);
+      await page.locator('aside, nav').first().waitFor({ state: 'visible', timeout: 3000 });
     }
     const viewport = page.viewportSize();
     const name = viewport ? `${viewport.width}px` : 'mobile';

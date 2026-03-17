@@ -59,7 +59,7 @@ test.describe('Navigation', () => {
     const views = ['Dashboard', 'Predictions', 'Standings', 'Live Matches', 'Value Bets'];
     for (const view of views) {
       await navigateTo(page, view);
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('networkidle');
       await page.screenshot({ path: `playwright-screenshots/${view.toLowerCase().replace(' ', '-')}.png`, fullPage: true });
     }
   });

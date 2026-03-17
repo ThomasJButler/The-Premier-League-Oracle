@@ -28,10 +28,10 @@ export async function navigateTo(page: Page, viewName: string) {
     const menuBtn = page.locator('button[aria-label*="menu"], button[aria-label*="Menu"], button[aria-label*="sidebar"]').first();
     if (await menuBtn.isVisible()) {
       await menuBtn.click();
-      await page.waitForTimeout(300);
+      await page.locator('aside, nav').first().waitFor({ state: 'visible' });
     }
   }
 
   await page.getByRole('button', { name: viewName }).click();
-  await page.waitForTimeout(300); // Allow transition to complete
+  await page.waitForLoadState('domcontentloaded');
 }
