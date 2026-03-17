@@ -41,7 +41,10 @@ class AdvancedFeatureEngineer:
     - Betting market intelligence
     - External factors (weather, time, etc.)
     """
-    
+
+    # Approximate average shots per game — used for goal conversion rate estimation
+    _AVG_SHOTS_PER_GAME = 10.0
+
     def __init__(self, historical_data: Optional[pd.DataFrame] = None):
         """
         Initialize feature engineer with optional historical data.
@@ -636,7 +639,7 @@ class AdvancedFeatureEngineer:
     def _calculate_pressure_index(self, team: str) -> float: return 0.0
 
     def _calculate_goal_conversion(self, team: str) -> float:
-        return self._calculate_avg_goals_scored(team) / 10.0
+        return self._calculate_avg_goals_scored(team) / self._AVG_SHOTS_PER_GAME
 
     def _calculate_defensive_efficiency(self, team: str) -> float:
         return self._calculate_clean_sheet_rate(team)
@@ -898,9 +901,10 @@ class AdvancedFeatureEngineer:
         return 1.0 if pos1 <= 4 and pos2 <= 4 else 0.0
 
     def _calculate_season_progress(self, match_date: datetime) -> float:
-        """0.0 = August, 1.0 = May."""
+        """0.0 = August, 1.0 = May. Clamped to [0.0, 1.0]."""
         month = match_date.month
-        return (month - 8) / 10.0 if month >= 8 else (month + 4) / 10.0
+        raw = (month - 8) / 10.0 if month >= 8 else (month + 4) / 10.0
+        return max(0.0, min(1.0, raw))
 
     def _calculate_must_win_factor(self, team: str) -> float:
         pos = self._get_league_position(team)
