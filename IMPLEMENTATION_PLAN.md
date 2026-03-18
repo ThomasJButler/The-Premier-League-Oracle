@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 21 March 2026 (CodeRabbit 11-bug fix batch. Test count 335/21. Priority shifted to P3-Free backend ML.)
+Last updated: 22 March 2026 (P3f LiveService DONE. Test count 351/22. Next: P3g AI Analysis.)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -561,14 +561,18 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `modelWeights` in prediction output reflects effective weights (includes `ml` key when active)
 - [x] Insight added: "ML backend prediction incorporated into ensemble"
 
-### P3f. LiveService with WebSocket
+### P3f. LiveService with WebSocket — DONE (22 March 2026)
 
 **New file:** `frontend/src/services/liveService.ts`
 
-- [ ] Svelte store `liveMatchesStore`
-- [ ] WebSocket to `ws://localhost:8000/ws` when backend available
-- [ ] Falls back to polling when backend unavailable
-- [ ] `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to store
+- [x] Svelte stores: `liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches` (derived), `pollLabel`
+- [x] WebSocket to `ws://{hostname}:8000/ws/predictions` when backend available and enabled
+- [x] Polling fallback with adaptive intervals: 30s (live), 5min (matchday), 30min (idle)
+- [x] Exponential reconnect (5s base, max 5 attempts) with consecutive-empty-poll backoff
+- [x] `LiveMatches.svelte` refactored — subscribes to shared stores, delegates fetching to `liveService`
+- [x] `LiveTicker.svelte` refactored — subscribes to shared stores via `get()`, no independent polling
+- [x] 14 liveService tests + 9 LiveMatches component tests (23 new tests total)
+- [x] Fixed UX bug: auto-switch from empty Live tab now fires once on load only (not on every reactive cycle)
 
 ### P3g. AI Match Analysis
 
@@ -790,12 +794,12 @@ All feature specifications in `specs/`:
 |------|-------|-----------------------|
 | `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~65% — ELO dynamic + persistence + auto-update wired (P2k DONE), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); no AI analysis (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
-| `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
+| `specs/03-backend-integration.md` | Python ML backend connection | ~70% — backendService DONE (P2b), ML ensemble integration DONE (P3e), Settings UI DONE (P2c), WebSocket DONE (P3f); missing: real-time prediction streaming, model comparison UI |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); bet storage pipeline wired (P1i — KellyCalculator + ValueBets → betHistoryService → BettingHistory); betHistoryService resolution bugs fixed (P1g) |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — liveService.ts with shared stores DONE (P3f), WebSocket with reconnect DONE, adaptive polling (30s/5m/30m) DONE, LiveMatches + LiveTicker subscribe to shared stores; missing: match event notifications |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~20% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created, `$lib/utils.ts` created (P2a-fix DONE), 0/5 ARIA requirements met |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: 0%** — spec written, implementation not started. Pro-tier (P3a–P3g) deferred |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~35% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created, `$lib/utils.ts` created (P2a-fix DONE), accessibility wave 1+2 DONE (P4b) |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Pro-tier (P3a–P3c) deferred |
 
 ---
 
@@ -938,13 +942,15 @@ All feature specifications in `specs/`:
 | `KellyCalculator.test.ts` | 15 | Passing |
 | `backtest.test.ts` | 15 | Passing |
 | `Dashboard.test.ts` | 12 | Passing |
-| `optimizedPredictions.test.ts` | 12 | Passing |
+| `optimizedPredictions.test.ts` | 18 | Passing |
 | `ValueBets.test.ts` | 12 | Passing |
 | `dataService.cache.test.ts` | 8 | Passing |
 | `dataService.test.ts` | 8 | Passing |
 | `Settings.test.ts` | 16 | Passing |
-| `LiveMatches.test.ts` | 7 | Passing |
-| **Total** | **344** | **All passing** |
+| `LiveMatches.test.ts` | 9 | Passing |
+| `liveService.test.ts` | 14 | Passing |
+| `backendService.test.ts` | 19 | Passing |
+| **Total** | **351** | **All passing** |
 
 **Known test quality issues:**
 - `types.test.ts`: reduced from 18 to 4 tests — tautological assertions removed (P4h DONE)
@@ -989,7 +995,7 @@ All feature specifications in `specs/`:
 | File | Purpose | Priority |
 |------|---------|----------|
 | `frontend/src/services/backendService.ts` | Frontend-backend bridge | P2b — DONE |
-| `frontend/src/services/liveService.ts` | WebSocket live data | P3f |
+| `frontend/src/services/liveService.ts` | WebSocket live data | P3f — DONE |
 | `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g |
 | `backend/app/features/free_tier_features.py` | Free-tier feature engineer (~83 features) | P3-Free |
 | `backend/train_free_tier.py` | Free-tier training pipeline | P3-Free |
