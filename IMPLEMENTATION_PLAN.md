@@ -42,20 +42,90 @@ fix/<name>                 — bug fixes, merged via PR
 
 ---
 
-## Free-Tier ML Training Readiness: READY TO TRAIN
+## Free-Tier ML Training: FIRST RUN COMPLETE
 
-All components are complete:
+**Model trained and saved to `backend/models/xgboost_free_tier.joblib`** (18 March 2026).
 
-- **`FreeTierFeatureEngineer`** — 86 features across 8 categories, standalone, 39 tests
-- **`train_free_tier.py`** — XGBoost + LR baseline, chronological split, evaluation metrics (accuracy, log loss, Brier score, AUC-ROC, confusion matrix, calibration curve)
-- **CSV training data** — 2,191 matches across 5.75 seasons (locally present in `backend/spreadsheets/KnowledgeFilesCSV/`)
-- **API endpoints** — `POST /predict/free` + `GET /models/free-tier/info` wired and tested (11 tests)
+### First Training Run Results
 
-**How to train:**
+```
+Data: 2,191 matches from 6 CSV files (2020/21–2025/26)
+      2,100 samples after warmup filter (91 skipped), 86 features
+Split: 1,680 training / 420 validation (80/20 chronological)
+```
+
+| Metric | XGBoost | LR Baseline | Notes |
+|--------|---------|-------------|-------|
+| **Overall accuracy** | **51.0%** | 44.5% | +6.4% lift (above 3% threshold) |
+| **Home win accuracy** | **76.4%** | 63.5% | Strong |
+| **Draw accuracy** | **6.7%** | 13.5% | Broken — model avoids predicting draws |
+| **Away win accuracy** | **51.4%** | 43.5% | Decent |
+| **Log loss** | **1.034** | 1.106 | High — probability estimates poorly calibrated |
+| **Brier score** | **0.619** | 0.660 | Marginally better than uniform (0.667) |
+| **Home AUC-ROC** | **0.686** | 0.633 | Good discrimination |
+| **Draw AUC-ROC** | **0.495** | 0.477 | Near random (0.5) — no draw signal |
+| **Away AUC-ROC** | **0.684** | 0.642 | Good discrimination |
+
+**Confusion matrix (XGBoost):**
+```
+                Predicted
+              H    D    A
+Actual H  [ 136    9   33 ]   (76.4% correct)
+Actual D  [  58    7   39 ]   ( 6.7% correct — nearly always misclassified)
+Actual A  [  57   10   71 ]   (51.4% correct)
+```
+
+**Top 10 features by importance:**
+1. `position_difference` (0.042) — league position gap, strongest single predictor by 3×
+2. `home_ht_goals_scored_avg` (0.017)
+3. `away_shots_avg` (0.015)
+4. `away_win_rate` (0.015)
+5. `home_shots_avg` (0.014)
+6. `home_goals_scored_avg` (0.014)
+7. `home_points_per_game` (0.014)
+8. `home_win_rate` (0.013)
+9. `home_home_win_rate` (0.013)
+10. `h2h_dominance` (0.013)
+
+### Benchmarking Context
+
+| Strategy | Expected Accuracy |
+|----------|-------------------|
+| Random guess (3-class) | ~33% |
+| Always predict home win | ~43% |
+| LR baseline (this run) | 44.5% |
+| **XGBoost v1 (this run)** | **51.0%** |
+| Good PL models (industry) | 52–58% |
+| Bookmaker-implied | 55–58% |
+
+### Diagnosis
+
+1. **Draw prediction is essentially non-functional.** Only 7/104 draws correctly predicted. The model is biased towards home/away because draws are underrepresented (23% of data) and the loss function doesn't penalise draw misclassification enough
+2. **Probabilities are poorly calibrated.** Log loss 1.034 is high for 51% accuracy (well-calibrated would be ~0.95). The model is overconfident on wrong predictions
+3. **Feature importance is flat after #1.** Position difference dominates (0.042), but features 2–86 are all clustered around 0.012–0.017 — the model isn't finding strong secondary signals
+
+### Improvement Opportunities (for next iteration)
+
+**Quick wins (low effort, likely impact):**
+- [ ] **Class weights** — add `scale_pos_weight` or `sample_weight` to boost draw importance during XGBoost training. Draws are 23% of data but equally important to predict
+- [ ] **Probability calibration** — apply sklearn `CalibratedClassifierCV` (isotonic or sigmoid) as a post-processing step to fix overconfident predictions. Should directly improve log loss and Brier score
+- [ ] **Feature selection** — 86 features for 1,680 training samples risks overfitting. Try dropping features with importance < 0.01 (likely ~30+ features). Fewer noisy features = better generalisation
+- [ ] **Hyperparameter tuning** — model stopped at iteration 48 (early stopping). Default XGBoost params may not be optimal. Grid search or Optuna over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`
+
+**Medium effort (likely significant impact):**
+- [ ] **Draw-specific features** — engineer features that correlate with draws: closeness in form, closeness in standings, low-scoring H2H history, defensive team matchups
+- [ ] **Elo-based features** — feed the frontend Elo ratings (already computed) into the backend feature engineer as additional inputs
+- [ ] **Recency weighting** — weight recent seasons more heavily than older ones (PL meta changes over 5 seasons)
+
+**Larger effort (for later):**
+- [ ] **Stacked ensemble** — train separate binary classifiers (H vs not-H, D vs not-D, A vs not-A) and stack them
+- [ ] **Odds-as-features** — the CSVs contain ~80 bookmaker odds columns. Using closing odds as features would dramatically boost accuracy (bookmakers are the strongest predictor), but makes the model dependent on having odds data at inference time
+- [ ] **Rolling cross-validation** — instead of a single 80/20 split, use expanding-window CV (train on seasons 1–N, validate on N+1) for more robust evaluation
+
+### How to Retrain
 
 ```bash
 cd backend
-pip install -r requirements.txt
 python train_free_tier.py                                # Train model → xgboost_free_tier.joblib
 python -m pytest tests/ -v                               # All 62 tests
 uvicorn app.api.main:app --reload --port 8000            # Start server
