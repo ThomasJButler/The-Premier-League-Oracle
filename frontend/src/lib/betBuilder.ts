@@ -71,11 +71,14 @@ export class BetBuilderPredictor {
     // Get base prediction from optimized predictor
     const basePrediction = await OptimizedPredictor.predictMatch(homeTeam, awayTeam);
     
-    // Get team stats
-    const [homeStats, awayStats] = await Promise.all([
+    // Get team stats and match data for league averages
+    const [homeStats, awayStats, matches] = await Promise.all([
       dataService.getTeamStats(homeTeam),
-      dataService.getTeamStats(awayTeam)
+      dataService.getTeamStats(awayTeam),
+      dataService.getMatches()
     ]);
+
+    const leagueAvgs = this.computeLeagueAverages(matches);
     
     // Calculate average goals for Poisson distribution
     const homeGoalsExpected = basePrediction.predictedHomeGoals ?? 1.3;
@@ -98,10 +101,10 @@ export class BetBuilderPredictor {
     const totalGoals = this.calculateTotalGoals(scoreProbabilities);
     
     // Calculate corners predictions (based on team stats and style)
-    const corners = this.calculateCorners(homeStats, awayStats);
-    
+    const corners = this.calculateCorners(homeStats, awayStats, leagueAvgs.avgCorners);
+
     // Calculate cards predictions (based on rivalry, referee, importance)
-    const cards = this.calculateCards(homeTeam, awayTeam, homeStats, awayStats);
+    const cards = this.calculateCards(homeTeam, awayTeam, homeStats, awayStats, leagueAvgs.avgCards);
     
     // Calculate half-time result (simplified - usually 40% of full-time tendency)
     const halfTimeResult = this.calculateHalfTimeResult(matchResult);
@@ -118,7 +121,8 @@ export class BetBuilderPredictor {
       cards,
       cleanSheets,
       homeTeam,
-      awayTeam
+      awayTeam,
+      leagueAvgs.over15FirstHalfProb
     );
     
     return {
@@ -203,10 +207,9 @@ export class BetBuilderPredictor {
     };
   }
   
-  private static calculateCorners(homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined) {
-    // Simplified corner prediction based on attacking style
+  private static calculateCorners(homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined, avgCorners = 9.5) {
+    // Corner prediction based on attacking style
     // Teams that attack more generally win more corners
-    const avgCorners = 9.5; // League average
     
     const homeAttackingFactor = homeStats?.goals_for ? 
       (homeStats.goals_for / (homeStats.matches_played || 1)) / 1.5 : 1;
@@ -231,9 +234,9 @@ export class BetBuilderPredictor {
     };
   }
   
-  private static calculateCards(homeTeam: string, awayTeam: string, homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined) {
-    // Base card expectation
-    let expectedCards = 3.2; // League average
+  private static calculateCards(homeTeam: string, awayTeam: string, homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined, baseCards = 3.2) {
+    // Base card expectation from league data
+    let expectedCards = baseCards;
     
     // Rivalry factor (simplified - would need actual rivalry data)
     const isRivalry = this.checkRivalry(homeTeam, awayTeam);
@@ -265,6 +268,40 @@ export class BetBuilderPredictor {
     };
   }
   
+  /**
+   * Compute league-wide averages for corners, cards, and first-half goals
+   * from historical match data. Falls back to sensible defaults when
+   * data is unavailable (e.g. corners/cards on the free API tier).
+   */
+  private static computeLeagueAverages(matches: Match[]) {
+    let cornerSum = 0, cornerCount = 0;
+    let cardSum = 0, cardCount = 0;
+    let fhGoalsOver15 = 0, fhGoalsTotal = 0;
+
+    for (const m of matches) {
+      if (m.home_corners != null && m.away_corners != null) {
+        cornerSum += m.home_corners + m.away_corners;
+        cornerCount++;
+      }
+      if (m.home_yellows != null && m.away_yellows != null) {
+        cardSum += m.home_yellows + m.away_yellows + (m.home_reds ?? 0) + (m.away_reds ?? 0);
+        cardCount++;
+      }
+      if (m.first_half_home_goals != null && m.first_half_away_goals != null) {
+        fhGoalsTotal++;
+        if (m.first_half_home_goals + m.first_half_away_goals >= 2) {
+          fhGoalsOver15++;
+        }
+      }
+    }
+
+    return {
+      avgCorners: cornerCount > 0 ? cornerSum / cornerCount : 9.5,
+      avgCards: cardCount > 0 ? cardSum / cardCount : 3.2,
+      over15FirstHalfProb: fhGoalsTotal > 0 ? fhGoalsOver15 / fhGoalsTotal : 0.35
+    };
+  }
+
   /**
    * Normalise a team name by stripping common suffixes so that both
    * API canonical names ("Arsenal FC") and short display names ("Arsenal")
@@ -354,7 +391,8 @@ export class BetBuilderPredictor {
     cards: BetBuilderPrediction['cards'],
     cleanSheets: BetBuilderPrediction['cleanSheets'],
     homeTeam: string,
-    awayTeam: string
+    awayTeam: string,
+    over15FirstHalfProb = 0.35
   ): BetBuilderCombo[] {
     const combos: BetBuilderCombo[] = [];
     
@@ -431,11 +469,11 @@ export class BetBuilderPredictor {
     
     // Goals-focused combo
     if (totalGoals.over25.probability > 0.55 && btts.yesProb > 0.5) {
-      const goalsOdds = (1 / totalGoals.over25.probability) * 
-                        (1 / btts.yesProb) * 
-                        (1 / 0.35) * // Over 1.5 first half goals
+      const goalsOdds = (1 / totalGoals.over25.probability) *
+                        (1 / btts.yesProb) *
+                        (1 / over15FirstHalfProb) *
                         (1 / corners.totalOver95.probability) * 1.15;
-      
+
       combos.push({
         name: 'Goals Galore',
         selections: [
@@ -445,7 +483,7 @@ export class BetBuilderPredictor {
           'Over 9.5 corners'
         ],
         combinedOdds: Math.round(goalsOdds * 100) / 100,
-        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * 0.35 * corners.totalOver95.probability * 100) / 100,
+        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * over15FirstHalfProb * corners.totalOver95.probability * 100) / 100,
         reasoning: 'High-scoring game expected with open play'
       });
     }

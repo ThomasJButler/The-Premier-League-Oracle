@@ -16,7 +16,8 @@ vi.mock('./advancedPredictions', () => ({
 
 vi.mock('../services/dataService', () => ({
   dataService: {
-    getTeamStats: vi.fn()
+    getTeamStats: vi.fn(),
+    getMatches: vi.fn()
   }
 }));
 
@@ -86,6 +87,8 @@ function mockTeamStats(overrides: Record<string, any> = {}) {
 describe('BetBuilderPredictor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return empty match array (falls back to hardcoded league averages)
+    vi.mocked(dataService.getMatches).mockResolvedValue([]);
   });
 
   describe('generateBetBuilder', () => {

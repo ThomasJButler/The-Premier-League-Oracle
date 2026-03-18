@@ -109,7 +109,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
-- Frontend has 337 Vitest tests across 21 test files, all passing (was 364 — 60 removed; 33 added: 19 backendService, 8 Settings ML backend, 6 ML ensemble integration)
+- Frontend has 335 Vitest tests across 21 test files, all passing (was 364 — 62 removed; 33 added: 19 backendService, 8 Settings ML backend, 6 ML ensemble integration)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered

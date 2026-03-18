@@ -317,30 +317,6 @@ class PredictionTracker {
     };
   }
 
-  // Export predictions for analysis
-  public exportPredictions(): string {
-    const data = Array.from(this.predictions.values());
-    return JSON.stringify(data, null, 2);
-  }
-
-  // Import predictions (for testing or migration)
-  public importPredictions(jsonData: string): boolean {
-    try {
-      const data = JSON.parse(jsonData);
-      if (Array.isArray(data)) {
-        data.forEach(pred => {
-          if (pred.id && pred.matchId) {
-            this.predictions.set(pred.id, pred);
-          }
-        });
-        this.savePredictions();
-        return true;
-      }
-    } catch (error) {
-      // Error importing predictions from JSON data
-    }
-    return false;
-  }
 }
 
 // Export singleton instance

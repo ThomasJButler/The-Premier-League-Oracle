@@ -646,9 +646,9 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] Combo confidence derived from selection probabilities — DONE
 - [x] `bothCleanSheets: { prediction: false }` unconditional — FIXED (now uses threshold)
 - [x] Win-to-nil probability hardcoded 0.30 — FIXED (now derived from favProb × favCleanSheet)
-- [ ] Replace `avgCorners: 9.5` and `expectedCards: 3.2` with league averages from match data (free tier has CSV data for these)
+- [x] Replace `avgCorners: 9.5` and `expectedCards: 3.2` with league averages from match data — **DONE:** `computeLeagueAverages()` derives corners, cards, and first-half goals from historical matches. Falls back to hardcoded defaults when data is unavailable (free tier returns null for corners/cards, but half-time scores are available)
 - [ ] Market correlation in combo probability (e.g. clean sheet + over 2.5 negatively correlated)
-- [ ] `'Over 1.5 first half goals'` probability hardcoded as `0.35`
+- [x] `'Over 1.5 first half goals'` probability hardcoded as `0.35` — **DONE:** now derived from half-time scores in `computeLeagueAverages()` (fallback 0.35 when no data)
 - [x] Rivalry list includes Championship teams (West Brom, Birmingham City, Sunderland) that will never appear in PL API data — **FIXED:** replaced with current PL rivalries (Newcastle/Everton, Villa/Wolves, Crystal Palace/Brighton)
 
 **Plan correction (third audit):** `checkRivalry()` now works correctly via `normaliseTeamName()` which strips `FC`/`AFC`/`CF` suffixes. The previously documented "short names never match API names" issue is resolved.
@@ -697,7 +697,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` — removed (dead code, only called by tests). 2 tests removed
 - [x] `optimizedPredictions.ts`: `formString` function — removed unused `team` parameter and updated call sites
 - [x] `dataService.ts`: `getCurrentSeasonMatches()` — **NOT DEAD**. Called by Predictions.svelte and SeasonStats.svelte. The alias is a semantic convenience over `getMatches()`
-- [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
+- [x] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` removed — dead functionality with no UI surface. 2 tests removed
 - [x] ~~`BettingHistory.svelte`: `loadBettingHistory()` called twice on startup~~ **FIXED:** `onMount` wrapper removed in a prior fix — single module-scope call is sufficient for synchronous localStorage reads
 - [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
 - [x] ~~`dataService.ts`: `refreshDataSources()` — dead method, no component called it~~ **FIXED:** removed method and its "alias" comment. Tests updated to call `refreshApiConfiguration()` directly
@@ -714,7 +714,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template~~ **DONE**
 - [x] ~~`KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template~~ **DONE**
 - [x] ~~`Settings.svelte`: dead imports `Sparkles` and `Key` from lucide-svelte~~ **DONE**
-- [ ] `advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance when no `eloSystem` is passed — diverges from singleton pattern, reads localStorage independently
+- [x] ~~`advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance~~ **ALREADY REMOVED:** method deleted in P4f dead code batch (20 March 2026). Single `sharedEloSystem` singleton now used everywhere
 - [x] ~~`BettingHistory.svelte`: dead `<style global>` classes~~ **ALREADY REMOVED:** cleaned up in a prior P4f batch (see line 678)
 
 ### P4h. Test Quality Improvements — PARTIAL (19 March 2026)
