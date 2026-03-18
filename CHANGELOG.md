@@ -4,6 +4,17 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### Fifth Planning Audit — ~11 New Findings (18 March 2026)
+- **8 parallel research agents** (Sonnet) audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure — comprehensive cross-referencing against existing plan
+- **shadcn-svelte `$lib/utils.ts` missing (P2a-fix):** `components.json` references `$lib/utils` for `cn()` utility but the file doesn't exist — hidden blocker for UI migration. Any new shadcn component import will fail at build time
+- **Font loading correction:** Previous audits incorrectly stated that Figtree and Outfit fonts were not loaded. `index.html` properly loads both via Google Fonts with lazy-load pattern. Marked as corrected in plan
+- **dataService cache key bug (P1p):** `getTeamForm` cache key uses `matches.length` not content — different match arrays of the same length serve stale cached data for the same team
+- **Backend dependency gaps (P2r):** `requirements.txt` missing `langchain-community` (needed by `modern_oracle.py`), `bcrypt` (needed by passlib backend), and `main.py:511-515` `/features/importance` endpoint has no None guard for `lstm_model`
+- **Test quality regressions (P4h):** `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (0.525) — fixing P1l will incorrectly break this test. `advancedPredictions.test.ts:544-549` has conditional value bet assertion that silently passes
+- **Training data access:** `backend/spreadsheets/` is gitignored — cloning the repo doesn't include CSV training data needed for `train_free_tier.py`
+- **Component-level findings:** `BettingHistory.svelte` loading spinner never renders (sync localStorage), `MatchList.svelte:23-29` `loadSeasons()` has no try/catch, `Settings.svelte`/`ApiSetupWizard.svelte` have artificial 5-second delays before page reload
+- **Docker dependency:** `setup.sh` creates directories (`data/`, `logs/`, `notebooks/`) that `docker-compose.yml` depends on — undocumented prerequisite
+
 ### Fourth Planning Audit — ~15 New Findings (18 March 2026)
 - **8 parallel research agents** (Sonnet) audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure — comprehensive cross-referencing against existing plan
 - **Backend API serialisation bug (P1o):** `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. `get_standings()` in `football_data_collector.py` returns a DataFrame that must be converted before being sent as a JSON response

@@ -146,9 +146,15 @@ These specs are the single source of truth for requirements.
 - Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. Needs `.to_dict(orient='records')` conversion
 - `footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded — misleading error message
 - `BacktestRunner` makes ~1,140+ sequential API calls for a full season — each match triggers 3 service calls with no batching. Needs pre-fetched data approach
-- `tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist — silently falls back to system-ui
+- ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
 - `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
 - `DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed as a dependency
+- **`frontend/src/lib/utils.ts` does NOT exist** — shadcn-svelte `components.json` references `$lib/utils` for the `cn()` utility but the file is missing. Blocker for adding new shadcn components or using existing ones that import `cn()`. Create it with `clsx` + `tailwind-merge` (standard shadcn pattern)
+- `dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content — different match arrays of the same length serve stale cached data
+- `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (`0.525`). Fixing P1l will break this test — update expected value to `0.50` alongside the fix
+- `requirements.txt` is missing `langchain-community` (needed by `modern_oracle.py`) and `bcrypt` (needed by `auth.py` passlib backend)
+- `main.py:511-515`: `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch is unavailable
+- `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

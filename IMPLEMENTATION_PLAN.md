@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (fourth planning audit — ~15 new findings across 8 parallel agents; backend API serialisation bug, backtest performance, font config gaps, error messaging)
+Last updated: 18 March 2026 (fifth planning audit — ~11 new findings across 8 parallel agents; shadcn utils missing, cache key bug, test quality regressions, backend dep gaps, font loading correction)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -145,6 +145,10 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 
 - [ ] `main.py` `/standings` endpoint calls `oracle.data_collector.get_standings()` which returns a `pd.DataFrame`. FastAPI attempts to serialise this to JSON, raising `TypeError` because `pd.DataFrame` is not JSON-serialisable. Fix: convert to `.to_dict(orient='records')` before returning
 
+### P1p. dataService `getTeamForm` Cache Key Bug — NEW (18 March 2026, fifth audit)
+
+- [ ] `dataService.ts:395`: cache key is `team_form_${teamName}_${matches?.length || 5}` — uses array length, not content. Two different match arrays of the same length for the same team will return stale cached data from whichever was fetched first. Cache key should incorporate match IDs or a date range, not just count
+
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
 All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 378/378 tests passing, 0 type errors.
@@ -170,6 +174,13 @@ All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 37
 ### P2a. shadcn-svelte Completion — DONE (18 March 2026)
 
 5 components installed, `components.json` created. Component wiring deferred (CSS class system has diverged from shadcn styles).
+
+### P2a-fix. shadcn-svelte `$lib/utils.ts` Missing — NEW (18 March 2026, fifth audit)
+
+`components.json` sets `aliases.utils: "$lib/utils"` but `frontend/src/lib/utils.ts` does not exist. This is a hidden blocker: any new shadcn-svelte component using `cn()` (the clsx + tailwind-merge utility) will fail to import at build time. The 5 installed components (Button, Card, Badge, Separator, Skeleton) may already reference it.
+
+- [ ] Create `frontend/src/lib/utils.ts` with `cn()` utility (standard shadcn pattern: `import { clsx } from 'clsx'; import { twMerge } from 'tailwind-merge'; export function cn(...inputs) { return twMerge(clsx(inputs)); }`)
+- [ ] Verify `clsx` and `tailwind-merge` are in `frontend/package.json` — install if missing
 
 ### P2b. Backend Service (frontend bridge)
 
@@ -265,6 +276,7 @@ No `.github/workflows/` directory exists. Zero automated testing on push or PR. 
 - [ ] `nginx.conf` — referenced as a volume mount but doesn't exist. Create or remove from compose
 - [ ] `notebooks/` — mounted as a volume but directory doesn't exist. Create or remove from compose
 - [ ] `POSTGRES_PASSWORD` required by compose but no `.env.example` template documents it
+- [ ] `setup.sh` creates `data/`, `logs/`, `notebooks/` directories that `docker-compose.yml` depends on as bind-mount sources — this dependency is undocumented. Running `docker-compose up` without first running `setup.sh` will fail (fifth audit)
 
 ### P2p. Supabase Cleanup Completion — NEW (19 March 2026)
 
@@ -319,6 +331,12 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 - [ ] Remove or mark as optional: `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity` — heavy deps (~30MB+) for `secrets.py` which is never imported by `main.py`
 - [ ] Remove `sqlalchemy` — only imported by unused `auth.py`
 - [ ] Add `pyyaml` and `httpx` if needed (present in `environment.yml` but missing from `requirements.txt`)
+
+**Backend missing dependencies in `requirements.txt` (fifth audit):**
+
+- [ ] Add `langchain-community` — `modern_oracle.py` imports `from langchain_community.embeddings import OpenAIEmbeddings`, `from langchain_community.vectorstores import Chroma`, `from langchain_community.document_loaders import DataFrameLoader`. Package is separate from `langchain` and not listed
+- [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires the `bcrypt` package as a backend. Currently only `passlib` is listed
+- [ ] `main.py:511-515`: `/features/importance` endpoint accesses `oracle.lstm_model.model` without checking if `lstm_model` is not None — will `AttributeError` when LSTM is unavailable (torch missing). Add None guard matching the REST endpoint pattern
 
 ### P2s. LSTM Synthetic Training Data — NEW (18 March 2026, third audit)
 
@@ -410,6 +428,10 @@ Standalone ML model trained on features available from the free API tier. Comple
 - [ ] Print class distribution (H/D/A split) — flag if draws <20% or >35%
 - [ ] Verify all 6 season CSVs loaded with expected row counts
 - [ ] Team name consistency check across seasons (promoted/relegated mapping)
+
+**Training data access (fifth audit):**
+
+- [ ] `backend/spreadsheets/` is gitignored — cloning the repo does NOT include CSV training data. Either remove from `.gitignore` (data is public PL results, not sensitive) or document how to obtain it. Without these CSVs, `train_free_tier.py` cannot run
 
 **Security (scoped to this feature):**
 
@@ -614,6 +636,9 @@ Priority features to implement with real data:
 - [ ] `LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)` — double-negative is confusing; use `addDays(now, 7)` from date-fns
 - [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
 - [ ] `BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values — inconsistent with UK-focused branding
+- [ ] `BettingHistory.svelte`: loading spinner never renders — `loading = true` wraps synchronous localStorage code that completes before the DOM can repaint, so `{#if loading}` skeleton block is invisible (fifth audit)
+- [ ] `MatchList.svelte:23-29`: `loadSeasons()` has no try/catch — if `dataService.getAllSeasons()` throws, the error propagates uncaught through `onMount` and breaks the component silently (fifth audit)
+- [ ] `Settings.svelte:75-86` and `ApiSetupWizard.svelte:61-71`: artificial 5-second delay before `clearCache()` + `window.location.reload()`. The 5s wait serves no purpose — the cache clear is instant (fifth audit)
 
 ### P4d. betBuilder Improvements
 
@@ -639,7 +664,7 @@ Priority features to implement with real data:
 - [ ] `Predictions.svelte` progress bar uses hardcoded hex `from-[#00cc6a] to-[#00ff87]`
 - [ ] `LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`
 - [ ] `Dashboard.svelte` hero section is always dark regardless of theme (intentional? or should adapt)
-- [ ] `tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist — silently falls back to `system-ui`
+- [x] ~~`tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist~~ **CORRECTED (fifth audit):** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load pattern + `<noscript>` fallback. Fonts are working correctly
 - [ ] `tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in an ESM `export default` context — inconsistent module style
 
 ### P4f. Dead Imports & Code Duplication
@@ -716,6 +741,11 @@ Test suite has 378 passing tests but several are structurally unable to catch re
 - [ ] `backtest.test.ts` — ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught
 - [ ] Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed; does not verify the component lifecycle actually triggers data loads
 
+**Tests encoding known bugs as correct (fifth audit):**
+
+- [ ] `backtest.test.ts:156-174` — test expects `0.525` (1.05/2.0) as the correct probability, encoding the known `KellyCalculator` 1.05 inflation bug as a correct expected value. When the P1l Kelly bug is fixed (changing `1.05 / odds` to `1 / odds`), this test will **incorrectly fail**. Update expected value to `0.50` when the fix lands
+- [ ] `advancedPredictions.test.ts:544-549` — value bet assertion wrapped in `if (prediction.valueBets.length > 0)` guard. If value bet detection breaks to return empty arrays, the test passes silently with zero assertions
+
 ### P4g. Documentation Cleanup — NEW (18 March 2026)
 
 Stale documentation and broken links discovered in the 8-agent audit:
@@ -741,13 +771,13 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~45% — ELO dynamic, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created; ELO auto-update not wired to dataService, no AI analysis, confidence calibration rudimentary |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~60% — ELO dynamic + persistence, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); ELO auto-update not wired to dataService (P2k), no AI analysis (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~50% — Kelly + auto-suggestions done, CLV corrected, betBuilder fixed, ValueBets UI created; **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g) |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~55% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed, ValueBets UI created (P2i); **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g); Kelly probability inflation bug live (P1l) |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed, 5 components installed (1 wired), components.json created, 0/5 ARIA requirements met |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created but `$lib/utils.ts` missing (P2a-fix blocker), 0/5 ARIA requirements met |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: 0%** — spec written, implementation not started. Pro-tier (P3a–P3g) deferred |
 
 ---
@@ -797,6 +827,7 @@ All feature specifications in `specs/`:
 | `advancedPredictions.ts` | `SEED_RATINGS` includes relegated teams (Leicester, Leeds, Luton, Burnley, Sheff Utd) and Sunderland (not in PL) | Low |
 | `advancedPredictions.ts` | Two parallel fatigue models with different thresholds (AdvancedMatchPredictor vs OptimizedPredictor) | P2q |
 | `dataService.ts` | Cache TTL comments lie about actual TTL (claim 24h/30m, deliver 5m) | P1m |
+| `dataService.ts` | `getTeamForm` cache key uses `matches.length` not content — stale data on same-length arrays | P1p |
 | `advanced_engineering.py` | `0.45` fallback win rate when no match data — hardcoded league average | Low |
 
 ### Backend
@@ -850,6 +881,9 @@ All feature specifications in `specs/`:
 | `requirements.txt` | `boto3`, `hvac`, `azure-*`, `sqlalchemy` — heavy dead deps for unused security modules | P2r |
 | `main.py` | `/standings` endpoint returns `pd.DataFrame` — not JSON-serialisable, will `TypeError` at runtime | P1o |
 | `requirements.txt` | `passlib==1.7.4` incompatible with Python 3.13 (`crypt` module removed from stdlib) | P2r |
+| `requirements.txt` | Missing `langchain-community` — `modern_oracle.py` imports it but package not listed | P2r |
+| `requirements.txt` | Missing `bcrypt` — `auth.py` passlib bcrypt backend requires it | P2r |
+| `main.py` | `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch missing | P2r |
 | `main.py` | `total_features` in `/features/importance` hardcoded to `150`, not dynamically counted | Low |
 | `football_data_collector.py` | `get_standings()` returns `pd.DataFrame` — must be converted before JSON response | P1o |
 
