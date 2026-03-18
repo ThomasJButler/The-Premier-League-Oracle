@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2d IndexedDB Cache Tests — Complete (18 March 2026)
+- **New `dataService.cache.test.ts`** — 11 tests covering the full IndexedDB cache lifecycle
+- Tests: store creation, cache hit (matches + standings), TTL expiry re-fetch, clearCache, disableCache bypass, enableCache restore, setCacheTimeout, separate keys per query type, per-team keys, clearCache removes API key
+- Uses `fake-indexeddb` for a real in-memory IndexedDB implementation instead of mocking
+- Shared singleton approach — avoids `vi.resetModules()` timing issues with DataService constructor
+- **Test count 367 → 378**: 21 test files, 378/378 passing, 0 type errors
+
 ### Stub Fix — Derive league average goals from match data (18 March 2026)
 - **`advancedPredictions.ts`** — `baseHomeGoals`/`baseAwayGoals` now computed from completed match data instead of hardcoded 1.5/1.2
 - **`predictions.ts`** — `leagueAvgHome`/`leagueAvgAway` similarly derived from completed matches via `dataService.getMatches()`

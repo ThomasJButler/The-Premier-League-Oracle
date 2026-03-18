@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (baseHomeGoals/baseAwayGoals stub fix)
+Last updated: 18 March 2026 (P2d IndexedDB cache tests)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -199,7 +199,7 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 
 ### P2d. Missing Component Tests — PARTIAL (18 March 2026)
 
-297 Vitest tests across 16 files (was 275/13). Three new test files added:
+378 Vitest tests across 21 files (was 275/13). Eight new test files added:
 
 - [x] `LiveMatches.test.ts` — 7 tests: header, spinner, tabs, auto-switch, error state, recent matches, service calls
 - [x] `KellyCalculator.test.ts` — 7 tests: renders, header, inputs, auto-calculate, result labels, value indicator, edge %
@@ -210,7 +210,7 @@ Key discovery: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x 
 Still missing:
 - [x] `Predictions.svelte` — 14 tests + 3 backtest: header, gameweek selector, predict button, 38 options, loading spinner, match loading, API error, completed gameweek message, gameweek filtering, accuracy panel show/hide, team logos, predictor call, prediction storage, backtest button, backtest results, backtest error
 - [x] `ChatBot.svelte` — 18 tests: container render, header, API key setup form, OpenAI platform link, disabled input/button without key, short key validation, save key + enable chat, security warning banner, "Change key" button, clear API key, clear chat, character counter, send message + display response, API 401 error, rate limit 429, empty message guard, message persistence to localStorage
-- [ ] IndexedDB cache layer — completely untested
+- [x] IndexedDB cache layer — 11 tests: store creation, cache hit after API call (matches + standings), TTL expiry re-fetch, clearCache removes entries, disableCache bypasses, enableCache restores, setCacheTimeout controls expiry, separate keys per query type, per-team cache keys, clearCache removes API key. Uses `fake-indexeddb` for real in-memory IDB.
 
 ### P2e. Type System Gaps — DONE (18 March 2026)
 
@@ -612,6 +612,7 @@ All feature specifications in `specs/`:
 | `kelly.test.ts` | 20 | Passing |
 | `footballData.test.ts` | 26 | Passing |
 | `dataService.test.ts` | 10 | Passing |
+| `dataService.cache.test.ts` | 11 | Passing |
 | `predictionTracker.test.ts` | 18 | Passing |
 | `optimizedPredictions.test.ts` | 12 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
