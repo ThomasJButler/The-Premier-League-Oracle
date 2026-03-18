@@ -403,49 +403,6 @@ describe('FootballDataAPI', () => {
     });
   });
 
-  describe('Data Transformation', () => {
-    it('should correctly determine match results', () => {
-      const testCases = [
-        { home: 2, away: 1, expected: 'H' },
-        { home: 1, away: 2, expected: 'A' },
-        { home: 1, away: 1, expected: 'D' },
-        { home: null, away: null, expected: null }
-      ];
-
-      testCases.forEach(({ home, away, expected }) => {
-        const match = {
-          score: {
-            fullTime: { home, away }
-          }
-        };
-
-        const result = home !== null && away !== null
-          ? home > away ? 'H' : away > home ? 'A' : 'D'
-          : null;
-
-        expect(result).toBe(expected);
-      });
-    });
-
-    it('should handle team name normalization', () => {
-      const teamNames = [
-        { input: 'Arsenal FC', expected: 'Arsenal' },
-        { input: 'Liverpool FC', expected: 'Liverpool' },
-        { input: 'Manchester United FC', expected: 'Manchester United' },
-        { input: 'Tottenham Hotspur FC', expected: 'Tottenham' }
-      ];
-
-      teamNames.forEach(({ input, expected }) => {
-        const normalized = input
-          .replace(' FC', '')
-          .replace(' AFC', '')
-          .replace(' Hotspur', '');
-        
-        expect(normalized).toContain(expected.split(' ')[0]);
-      });
-    });
-  });
-
   describe('Caching', () => {
     it('should cache responses and serve from cache on subsequent calls', async () => {
       api.setApiKey(mockApiKey);

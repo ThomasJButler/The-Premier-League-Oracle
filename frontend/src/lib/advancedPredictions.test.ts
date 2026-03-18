@@ -540,13 +540,13 @@ describe('Advanced Predictions Module', () => {
           new Date('2025-08-25')
         );
 
-        // Should identify value in some markets
-        if (prediction.valueBets.length > 0) {
-          prediction.valueBets.forEach(bet => {
-            expect(bet.expectedValue).toBeGreaterThan(0);
-            expect(bet.odds).toBeGreaterThan(1);
-            expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
-          });
+        // valueBets should always be a valid array
+        expect(Array.isArray(prediction.valueBets)).toBe(true);
+        // When value bets are found, each must have valid structure
+        for (const bet of prediction.valueBets) {
+          expect(bet.expectedValue).toBeGreaterThan(0);
+          expect(bet.odds).toBeGreaterThan(1);
+          expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
         }
       });
 

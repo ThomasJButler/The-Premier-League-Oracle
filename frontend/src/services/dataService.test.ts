@@ -200,18 +200,11 @@ describe('DataService', () => {
       expect(standings).toEqual(mockStandings);
     });
 
-    it('should return empty array on error', async () => {
+    it('should throw when API returns no data', async () => {
       const { footballDataAPI } = await import('./api/footballData');
       vi.mocked(footballDataAPI.getStandings).mockResolvedValueOnce([]);
 
-      try {
-        const standings = await dataService.getStandings();
-        // If it doesn't throw, standings should be empty or the error message
-        expect(standings).toEqual([]);
-      } catch (error) {
-        // getStandings throws when no data available
-        expect(error).toBeDefined();
-      }
+      await expect(dataService.getStandings()).rejects.toThrow('No data source available for standings');
     });
   });
 
