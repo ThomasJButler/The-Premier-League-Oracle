@@ -577,7 +577,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
+            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -631,9 +631,10 @@
               {/if}
 
               {#if prediction.prediction && prediction.detailedAnalysis}
-                <button 
+                <button
                   on:click={() => toggleCard(prediction.id)}
                   class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
+                  aria-label="View analysis for {prediction.home_team} vs {prediction.away_team}"
                 >
                   <Calculator class="w-4 h-4" />
                   Tap for Analysis
@@ -646,7 +647,7 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="flip-card-back rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+            <div class="flip-card-back rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6" aria-hidden={!flippedCards.has(prediction.id)}>
               {#if prediction.detailedAnalysis}
                 <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">

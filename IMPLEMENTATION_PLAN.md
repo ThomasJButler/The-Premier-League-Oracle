@@ -601,17 +601,17 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 **Still to do (complex items deferred):**
 
 - [x] ~~Charts have no `role="img"` or `aria-label`~~ **FIXED:** Dashboard line chart and BettingHistory bar chart containers now have `role="img"` and descriptive `aria-label` attributes
-- [ ] `LiveTicker.svelte` has no way to pause scrolling animation (WCAG 2.2.2)
-- [ ] Prediction flip cards have no `aria-label` or focus indicator — keyboard users can't tell when selected; screen readers read both sides simultaneously (no `aria-hidden` on non-visible face)
-- [ ] Win/loss indicators use colour only (green/red) — add icons for colourblind users (WCAG 1.4.1)
+- [x] `LiveTicker.svelte` has no way to pause scrolling animation (WCAG 2.2.2) — **FIXED:** added pause/resume toggle button that appears on hover and focus. `animation-play-state: paused` stops the CSS scroll. Screen reader accessible with `aria-label`
+- [x] Prediction flip cards have no `aria-label` or focus indicator — **FIXED:** "Tap for Analysis" button now has `aria-label="View analysis for {home} vs {away}"`. Front and back faces have `aria-hidden` toggled based on flip state so screen readers only read the visible face
+- [x] ~~Win/loss indicators use colour only (green/red)~~ **ALREADY COMPLIANT:** audited all colour-coded indicators — form badges have W/D/L letters, goal difference has +/- signs, prediction results say "Correct"/"Incorrect", movement uses arrow icons. Colour supplements text meaning, never sole indicator
 - [x] ~~`LiveMatches.svelte` tab buttons lack ARIA tab pattern~~ **FIXED:** added `role="tablist"` on container, `role="tab"` + `aria-selected` + `aria-controls` on each button. Panel `role="tabpanel"` deferred — content is branches of a single `{#if}` chain, not separate DOM elements
 - [x] ~~`Help.svelte` nav sections lack ARIA states~~ **FIXED:** added `aria-current="page"` on the active section button, `aria-expanded` and `aria-label` on mobile menu toggle button
 - [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
 - [x] ~~`SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler~~ **FIXED:** removed `cursor-pointer` from both `.stat-card` and `.stat-card-small` classes — cards are display-only with no interactive behaviour
 - [x] ~~`LiveTicker.svelte` has no marquee semantics~~ **FIXED:** added `role="marquee"` + `aria-live="off"` + `aria-label` on container, `aria-hidden="true"` on scrolling content, and a `.sr-only` static summary for screen readers. Pause control for WCAG 2.2.2 still deferred (requires interactive UI)
-- [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
+- [x] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — **FIXED:** replaced card grid with proper `<table>` with `<thead>`/`<tbody>`, column headers (`#`, Player, Team, Goals, Assists, Pens), `aria-sort="descending"` on Goals column. Responsive: Team column hidden on mobile (shown inline under player name), Pens hidden below md. Removed unused `Flag` icon import
 - [x] `MatchList.svelte` sort buttons — added `aria-pressed` on Date and Team sort buttons
-- [ ] Predictions flip-card "Tap for Analysis" buttons lack `aria-label` with match context
+- [x] Predictions flip-card "Tap for Analysis" buttons lack `aria-label` with match context — **FIXED:** see P4b flip card entry above
 
 ### P4c. Component Data Accuracy Cleanup
 

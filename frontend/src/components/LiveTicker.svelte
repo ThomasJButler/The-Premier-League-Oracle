@@ -11,6 +11,7 @@
 
   let tickerContent = '';
   let hasLiveMatches = false;
+  let paused = false;
   let pollInterval: ReturnType<typeof setInterval>;
 
   onMount(async () => {
@@ -96,13 +97,19 @@
 
 <div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" role="marquee" aria-live="off" aria-label="Live match updates ticker">
   {#if hasLiveMatches}
-    <!-- Pulsing indicator when live matches are showing -->
     <span class="live-dot" aria-hidden="true"></span>
   {/if}
-  <div class="ticker-content text-sm font-medium text-foreground" aria-hidden="true">
+  <div class="ticker-content text-sm font-medium text-foreground" class:paused aria-hidden="true">
     {tickerContent}
   </div>
-  <!-- Screen reader gets a static summary instead of scrolling text -->
+  <button
+    class="ticker-pause"
+    on:click={() => paused = !paused}
+    aria-label={paused ? 'Resume ticker' : 'Pause ticker'}
+    title={paused ? 'Resume' : 'Pause'}
+  >
+    {#if paused}▶{:else}⏸{/if}
+  </button>
   <span class="sr-only">{hasLiveMatches ? 'Live match updates are scrolling. ' : ''}{tickerContent.split(' • ').slice(0, 5).join('. ')}</span>
 </div>
 
@@ -117,6 +124,33 @@
     white-space: nowrap;
     display: inline-block;
     animation: ticker-scroll 60s linear infinite;
+  }
+
+  .ticker-content.paused {
+    animation-play-state: paused;
+  }
+
+  .ticker-pause {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: hsl(var(--foreground));
+  }
+
+  .live-ticker:hover .ticker-pause,
+  .ticker-pause:focus-visible {
+    opacity: 1;
   }
 
   .live-dot {
