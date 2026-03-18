@@ -1,72 +1,58 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { Activity, Clock, AlertCircle, Tv, Calendar, Check } from 'lucide-svelte';
-  import { dataService } from '../services/dataService';
   import type { Match } from '../types';
   import { scale } from 'svelte/transition';
-  import { format, subDays, addDays, isAfter, isBefore, formatDistanceToNow } from 'date-fns';
+  import { format, formatDistanceToNow } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
+  import {
+    liveMatchesStore,
+    recentMatchesStore,
+    upcomingMatchesStore,
+    pollLabel,
+    liveService,
+  } from '../services/liveService';
 
-  let liveMatches: Match[] = [];
-  let recentMatches: Match[] = [];
-  let upcomingMatches: Match[] = [];
+  // Subscribe to shared stores — $store syntax gives reactive values
+  $: liveMatches = $liveMatchesStore;
+  $: recentMatches = $recentMatchesStore;
+  $: upcomingMatches = $upcomingMatchesStore;
+  $: currentPollLabel = $pollLabel;
+
   let loading = true;
   let error = '';
-  let refreshInterval: ReturnType<typeof setInterval>;
   let lastRefresh = new Date();
   let showSection: 'live' | 'recent' | 'upcoming' = 'live';
   let nextKickoff: Date | null = null;
   let countdownText = '';
   let countdownInterval: ReturnType<typeof setInterval>;
 
-  // Smart polling intervals
-  const LIVE_POLL_MS = 30_000;      // 30s when matches are live
-  const MATCHDAY_POLL_MS = 5 * 60_000; // 5min on match days with no live games
-  const IDLE_POLL_MS = 30 * 60_000;    // 30min otherwise
-  let consecutiveEmptyPolls = 0;
-  let currentPollLabel = 'every 30 seconds';
+  // Recompute nextKickoff when upcoming matches change
+  $: nextKickoff = upcomingMatches.length > 0 ? new Date(upcomingMatches[0].date) : null;
+
+  // Auto-switch tab on initial load only — don't override explicit user clicks
+  let hasAutoSwitched = false;
+  $: if (!loading && !hasAutoSwitched && liveMatches.length === 0 && showSection === 'live') {
+    hasAutoSwitched = true;
+    showSection = recentMatches.length > 0 ? 'recent' : 'upcoming';
+  }
 
   onMount(async () => {
-    await loadMatches();
-    scheduleNextPoll();
+    try {
+      await liveService.start();
+      lastRefresh = new Date();
+    } catch {
+      error = 'Failed to load matches. Please check your API configuration.';
+    } finally {
+      loading = false;
+    }
     startCountdown();
   });
 
   onDestroy(() => {
-    if (refreshInterval) clearInterval(refreshInterval);
+    liveService.stop();
     if (countdownInterval) clearInterval(countdownInterval);
   });
-
-  function scheduleNextPoll() {
-    if (refreshInterval) clearInterval(refreshInterval);
-
-    let interval: number;
-    if (liveMatches.length > 0) {
-      // Matches in play — poll frequently
-      interval = LIVE_POLL_MS;
-      consecutiveEmptyPolls = 0;
-    } else if (consecutiveEmptyPolls >= 3) {
-      // Adaptive backoff — 3 consecutive empty polls → slow down
-      interval = IDLE_POLL_MS;
-    } else if (upcomingMatches.some(m => {
-      const diff = new Date(m.date).getTime() - Date.now();
-      return diff > 0 && diff < 3 * 60 * 60_000; // match within 3h
-    })) {
-      // Match day with upcoming kickoff — moderate polling
-      interval = MATCHDAY_POLL_MS;
-    } else {
-      interval = IDLE_POLL_MS;
-    }
-
-    currentPollLabel = interval === LIVE_POLL_MS ? 'every 30 seconds'
-      : interval === MATCHDAY_POLL_MS ? 'every 5 minutes'
-      : 'every 30 minutes';
-
-    refreshInterval = setInterval(async () => {
-      await loadMatches();
-      scheduleNextPoll(); // re-evaluate interval after each poll
-    }, interval);
-  }
 
   function startCountdown() {
     countdownInterval = setInterval(() => {
@@ -82,51 +68,9 @@
     try {
       loading = liveMatches.length === 0 && recentMatches.length === 0;
       error = '';
-
-      // Fetch live matches from the API
-      let fetchedLive: Match[] = [];
-      try {
-        fetchedLive = await dataService.getLiveMatches();
-      } catch {
-        // Live endpoint may fail if no API key — non-fatal
-      }
-
-      // Get all matches for recent/upcoming filtering
-      const allMatches = await dataService.getMatches();
-      const now = new Date();
-      const threeDaysAgo = subDays(now, 3);
-      const sevenDaysFromNow = addDays(now, 7);
-
-      liveMatches = fetchedLive;
-
-      if (fetchedLive.length === 0) {
-        consecutiveEmptyPolls++;
-      } else {
-        consecutiveEmptyPolls = 0;
-      }
-
-      // Recent matches (last 3 days, completed)
-      recentMatches = allMatches.filter(match => {
-        const matchDate = new Date(match.date);
-        return match.result && isAfter(matchDate, threeDaysAgo) && isBefore(matchDate, now);
-      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      // Upcoming matches (next 7 days)
-      upcomingMatches = allMatches.filter(match => {
-        const matchDate = new Date(match.date);
-        return !match.result && isAfter(matchDate, now) && isBefore(matchDate, sevenDaysFromNow);
-      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      // Calculate next kickoff for countdown
-      nextKickoff = upcomingMatches.length > 0 ? new Date(upcomingMatches[0].date) : null;
-
+      await liveService.refresh();
       lastRefresh = new Date();
-
-      // Default to recent if no live matches
-      if (liveMatches.length === 0 && showSection === 'live') {
-        showSection = recentMatches.length > 0 ? 'recent' : 'upcoming';
-      }
-    } catch (err) {
+    } catch {
       error = 'Failed to load matches. Please check your API configuration.';
     } finally {
       loading = false;
@@ -455,4 +399,3 @@
     </div>
   {/if}
 </div>
-

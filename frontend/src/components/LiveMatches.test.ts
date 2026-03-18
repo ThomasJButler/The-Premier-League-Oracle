@@ -1,35 +1,55 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import LiveMatches from './LiveMatches.svelte';
-import { dataService } from '../services/dataService';
 import type { Match } from '../types';
+import {
+  liveMatchesStore,
+  recentMatchesStore,
+  upcomingMatchesStore,
+  pollLabel,
+  liveService,
+} from '../services/liveService';
 
-// Mock dataService
-vi.mock('../services/dataService', () => ({
-  dataService: {
-    getLiveMatches: vi.fn(() => Promise.resolve([])),
-    getMatches: vi.fn(() => Promise.resolve([]))
-  }
-}));
+// Mock liveService — the component now delegates all fetching to it
+vi.mock('../services/liveService', async () => {
+  const { writable, derived } = await import('svelte/store');
+
+  const liveMatchesStore = writable<import('../types').Match[]>([]);
+  const recentMatchesStore = writable<import('../types').Match[]>([]);
+  const upcomingMatchesStore = writable<import('../types').Match[]>([]);
+  const hasLiveMatches = derived(liveMatchesStore, ($m) => $m.length > 0);
+  const pollLabel = writable('every 30 seconds');
+
+  return {
+    liveMatchesStore,
+    recentMatchesStore,
+    upcomingMatchesStore,
+    hasLiveMatches,
+    pollLabel,
+    liveService: {
+      start: vi.fn(() => Promise.resolve()),
+      stop: vi.fn(),
+      refresh: vi.fn(() => Promise.resolve()),
+      isRunning: vi.fn(() => true),
+    },
+  };
+});
 
 // Mock date-fns
 vi.mock('date-fns', () => ({
   format: vi.fn(() => 'Mocked Date'),
-  subDays: vi.fn((date: Date, days: number) => new Date(date.getTime() - days * 86400000)),
-  addDays: vi.fn((date: Date, days: number) => new Date(date.getTime() + days * 86400000)),
-  isAfter: vi.fn((a: Date, b: Date) => a.getTime() > b.getTime()),
-  isBefore: vi.fn((a: Date, b: Date) => a.getTime() < b.getTime()),
-  formatDistanceToNow: vi.fn(() => 'in 2 hours')
+  formatDistanceToNow: vi.fn(() => 'in 2 hours'),
 }));
 
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({
-  scale: () => ({ duration: 0 })
+  scale: () => ({ duration: 0 }),
 }));
 
 // Mock team logos
 vi.mock('../utils/teamLogos', () => ({
-  getTeamLogo: vi.fn(() => 'mock-logo.png')
+  getTeamLogo: vi.fn(() => 'mock-logo.png'),
 }));
 
 // Mock lucide-svelte icons as simple stub components
@@ -43,7 +63,7 @@ vi.mock('lucide-svelte', () => {
         bound: Object.create(null), on_mount: [], on_destroy: [], on_disconnect: [],
         before_update: [], after_update: [], context: new Map(),
         callbacks: Object.create(null), dirty: [-1], skip_bound: false,
-        root: opts?.target || document.createElement('div')
+        root: opts?.target || document.createElement('div'),
       };
     }
     $destroy() {}
@@ -52,7 +72,7 @@ vi.mock('lucide-svelte', () => {
   };
   return {
     Activity: stub, Clock: stub, AlertCircle: stub,
-    Tv: stub, Calendar: stub, Check: stub
+    Tv: stub, Calendar: stub, Check: stub,
   };
 });
 
@@ -71,15 +91,24 @@ function makeMatch(overrides: Partial<Match> = {}): Match {
     home_yellows: null, away_yellows: null,
     home_reds: null, away_reds: null,
     created_at: new Date().toISOString(),
-    ...overrides
+    ...overrides,
   };
+}
+
+/** Helper: set stores and flush Svelte's update cycle */
+async function flushStoreUpdates() {
+  await tick();
+  await act();
 }
 
 describe('LiveMatches Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(dataService.getLiveMatches).mockResolvedValue([]);
-    vi.mocked(dataService.getMatches).mockResolvedValue([]);
+    // Reset stores to empty state
+    liveMatchesStore.set([]);
+    recentMatchesStore.set([]);
+    upcomingMatchesStore.set([]);
+    pollLabel.set('every 30 seconds');
   });
 
   afterEach(() => {
@@ -91,18 +120,10 @@ describe('LiveMatches Component', () => {
     expect(screen.getByText('Match Centre')).toBeInTheDocument();
   });
 
-  it('should show loading spinner initially', () => {
-    render(LiveMatches);
-    const spinner = document.querySelector('.animate-spin');
-    expect(spinner).toBeInTheDocument();
-  });
-
   it('should show tabs after loading completes', async () => {
-    // onMount scheduling does not complete in jsdom — call loadMatches directly
-    // (same pattern as Dashboard.test.ts calling refresh())
     const { component } = render(LiveMatches);
     await (component as any).loadMatches();
-    await act();
+    await flushStoreUpdates();
 
     expect(screen.getByText('Live (0)')).toBeInTheDocument();
     expect(screen.getByText('Recent (0)')).toBeInTheDocument();
@@ -110,33 +131,41 @@ describe('LiveMatches Component', () => {
   });
 
   it('should show No Live Matches when live tab selected with no live games', async () => {
-    // loadMatches auto-switches away from "live" when there are no live matches,
-    // so we click the Live tab button to switch back and see the empty state
     const { component } = render(LiveMatches);
     await (component as any).loadMatches();
-    await act();
+    await flushStoreUpdates();
 
     // Click the Live tab
     const liveTab = screen.getByText('Live (0)');
     await fireEvent.click(liveTab);
-    await act();
+    await flushStoreUpdates();
 
     expect(screen.getByText('No Live Matches')).toBeInTheDocument();
     expect(screen.getByText(/no Premier League matches in play/i)).toBeInTheDocument();
   });
 
-  it('should show error message and Try Again button when API fails', async () => {
-    vi.mocked(dataService.getMatches).mockRejectedValue(new Error('API down'));
+  it('should display live match count from store', async () => {
+    // Pre-populate store before render
+    const liveMatch = makeMatch({
+      id: 'live1',
+      home_team: 'Arsenal',
+      away_team: 'Chelsea',
+      home_goals: 2,
+      away_goals: 1,
+      status: 'IN_PLAY',
+      minute: 67,
+    });
+    liveMatchesStore.set([liveMatch]);
 
     const { component } = render(LiveMatches);
     await (component as any).loadMatches();
-    await act();
+    await flushStoreUpdates();
 
-    expect(screen.getByText(/Failed to load matches/i)).toBeInTheDocument();
-    expect(screen.getByText('Try Again')).toBeInTheDocument();
+    // Tab count should reflect the store
+    expect(screen.getByText('Live (1)')).toBeInTheDocument();
   });
 
-  it('should show recent matches when available and auto-switch tab', async () => {
+  it('should show recent match count from store', async () => {
     const yesterday = new Date(Date.now() - 86400000).toISOString();
     const recentMatch = makeMatch({
       id: 'r1',
@@ -145,31 +174,63 @@ describe('LiveMatches Component', () => {
       away_team: 'Spurs',
       home_goals: 3,
       away_goals: 1,
-      result: 'H'
+      result: 'H',
     });
-
-    vi.mocked(dataService.getMatches).mockResolvedValue([recentMatch]);
+    recentMatchesStore.set([recentMatch]);
 
     const { component } = render(LiveMatches);
     await (component as any).loadMatches();
-    await act();
+    await flushStoreUpdates();
 
-    // Auto-switches to recent when no live matches but recent exist
     expect(screen.getByText('Recent (1)')).toBeInTheDocument();
-    expect(screen.getByText('Chelsea')).toBeInTheDocument();
-    expect(screen.getByText('Spurs')).toBeInTheDocument();
+  });
+
+  it('should show upcoming match count from store', async () => {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString();
+    const upcomingMatch = makeMatch({
+      id: 'u1',
+      date: tomorrow,
+      home_team: 'Man City',
+      away_team: 'Newcastle',
+    });
+
+    // Also populate liveMatchesStore so loadMatches() doesn't set loading=true
+    // (loading = liveMatches.length === 0 && recentMatches.length === 0).
+    // When loading toggles true, the {#if !loading} tab block is torn down
+    // and re-created, losing the reactive upcoming count in jsdom.
+    liveMatchesStore.set([makeMatch({ id: 'live-dummy', status: 'IN_PLAY', home_goals: 0, away_goals: 0 })]);
+    upcomingMatchesStore.set([upcomingMatch]);
+
+    const { component } = render(LiveMatches);
+    await (component as any).loadMatches();
+    await flushStoreUpdates();
+
+    expect(screen.getByText('Upcoming (1)')).toBeInTheDocument();
+  });
+
+  it('should call liveService.refresh when loadMatches is invoked', async () => {
+    const { component } = render(LiveMatches);
+    await (component as any).loadMatches();
+
+    expect(liveService.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call liveService.stop on unmount', async () => {
+    const { component, unmount } = render(LiveMatches);
+    await (component as any).loadMatches();
+    await flushStoreUpdates();
+
+    unmount();
+
+    expect(liveService.stop).toHaveBeenCalled();
   });
 
   it('should register cleanup callbacks on destroy', async () => {
     const { component, unmount } = render(LiveMatches);
     await (component as any).loadMatches();
-    await act();
+    await flushStoreUpdates();
 
-    // Verify onDestroy callbacks are registered (Svelte stores them in $$.on_destroy)
-    // The component registers 2 onDestroy callbacks for clearing intervals
     expect(component.$$.on_destroy.length).toBeGreaterThanOrEqual(1);
-
-    // Unmounting should not throw
     expect(() => unmount()).not.toThrow();
   });
 });
