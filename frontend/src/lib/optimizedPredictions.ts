@@ -419,7 +419,7 @@ export class OptimizedPredictor {
       avgGoalsScored: standing.goalsFor / gamesPlayed,
       avgGoalsConceded: standing.goalsAgainst / gamesPlayed,
       pointsPerGame: standing.points / gamesPlayed,
-      cleanSheetRate: 0.3, // Would need actual clean sheet data
+      cleanSheetRate: Math.exp(-(standing.goalsAgainst / gamesPlayed)), // Poisson P(0 goals conceded)
       winRate: standing.won / gamesPlayed,
       form: standing.form
     };

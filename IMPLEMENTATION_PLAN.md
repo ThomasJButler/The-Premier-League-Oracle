@@ -195,7 +195,7 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 - [ ] `useBackend` toggle (persisted as `use_backend` in localStorage)
 - [ ] Backend connection status indicator (green/red dot) — real ping, not fake "Connected"
 - [ ] `oracle_api_token` input field
-- [ ] Fix fake cache size calculation (`localStorage.length * 0.005 MB` → real estimate)
+- [x] Fix fake cache size calculation — now sums actual key+value byte lengths across all localStorage entries (UTF-16, 2 bytes per char)
 
 ### P2d. Missing Component Tests — PARTIAL (18 March 2026)
 
@@ -539,7 +539,7 @@ All feature specifications in `specs/`:
 | `advancedPredictions.ts` | `SEED_RATINGS` — 25 teams with manually assigned ELO, not backcalculated | Low |
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
 | `advancedPredictions.ts` | `ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}` (no shots data from free tier) | Low |
-| `optimizedPredictions.ts` | `cleanSheetRate: 0.3` — derivable from match results but not computed | P1e |
+| ~~`optimizedPredictions.ts`~~ | ~~`cleanSheetRate: 0.3` — derivable from match results~~ **FIXED** — now uses Poisson `e^(-avgGoalsConceded)` | ~~P1e~~ |
 | ~~`optimizedPredictions.ts`~~ | ~~Model weights duplicated in two places — can silently diverge~~ | ~~P1e~~ FIXED |
 | ~~`optimizedPredictions.ts`~~ | ~~H2H fallback `homeWinRate: 0.33` inconsistent with `homeWin: 0.40`~~ | ~~P1e~~ FIXED |
 | `optimizedPredictions.ts` | Error fallback returns different weights than success path | Low |
@@ -549,10 +549,10 @@ All feature specifications in `specs/`:
 | `betBuilder.ts` | `bothCleanSheets: { prediction: false }` unconditional | P4d |
 | `betBuilder.ts` | `'Over 1.5 first half goals'` probability hardcoded as `0.35` | P4d |
 | `betBuilder.ts` | `'win to nil'` probability hardcoded as `0.30` | P4d |
-| `Header.svelte:140-141` | Hardcoded "Tom Butler" / "tom@example.com" | P4a |
-| `Header.svelte:102` | Hardcoded "3 new predictions available" | P4a |
-| `App.svelte:96-100` | `Math.random()` star particles | P4a |
-| `Settings.svelte` | Fake cache size: `localStorage.length * 0.005 MB` | P2c |
+| ~~`Header.svelte:140-141`~~ | ~~Hardcoded "Tom Butler" / "tom@example.com"~~ | ~~P4a~~ REMOVED — Header rewritten, no user info present |
+| ~~`Header.svelte:102`~~ | ~~Hardcoded "3 new predictions available"~~ | ~~P4a~~ REMOVED — Header rewritten, no notification badge present |
+| ~~`App.svelte:96-100`~~ | ~~`Math.random()` star particles~~ | ~~P4a~~ REMOVED — App rewritten, no star particles present |
+| `Settings.svelte` | ~~Fake cache size: `localStorage.length * 0.005 MB`~~ **FIXED** — now sums real byte lengths | P2c |
 | `Settings.svelte` | "Connected" status without real API ping | P4c |
 | `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
 | `LiveMatches.svelte` | "Auto-refreshing every 30 seconds" hardcoded label | P4c |

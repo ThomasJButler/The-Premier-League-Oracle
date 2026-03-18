@@ -161,9 +161,17 @@
       favouriteTeam = savedTeam;
     }
 
-    // Check cache size (mock calculation)
-    const cacheEntries = localStorage.length;
-    cacheSize = `${(cacheEntries * 0.005).toFixed(2)} MB`;
+    // Estimate real localStorage usage by summing key + value byte lengths
+    let totalBytes = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
+      }
+    }
+    // Each JS character is 2 bytes in UTF-16 (localStorage encoding)
+    const totalMB = (totalBytes * 2) / (1024 * 1024);
+    cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
   });
 </script>
 
