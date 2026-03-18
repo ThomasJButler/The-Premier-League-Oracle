@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (betBuilder stub fixes)
+Last updated: 18 March 2026 (Settings API status verification)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -542,7 +542,7 @@ All feature specifications in `specs/`:
 | ~~`optimizedPredictions.ts`~~ | ~~`cleanSheetRate: 0.3` — derivable from match results~~ **FIXED** — now uses Poisson `e^(-avgGoalsConceded)` | ~~P1e~~ |
 | ~~`optimizedPredictions.ts`~~ | ~~Model weights duplicated in two places — can silently diverge~~ | ~~P1e~~ FIXED |
 | ~~`optimizedPredictions.ts`~~ | ~~H2H fallback `homeWinRate: 0.33` inconsistent with `homeWin: 0.40`~~ | ~~P1e~~ FIXED |
-| `optimizedPredictions.ts` | Error fallback returns different weights than success path | Low |
+| ~~`optimizedPredictions.ts`~~ | ~~Error fallback returns different weights than success path~~ **FIXED** — both paths now use shared `MODEL_WEIGHTS` constant (fixed in P1e) | ~~Low~~ |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | P4d |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | P4d |
 | `betBuilder.ts` | Combo confidence values (0.65, 0.45, 0.25, 0.40) hardcoded | P4d |
@@ -553,7 +553,7 @@ All feature specifications in `specs/`:
 | ~~`Header.svelte:102`~~ | ~~Hardcoded "3 new predictions available"~~ | ~~P4a~~ REMOVED — Header rewritten, no notification badge present |
 | ~~`App.svelte:96-100`~~ | ~~`Math.random()` star particles~~ | ~~P4a~~ REMOVED — App rewritten, no star particles present |
 | `Settings.svelte` | ~~Fake cache size: `localStorage.length * 0.005 MB`~~ **FIXED** — now sums real byte lengths | P2c |
-| `Settings.svelte` | "Connected" status without real API ping | P4c |
+| ~~`Settings.svelte`~~ | ~~"Connected" status without real API ping~~ **FIXED** — onMount now calls `testConnection()` with "Verifying…" spinner; shows "Connected" only on success | ~~P4c~~ |
 | `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
 | ~~`LiveMatches.svelte`~~ | ~~"Auto-refreshing every 30 seconds" hardcoded label~~ **FIXED** — now shows actual poll interval (30s/5min/30min) | ~~P4c~~ |
 | ~~`ChatBot.svelte`~~ | ~~OpenAI API key exposed in browser network tab~~ | ~~P2h~~ MITIGATED — security warning banner added |

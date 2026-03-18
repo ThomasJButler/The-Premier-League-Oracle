@@ -13,6 +13,7 @@
   
   // Status
   let apiConnected = false;
+  let verifying = false;
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
   let isRefreshing = false;
@@ -146,7 +147,15 @@
     if (savedFootballDataKey) {
       footballDataKey = savedFootballDataKey;
       footballDataAPI.setApiKey(savedFootballDataKey);
-      apiConnected = true;
+      // Verify the saved key with a real API ping
+      verifying = true;
+      footballDataAPI.testConnection().then(ok => {
+        apiConnected = ok;
+        verifying = false;
+      }).catch(() => {
+        apiConnected = false;
+        verifying = false;
+      });
     }
     
     // Load last sync time
@@ -282,7 +291,12 @@
           </p>
         </div>
         <div class="flex items-center space-x-2">
-          {#if apiConnected}
+          {#if verifying}
+            <span class="flex items-center space-x-1 text-amber-600 dark:text-amber-400 text-sm">
+              <RefreshCw class="w-4 h-4 animate-spin" />
+              <span>Verifying…</span>
+            </span>
+          {:else if apiConnected}
             <span class="flex items-center space-x-1 text-green-600 dark:text-green-400 text-sm">
               <Wifi class="w-4 h-4" />
               <span>Connected</span>
