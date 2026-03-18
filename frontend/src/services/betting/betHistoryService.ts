@@ -333,19 +333,32 @@ class BetHistoryService {
     return JSON.stringify(this.getAllBets(), null, 2);
   }
 
-  /** Import bets from JSON string. Returns true on success. */
+  /** Import bets from JSON string. Validates each bet before storing. Returns true on success. */
   public importBets(jsonData: string): boolean {
+    const VALID_MARKETS = new Set(['match_result', 'btts', 'over_2_5', 'over_3_5', 'combo']);
+
     try {
       const data = JSON.parse(jsonData);
       if (!Array.isArray(data)) return false;
 
+      let imported = 0;
       for (const bet of data) {
-        if (bet.id && bet.matchId) {
-          this.bets.set(bet.id, bet);
-        }
+        // Required fields
+        if (!bet.id || !bet.matchId || !bet.homeTeam || !bet.awayTeam) continue;
+        // Odds and stake must be positive numbers
+        if (typeof bet.odds !== 'number' || bet.odds <= 1) continue;
+        if (typeof bet.stake !== 'number' || bet.stake <= 0) continue;
+        // Market must be in allowlist
+        if (!VALID_MARKETS.has(bet.market)) continue;
+        // Resolved bets must have a profit value
+        if (bet.result && typeof bet.profit !== 'number') continue;
+
+        this.bets.set(bet.id, bet);
+        imported++;
       }
-      this.saveBets();
-      return true;
+
+      if (imported > 0) this.saveBets();
+      return imported > 0;
     } catch {
       return false;
     }

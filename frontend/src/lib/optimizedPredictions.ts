@@ -373,7 +373,7 @@ export class OptimizedPredictor {
       };
 
     } catch (error) {
-      // Error in optimized prediction, using fallback
+      console.warn('OptimizedPredictor.predictMatch failed, using fallback:', error);
       // Fallback to simple prediction — still report the real weights for consistency
       return {
         predictedResult: 'D',
@@ -549,9 +549,10 @@ export class OptimizedPredictor {
       avgHomeGoals: homeGoals / h2hMatches.length,
       avgAwayGoals: awayGoals / h2hMatches.length,
       probabilities: {
-        homeWin: (homeWins / total) * 0.8 + 0.1,
-        draw: (draws / total) * 0.8 + 0.1,
-        awayWin: (awayWins / total) * 0.8 + 0.1
+        // Shrink towards uniform (1/3) to avoid overfitting small H2H samples
+        homeWin: (homeWins / total) * 0.7 + 0.1,
+        draw: (draws / total) * 0.7 + 0.1,
+        awayWin: (awayWins / total) * 0.7 + 0.1
       }
     };
   }

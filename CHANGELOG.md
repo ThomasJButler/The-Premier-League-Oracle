@@ -4,6 +4,12 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1h Prediction Model Bugs — Partial Fix (18 March 2026)
+- **H2H probability shrinkage fixed:** `optimizedPredictions.ts` shrinkage formula `ratio * 0.8 + 0.1` didn't sum to 1.0 (got 1.03). Changed to `ratio * 0.7 + 0.1` which sums exactly to 1.0 — fixes inflated H2H probabilities
+- **ELO ratingDiff threshold fixed:** `advancedPredictions.ts` checked `ratingDiff > 200` but ratingDiff is already divided by 100 at line 475, so the condition was unreachable. Changed to `> 2` (equivalent to 200 raw rating points)
+- **Error fallback logging added:** `optimizedPredictions.ts` `predictMatch()` catch block now logs `console.warn` with the error before returning fallback probabilities — previously swallowed errors silently
+- **importBets validation hardened:** `betHistoryService.ts` now validates market against an explicit allowlist, requires `odds > 1` and `stake > 0`, checks resolved bets have a profit value, and requires core identity fields (id, matchId, homeTeam, awayTeam)
+
 ### P1l Live Probability Bugs — All Fixed (18 March 2026)
 - **betBuilder probability overflow:** Corner and card probability outputs clamped to [0, 0.99] in `calculateCorners()` and `calculateCards()` — previously could exceed 1.0 for high expected values, producing nonsensical combo confidence scores
 - **KellyCalculator circular Kelly fixed:** Was using `1.05 / odds` as `ourProbability`, creating a fake 5% edge against the model's own odds. Now correctly uses `prediction.confidence` as `ourProbability` and `valueOdds` as `bookmakerOdds` — edge only appears when model confidence genuinely exceeds the odds-implied probability

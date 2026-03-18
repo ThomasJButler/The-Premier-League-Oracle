@@ -518,7 +518,7 @@ export class AdvancedMatchPredictor {
     if (awayRestDays < 3) {
       insights.push(`${awayTeam} has only ${awayRestDays} days rest - fatigue could be a factor`);
     }
-    if (ratingDiff > 200) {
+    if (ratingDiff > 2) {
       insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(ratingDiff * 100).toFixed(0)} points higher`);
     }
     // Fair odds derived from model — shown for reference

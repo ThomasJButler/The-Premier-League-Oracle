@@ -74,15 +74,15 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 
 - [ ] `ChatBot.svelte` makes direct browser→OpenAI calls — API key visible in DevTools network tab. Route OpenAI calls through a backend proxy endpoint so the key is never sent to the client. Until then, users should be warned not to use their primary key. Architecture fix required — not a one-liner.
 
-**`importBets` stores unvalidated data (data integrity):**
+**`importBets` stores unvalidated data (data integrity) — DONE (18 March 2026):**
 
-- [ ] `betHistoryService.ts`: `importBets()` only checks `bet.id && bet.matchId` before writing. Negative odds, missing `profit` on resolved bets, and invalid `market` strings are silently stored and corrupt `getROI()`, `getWinRate()`, and `getMonthlyPL()`. Add: `odds > 1`, `stake > 0`, `market` in allowlist, `profit` present on resolved bets.
+- [x] `betHistoryService.ts`: `importBets()` now validates each bet before storing: requires `id`, `matchId`, `homeTeam`, `awayTeam`; `odds > 1` and `stake > 0`; `market` in allowlist (`match_result`, `btts`, `over_2_5`, `over_3_5`, `combo`); resolved bets must have `profit` value. Invalid bets silently skipped.
 
-**Frontend prediction model bugs (deep audit):**
+**Frontend prediction model bugs (deep audit) — DONE (18 March 2026):**
 
-- [ ] `optimizedPredictions.ts`: H2H probability shrinkage (lines 552-554) sums to 1.1 not 1.0 — `(ratio * 0.8 + 0.1)` applied to all three outcomes yields `0.8 + 0.3 = 1.1`. Absorbed by `combineModels` normalisation but means H2H sub-model contributes ~10% more weight than its intended 10% share.
-- [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic but **class is NOT dead code** — `value.ts:72` calls `AdvancedMatchPredictor.predictMatch()` for value bet scanning.
-- [ ] `optimizedPredictions.ts`: error fallback (lines 377-389) silently swallows all prediction errors with no logging — user gets a static `confidence: 0.33, goals: 1-1` prediction with no indication anything went wrong. Add `console.warn` at minimum.
+- [x] `optimizedPredictions.ts`: H2H probability shrinkage fixed — changed `ratio * 0.8 + 0.1` to `ratio * 0.7 + 0.1` so probabilities sum to 1.0 (was 1.1). Proper shrinkage towards uniform distribution
+- [x] `advancedPredictions.ts`: `ratingDiff > 200` threshold fixed to `> 2` — ratingDiff is divided by 100 at line 475, so 200-point ELO gap = 2.0 in the scaled units. "Significant quality gap" insight now fires correctly
+- [x] `optimizedPredictions.ts`: error fallback now logs `console.warn` with the error before returning static fallback prediction
 
 ### P1i. Bet Storage Pipeline Broken — DONE (18 March 2026)
 
