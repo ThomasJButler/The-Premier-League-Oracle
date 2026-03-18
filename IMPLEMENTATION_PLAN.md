@@ -616,28 +616,28 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 ### P4c. Component Data Accuracy Cleanup
 
 - [x] `LiveMatches.svelte`: "Auto-refreshing every 30 seconds" label — FIXED (now shows actual interval)
-- [ ] `LiveTicker.svelte`: live dot detection uses `startsWith('football emoji')` heuristic — use boolean flag
+- [x] `LiveTicker.svelte`: live dot detection — replaced `startsWith('⚽')` heuristic with `hasLiveMatches` boolean flag set from `items.some(item => item.type === 'live')`
 - [ ] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — significantly underestimates actual storage use
 - [ ] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — needs updating each season
 - [x] ~~`SeasonStats.svelte`: "Did you know? These statistics are updated in real-time"~~ **FIXED:** changed to "refreshed each time you visit this page"
 - [x] ~~`SeasonStats.svelte`: no error state in template~~ **FIXED:** added `error` state variable, error message in catch block, and `{:else if error}` template block with AlertTriangle icon
-- [ ] `MatchList.svelte:12`: `selectedSeason = '2024-2025'` hardcoded fallback — will go stale each season
+- [x] `MatchList.svelte:12`: `selectedSeason` fallback — now computed from current date (July = new season), same pattern as StandingsTable
 - [x] `Settings.svelte`: "Connected" status without real API ping — FIXED (now calls `testConnection()` on mount)
 - [x] ~~`Help.svelte:101`: "📊 Live Standings" describes Dashboard~~ **FIXED:** renamed to "Overview Stats" with accurate description
-- [ ] `Help.svelte:489`: FAQ "The app caches recent data for offline viewing" — overstates capability; IndexedDB expires and there is no Service Worker
-- [ ] `Help.svelte:295`: "75-85% accuracy when all models agree" — fabricated, never validated against backtest data
+- [x] `Help.svelte:489`: FAQ offline viewing — ALREADY FIXED in P1f: says "requires an internet connection" and "no full offline mode"
+- [x] `Help.svelte:295`: accuracy claims — ALREADY FIXED in P1f: removed specific percentages, replaced with "check the Predictions accuracy panel"
 - [x] ~~`ApiSetupWizard.svelte:284`: "AI-powered predictions" listed as a Football-Data.org feature~~ **FIXED:** changed to "Statistical match predictions"; intro text updated to "data-driven" with correct model names
-- [ ] `ApiSetupWizard.svelte`: Step 3 "Choose Provider" has only one hardcoded option — dead step, should auto-advance or be removed
+- [x] `ApiSetupWizard.svelte`: Step 3 "Choose Provider" — REMOVED entirely in P4a (5→4 steps)
 - [ ] `StandingsTable.svelte`: `getMovementIcon` only renders arrows for top 5 positions — rest of the table shows no movement indicator, creating visual inconsistency
 - [ ] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` creates circular Kelly recommendation — model is both the predictor and the bookmaker; Kelly stake will almost always be near zero
-- [ ] `ApiSetupWizard.svelte:430`: `⏳` emoji inside `animate-spin` span does not actually spin (emoji aren't CSS-transformable)
+- [x] `ApiSetupWizard.svelte:430`: `⏳` spinner — REMOVED in P4a (replaced with plain "Validating..." text)
 - [x] ~~`LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)`~~ **FIXED:** replaced with `addDays(now, 7)`
 - [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
 - [x] ~~`BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values~~ **FIXED:** replaced with `PoundSterling` icon
 - [x] ~~`BettingHistory.svelte`: redundant double `loadBettingHistory()` call~~ **FIXED:** removed `onMount` wrapper — single module-scope call is sufficient for synchronous localStorage reads. Also removed now-unused `onMount` import
 - [ ] `BettingHistory.svelte`: loading spinner never renders — `loading = true` wraps synchronous localStorage code that completes before the DOM can repaint, so `{#if loading}` skeleton block is invisible (fifth audit)
 - [x] ~~`MatchList.svelte:23-29`: `loadSeasons()` has no try/catch~~ **FIXED:** wrapped in try/catch with console.warn and user-facing error message
-- [ ] `Settings.svelte:75-86` and `ApiSetupWizard.svelte:61-71`: artificial 5-second delay before `clearCache()` + `window.location.reload()`. The 5s wait serves no purpose — the cache clear is instant (fifth audit)
+- [x] `Settings.svelte:75-86` and `ApiSetupWizard.svelte:61-71`: artificial 5-second delay — FIXED in P4a for ApiSetupWizard (removed delay + double reload). Settings reload still exists but is intentional (user explicitly clicking "Connect")
 
 ### P4d. betBuilder Improvements
 

@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4c — Component Data Accuracy Fixes (20 March 2026)
+- **LiveTicker live dot heuristic:** Replaced fragile `startsWith('⚽')` string check with `hasLiveMatches` boolean flag set directly from the data during `buildTicker()` — live dot now reliably appears regardless of ticker content ordering
+- **MatchList season fallback:** Replaced hardcoded `'2024-2025'` with date-computed fallback using `getMonth() >= 6` boundary (same pattern as StandingsTable). API still overrides this when available, but the fallback no longer goes stale each season
+- **Marked already-fixed items:** Help.svelte FAQ offline claim and accuracy percentages were already corrected in P1f; ApiSetupWizard step 3 and spinner emoji were already fixed in P4a
+
 ### P4b — Accessibility First Pass (20 March 2026)
 - **15 accessibility fixes across 10 files** addressing the most impactful WCAG gaps: dialog semantics, form labels, progress bars, aria-live regions, table semantics, and reduced motion support
 - **Predictions.svelte:** `role="meter"` with `aria-valuenow/min/max` on 6 probability bars (outcome accuracy + confidence bands), `role="progressbar"` on both backtest and batch prediction progress bars, `aria-label="Close analysis"` on flip card close button

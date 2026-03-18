@@ -10,6 +10,7 @@
   }
 
   let tickerContent = '';
+  let hasLiveMatches = false;
   let pollInterval: ReturnType<typeof setInterval>;
 
   onMount(async () => {
@@ -68,9 +69,11 @@
 
       // Sort by priority
       items.sort((a, b) => a.priority - b.priority);
+      hasLiveMatches = items.some(item => item.type === 'live');
 
       if (items.length === 0) {
         tickerContent = 'Premier League Oracle — No matches scheduled in the next 48 hours';
+        hasLiveMatches = false;
         return;
       }
 
@@ -92,7 +95,7 @@
 </script>
 
 <div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border">
-  {#if tickerContent.includes('(') && tickerContent.startsWith('\u26BD')}
+  {#if hasLiveMatches}
     <!-- Pulsing indicator when live matches are showing -->
     <span class="live-dot"></span>
   {/if}

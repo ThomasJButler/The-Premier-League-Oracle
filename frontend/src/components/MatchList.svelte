@@ -9,7 +9,10 @@
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
-  let selectedSeason = '2024-2025';
+  // Compute current season from date (July onwards = new season). Overwritten by API if available.
+  const now = new Date();
+  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  let selectedSeason = `${year}-${year + 1}`;
   let loading = true;
   let error: string | null = null;
   
