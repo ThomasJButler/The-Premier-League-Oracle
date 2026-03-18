@@ -165,10 +165,15 @@ export const liveService = new LiveService()
 
 ## Acceptance Criteria
 
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
 - [x] `liveMatches = []` populated from API (not hardcoded) in `LiveMatches.svelte`
 - [x] `dataService.getLiveMatches()` fetches from Football-Data.org LIVE endpoint
 - [x] Smart polling manager adjusts interval based on live state (30s/5min/30min with adaptive backoff)
 - [x] LiveMatches shows real scores with current minute when in play
-- [ ] LiveTicker shows live scores with pulsing indicator, falls back to upcoming fixtures
-- [ ] `LiveService` uses WebSocket when backend available, polling otherwise
+- [x] `liveService.ts` created with shared Svelte stores (`liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches`, `pollLabel`) (P3f)
+- [x] `LiveService` uses WebSocket when backend available (`ws://{hostname}:8000/ws/predictions` with exponential reconnect), polling otherwise (P3f)
+- [x] `LiveMatches.svelte` and `LiveTicker.svelte` refactored to subscribe to shared stores (P3f)
 - [x] Graceful empty state with next fixture countdown
+- [ ] Match event notifications (goals, red cards, etc.) — not done
+- [ ] LiveTicker shows live scores with pulsing indicator inline (ticker item format not verified)

@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 22 March 2026 (P3g AI Analysis DONE. Test count 375/23. Next: P4 polish or P3-Free ML.)
+Last updated: 24 March 2026 (Seventh audit — 6-agent codebase sweep. Test count 375/23 frontend + 62/3 backend. All P0–P3 complete. Next: P4 polish, P5 hardening, spec marker sync.)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -795,14 +795,14 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~75% — ELO dynamic + persistence + auto-update wired (P2k DONE), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); AI analysis DONE (P3g), confidence calibration rudimentary |
-| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
-| `specs/03-backend-integration.md` | Python ML backend connection | ~70% — backendService DONE (P2b), ML ensemble integration DONE (P3e), Settings UI DONE (P2c), WebSocket DONE (P3f); missing: real-time prediction streaming, model comparison UI |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); bet storage pipeline wired (P1i — KellyCalculator + ValueBets → betHistoryService → BettingHistory); betHistoryService resolution bugs fixed (P1g) |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — liveService.ts with shared stores DONE (P3f), WebSocket with reconnect DONE, adaptive polling (30s/5m/30m) DONE, LiveMatches + LiveTicker subscribe to shared stores; missing: match event notifications |
-| `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~35% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created, `$lib/utils.ts` created (P2a-fix DONE), accessibility wave 1+2 DONE (P4b) |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Pro-tier (P3a–P3c) deferred |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~75% — ELO dynamic + persistence + auto-update wired (P2k), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner (P2f), AI analysis (P3g); missing: Poisson lambda from real team stats, confidence calibration. **Spec markers: 4/7** |
+| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; all data methods implemented; missing: progressive 5-season bulk loader with rate limiting. **Spec markers: 4/7** |
+| `specs/03-backend-integration.md` | Python ML backend connection | ~70% — backendService (P2b), ML ensemble (P3e), Settings UI (P2c), WebSocket (P3f) all DONE; missing: real-time prediction streaming, model comparison UI. **Spec markers: 0/8 (severely outdated — see P5b)** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions (P2g), ValueBets UI (P2i), bet storage pipeline (P1i), resolution bugs (P1g) all DONE. **Spec markers: 4/7 (outdated — see P5b)** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications. **Spec markers: 4/6 (outdated — see P5b)** |
+| `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete. **Spec markers: 7/7** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~35% — dark mode (P1b), a11y wave 1+2 (P4b), components.json, `$lib/utils.ts` (P2a-fix) all DONE; shadcn components installed but not wired. **Spec markers: 0/11 (severely outdated — see P5b)** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Pro-tier (P3a–P3c) deferred. **Spec markers: 0/6 (outdated — see P5b)** |
 
 ---
 
@@ -853,6 +853,8 @@ All feature specifications in `specs/`:
 | `dataService.ts` | Cache TTL comments lie about actual TTL (claim 24h/30m, deliver 5m) | P1m |
 | `dataService.ts` | `getTeamForm` cache key uses `matches.length` not content — stale data on same-length arrays | P1p |
 | `advanced_engineering.py` | `0.45` fallback win rate when no match data — hardcoded league average | Low |
+| `liveService.ts` | WebSocket `onmessage` handler for `data.liveMatches` — dead code, backend never sends this | P5g |
+| `betBuilder.ts` | Crystal Palace/Brighton rivalry: `'Brighton and Hove Albion'` vs API `'Brighton & Hove Albion FC'` — `&` vs `and` mismatch | P5g |
 
 ### Backend
 
@@ -910,6 +912,90 @@ All feature specifications in `specs/`:
 | `main.py` | `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch missing | P2r |
 | `main.py` | `total_features` in `/features/importance` hardcoded to `150`, not dynamically counted | Low |
 | `football_data_collector.py` | `get_standings()` returns `pd.DataFrame` — must be converted before JSON response | P1o |
+| `main.py` | `client_ip` in `/predict/free` always `"unknown"` — rate limiter groups all clients together, non-functional | P5a |
+| `main.py` | Free-tier engineer initialised with empty DataFrame when CSVs absent — all features return `0.0` for live predictions | P5a |
+
+---
+
+## P5 — Hardening (seventh audit, 24 March 2026)
+
+New findings from the sixth 6-agent comprehensive audit. These are issues NOT previously documented in the plan.
+
+### P5a. Backend Rate Limiter Broken — NEW (24 March 2026)
+
+`main.py:724-725`: the `client_ip` parameter on `/predict/free` is declared with a default of `"unknown"` and never extracted from the actual HTTP request. All clients share a single rate-limit bucket, making the 60 req/min limit either trivially bypassable or accidentally DoS-able.
+
+- [ ] Extract real client IP from `request.client.host` (with `X-Forwarded-For` header fallback for reverse proxies)
+- [ ] Test that per-IP bucketing actually isolates clients
+
+Additionally, the free-tier feature engineer is initialised with an empty DataFrame when the CSV directory doesn't exist (which it won't after a fresh clone since `backend/spreadsheets/` is gitignored). All features return `0.0` for live predictions in this scenario, with no warning.
+
+- [ ] Log a clear warning when CSV data is unavailable and the engineer is running on empty data
+- [ ] Document how to obtain the CSV training data in the README or a setup script
+
+### P5b. Spec Markers Out of Date — NEW (24 March 2026)
+
+Several spec files have severely outdated completion markers that don't reflect the actual state of the implementation:
+
+| Spec | Markers Show | Actual Completion | Gap |
+|------|-------------|-------------------|-----|
+| `specs/03-backend-integration.md` | 0 of 8 criteria | ~70% (backendService, ML ensemble, Settings UI, WebSocket all done) | 70pp |
+| `specs/04-betting-intelligence.md` | 4 of 7 criteria | ~70% (ValueBets UI, Kelly auto-suggestions, bet storage all done) | 13pp |
+| `specs/05-live-data.md` | 4 of 6 criteria | ~85% (liveService, shared stores, adaptive polling all done) | 18pp |
+| `specs/07-ui-ux.md` | 0 of 11 criteria | ~35% (dark mode, a11y wave 1+2, components.json, utils.ts all done) | 35pp |
+| `specs/08-backend-training.md` | 0 of 6 criteria | ~60% (P3-Free pipeline complete with 62 tests) | 60pp |
+
+- [ ] Update `specs/03-backend-integration.md` acceptance criteria to reflect P2b, P2c, P3e, P3f completion
+- [ ] Update `specs/04-betting-intelligence.md` to reflect P2g, P2i, P1i completion
+- [ ] Update `specs/05-live-data.md` to reflect P3f completion
+- [ ] Update `specs/07-ui-ux.md` to reflect P1b, P4b, P2a, P2a-fix completion
+- [ ] Update `specs/08-backend-training.md` to reflect P3-Free completion
+
+### P5c. Backend CI Pipeline — NEW (24 March 2026)
+
+The 62 backend tests are never run in CI. A Python regression will not be caught automatically.
+
+- [ ] Add a Python job to `.github/workflows/ci.yml` — `pip install -r requirements.txt && python -m pytest tests/ -v`
+- [ ] Consider adding Playwright E2E tests to CI (heavier, needs `npx playwright install`)
+
+### P5d. Accessibility Fixes — NEW (24 March 2026)
+
+Three ARIA gaps found by the component audit:
+
+- [ ] `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but the corresponding panel `<div>` elements have no `id` attributes — broken ARIA association
+- [ ] `Dashboard.svelte`: profit chart canvas has no `aria-label` or `role="img"` (the accuracy chart above it has both)
+- [ ] `SeasonStats.svelte`: stat card grid has no `aria-label` descriptions for screen readers
+
+### P5e. Test Quality — NEW (24 March 2026)
+
+- [ ] `ChatBot.test.ts`: DOMPurify is mocked to return raw HTML unchanged (`(html) => html`). The XSS sanitisation fix (P1j) is completely bypassed in tests — a regression would be invisible. Mock should verify the sanitisation allowlist is applied
+- [ ] `liveService.test.ts`: WebSocket `onmessage` is never triggered — message parsing and store updates from WebSocket data are untested
+- [ ] `optimizedPredictions.test.ts:412-421`: `if (prediction.valueOdds)` wraps all assertions — test passes vacuously when `valueOdds` is undefined
+- [ ] `advancedPredictions.test.ts:392-398`: value bet loop `for (const bet of prediction.valueBets)` never enters when the mock returns empty array — assertions never run
+
+### P5f. Type Safety — NEW (24 March 2026)
+
+Remaining `any` types in production code (not catch blocks):
+
+- [ ] `optimizedPredictions.ts:493,515` — `(form: any[])` should be `TeamForm[]`
+- [ ] `optimizedPredictions.ts:783,784` — `formAnalysis: any`, `h2hAnalysis: any` should have typed interfaces
+- [ ] `footballData.ts:104` — `Map<string, { data: any; timestamp: number }>` in-memory cache value
+- [ ] `SeasonStats.svelte:10` — `icon: any` in interface, should be Svelte component type
+- [ ] `Sidebar.svelte:57` and `MobileNav.svelte:36` — `handleKeydown(e: any)` should be `KeyboardEvent`
+
+### P5g. Config & Infrastructure — NEW (24 March 2026)
+
+- [ ] `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 — allows use of APIs that don't exist at runtime. Pin to `^20.x.x`
+- [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency
+- [ ] `.gitignore`: `backend/chroma_db/` not gitignored — `chroma.sqlite3` generated database exists on disk and could be committed
+- [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
+- [ ] `betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry entry uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'` — `normaliseTeamName()` strips `FC` but doesn't handle `&` vs `and`, so this specific rivalry never fires
+- [ ] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` is dead code — the backend `/ws/predictions` endpoint doesn't send this payload. Acknowledged in comments but should be documented or removed
+
+### P5h. Help.svelte Minor Inaccuracies — NEW (24 March 2026)
+
+- [ ] Shows full Kelly formula `Stake % = (Probability × Odds - 1) / (Odds - 1)` but the app actually uses Half-Kelly (divides by 2). Should mention Half-Kelly
+- [ ] "Features Guide" still lists some aspirational features as implemented (e.g. "Track bankroll growth", "Trend analysis")
 
 ---
 
@@ -953,7 +1039,8 @@ All feature specifications in `specs/`:
 | `LiveMatches.test.ts` | 9 | Passing |
 | `liveService.test.ts` | 14 | Passing |
 | `backendService.test.ts` | 19 | Passing |
-| **Total** | **351** | **All passing** |
+| `aiAnalysis.test.ts` | 24 | Passing |
+| **Total** | **375** | **All passing** |
 
 **Known test quality issues:**
 - `types.test.ts`: reduced from 18 to 4 tests — tautological assertions removed (P4h DONE)
@@ -989,17 +1076,17 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**0% coverage. No real tests exist.** (`test_setup.py` only checks imports — no assertions.)
+**62 tests across 3 files** — all passing. Covers free-tier features (39), training pipeline (12), and API endpoints (11). Pro-tier models (`xgboost_model.py`, `lstm_predictor.py`, `transformer_model.py`, `modern_oracle.py`) and data collector have 0% test coverage. Security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime and untested.
 
 ---
 
-## Services Still To Create
+## Services — ALL CREATED
 
-| File | Purpose | Priority |
-|------|---------|----------|
-| `frontend/src/services/backendService.ts` | Frontend-backend bridge | P2b — DONE |
-| `frontend/src/services/liveService.ts` | WebSocket live data | P3f — DONE |
-| `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g — DONE |
-| `backend/app/features/free_tier_features.py` | Free-tier feature engineer (~83 features) | P3-Free |
-| `backend/train_free_tier.py` | Free-tier training pipeline | P3-Free |
-| `backend/tests/test_free_tier_*.py` | Free-tier tests (features, training, API) | P3-Free |
+All planned services have been implemented:
+
+- `frontend/src/services/backendService.ts` — P2b DONE
+- `frontend/src/services/liveService.ts` — P3f DONE
+- `frontend/src/services/aiAnalysis.ts` — P3g DONE
+- `backend/app/features/free_tier_features.py` — P3-Free DONE
+- `backend/train_free_tier.py` — P3-Free DONE
+- `backend/tests/test_free_tier_*.py` — P3-Free DONE (62 tests)

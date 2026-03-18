@@ -186,11 +186,13 @@ python -m app.models.modern_oracle --train --seasons 2020,2021,2022,2023,2024
 
 ## Acceptance Criteria
 
-- [ ] `BackendService` class created with `isAvailable()`, `predictMatch()`, `predictBatch()`
-- [ ] Vite proxy configured for `/api/oracle`
-- [ ] `useBackend` toggle in Settings, persisted to localStorage
-- [ ] `OptimizedPredictor` calls backend when feature flag is on, falls back gracefully
-- [ ] WebSocket connection established when backend available
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `BackendService` class created with `isAvailable()`, `predictMatch()`, `predictBatch()`
+- [x] Vite proxy configured for `/api/oracle`
+- [x] `useBackend` toggle in Settings, persisted to localStorage
+- [x] `OptimizedPredictor` calls backend when feature flag is on, falls back gracefully
+- [x] WebSocket connection established when backend available
 - [ ] Historical data collection command documented in `AGENTS.md`
-- [ ] ML prediction type defined in `frontend/src/types/index.ts`
-- [ ] Settings UI shows backend connection status (connected / disconnected)
+- [x] ML prediction type defined in `frontend/src/types/index.ts`
+- [x] Settings UI shows backend connection status (connected / disconnected)

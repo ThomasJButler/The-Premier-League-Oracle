@@ -162,10 +162,17 @@ When a match result comes in via the API, auto-resolve any pending bets for that
 
 ## Acceptance Criteria
 
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
 - [x] `BetHistoryService` created, uses localStorage, matches `StoredBet` interface
 - [x] `BettingHistory.svelte` shows real bet history, monthly P/L chart, and ROI stats
-- [ ] `KellyCalculator.svelte` shows auto-suggested bets from upcoming predictions
-- [ ] `ValueBets.svelte` allows manual odds entry and shows real EV calculations (component does not exist yet; engine in `value.ts` is complete)
-- [ ] `BetBuilderPredictor.suggestedCombos` generates valid, reasoned accumulator suggestions
+- [x] `KellyCalculator.svelte` shows auto-suggested bets from upcoming predictions (P2g)
+- [x] `ValueBets.svelte` allows manual odds entry and shows real EV calculations — component created (P2i), engine in `value.ts` complete
+- [x] `BetBuilderPredictor.suggestedCombos` generates valid, reasoned accumulator suggestions with market correlation (P4d)
 - [x] Auto-resolve fires when match results are loaded (via `dataService.reconcilePredictions()` and `Dashboard.svelte`)
 - [x] No `any[]` type usage in betting components
+- [x] `betHistoryService.storeBet()` wired into KellyCalculator and ValueBets via "Track Bet" buttons (P1i)
+- [x] BetHistoryService resolution bugs fixed (P1g)
+- [x] betBuilder corner/card probability overflow clamped to [0, 0.99] (P1l)
+- [x] Kelly circular probability bug fixed — uses model confidence as ourProbability (P1l)
+- [ ] Accumulator/combination bet UI (not done)

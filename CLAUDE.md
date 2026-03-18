@@ -160,5 +160,12 @@ These specs are the single source of truth for requirements.
 - `main.py:511-515`: `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch is unavailable
 - `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`
 - MIT licensed for open-source collaboration
+- `main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`, all clients share one bucket. Needs `request.client.host` extraction
+- `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken
+- `ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged — XSS regression from P1j fix would be invisible to tests
+- `betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`
+- `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)
+- `.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed
+- Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

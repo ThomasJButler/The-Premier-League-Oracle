@@ -198,14 +198,24 @@ The following must have proper ARIA labels:
 
 ## Acceptance Criteria
 
-- [ ] shadcn CSS variables added to `app.css` mapping existing palette
-- [ ] Button component replaces all `.btn*` CSS classes
-- [ ] Card component wraps glassmorphism cards
-- [ ] Dialog component replaces ApiSetupWizard modal
-- [ ] Badge component replaces all `.badge*` CSS classes
-- [ ] Dark mode restores from localStorage on page load
-- [ ] Sidebar uses shadcn Sheet on mobile
-- [ ] Probability bars have ARIA meter attributes
-- [ ] Kelly calculator inputs have proper `<label>` elements
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] shadcn-svelte initialised — `components.json` created, five components installed (Button, Card, Badge, Separator, Skeleton), `$lib/utils.ts` created with `cn()` utility (P2a, P2a-fix)
+- [ ] shadcn CSS variables fully mapped to existing palette in `app.css` (partially done — some variables exist but mapping is incomplete)
+- [ ] Button component replaces all `.btn*` CSS classes (shadcn Button installed but `.btn` classes still in use)
+- [ ] Card component wraps glassmorphism cards (shadcn Card installed but `.card-glass` classes still in use)
+- [ ] Dialog component replaces ApiSetupWizard modal (not done — ApiSetupWizard still uses hand-rolled modal)
+- [ ] Badge component replaces all `.badge*` CSS classes (shadcn Badge installed but `.badge` classes still in use)
+- [x] Dark mode restores from localStorage on page load — shared theme store with localStorage persistence (P1b)
+- [ ] Sidebar uses shadcn Sheet on mobile (not done — still uses CSS transform)
+- [x] Probability bars have ARIA `role="meter"` attributes (P4b)
+- [x] Kelly calculator inputs have proper `<label>` elements (P4b)
+- [x] `prefers-reduced-motion` respected across animated elements (P4b)
+- [x] Dialog/modal semantics corrected (P4b)
+- [x] ARIA tabs on LiveMatches (P4b)
+- [x] Focus trapping on Sidebar and MobileNav (P4b)
+- [x] Semantic `<table>` for TopScorers (P4b)
+- [x] Marquee semantics for LiveTicker (P4b)
+- [x] Chart accessibility improvements (P4b)
 - [ ] Dead code removed from Dashboard and BettingHistory
-- [ ] Form strings computed from real data, not hardcoded
+- [ ] Form strings computed from real data, not hardcoded (hardcoded `'WWDLW'` strings remain in `Predictions.svelte`)

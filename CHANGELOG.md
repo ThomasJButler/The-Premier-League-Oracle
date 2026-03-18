@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Seventh Planning Audit — P5 Hardening (24 March 2026)
+- **6-agent comprehensive codebase sweep:** Parallel agents audited all 8 specs, all frontend libs/services, all backend Python files, all Svelte components, all test files, and all project configuration/infrastructure
+- **8 new findings documented:** Rate limiter broken on `/predict/free` (client_ip always "unknown"), Crystal Palace/Brighton rivalry name mismatch, LiveMatches ARIA panel IDs missing, ChatBot DOMPurify test mock bypasses XSS regression detection, `@types/node` v25 on Node 20 runtime, `backend/chroma_db/` not gitignored, WebSocket `onmessage` dead code in liveService, optimizedPredictions conditional test assertions
+- **Test coverage table corrected:** Added `aiAnalysis.test.ts` (24 tests) to table, fixed total from 351 to 375. Backend section corrected from "0% coverage" to "62 tests across 3 files"
+- **Spec marker audit:** Found 5 specs (03, 04, 05, 07, 08) have severely outdated acceptance criteria markers — actual implementation is 13-70 percentage points ahead of what the markers show. Created P5b task to sync markers
+- **New P5 section added to IMPLEMENTATION_PLAN.md:** P5a (rate limiter), P5b (spec markers), P5c (backend CI), P5d (a11y fixes), P5e (test quality), P5f (type safety), P5g (config/infra), P5h (Help inaccuracies)
+- **CLAUDE.md updated:** 7 new findings added, spec marker drift documented
+- **Services section updated:** All 6 planned services marked DONE (backendService, liveService, aiAnalysis, free_tier_features, train_free_tier, tests)
+
 ### P3g: AI Match Analysis (22 March 2026)
 - **`aiAnalysis.ts` created:** Singleton `AIAnalysisService` that generates natural language match analysis via the existing `/api/chat` OpenAI proxy. Takes `AnalysisInput` (prediction data, form, insights) and returns a 150–200 word football expert narrative. Supplementary display only — does NOT modify numerical prediction probabilities
 - **24h localStorage cache:** Each analysis cached per match ID with TTL eviction. Evicts oldest half of entries when storage is full. `getCachedAnalysis()`, `getRecentAnalyses()`, `clearCache()` public methods

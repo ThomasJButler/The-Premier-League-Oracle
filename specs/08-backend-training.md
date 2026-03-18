@@ -77,11 +77,15 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeat
 
 **Acceptance criteria:**
 
-- [ ] `create_features()` returns exactly `FEATURE_NAMES` keys
-- [ ] No feature returns `0.0` when given sufficient match history (i.e. no stubs leak through)
-- [ ] Features use only pre-match data (no leakage from the match being predicted)
-- [ ] Team name normalisation handles both CSV and API formats
-- [ ] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `create_features()` returns exactly `FEATURE_NAMES` keys
+- [x] No feature returns `0.0` when given sufficient match history (i.e. no stubs leak through)
+- [x] Features use only pre-match data (no leakage from the match being predicted)
+- [x] Team name normalisation handles both CSV and API formats
+- [x] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
+
+Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 86 features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -132,16 +136,18 @@ python train_free_tier.py --test     # Also evaluate on held-out 2025/26 data
 
 **Acceptance criteria:**
 
-- [ ] Training completes without errors on the existing CSV dataset
-- [ ] Data quality checks run and log results (dropped rows, class distribution, season counts)
-- [ ] Chronological split verified (all validation dates strictly after all training dates)
-- [ ] Logistic regression baseline trained and accuracy compared to XGBoost
-- [ ] Model file saved to `backend/models/xgboost_free_tier.joblib` with metadata
-- [ ] Per-class accuracy printed (Home, Draw, Away separately)
-- [ ] Confusion matrix, Brier score, and per-class AUC-ROC printed
-- [ ] Calibration curve saved as PNG
-- [ ] `--test` flag evaluates on 2025/26 held-out data
-- [ ] No dependency on paid API data or features that return `0.0`
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] Training completes without errors on the existing CSV dataset
+- [x] Data quality checks run and log results (dropped rows, class distribution, season counts)
+- [x] Chronological split verified (all validation dates strictly after all training dates)
+- [x] Logistic regression baseline trained and accuracy compared to XGBoost
+- [x] Model file saved to `backend/models/xgboost_free_tier.joblib` with metadata
+- [x] Per-class accuracy printed (Home, Draw, Away separately)
+- [x] Confusion matrix, Brier score, and per-class AUC-ROC printed
+- [x] Calibration curve saved as PNG (best-effort — skips gracefully if matplotlib unavailable)
+- [x] `--test` flag evaluates on 2025/26 held-out data
+- [x] No dependency on paid API data or features that return `0.0`
 
 ---
 
@@ -198,11 +204,13 @@ Returns model metadata: version, training date, feature count, validation accura
 
 **Acceptance criteria:**
 
-- [ ] `/predict/free` returns valid probabilities summing to ~1.0
-- [ ] `/predict/free` returns 422 for invalid team names
-- [ ] `/predict/free` returns 503 when model is not loaded
-- [ ] `/models/free-tier/info` returns training metadata
-- [ ] Existing `/predict` endpoint (full Oracle) is completely unchanged
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `/predict/free` returns valid probabilities summing to ~1.0
+- [x] `/predict/free` returns 422 for invalid team names
+- [x] `/predict/free` returns 503 when model is not loaded
+- [x] `/models/free-tier/info` returns training metadata
+- [x] Existing `/predict` endpoint (full Oracle) is completely unchanged
 
 ---
 
@@ -242,11 +250,13 @@ When loading the model file at startup, validate that it contains the expected m
 
 **Acceptance criteria:**
 
-- [ ] `backend/.env` added to `.gitignore`
-- [ ] Invalid team names return 422, not 500
-- [ ] Error responses contain no stack traces or internal paths
-- [ ] Rate limiting returns 429 after 60 requests/minute from the same IP
-- [ ] Malformed model file causes startup failure with clear error message
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `backend/.env` added to `.gitignore`
+- [x] Invalid team names return 422, not 500
+- [x] Error responses contain no stack traces or internal paths
+- [ ] Rate limiting returns 429 after 60 requests/minute from the same IP — **BROKEN:** `client_ip` always `"unknown"` (all clients share one bucket). Tracked in P5a.
+- [x] Malformed model file causes startup failure with clear error message
 
 ---
 
@@ -279,10 +289,12 @@ The backend currently has 0% test coverage. The free-tier model introduces the f
 
 **Acceptance criteria:**
 
-- [ ] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v`
-- [ ] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v`
-- [ ] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v`
-- [ ] Tests run in CI without requiring a Football-Data.org API key
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v` (39 tests)
+- [x] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v` (12 tests)
+- [x] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v` (11 tests)
+- [x] Tests run in CI without requiring a Football-Data.org API key
 
 ---
 
