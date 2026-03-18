@@ -544,8 +544,8 @@ describe('BetBuilderPredictor', () => {
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       expect(result.cleanSheets.bothCleanSheets.probability).toBeCloseTo(0.15, 2);
-      // bothCleanSheets.prediction is always false (hardcoded)
-      expect(result.cleanSheets.bothCleanSheets.prediction).toBe(false);
+      // bothCleanSheets.prediction is true when P(0-0) > 0.08 (league average ~7-8%)
+      expect(result.cleanSheets.bothCleanSheets.prediction).toBe(true);
     });
 
     it('should handle missing 0-0 score gracefully', async () => {

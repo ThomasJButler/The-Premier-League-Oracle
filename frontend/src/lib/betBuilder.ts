@@ -342,7 +342,7 @@ export class BetBuilderPredictor {
     return {
       homeCleanSheet: { prediction: homeCleanSheet > 0.3, probability: homeCleanSheet },
       awayCleanSheet: { prediction: awayCleanSheet > 0.3, probability: awayCleanSheet },
-      bothCleanSheets: { prediction: false, probability: bothCleanSheets }
+      bothCleanSheets: { prediction: bothCleanSheets > 0.08, probability: bothCleanSheets }
     };
   }
   
@@ -403,9 +403,16 @@ export class BetBuilderPredictor {
       const favTeam = matchResult.homeWinProb > matchResult.awayWinProb ? homeTeam : awayTeam;
       const favProb = Math.max(matchResult.homeWinProb, matchResult.awayWinProb);
       
-      const aggressiveOdds = (1 / favProb) * 
-                             (1 / 0.3) * // Win to nil is roughly 30% when team wins
-                             (1 / corners.totalOver95.probability) * 
+      // Win-to-nil = P(team wins) × P(team keeps clean sheet | team wins)
+      // Approximate as favProb × favCleanSheet, clamped to a reasonable range
+      const favCleanSheet = matchResult.homeWinProb > matchResult.awayWinProb
+        ? cleanSheets.homeCleanSheet.probability
+        : cleanSheets.awayCleanSheet.probability;
+      const winToNilProb = Math.max(0.05, favProb * favCleanSheet);
+
+      const aggressiveOdds = (1 / favProb) *
+                             (1 / winToNilProb) *
+                             (1 / corners.totalOver95.probability) *
                              (1 / cards.totalOver35.probability) * 1.2;
       
       combos.push({

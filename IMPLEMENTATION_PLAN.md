@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P2d IndexedDB cache tests)
+Last updated: 18 March 2026 (betBuilder stub fixes)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -546,9 +546,9 @@ All feature specifications in `specs/`:
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | P4d |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | P4d |
 | `betBuilder.ts` | Combo confidence values (0.65, 0.45, 0.25, 0.40) hardcoded | P4d |
-| `betBuilder.ts` | `bothCleanSheets: { prediction: false }` unconditional | P4d |
+| ~~`betBuilder.ts`~~ | ~~`bothCleanSheets: { prediction: false }` unconditional~~ **FIXED** — now `bothCleanSheets > 0.08` (PL 0-0 average ~7-8%) | ~~P4d~~ |
 | `betBuilder.ts` | `'Over 1.5 first half goals'` probability hardcoded as `0.35` | P4d |
-| `betBuilder.ts` | `'win to nil'` probability hardcoded as `0.30` | P4d |
+| ~~`betBuilder.ts`~~ | ~~`'win to nil'` probability hardcoded as `0.30`~~ **FIXED** — now derived from `favProb × favCleanSheet` (clamped ≥ 0.05) | ~~P4d~~ |
 | ~~`Header.svelte:140-141`~~ | ~~Hardcoded "Tom Butler" / "tom@example.com"~~ | ~~P4a~~ REMOVED — Header rewritten, no user info present |
 | ~~`Header.svelte:102`~~ | ~~Hardcoded "3 new predictions available"~~ | ~~P4a~~ REMOVED — Header rewritten, no notification badge present |
 | ~~`App.svelte:96-100`~~ | ~~`Math.random()` star particles~~ | ~~P4a~~ REMOVED — App rewritten, no star particles present |
