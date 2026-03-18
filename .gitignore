@@ -40,3 +40,4 @@ loop.sh
 /spreadsheets
 *.pyc
 urgenttodo.txt
+/backend/spreadsheets
