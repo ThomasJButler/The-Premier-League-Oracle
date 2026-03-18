@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 22 March 2026 (P3f LiveService DONE. Test count 351/22. Next: P3g AI Analysis.)
+Last updated: 22 March 2026 (P3g AI Analysis DONE. Test count 375/23. Next: P4 polish or P3-Free ML.)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -574,15 +574,18 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] 14 liveService tests + 9 LiveMatches component tests (23 new tests total)
 - [x] Fixed UX bug: auto-switch from empty Live tab now fires once on load only (not on every reactive cycle)
 
-### P3g. AI Match Analysis
+### P3g. AI Match Analysis — DONE (22 March 2026)
 
 **New file:** `frontend/src/services/aiAnalysis.ts`
 
-- [ ] `AIAnalysisService` — takes `MatchPrediction`, returns natural language analysis
-- [ ] User configures OpenAI/Anthropic key in Settings
-- [ ] Supplementary only — does NOT modify numerical probabilities
-- [ ] 24h cache per match
-- [ ] Feed analysis context into ChatBot system prompt for richer responses
+- [x] `AIAnalysisService` — takes `AnalysisInput` (prediction data), returns natural language analysis via `/api/chat` proxy
+- [x] User configures OpenAI key in Settings (reuses existing key) + server-side key probe
+- [x] Supplementary only — does NOT modify numerical probabilities
+- [x] 24h localStorage cache per match with eviction strategy
+- [x] Feed analysis context into ChatBot system prompt for richer responses
+- [x] Settings toggle with API key status indicator and cache clear button
+- [x] Predictions card lazy-loads AI analysis on flip (violet/purple gradient display)
+- [x] 24 unit tests (service methods, caching, API key detection, error handling)
 
 ---
 
@@ -792,7 +795,7 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~65% — ELO dynamic + persistence + auto-update wired (P2k DONE), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); no AI analysis (P3g), confidence calibration rudimentary |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~75% — ELO dynamic + persistence + auto-update wired (P2k DONE), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); AI analysis DONE (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~70% — backendService DONE (P2b), ML ensemble integration DONE (P3e), Settings UI DONE (P2c), WebSocket DONE (P3f); missing: real-time prediction streaming, model comparison UI |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); bet storage pipeline wired (P1i — KellyCalculator + ValueBets → betHistoryService → BettingHistory); betHistoryService resolution bugs fixed (P1g) |
@@ -996,7 +999,7 @@ All feature specifications in `specs/`:
 |------|---------|----------|
 | `frontend/src/services/backendService.ts` | Frontend-backend bridge | P2b — DONE |
 | `frontend/src/services/liveService.ts` | WebSocket live data | P3f — DONE |
-| `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g |
+| `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g — DONE |
 | `backend/app/features/free_tier_features.py` | Free-tier feature engineer (~83 features) | P3-Free |
 | `backend/train_free_tier.py` | Free-tier training pipeline | P3-Free |
 | `backend/tests/test_free_tier_*.py` | Free-tier tests (features, training, API) | P3-Free |

@@ -111,12 +111,12 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
-- Frontend has 351 Vitest tests across 22 test files, all passing (was 335 — 16 added: 14 liveService, 9 LiveMatches rewrite, minus 7 old LiveMatches tests)
+- Frontend has 375 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
 - ~~`predictions.ts` was entirely dead at runtime~~ **REMOVED:** module and 11 misleading tests deleted. Production model is `optimizedPredictions.ts`
-- ~~3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)~~ **backendService + liveService DONE:** 1 service file remains: aiAnalysis
+- ~~3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)~~ **ALL DONE:** backendService (P2b), liveService (P3f), aiAnalysis (P3g) all created
 - ~~`ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab)~~ **FIXED:** Created `api/chat.ts` Vercel Edge Function that proxies OpenAI calls. ChatBot calls `/api/chat` instead. Vite dev middleware provides local proxy. `OPENAI_API_KEY` env var enables server-side key (users skip key setup)
 - Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
 - `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"

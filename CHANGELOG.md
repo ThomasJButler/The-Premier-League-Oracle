@@ -4,6 +4,17 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P3g: AI Match Analysis (22 March 2026)
+- **`aiAnalysis.ts` created:** Singleton `AIAnalysisService` that generates natural language match analysis via the existing `/api/chat` OpenAI proxy. Takes `AnalysisInput` (prediction data, form, insights) and returns a 150–200 word football expert narrative. Supplementary display only — does NOT modify numerical prediction probabilities
+- **24h localStorage cache:** Each analysis cached per match ID with TTL eviction. Evicts oldest half of entries when storage is full. `getCachedAnalysis()`, `getRecentAnalyses()`, `clearCache()` public methods
+- **Server-side key detection:** Probes `/api/chat` with empty messages to detect server-configured `OPENAI_API_KEY`. Caches probe result in memory (session) and localStorage (1 hour). Falls back to user-provided key from Settings
+- **Settings.svelte integration:** New "AI Match Analysis" section with toggle switch, API key availability indicator (green/amber), and "Clear AI Cache" button. Uses existing OpenAI API key from ChatBot configuration
+- **Predictions.svelte integration:** AI analysis lazy-loads when user flips a prediction card to the back face. Violet/purple gradient display panel with loading spinner and error states. Does not block the prediction workflow
+- **ChatBot.svelte enrichment:** `buildSystemPrompt()` now fetches up to 3 recent AI analyses and appends match summaries to the system context, giving the chatbot awareness of previously generated insights
+- **24 new tests:** `aiAnalysis.test.ts` covers isEnabled/setEnabled (3), hasApiKey with server probe (4), getAnalysis with cache/fetch/errors (7), getCachedAnalysis with TTL/corruption (4), getRecentAnalyses with sorting/expiry/limits (4), clearCache (1), invalidateServerKeyCache (1). Map-backed localStorage mock for round-trip storage testing
+- **Settings.test.ts fix:** Disambiguated `getByRole('switch')` selectors to use `{ name: 'Use ML backend' }` after adding the second toggle switch
+- **Test count:** 351 → 375 tests across 23 files. All passing. 0 type errors
+
 ### P3f: LiveService with WebSocket (22 March 2026)
 - **`liveService.ts` created:** Centralised singleton service that owns all live match data fetching, eliminating duplicate API calls between `LiveMatches.svelte` and `LiveTicker.svelte`. Exports five Svelte stores (`liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches` derived, `pollLabel`) and a `liveService` singleton with `start()`, `stop()`, `refresh()`, `isRunning()`, `isWebSocketConnected()` methods
 - **Adaptive polling:** Three-tier intervals — 30s when matches are live, 5min on match days with no live games, 30min when idle. Consecutive-empty-poll backoff (3 empty polls → idle rate). Poll interval re-evaluated after each fetch cycle
