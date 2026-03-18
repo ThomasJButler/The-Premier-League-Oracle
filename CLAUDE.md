@@ -109,7 +109,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
-- Frontend has 364 Vitest tests across 21 test files, all passing
+- Frontend has 328 Vitest tests across 21 test files, all passing (was 364 — 36 removed: 34 for dead code, 2 tautological)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -149,7 +149,7 @@ These specs are the single source of truth for requirements.
 - ~~`footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded~~ **FIXED:** now parses response body to distinguish rate-limit from auth failure
 - ~~`BacktestRunner` makes ~1,140+ sequential API calls~~ **FIXED:** `predictMatch()` now uses `historicalMatches` directly when provided — 0 `dataService` calls per match in backtest mode (was 6 per match). Normal live predictions unchanged
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
-- `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
+- ~~`package.json` version is `0.0.0` — never updated to reflect project version (v3.0)~~ **FIXED:** version set to `3.0.0`
 - ~~`DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed~~ **FIXED:** `dompurify` and `@types/dompurify` now installed and used in ChatBot.svelte
 - ~~`frontend/src/lib/utils.ts` does NOT exist~~ **FIXED:** `$lib/utils.ts` created with standard `cn()` utility (`clsx` + `tailwind-merge`). shadcn-svelte components can now import `cn()` correctly
 - ~~`dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content~~ **FIXED:** cache key now uses match IDs as fingerprint

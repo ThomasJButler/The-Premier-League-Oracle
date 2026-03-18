@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (fifth planning audit — ~11 new findings across 8 parallel agents; shadcn utils missing, cache key bug, test quality regressions, backend dep gaps, font loading correction)
+Last updated: 19 March 2026 (cleanup pass — P4f dead code removed, P4g docs updated, P4h test quality fixes applied, test count corrected to 328)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -665,12 +665,15 @@ Priority features to implement with real data:
 - [x] ~~`MatchList.svelte`: remove dead imports `Check`, `Calendar`~~ **DONE**
 - [x] ~~`BettingHistory.svelte`: remove dead `<style global>` block (6 unreferenced CSS classes)~~ **DONE**
 - [ ] Extract `getSeasonLabel()` to shared utility — duplicated in StandingsTable, TopScorers, SeasonStats
-- [ ] `footballData.ts`: `getTeamSquad()`, `getPlayer()`, `getTeam()`, `getRecentResults()` are never called — remove or keep for future use
-- [ ] `dataService.ts`: `getStatus()` and `getDataSourceStatus()` are never called — remove dead methods
+- [x] `footballData.ts`: `getTeamSquad()`, `getPlayer()`, `getTeam()`, `getRecentResults()`, `getHeadToHead()` removed (dead code)
+- [x] `footballData.ts`: dead type exports `FDSquadMember`, `FDPlayer`, `FootballDataConfig` removed
+- [x] `dataService.ts`: `getStatus()`, `getDataSourceStatus()`, `getPredictionAccuracy()`, `getTeamRecentMatches()`, `setCacheTimeout()`, `disableCache()`, `enableCache()` removed
 - [ ] `dataService.ts`: `refreshApiConfiguration` is a stub alias for `checkDataSources` — should call `refreshDataSources` instead
 - [ ] `predictions.ts`: entire module is dead at runtime — zero imports from any component. Has 11 tests but produces no output in production. Consider deprecating or removing
-- [ ] `kelly.ts`: multiple dead exports — `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` are never called. `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
-- [ ] `value.ts`: `OddsProvider` interface defined but never implemented; `calculateCLV` always returns `betId: ''`
+- [x] `kelly.ts`: dead exports `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` removed
+- [ ] `kelly.ts`: `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
+- [x] `value.ts`: `OddsProvider` interface, `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` removed
+- [ ] `value.ts`: `calculateCLV` returns `betId: ''` (stub) — any remaining CLV usage needs proper bet tracking
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
 - [ ] `advancedPredictions.ts`: `dataService.getMatches()` called 3× per prediction — once in `FatigueAnalyzer` and twice in `predictMatch`. Fetch once at the start of `predictMatch` and pass the array to helper methods.
 - [ ] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with slightly different signatures — maintenance risk
@@ -685,18 +688,16 @@ Priority features to implement with real data:
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
 - [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
 - [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
-- [ ] `value.ts`: `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` — 4 static methods never called from any component
-- [ ] `dataService.ts`: additional dead public methods beyond already-listed: `getPredictionAccuracy()`, `setCacheTimeout()`, `disableCache()`, `enableCache()`, `refreshDataSources()` — none called from any component
+- [ ] `dataService.ts`: `refreshDataSources()` — still present, none called from any component
 - [ ] `footballData.ts:383`: `|| null` on odds fields instead of `?? null` — semantically wrong for `0` values (harmless in practice since odds can't be 0)
 - [ ] `ApiSetupWizard.svelte`: commented-out debug notes at lines 33, 44, 52–53 — stale test comments to clean up
 - [ ] `optimizedPredictions.ts`: `form: '?????' ` field in `getEnhancedTeamStats()` fallback is dead output — never read by anything
 - [ ] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore(form, isHome)` has unused `isHome` parameter — vestigial
 - [ ] `optimizedPredictions.ts`: `getTopOutcome()` duplicates `determinePrediction()` logic — one is redundant
-- [ ] `footballData.ts`: `getRecentResults()` is an unused duplicate of `getRecentMatches()` — never imported outside tests
-- [ ] `footballData.ts`: `getTeamByName()`, `getHeadToHead()`, exported types `FDSquadMember`, `FDPlayer`, `FootballDataConfig` — all dead (never imported outside this file)
+- [ ] `footballData.ts`: `getTeamByName()` — still present, never imported outside this file
 - [ ] `MatchList.svelte`: season selector UI is fetched (`loadSeasons()`) but has no `<select>` in the template — dead code path
-- [ ] `value.ts`: `calculateSharpeRatio()` divides by zero silently for empty arrays — returns `NaN`
-- [ ] `value.ts`: `calculatePerformanceMetrics()` divides by `totalBets`/`totalStaked` with no guard for empty input — returns `NaN` across all fields
+- [x] `value.ts`: `calculateSharpeRatio()` — removed (dead function, see P4f)
+- [x] `value.ts`: `calculatePerformanceMetrics()` — removed (dead function, see P4f)
 - [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
 - [x] ~~`Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template~~ **DONE**
 - [x] ~~`KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template~~ **DONE**
@@ -704,23 +705,23 @@ Priority features to implement with real data:
 - [ ] `advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance when no `eloSystem` is passed — diverges from singleton pattern, reads localStorage independently
 - [ ] `BettingHistory.svelte`: `<style global>` defines 5 CSS classes (`.shadow-glow-success-sm`, `.shadow-glow-success-md`, `.shadow-glow-error-sm`, `.shadow-glow-error-md`, `.th`, `.td`) never referenced in template
 
-### P4h. Test Quality Improvements — NEW (19 March 2026)
+### P4h. Test Quality Improvements — PARTIAL (19 March 2026)
 
-Test suite has 364 passing tests but several are structurally unable to catch regressions:
+Test suite has 328 passing tests (was 364; 36 removed for dead functions and tautological assertions). Several structural issues remain:
 
 **Conditional assertions that silently pass without asserting:**
 
 - [x] ~~`value.test.ts` — 6 assertion blocks wrapped in `if (homeBet)` / `if (awayBet)` / `if (result.length > 0)` guards~~ **FIXED:** All 9 conditional blocks converted to unconditional `expect(x).toBeDefined()` guards. Sorting test updated to produce multiple value bets (1X2 + goals markets) so sorting is actually exercised
-- [ ] `kelly.test.ts:240` — arbitrage stakes assertions guarded by `if (result.isArbitrage)`. If detection is broken, test trivially passes
+- [x] `kelly.test.ts:240` — arbitrage test removed (was in the dead detectArbitrage tests removed in P4f)
 
 **Tautological tests that cannot fail:**
 
 - [x] ~~`types.test.ts` — 16 tests assert `expect(x.field).toBe(value)` where `value` is what was just assigned~~ **FIXED:** Reduced from 18 tests to 4 — kept only consistency validation tests (home+away=total, points formula, goal difference formula, form string regex). Removed 14 tautological tests that TypeScript already guarantees
-- [ ] `footballData.test.ts` — "Data Transformation" describe block re-implements result-determination and team-name-normalisation logic inline instead of testing the actual `FootballDataAPI` functions. Would pass even if `transformMatch` were deleted
+- [x] `footballData.test.ts` — "Data Transformation" describe block removed (2 tautological tests)
 
 **Tests that can never fail:**
 
-- [ ] `dataService.test.ts:190-200` — error test wraps assertion in `try/catch` that accepts both `[]` return and thrown error — passes regardless of implementation behaviour
+- [x] `dataService.test.ts:190-200` — error test fixed (was try/catch that always passed, now properly asserts thrown error)
 
 **Other quality issues:**
 
@@ -731,24 +732,22 @@ Test suite has 364 passing tests but several are structurally unable to catch re
 **Tests encoding known bugs as correct (fifth audit):**
 
 - [x] ~~`backtest.test.ts:156-174` — encodes Kelly 1.05 inflation bug~~ — **No longer applicable.** The P1l Kelly fix changed `KellyCalculator.loadSuggestions()` to use `prediction.confidence` as `ourProbability` (not derive it from odds). `backtest.ts:extractProbabilities()` is a separate codepath that correctly reverses the `VALUE_ODDS_MARGIN = 1.05` to recover the model's true probability. The test at 0.525 remains correct for backtesting purposes
-- [ ] `advancedPredictions.test.ts:544-549` — value bet assertion wrapped in `if (prediction.valueBets.length > 0)` guard. If value bet detection breaks to return empty arrays, the test passes silently with zero assertions
+- [x] `advancedPredictions.test.ts:544-549` — value bet assertion strengthened (validates array structure unconditionally)
 
 ### P4g. Documentation Cleanup — NEW (18 March 2026)
 
 Stale documentation and broken links discovered in the 8-agent audit:
 
-- [ ] `README.md`: version badge says `v2.0` (should be v3.0); install instructions wrong (`npm install` at root — should be `cd frontend && npm install`); dead links to `docs/` directory; stale "Future Enhancements" lists dark mode and IndexedDB as future (both implemented); omits Python backend entirely
-- [ ] `backend/README.md`: broken links to `JUPYTER_GUIDE.md` and `TRAINING_GUIDE.md` (both deleted on v2.0-Development branch)
+- [x] `README.md`: rewritten — version v3.0, correct clone URL (ThomasJButler), proper install instructions (cd frontend), current features, dead docs/ links removed, stale v2.0 section removed
+- [x] `backend/README.md`: broken links to JUPYTER_GUIDE.md, TRAINING_GUIDE.md, and docs/FOR_BEGINNERS.md removed; test count updated
 - [ ] `backend/docs/FOR_BEGINNERS.md`: broken links to `tutorials/01_first_prediction.py` etc. (directory doesn't exist); claims "68-72% accuracy" for untrained models
-- [ ] `specs/01-prediction-engine.md`: claims `backtest.ts` doesn't exist (it does, created P2f)
-- [ ] `specs/03-backend-integration.md`: top note says backend won't start due to broken imports (P0a fixed this)
-- [ ] `specs/07-ui-ux.md`: says shadcn not initialised (it is — `components.json` exists); dark mode fix described as needed (done in P1b)
+- [x] `specs/01-prediction-engine.md`: marked ELO auto-update and backtest runner as DONE
+- [x] `specs/03-backend-integration.md`: updated backend startup note
+- [x] `specs/07-ui-ux.md`: marked shadcn-svelte as initialised
 - [ ] `specs/02-data-pipeline.md`: Supabase removal checklist items all done but still unchecked
 - [x] `.gitignore`: `backend/.env` — DONE (confirmed present on line 14)
-- [ ] `frontend/package.json`: version is `0.0.0` — should reflect project version (git tags at `v0.0.7`, project is v3.0)
+- [x] `frontend/package.json`: version `0.0.0` → `3.0.0`
 - [ ] No `backend/.dockerignore` — test files, docs, spreadsheets (~100MB+ CSVs), and `chroma_db/` all included in Docker build context unnecessarily
-- [ ] `README.md`: clone URL uses `yourusername` placeholder instead of `ThomasJButler`
-- [ ] `README.md`: "Recent Updates (v2.0)" section describes already-implemented features; "Future Enhancements" lists dark mode and Kelly calculator as future (both done)
 
 ---
 
@@ -895,12 +894,12 @@ All feature specifications in `specs/`:
 | File | Tests | Status |
 |------|-------|--------|
 | `betBuilder.test.ts` | 40 | Passing |
-| `value.test.ts` | 38 | Passing |
+| `value.test.ts` | 17 | Passing |
 | `advancedPredictions.test.ts` | 28 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
-| `footballData.test.ts` | 26 | Passing |
-| `kelly.test.ts` | 20 | Passing |
-| `types.test.ts` | 18 | Passing |
+| `footballData.test.ts` | 23 | Passing |
+| `kelly.test.ts` | 13 | Passing |
+| `types.test.ts` | 4 | Passing |
 | `predictionTracker.test.ts` | 18 | Passing |
 | `ChatBot.test.ts` | 18 | Passing |
 | `Predictions.test.ts` | 17 | Passing |
@@ -910,29 +909,30 @@ All feature specifications in `specs/`:
 | `Dashboard.test.ts` | 12 | Passing |
 | `optimizedPredictions.test.ts` | 12 | Passing |
 | `ValueBets.test.ts` | 12 | Passing |
-| `dataService.cache.test.ts` | 11 | Passing |
+| `dataService.cache.test.ts` | 8 | Passing |
 | `predictions.test.ts` | 11 | Passing |
-| `dataService.test.ts` | 10 | Passing |
+| `dataService.test.ts` | 8 | Passing |
 | `Settings.test.ts` | 8 | Passing |
 | `LiveMatches.test.ts` | 7 | Passing |
-| **Total** | **378** | **All passing** |
+| **Total** | **328** | **All passing** |
 
 **Known test quality issues:**
-- `types.test.ts`: 18 tests validate the dead `Prediction` type interface with trivial `expect(x).toBe(x)` assertions
-- `dataService.test.ts`: "should return empty array on error" test can never fail (try/catch passes both ways)
-- `footballData.test.ts`: normalisation test re-implements logic inline instead of testing the actual function
+- `types.test.ts`: reduced from 18 to 4 tests — tautological assertions removed (P4h DONE)
+- `dataService.test.ts`: error test fixed to properly assert thrown error (P4h DONE)
+- `footballData.test.ts`: "Data Transformation" describe block removed (P4h DONE)
+- `value.test.ts`: reduced from 38 to 17 tests — dead function tests and conditional assertions removed (P4f + P4h DONE)
+- `kelly.test.ts`: reduced from 20 to 13 tests — dead function tests removed including guarded arbitrage test (P4f + P4h DONE)
 - Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed
 - `dashboard.spec.ts` E2E uses `click({ force: true })` to bypass mobile nav overlap — hides a real layout bug
-- `value.test.ts`: 3 warning tests wrap assertions in `if (homeBet)` guards — silently pass without asserting if no value bet is identified
 - `predictions.test.ts`: form trend test replicates the algorithm inline rather than testing the actual `analyzeFormTrend` function (not exported) — cannot detect bugs in the real implementation
 - `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
 - ~~`betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats~~ **CORRECTED (third audit):** rivalry check now works correctly via `normaliseTeamName()`. Tests are valid.
 - `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
 - ~~`value.test.ts`: 6 conditional assertions wrapped in `if` guards~~ **FIXED (P4h)**
-- `kelly.test.ts:240`: arbitrage assertions guarded by `if (result.isArbitrage)` — trivially passes if detection broken
-- `types.test.ts`: 16 tautological tests that assert `x.field === value` where `value` was just assigned — cannot fail
-- `dataService.test.ts:190-200`: error test uses try/catch that passes regardless of implementation behaviour
-- `footballData.test.ts`: "Data Transformation" block re-implements logic inline rather than testing actual functions
+- ~~`kelly.test.ts:240`: arbitrage assertions guarded by `if (result.isArbitrage)`~~ **FIXED (P4h) — test removed with dead function**
+- ~~`types.test.ts`: 16 tautological tests~~ **FIXED (P4h)**
+- ~~`dataService.test.ts:190-200`: error test uses try/catch that passes regardless of implementation behaviour~~ **FIXED (P4h)**
+- ~~`footballData.test.ts`: "Data Transformation" block re-implements logic inline~~ **FIXED (P4h)**
 
 **Untested components (10):** SeasonStats, StandingsTable, TopScorers, Help, App, ApiSetupWizard, MatchList, LiveTicker, MobileNav, Sidebar
 

@@ -4,6 +4,19 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4g + P4f + P4h — Documentation, Dead Code, and Test Quality Cleanup (19 March 2026)
+- **README.md rewritten:** Version badge v2.0 → v3.0, clone URL fixed (ThomasJButler), install instructions corrected (`cd frontend && npm install`), current feature list (prediction engine, live matches, betting intelligence, backtesting, dark mode), dead `docs/` links removed, stale "Future Enhancements" and "Recent Updates (v2.0)" sections removed
+- **backend/README.md:** Broken links to deleted JUPYTER_GUIDE.md, TRAINING_GUIDE.md, and docs/FOR_BEGINNERS.md removed; test count updated to 364→328
+- **frontend/package.json:** Version `0.0.0` → `3.0.0`
+- **Spec updates:** specs/01 (ELO auto-update + backtest marked DONE), specs/02 (Supabase removal DONE, proxy status clarified), specs/03 (backend startup note updated), specs/07 (shadcn marked as initialised)
+- **904 lines of dead code removed** across 9 files:
+  - `footballData.ts`: getTeamSquad, getPlayer, getTeam, getRecentResults, getHeadToHead, dead type exports
+  - `kelly.ts`: decimalToFractional, requiredWinRate, calculateMultiple, calculateArbitrage, detectArbitrage, formatPercentage, breakEvenOdds
+  - `value.ts`: calculateCLV, findArbitrage, calculateSharpeRatio, calculatePerformanceMetrics, OddsProvider interface
+  - `dataService.ts`: getStatus, getDataSourceStatus, getPredictionAccuracy, getTeamRecentMatches, setCacheTimeout, disableCache, enableCache
+- **Test quality fixes:** Removed 2 tautological "Data Transformation" tests from footballData, fixed try/catch-that-always-passes in dataService standings test, strengthened value bet assertions in advancedPredictions, removed 34 tests for dead functions
+- **Test count:** 364 → 328 (36 tests removed — 34 for dead code, 2 tautological)
+
 ### P4c (partial, round 2) — Help and Wizard Copy Accuracy (19 March 2026)
 - **Help.svelte "Live Standings" mislabel:** Dashboard section renamed from "📊 Live Standings" to "📊 Overview Stats" with accurate description of what Dashboard actually shows (accuracy, recent results, performance)
 - **"AI-powered" claims corrected:** Help.svelte and ApiSetupWizard.svelte both referenced "AI-powered predictions" — changed to "model-driven" / "data-driven" / "statistical" since predictions come from the TypeScript ensemble (ELO + Poisson + form), not AI/ML
