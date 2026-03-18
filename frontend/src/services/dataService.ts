@@ -113,22 +113,6 @@ class DataService {
   
 
 
-  // Public API for checking data source status
-  public getDataSourceStatus() {
-    return {
-      api: this.apiSource.available,
-      usingAPI: this.apiSource.available
-    };
-  }
-
-  // Get overall service status
-  public getStatus() {
-    return {
-      primarySource: this.apiSource,
-      fallbackSource: { type: 'none', available: false }
-    };
-  }
-  
   // Cache management
   private async getCachedData<T>(storeName: string, key: string, ttlMs?: number): Promise<T | null> {
     if (!this.useCache || !this.cacheDb) return null;
@@ -471,37 +455,6 @@ class DataService {
     await this.readyPromise;
   }
 
-  // Get prediction accuracy for a season
-  // seasonId is "2024-2025" or "2024/25" — extracts start year, filters predictions
-  // whose matchDate falls within that season (Aug startYear to Jul startYear+1)
-  public async getPredictionAccuracy(seasonId: string): Promise<{ total: number; correct: number; accuracy: number; }> {
-    // Extract start year from seasonId (e.g. "2025" from "2025-2026" or "2025/26")
-    const yearMatch = seasonId.match(/^(\d{4})/);
-    const allPredictions = predictionTracker.getRecentPredictions(10000);
-    const resolved = allPredictions.filter(p => p.actualResult !== undefined);
-
-    let filtered = resolved;
-    if (yearMatch) {
-      const startYear = parseInt(yearMatch[1], 10);
-      // PL season: August of startYear to July of startYear+1
-      const seasonStart = new Date(startYear, 7, 1); // 1 Aug
-      const seasonEnd = new Date(startYear + 1, 7, 1); // 1 Aug next year (exclusive)
-
-      filtered = resolved.filter(p => {
-        const d = new Date(p.matchDate);
-        return d >= seasonStart && d < seasonEnd;
-      });
-    }
-
-    const total = filtered.length;
-    const correct = filtered.filter(p => p.isCorrect).length;
-    return {
-      total,
-      correct,
-      accuracy: total > 0 ? correct / total : 0
-    };
-  }
-
   // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
   public async getLiveMatches(): Promise<Match[]> {
     await this.ensureReady();
@@ -549,30 +502,6 @@ class DataService {
         return matches;
       } catch (error) {
         // Error fetching historical matches
-      }
-    }
-
-    return [];
-  }
-
-  // Get a team's recent finished matches — 30min cache
-  public async getTeamRecentMatches(teamId: number, limit: number = 5): Promise<Match[]> {
-    await this.ensureReady();
-    const cacheKey = `team_recent_${teamId}_${limit}`;
-    const TEAM_RECENT_TTL = 30 * 60 * 1000;
-
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey, TEAM_RECENT_TTL);
-    if (cached) return cached;
-
-    if (this.apiSource.available) {
-      try {
-        const matches = await this.getActiveApi().getTeamMatches(teamId, limit);
-        if (matches.length > 0) {
-          await this.setCachedData('matches', cacheKey, matches);
-        }
-        return matches;
-      } catch (error) {
-        // Error fetching team recent matches
       }
     }
 
@@ -644,17 +573,6 @@ class DataService {
     // doesn't have to re-enter it after a simple cache flush.
   }
   
-  public setCacheTimeout(minutes: number): void {
-    this.cacheTimeout = minutes * 60 * 1000;
-  }
-  
-  public disableCache(): void {
-    this.useCache = false;
-  }
-  
-  public enableCache(): void {
-    this.useCache = true;
-  }
 }
 
 // Export singleton instance

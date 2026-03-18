@@ -120,9 +120,7 @@ describe('DataService IndexedDB Cache', () => {
     const mod = await import('./dataService');
     dataService = mod.dataService;
 
-    // Wait for the initial readyPromise by calling a public method
-    // getDataSourceStatus is sync and doesn't need ensureReady,
-    // but getMatches does — force readyPromise to settle
+    // Wait for the initial readyPromise to settle before tests run
     await dataService.getMatches();
   });
 
@@ -151,9 +149,6 @@ describe('DataService IndexedDB Cache', () => {
     mockApi.hasApiKey.mockReturnValue(true);
     await dataService.refreshDataSources();
 
-    // Re-enable cache in case a previous test disabled it
-    dataService.enableCache();
-    dataService.setCacheTimeout(5); // 5 minutes default
   });
 
   it('creates IndexedDB object stores on first open', async () => {
@@ -228,48 +223,6 @@ describe('DataService IndexedDB Cache', () => {
     await dataService.getStandings();
     expect(mockApi.getAllMatches).toHaveBeenCalledTimes(2);
     expect(mockApi.getStandings).toHaveBeenCalledTimes(2);
-  });
-
-  it('disableCache forces every call through to the API', async () => {
-    dataService.disableCache();
-
-    await dataService.getMatches();
-    await dataService.getMatches();
-    expect(mockApi.getAllMatches).toHaveBeenCalledTimes(2);
-
-    dataService.enableCache();
-  });
-
-  it('enableCache restores caching after it was disabled', async () => {
-    dataService.disableCache();
-    await dataService.getMatches();
-    expect(mockApi.getAllMatches).toHaveBeenCalledTimes(1);
-
-    dataService.enableCache();
-    await dataService.getMatches(); // miss — cache was off when data arrived
-    expect(mockApi.getAllMatches).toHaveBeenCalledTimes(2);
-
-    await dataService.getMatches(); // hit — cache now active
-    expect(mockApi.getAllMatches).toHaveBeenCalledTimes(2);
-  });
-
-  it('setCacheTimeout controls expiry duration', async () => {
-    dataService.setCacheTimeout(1); // 1 minute
-
-    await dataService.getMatches();
-    expect(mockApi.getAllMatches).toHaveBeenCalledTimes(1);
-
-    // Advance 90 seconds — past 1-minute timeout
-    const realDateNow = Date.now;
-    Date.now = () => realDateNow() + 90 * 1000;
-
-    try {
-      await dataService.getMatches();
-      expect(mockApi.getAllMatches).toHaveBeenCalledTimes(2);
-    } finally {
-      Date.now = realDateNow;
-      dataService.setCacheTimeout(5);
-    }
   });
 
   it('uses separate cache keys for different match query types', async () => {

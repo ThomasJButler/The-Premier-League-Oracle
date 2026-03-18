@@ -226,26 +226,4 @@ describe('DataService', () => {
     });
   });
 
-  describe('Data source management', () => {
-    it('should get current status', () => {
-      const status = dataService.getStatus();
-
-      expect(status).toHaveProperty('primarySource');
-      expect(status).toHaveProperty('fallbackSource');
-      expect(status.primarySource).toHaveProperty('type');
-      expect(status.primarySource).toHaveProperty('available');
-    });
-  });
-
-  describe('Prediction accuracy', () => {
-    it('should return prediction accuracy', async () => {
-      const accuracy = await dataService.getPredictionAccuracy('2024');
-
-      expect(accuracy).toHaveProperty('total');
-      expect(accuracy).toHaveProperty('correct');
-      expect(accuracy).toHaveProperty('accuracy');
-      expect(accuracy.accuracy).toBeGreaterThanOrEqual(0);
-      expect(accuracy.accuracy).toBeLessThanOrEqual(1);
-    });
-  });
 });

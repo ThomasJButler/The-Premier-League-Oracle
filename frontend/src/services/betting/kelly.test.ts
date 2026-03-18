@@ -134,57 +134,6 @@ describe('KellyCalculator', () => {
     });
   });
 
-  describe('calculateMultiple', () => {
-    it('should handle multiple betting opportunities', () => {
-      const opportunities: BettingOpportunity[] = [
-        {
-          outcome: 'Bet 1',
-          ourProbability: 0.6,
-          bookmakerOdds: 2.0,
-          bankroll: 1000
-        },
-        {
-          outcome: 'Bet 2',
-          ourProbability: 0.55,
-          bookmakerOdds: 2.5,
-          bankroll: 1000
-        }
-      ];
-
-      const results = KellyCalculator.calculateMultiple(opportunities, 0.25);
-
-      expect(results).toHaveLength(1);
-      expect(results[0].allocations).toHaveLength(2);
-      expect(results[0].totalStake).toBeLessThanOrEqual(250);
-      results[0].allocations.forEach(allocation => {
-        expect(allocation.stake).toBeGreaterThanOrEqual(0);
-      });
-    });
-
-    it('should distribute bankroll proportionally', () => {
-      const opportunities: BettingOpportunity[] = [
-        {
-          outcome: 'Strong Bet',
-          ourProbability: 0.7,
-          bookmakerOdds: 2.0,
-          bankroll: 1000
-        },
-        {
-          outcome: 'Weak Bet',
-          ourProbability: 0.52,
-          bookmakerOdds: 2.2,
-          bankroll: 1000
-        }
-      ];
-
-      const results = KellyCalculator.calculateMultiple(opportunities, 0.5);
-      const strongBet = results[0].allocations.find(a => a.outcome === 'Strong Bet');
-      const weakBet = results[0].allocations.find(a => a.outcome === 'Weak Bet');
-
-      expect(strongBet!.stake).toBeGreaterThan(weakBet!.stake);
-    });
-  });
-
   describe('simulate', () => {
     it('should run Monte Carlo simulation', () => {
       const opportunities = [
@@ -210,54 +159,6 @@ describe('KellyCalculator', () => {
       const aggressiveResult = KellyCalculator.simulate(1000, riskyOpportunities, 100, 1.0);
 
       expect(aggressiveResult.bustRate).toBeGreaterThanOrEqual(conservativeResult.bustRate);
-    });
-  });
-
-  describe('detectArbitrage', () => {
-    it('should detect arbitrage opportunity', () => {
-      const odds = [1.5, 6.0, 8.0]; // Sum of implied probabilities < 1
-      const result = KellyCalculator.detectArbitrage(odds);
-
-      expect(result.isArbitrage).toBe(true);
-      expect(result.guaranteedProfit).toBeGreaterThan(0);
-      expect(result.stakes).toHaveLength(3);
-      expect(result.stakes.reduce((sum, stake) => sum + stake, 0)).toBeCloseTo(1000, 1);
-    });
-
-    it('should not detect arbitrage when none exists', () => {
-      const odds = [2.0, 3.5, 4.0]; // Normal odds
-      const result = KellyCalculator.detectArbitrage(odds);
-
-      expect(result.isArbitrage).toBe(false);
-      expect(result.guaranteedProfit).toBe(0);
-      expect(result.stakes).toEqual([]);
-    });
-
-    it('should calculate correct stakes for arbitrage', () => {
-      const odds = [1.4, 8.0, 15.0];
-      const result = KellyCalculator.detectArbitrage(odds, 1000);
-
-      if (result.isArbitrage) {
-        // Each stake should return the same amount regardless of outcome
-        const returns = result.stakes.map((stake, i) => stake * odds[i]);
-        const firstReturn = returns[0];
-        returns.forEach(returnAmount => {
-          expect(returnAmount).toBeCloseTo(firstReturn, 1);
-        });
-      }
-    });
-  });
-
-  describe('calculateRequiredWinRate', () => {
-    it('should calculate breakeven win rate', () => {
-      const winRate = KellyCalculator.calculateRequiredWinRate(2.0);
-      expect(winRate).toBe(0.5); // 50% for 2.0 odds
-    });
-
-    it('should handle various odds correctly', () => {
-      expect(KellyCalculator.calculateRequiredWinRate(1.5)).toBeCloseTo(0.667, 3);
-      expect(KellyCalculator.calculateRequiredWinRate(3.0)).toBeCloseTo(0.333, 3);
-      expect(KellyCalculator.calculateRequiredWinRate(10.0)).toBe(0.1);
     });
   });
 

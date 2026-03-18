@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { FootballDataAPI } from './footballData';
-import type { FootballDataConfig } from './footballData';
 
 // Mock fetch globally
 vi.stubGlobal('fetch', vi.fn());
@@ -218,28 +217,6 @@ describe('FootballDataAPI', () => {
       } as unknown as Response);
 
       await api.getUpcomingMatches(7);
-      
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateFrom='),
-        expect.any(Object)
-      );
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateTo='),
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('getRecentResults', () => {
-    it('should fetch recent results with date filter', async () => {
-      api.setApiKey(mockApiKey);
-      
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ matches: [] })
-      } as unknown as Response);
-
-      await api.getRecentResults(7);
       
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('dateFrom='),

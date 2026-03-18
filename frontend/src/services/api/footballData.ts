@@ -99,12 +99,6 @@ interface FDScorer {
   penalties: number | null;
 }
 
-interface FDSquadMember extends FDPlayer {
-  position: string;
-  dateOfBirth: string;
-  nationality: string;
-}
-
 class FootballDataAPI {
   private config: FootballDataConfig;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
@@ -276,19 +270,6 @@ class FootballDataAPI {
     return data.matches.map(this.transformMatch);
   }
   
-  // Get recent results
-  public async getRecentResults(days: number = 7): Promise<Match[]> {
-    const dateFrom = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const dateTo = new Date().toISOString().split('T')[0];
-    
-    const endpoint = `/competitions/${this.config.competitionId}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}&status=FINISHED`;
-    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
-    
-    if (!data) return [];
-    
-    return data.matches.map(this.transformMatch);
-  }
-
   // Get recent matches (both past and upcoming)
   public async getRecentMatches(days: number = 7): Promise<Match[]> {
     const dateFrom = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -347,31 +328,6 @@ class FootballDataAPI {
     if (!data || !data.standings[0]) return [];
     
     return data.standings[0].table;
-  }
-  
-  // Get head to head
-  public async getHeadToHead(match: number): Promise<{
-    aggregates: {
-      homeTeam: { wins: number; draws: number; losses: number };
-      awayTeam: { wins: number; draws: number; losses: number };
-    };
-    matches: Match[];
-  } | null> {
-    const endpoint = `/matches/${match}/head2head?limit=10`;
-    const data = await this.fetchWithCache<{
-      aggregates: {
-        homeTeam: { wins: number; draws: number; losses: number };
-        awayTeam: { wins: number; draws: number; losses: number };
-      };
-      matches: FDMatch[];
-    }>(endpoint);
-    
-    if (!data) return null;
-    
-    return {
-      aggregates: data.aggregates,
-      matches: data.matches.map(this.transformMatch)
-    };
   }
   
   // Transform Football-Data match to our Match type
@@ -518,29 +474,6 @@ class FootballDataAPI {
     return data.scorers;
   }
   
-  // Get player details
-  public async getPlayer(playerId: number): Promise<FDPlayer | null> {
-    const endpoint = `/players/${playerId}`;
-    const data = await this.fetchWithCache<FDPlayer>(endpoint);
-    
-    return data;
-  }
-  
-  // Get team squad
-  public async getTeamSquad(teamId: number): Promise<FDSquadMember[]> {
-    const endpoint = `/teams/${teamId}`;
-    const data = await this.fetchWithCache<{ 
-      squad: FDSquadMember[];
-      id: number;
-      name: string;
-      crest: string;
-    }>(endpoint);
-    
-    if (!data || !data.squad) return [];
-    
-    return data.squad;
-  }
-  
   // Get live matches (in play) — uses 60s cache for freshness
   public async getLiveMatches(): Promise<Match[]> {
     const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
@@ -549,14 +482,6 @@ class FootballDataAPI {
     if (!data) return [];
 
     return data.matches.map(this.transformMatch);
-  }
-  
-  // Get team details with crest
-  public async getTeam(teamId: number): Promise<FDTeam & { crest: string } | null> {
-    const endpoint = `/teams/${teamId}`;
-    const data = await this.fetchWithCache<FDTeam & { crest: string }>(endpoint);
-    
-    return data;
   }
   
   // Check if API is configured and working
@@ -583,13 +508,10 @@ export const footballDataAPI = new FootballDataAPI();
 export { FootballDataAPI };
 
 // Export types
-export type { 
-  FDMatch, 
-  FDTeam, 
-  FDStanding, 
-  FDCompetition, 
-  FDPlayer,
-  FDScorer,
-  FDSquadMember,
-  FootballDataConfig 
+export type {
+  FDMatch,
+  FDTeam,
+  FDStanding,
+  FDCompetition,
+  FDScorer
 };
