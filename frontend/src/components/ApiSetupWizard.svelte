@@ -140,8 +140,8 @@
           <div>
             <h3 class="text-2xl font-bold mb-4">Welcome to Premier League Oracle</h3>
             <p class="text-muted-foreground text-lg leading-relaxed">
-              Get AI-powered Premier League predictions using advanced statistical models, 
-              ELO ratings, and real-time data analysis.
+              Get data-driven Premier League predictions using ELO ratings, Poisson models,
+              and ensemble statistical analysis.
             </p>
           </div>
           
@@ -281,7 +281,7 @@
                   <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  AI-powered predictions
+                  Statistical match predictions
                 </li>
               </ul>
               <button

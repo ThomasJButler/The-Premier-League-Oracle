@@ -4,6 +4,10 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4c (partial, round 2) — Help and Wizard Copy Accuracy (19 March 2026)
+- **Help.svelte "Live Standings" mislabel:** Dashboard section renamed from "📊 Live Standings" to "📊 Overview Stats" with accurate description of what Dashboard actually shows (accuracy, recent results, performance)
+- **"AI-powered" claims corrected:** Help.svelte and ApiSetupWizard.svelte both referenced "AI-powered predictions" — changed to "model-driven" / "data-driven" / "statistical" since predictions come from the TypeScript ensemble (ELO + Poisson + form), not AI/ML
+
 ### P4c (partial) — Component Data Accuracy Fixes (19 March 2026)
 - **BettingHistory `DollarSign` → `PoundSterling`:** Replaced US dollar icon with pound sterling across all 3 stat cards and the empty state, consistent with UK-focused Premier League branding
 - **SeasonStats false "real-time" claim:** Changed "updated in real-time" to "refreshed each time you visit this page". Added proper error state — previously a fetch failure showed an empty grid forever with no feedback

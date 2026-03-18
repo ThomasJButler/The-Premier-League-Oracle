@@ -98,12 +98,12 @@
               <h3 class="text-xl font-semibold mb-4">Dashboard Overview</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div class="p-4 bg-muted rounded-lg">
-                  <h4 class="font-semibold mb-2">📊 Live Standings</h4>
-                  <p class="text-sm">Current Premier League table with points, goals, and form indicators.</p>
+                  <h4 class="font-semibold mb-2">📊 Overview Stats</h4>
+                  <p class="text-sm">Overall prediction accuracy, recent results, and performance at a glance.</p>
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">⚽ Upcoming Fixtures</h4>
-                  <p class="text-sm">Next matches with AI-powered predictions and confidence levels.</p>
+                  <p class="text-sm">Next matches with model-driven predictions and confidence levels.</p>
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">📈 Team Stats</h4>

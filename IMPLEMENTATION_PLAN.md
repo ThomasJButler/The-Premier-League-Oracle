@@ -611,10 +611,10 @@ Priority features to implement with real data:
 - [x] ~~`SeasonStats.svelte`: no error state in template~~ **FIXED:** added `error` state variable, error message in catch block, and `{:else if error}` template block with AlertTriangle icon
 - [ ] `MatchList.svelte:12`: `selectedSeason = '2024-2025'` hardcoded fallback — will go stale each season
 - [x] `Settings.svelte`: "Connected" status without real API ping — FIXED (now calls `testConnection()` on mount)
-- [ ] `Help.svelte:101`: "📊 Live Standings" describes Dashboard — but Dashboard doesn't show standings (that's `StandingsTable.svelte`)
+- [x] ~~`Help.svelte:101`: "📊 Live Standings" describes Dashboard~~ **FIXED:** renamed to "Overview Stats" with accurate description
 - [ ] `Help.svelte:489`: FAQ "The app caches recent data for offline viewing" — overstates capability; IndexedDB expires and there is no Service Worker
 - [ ] `Help.svelte:295`: "75-85% accuracy when all models agree" — fabricated, never validated against backtest data
-- [ ] `ApiSetupWizard.svelte:284`: "AI-powered predictions" listed as a Football-Data.org feature — misleading (AI is from OpenAI via ChatBot, not the data source)
+- [x] ~~`ApiSetupWizard.svelte:284`: "AI-powered predictions" listed as a Football-Data.org feature~~ **FIXED:** changed to "Statistical match predictions"; intro text updated to "data-driven" with correct model names
 - [ ] `ApiSetupWizard.svelte`: Step 3 "Choose Provider" has only one hardcoded option — dead step, should auto-advance or be removed
 - [ ] `StandingsTable.svelte`: `getMovementIcon` only renders arrows for top 5 positions — rest of the table shows no movement indicator, creating visual inconsistency
 - [ ] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` creates circular Kelly recommendation — model is both the predictor and the bookmaker; Kelly stake will almost always be near zero
