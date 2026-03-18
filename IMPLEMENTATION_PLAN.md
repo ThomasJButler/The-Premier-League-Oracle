@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 17 March 2026 (deep audit #4 — 9-agent sweep)
+Last updated: 18 March 2026 (P2h Oracle Chat improvements)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -225,16 +225,16 @@ Still missing:
 - [x] Stakes recalculate reactively when bankroll changes
 - [x] 15 tests (was 7) covering manual calculator + suggestions: empty state, suggestions display, low-confidence filter, API error, completed match skip, suggestion count
 
-### P2h. Oracle Chat Improvements
+### P2h. Oracle Chat Improvements — DONE (18 March 2026)
 
-`ChatBot.svelte` has several issues found in audit:
+`ChatBot.svelte` rewritten with four improvements:
 
-- [ ] Direct browser-to-OpenAI API call exposes key in network tab — needs backend proxy or at minimum clear warning
-- [ ] No markdown rendering in chat responses
-- [ ] Sequential context API calls add latency — should batch or cache
-- [ ] Move OpenAI API key config to Settings.svelte (currently only in ChatBot)
-- [ ] Persist chat sessions to localStorage with configurable history length
-- [ ] Add backend prediction results to system prompt when backend available
+- [x] **Security warning banner** — collapsible `ShieldAlert` alert explains that the OpenAI API key is visible in browser network tab; links to Settings page for key management
+- [x] **Markdown rendering** — `renderMarkdown()` regex chain handles bold, italic, code blocks, inline code, bullet lists, and numbered lists; styled via `.prose-chat` CSS
+- [x] **Batched context calls** — replaced 3 sequential try/catch blocks with `Promise.allSettled()` for parallel fetch of standings, form, and predictions
+- [x] **Chat persistence** — messages saved to `localStorage` (key: `oracle_chat_history`, max 50 messages); restored on mount with reactive `$:` auto-save
+- [x] API key config references Settings page (already implemented in P1b)
+- [ ] Backend prediction integration — deferred until backend service bridge (P2b) is built
 
 ### P2i. Wire ValueBettingEngine to UI — DONE (18 March 2026)
 
@@ -533,8 +533,8 @@ All feature specifications in `specs/`:
 | `Settings.svelte` | "Connected" status without real API ping | P4c |
 | `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
 | `LiveMatches.svelte` | "Auto-refreshing every 30 seconds" hardcoded label | P4c |
-| `ChatBot.svelte` | OpenAI API key exposed in browser network tab | P2h |
-| `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | P2h |
+| ~~`ChatBot.svelte`~~ | ~~OpenAI API key exposed in browser network tab~~ | ~~P2h~~ MITIGATED — security warning banner added |
+| `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated | Low |
 | ~~`SeasonStats.svelte`~~ | ~~`lateDrama` always 0 — references non-existent field~~ | ~~P1e~~ FALSE POSITIVE — `full_time_result` exists |
 | ~~`SeasonStats.svelte`~~ | ~~Card stats always 0 — free-tier API has no card data~~ | ~~P1e~~ FIXED — shows 'N/A' with explanation |

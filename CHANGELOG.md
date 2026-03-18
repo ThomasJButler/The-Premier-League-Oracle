@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2h Oracle Chat Improvements — Complete (18 March 2026)
+- **Security warning banner** — collapsible `ShieldAlert` alert at top of chat explains that the OpenAI API key is visible in browser network tab; includes link to Settings page for key management
+- **Markdown rendering** — new `renderMarkdown()` function handles bold (`**`), italic (`*`), fenced code blocks (`` ``` ``), inline code (`` ` ``), bullet lists (`-`/`*`), and numbered lists; rendered inside `.prose-chat` styled container
+- **Batched context API calls** — replaced 3 sequential try/catch blocks with a single `Promise.allSettled()` call for parallel fetch of standings, form data, and predictions; reduces system prompt build latency
+- **Chat persistence** — messages saved to `localStorage` under `oracle_chat_history` key (max 50 messages); restored on mount with reactive `$:` auto-save on every message change
+- **Constants extracted**: `STORAGE_KEY_MESSAGES`, `STORAGE_KEY_API_KEY`, `MAX_STORED_MESSAGES` replace magic strings
+- **Test count unchanged at 332** — ChatBot has no dedicated unit tests (tested via E2E in `oracle-chat.spec.ts`)
+
 ### P2i Value Bet Scanner — Complete (18 March 2026)
 - **New `ValueBets.svelte` component** — wires the tested-but-orphaned `ValueBettingEngine` (38 existing tests) to a user-facing UI
 - **Match selector** dropdown populated from upcoming matches (next 14 days), auto-filters completed matches
