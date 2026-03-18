@@ -167,5 +167,13 @@ These specs are the single source of truth for requirements.
 - `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)
 - `.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed
 - Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)
+- `liveService.ts:235`: WebSocket URL hardcodes port `8000` — will silently fail in production deployments where backend is not on same hostname:8000. Polling fallback masks the failure
+- Season year calculation `getMonth() >= 6` duplicated in 3 places: `dataService.ts:306`, `footballData.ts:346`, `MatchList.svelte:14` — should be extracted to `lib/utils.ts`
+- `optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46` — inconsistent priors in the same ensemble
+- `dataService.ts:98-101`: empty if/else branches with comment-only bodies — Supabase removal remnants
+- `advancedPredictions.ts:29`: `maxGoals = 10` default in PoissonPredictor, spec says cap at 7
+- No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
+- Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
+- Spec 07 (UI/UX) largest remaining gap — shadcn components installed but 0/5 wired into UI (Button, Card, Dialog, Badge, Sheet)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

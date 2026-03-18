@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 24 March 2026 (Seventh audit — 6-agent codebase sweep. Test count 375/23 frontend + 62/3 backend. All P0–P3 complete. Next: P4 polish, P5 hardening, spec marker sync.)
+Last updated: 25 March 2026 (Eighth audit — 5-agent comprehensive sweep comparing all source code against all 8 specs. Spec 06 is 100% complete. Spec 07 shadcn migration is the largest remaining gap. 5 new findings added. No TODO/FIXME/HACK comments remain in codebase. Next: P5 hardening, spec marker sync, shadcn migration.)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -795,14 +795,14 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~75% — ELO dynamic + persistence + auto-update wired (P2k), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner (P2f), AI analysis (P3g); missing: Poisson lambda from real team stats, confidence calibration. **Spec markers: 4/7** |
-| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; all data methods implemented; missing: progressive 5-season bulk loader with rate limiting. **Spec markers: 4/7** |
-| `specs/03-backend-integration.md` | Python ML backend connection | ~70% — backendService (P2b), ML ensemble (P3e), Settings UI (P2c), WebSocket (P3f) all DONE; missing: real-time prediction streaming, model comparison UI. **Spec markers: 0/8 (severely outdated — see P5b)** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions (P2g), ValueBets UI (P2i), bet storage pipeline (P1i), resolution bugs (P1g) all DONE. **Spec markers: 4/7 (outdated — see P5b)** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications. **Spec markers: 4/6 (outdated — see P5b)** |
-| `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete. **Spec markers: 7/7** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~35% — dark mode (P1b), a11y wave 1+2 (P4b), components.json, `$lib/utils.ts` (P2a-fix) all DONE; shadcn components installed but not wired. **Spec markers: 0/11 (severely outdated — see P5b)** |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Pro-tier (P3a–P3c) deferred. **Spec markers: 0/6 (outdated — see P5b)** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~80% — ELO dynamic + persistence + auto-update wired (P2k), Poisson Dixon-Coles from match history, fatigue wired, referee adjustments, backtest runner (P2f), AI analysis (P3g DONE); missing: Poisson lambda from `getTeamStats()` specifically (functionally equivalent via Dixon-Coles), confidence historical calibration. **Spec markers: 5/8 (eighth audit)** |
+| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — DataService + 3-tier cache work; all data methods implemented; backend proxy configured in vite.config.ts; missing: progressive 5-season bulk loader with rate limiting. **Spec markers: 6/8 (eighth audit — backend proxy confirmed present)** |
+| `specs/03-backend-integration.md` | Python ML backend connection | ~85% — backendService (P2b), ML ensemble (P3e), Settings UI (P2c), WebSocket (P3f), Vite proxy, MLPrediction type all DONE; missing: AGENTS.md historical data command. **Spec markers: 7/8 (eighth audit)** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — Kelly + auto-suggestions (P2g), ValueBets UI (P2i), bet storage pipeline (P1i), resolution bugs (P1g), betBuilder combos (P4d) all DONE; missing: accumulator/combination bet UI (deferred). **Spec markers: 11/12 (eighth audit)** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications, LiveTicker per-item pulse verification. **Spec markers: 8/10 (eighth audit)** |
+| `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met.** No hardcoded accuracy values, real reconciliation, real dashboard stats. **Spec markers: 7/7** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~55% — dark mode (P1b), a11y wave 1+2 (P4b), components.json, `$lib/utils.ts` (P2a-fix) all DONE; **shadcn components installed but 0/5 wired** (Button, Card, Dialog, Badge, Sheet). **Spec markers: 9/17 (eighth audit — a11y items added)** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Rate limiter broken (P5a). Pro-tier (P3a–P3c) deferred. **Spec markers: 23/24 (eighth audit)** |
 
 ---
 
@@ -815,15 +815,17 @@ All feature specifications in `specs/`:
 | `advancedPredictions.ts` | `avgPenalties: 0.2` — no penalty data from free API tier | Low |
 | `advancedPredictions.ts` | `SEED_RATINGS` — 25 teams with manually assigned ELO, not backcalculated | Low |
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
-| `advancedPredictions.ts` | `ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}` (no shots data from free tier) | Low |
+| ~~`advancedPredictions.ts`~~ | ~~`ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}`~~ — **REMOVED in P4f:** entire class deleted (dead code, no shots data on free tier) | ~~P4f~~ |
 | `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
 | `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) — should be derived from match data | Low |
+| `advancedPredictions.ts` | `maxGoals = 10` in PoissonPredictor — spec says cap at 7 | P5l |
 | `optimizedPredictions.ts` | `MODEL_WEIGHTS` — static ensemble weights, not derived from backtesting | Low |
-| `optimizedPredictions.ts` | `LEAGUE_AVG_HOME_WIN_RATE = 0.46` — hardcoded, should be derived from completed matches | Low |
+| ~~`optimizedPredictions.ts`~~ | ~~`LEAGUE_AVG_HOME_WIN_RATE = 0.46` — hardcoded~~ — **FIXED in P2m:** now computed from completed matches via `computeLeagueAverages()` | ~~P2m~~ |
+| `optimizedPredictions.ts` | H2H no-data fallback `homeWinRate: 0.40` inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` | P5k |
 | `optimizedPredictions.ts` | `eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600)` — base 26.5% and scale 600 hardcoded | Low |
 | `optimizedPredictions.ts` | Form weight array `[0.35, 0.25, 0.20, 0.12, 0.08]` — arbitrary decay, not empirically derived | Low |
 | `optimizedPredictions.ts` | `homeMomentum * 1.1` / `awayMomentum * 0.9` — arbitrary 10% home advantage in form | Low |
-| `optimizedPredictions.ts` | `calculateFatigueFactor` step function — discrete tiers with no empirical basis | Low |
+| ~~`optimizedPredictions.ts`~~ | ~~`calculateFatigueFactor` step function~~ — **FIXED in P2q:** now delegates to `FatigueAnalyzer.getFatigueMultiplier()` (continuous function) | ~~P2q~~ |
 | `optimizedPredictions.ts` | Confidence boost/penalty thresholds and values — all hardcoded | Low |
 | `optimizedPredictions.ts` | Fallback prediction returns `{result: 'D', confidence: 0.33, goals: 1-1, odds: 3.0/3.3/3.0}` — completely static | Low |
 | `optimizedPredictions.ts` | `getStandingsProbabilities` — `0.025` per position-difference step is arbitrary | Low |
@@ -835,26 +837,30 @@ All feature specifications in `specs/`:
 | `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated margin | Low |
 | `Predictions.svelte` | 300ms artificial delay in `predictGameweek` — cosmetic fake loading | Low |
-| `value.ts` | `calculateCLV` returns `betId: ''` (stub) | Low |
+| ~~`value.ts`~~ | ~~`calculateCLV` returns `betId: ''` (stub)~~ — **REMOVED in P4f:** entire function deleted (dead code) | ~~P4f~~ |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
 | `kelly.ts` | `Math.random()` in `simulate()` — non-deterministic Monte Carlo | Low |
 | ~~`StandingsTable.svelte`~~ | ~~Position movement only top 5~~ — FIXED: extended to all positions | ~~P4c~~ |
-| `Settings.svelte` | `plTeams` array hardcoded for 2024-25 season | P4c |
-| `predictions.ts` | `WEIGHTS` object uses different model architecture from production — entire file is dead code at runtime | P4f |
-| `Predictions.svelte` | `was_correct: false` hardcoded when storing predictions — never reflects actual outcome | P1k |
-| `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
+| ~~`Settings.svelte`~~ | ~~`plTeams` array hardcoded for 2024-25 season~~ — **FIXED in P4c:** now dynamically loaded from `dataService.getStandings()` | ~~P4c~~ |
+| ~~`predictions.ts`~~ | ~~`WEIGHTS` object uses different model architecture~~ — **REMOVED in P4f:** entire dead module deleted | ~~P4f~~ |
+| ~~`Predictions.svelte`~~ | ~~`was_correct: false` hardcoded~~ — **FIXED in P1k:** removed from initial prediction, made optional | ~~P1k~~ |
+| `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
 | ~~`MatchList.svelte`~~ | ~~`selectedSeason = '2024-2025'` hardcoded~~ — FIXED: date-computed + season `<select>` added | ~~P4c~~ |
 | ~~`betHistoryService.ts`~~ | ~~`storeBet()` never called~~ — FIXED: wired into KellyCalculator + ValueBets via "Track Bet" buttons | ~~P1i~~ |
 | ~~`betBuilder.ts`~~ | ~~Corner/card probabilities can exceed 1.0~~ — FIXED: clamped to [0, 0.99] | ~~P1l~~ |
 | ~~`KellyCalculator.svelte`~~ | ~~`prob = 1.05 / odds` inflates probability~~ — FIXED: uses model confidence as ourProbability | ~~P1l~~ |
 | ~~`footballData.ts`~~ | ~~`halfTimeResult` bug: `!0 === true`~~ — FIXED: explicit null/undefined check | ~~P1l~~ |
 | `advancedPredictions.ts` | `SEED_RATINGS` includes relegated teams (Leicester, Leeds, Luton, Burnley, Sheff Utd) and Sunderland (not in PL) | Low |
-| `advancedPredictions.ts` | Two parallel fatigue models with different thresholds (AdvancedMatchPredictor vs OptimizedPredictor) | P2q |
-| `dataService.ts` | Cache TTL comments lie about actual TTL (claim 24h/30m, deliver 5m) | P1m |
-| `dataService.ts` | `getTeamForm` cache key uses `matches.length` not content — stale data on same-length arrays | P1p |
+| ~~`advancedPredictions.ts`~~ | ~~Two parallel fatigue models~~ — **FIXED in P2q:** consolidated to single `FatigueAnalyzer.getFatigueMultiplier()` | ~~P2q~~ |
+| ~~`dataService.ts`~~ | ~~Cache TTL comments lie about actual TTL~~ — **FIXED in P1m:** TTL values now correct (24h/30min) | ~~P1m~~ |
+| ~~`dataService.ts`~~ | ~~`getTeamForm` cache key uses `matches.length`~~ — **FIXED in P1p:** now uses match ID fingerprint | ~~P1p~~ |
 | `advanced_engineering.py` | `0.45` fallback win rate when no match data — hardcoded league average | Low |
 | `liveService.ts` | WebSocket `onmessage` handler for `data.liveMatches` — dead code, backend never sends this | P5g |
+| `liveService.ts` | WebSocket URL hardcodes port `8000` — breaks production deployments | P5i |
 | `betBuilder.ts` | Crystal Palace/Brighton rivalry: `'Brighton and Hove Albion'` vs API `'Brighton & Hove Albion FC'` — `&` vs `and` mismatch | P5g |
+| `footballData.ts` | `competitionId: 2021` magic number — should be a named constant | P5l |
+| `dataService.ts` | Empty if/else branches at lines 98-101 (Supabase removal remnants) | P5l |
+| `Predictions.svelte` | Still imports dead legacy `Prediction` type from `types/index.ts` | P5l |
 
 ### Backend
 
@@ -905,13 +911,13 @@ All feature specifications in `specs/`:
 | `advanced_engineering.py` | `_compute_league_positions()` cumulative all-time, not per-season — wrong for multi-season | P3a |
 | `validators.py` | `html.escape()` corrupts `Brighton & Hove Albion` to `Brighton &amp; Hove Albion` | P3d |
 | `requirements.txt` | `boto3`, `hvac`, `azure-*`, `sqlalchemy` — heavy dead deps for unused security modules | P2r |
-| `main.py` | `/standings` endpoint returns `pd.DataFrame` — not JSON-serialisable, will `TypeError` at runtime | P1o |
+| ~~`main.py`~~ | ~~`/standings` endpoint returns `pd.DataFrame`~~ — **FIXED in P1o:** `to_dict(orient='records')` conversion added | ~~P1o~~ |
 | `requirements.txt` | `passlib==1.7.4` incompatible with Python 3.13 (`crypt` module removed from stdlib) | P2r |
 | `requirements.txt` | Missing `langchain-community` — `modern_oracle.py` imports it but package not listed | P2r |
 | `requirements.txt` | Missing `bcrypt` — `auth.py` passlib bcrypt backend requires it | P2r |
 | `main.py` | `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch missing | P2r |
 | `main.py` | `total_features` in `/features/importance` hardcoded to `150`, not dynamically counted | Low |
-| `football_data_collector.py` | `get_standings()` returns `pd.DataFrame` — must be converted before JSON response | P1o |
+| ~~`football_data_collector.py`~~ | ~~`get_standings()` returns `pd.DataFrame`~~ — **Mitigated in P1o:** `main.py` endpoint now converts before returning | ~~P1o~~ |
 | `main.py` | `client_ip` in `/predict/free` always `"unknown"` — rate limiter groups all clients together, non-functional | P5a |
 | `main.py` | Free-tier engineer initialised with empty DataFrame when CSVs absent — all features return `0.0` for live predictions | P5a |
 
@@ -996,6 +1002,52 @@ Remaining `any` types in production code (not catch blocks):
 
 - [ ] Shows full Kelly formula `Stake % = (Probability × Odds - 1) / (Odds - 1)` but the app actually uses Half-Kelly (divides by 2). Should mention Half-Kelly
 - [ ] "Features Guide" still lists some aspirational features as implemented (e.g. "Track bankroll growth", "Trend analysis")
+
+### P5i. WebSocket URL Hardcodes Port 8000 — NEW (25 March 2026, eighth audit)
+
+`liveService.ts:235` constructs the WebSocket URL as `` `${wsProtocol}//${window.location.hostname}:8000/ws/predictions` `` — the port 8000 is hardcoded. In any production deployment where the backend is not on port 8000 at the same hostname as the frontend, the WebSocket will silently fail to connect. The polling fallback masks the failure.
+
+- [ ] Extract WebSocket URL to a configurable constant or environment variable (`VITE_BACKEND_WS_URL`)
+- [ ] Consider deriving the base URL from `backendService.BASE_URL` for consistency
+
+### P5j. Season Year Calculation Duplicated in 3 Places — NEW (25 March 2026, eighth audit)
+
+The pattern `new Date().getMonth() >= 6 ? currentYear : currentYear - 1` (July onwards = new season) is duplicated in:
+
+1. `dataService.ts:306`
+2. `footballData.ts:346`
+3. `MatchList.svelte:14`
+
+All three use `getMonth() >= 6` but the month boundary is a magic number with no shared constant.
+
+- [ ] Extract `getSeasonYear(date?: Date)` utility to `lib/utils.ts` and import in all 3 locations
+- [ ] Add a named constant `SEASON_START_MONTH = 6` (July, zero-indexed)
+
+### P5k. H2H Fallback Inconsistent with DEFAULT_HOME_WIN_RATE — NEW (25 March 2026, eighth audit)
+
+`optimizedPredictions.ts:566` uses `homeWinRate: 0.40` as the H2H no-data fallback, but `constants.ts` exports `DEFAULT_HOME_WIN_RATE = 0.46` (used elsewhere as the league average). Two different home-win priors exist in the same ensemble, causing a subtle bias when H2H data is missing (H2H module predicts 40% home, but the rest of the ensemble assumes 46%).
+
+- [ ] Align H2H no-data fallback with `DEFAULT_HOME_WIN_RATE` from `constants.ts`
+
+### P5l. Minor Dead Code and Type Cleanup — NEW (25 March 2026, eighth audit)
+
+- [ ] `dataService.ts:98-101` — empty if/else branches with comment-only bodies (`// Football-Data (Free) is available and working` / `// Football-Data is not working`). Supabase removal remnants — collapse to a single assignment
+- [ ] `Predictions.svelte:7` — still imports dead legacy `Prediction` type from `types/index.ts` (was deferred in P2t). The actual runtime type is `StoredPrediction`
+- [ ] `footballData.ts:125` — `competitionId: 2021` is a magic number for Premier League. Should be a named constant export (e.g. `PREMIER_LEAGUE_ID = 2021`)
+- [ ] `advancedPredictions.ts:29` — `maxGoals = 10` default in PoissonPredictor. Spec 01 says cap at 7. OptimizedPredictor doesn't override it, so score matrix calculates up to 10-10 (121 cells vs 64)
+- [ ] `TopScorers.svelte:56` — `(s: any)` cast is unnecessary; `FDScorer` type is already available from the import chain
+- [ ] No TODO/FIXME/HACK comments remain in the codebase (verified in eighth audit) — this is healthy
+
+### P5m. Spec 01 — Confidence Calibration Not Implemented — NEW (25 March 2026, eighth audit)
+
+Spec 01 Req 5 requires: "if 80% confidence predictions historically achieve 72% accuracy, the calibration factor is 0.9." This requires tracking accuracy by confidence band over time and adjusting future confidence scores by the calibration factor. Currently:
+
+- `calculateConfidence()` in `optimizedPredictions.ts:742-777` uses ensemble disagreement and fatigue adjustments
+- `predictionTracker.getAccuracyStats()` already returns per-band accuracy (high/medium/low)
+- The missing piece is a feedback loop: reading historical per-band accuracy and applying it as a multiplier in `calculateConfidence()`
+
+- [ ] Add `getCalibrationFactors()` to `predictionTracker.ts` — returns `{ highBand: factor, mediumBand: factor, lowBand: factor }` from stored predictions
+- [ ] Wire calibration factors into `OptimizedPredictor.calculateConfidence()` as a final multiplier
 
 ---
 

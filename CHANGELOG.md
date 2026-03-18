@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Eighth Planning Audit — Comprehensive Spec Compliance (25 March 2026)
+- **5-agent parallel codebase sweep:** Compared all source code against all 8 spec files, audited frontend for stubs/TODOs/hardcoded values, audited backend for issues, verified every acceptance criterion with code evidence
+- **Spec compliance audit results:** Spec 06 is 100% complete (7/7 criteria). Spec 07 is the largest gap — shadcn components installed but 0/5 migration criteria actioned (Button, Card, Dialog, Badge, Sheet). Updated all spec completion percentages: 01 (80%), 02 (65%), 03 (85%), 04 (90%), 05 (80%), 06 (100%), 07 (55%), 08 (95%)
+- **5 new findings documented:** P5i (WebSocket URL hardcodes port 8000 — production breaking), P5j (season year calc duplicated in 3 places), P5k (H2H fallback `0.40` inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46`), P5l (minor dead code: empty if/else branches, dead `Prediction` type import, magic numbers), P5m (confidence calibration not implemented — spec 01 gap)
+- **Confirmed clean:** No TODO/FIXME/HACK comments remain in the entire codebase. Hardcoded form strings exist only in test files (not production components)
+- **Active stubs table cleaned:** 8 already-fixed items struck through with fix references (ExpectedGoalsCalculator removed, LEAGUE_AVG computed, fatigue consolidated, calculateCLV removed, plTeams dynamic, predictions.ts deleted, was_correct fixed, /standings serialisation fixed)
+- **CLAUDE.md updated:** 9 new entries added to Important Notes section
+
 ### Seventh Planning Audit — P5 Hardening (24 March 2026)
 - **6-agent comprehensive codebase sweep:** Parallel agents audited all 8 specs, all frontend libs/services, all backend Python files, all Svelte components, all test files, and all project configuration/infrastructure
 - **8 new findings documented:** Rate limiter broken on `/predict/free` (client_ip always "unknown"), Crystal Palace/Brighton rivalry name mismatch, LiveMatches ARIA panel IDs missing, ChatBot DOMPurify test mock bypasses XSS regression detection, `@types/node` v25 on Node 20 runtime, `backend/chroma_db/` not gitignored, WebSocket `onmessage` dead code in liveService, optimizedPredictions conditional test assertions
