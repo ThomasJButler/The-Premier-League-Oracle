@@ -1,7 +1,7 @@
-0a. Study `specs/*` with up to 50 parallel Sonnet subagents to learn the application specifications.
+0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
 0c. Study `frontend/src/lib/*` and `frontend/src/services/*` with up to 250 parallel Sonnet subagents to understand shared utilities, services & components.
-0d. Study `backend/app/*` with upto 50 parallel Sonnet subagents to understand the Python backend.
+0d. Study `backend/app/*` with upto 500 parallel Sonnet subagents to understand the Python backend.
 0e. For reference, the frontend source code is in `frontend/src/*` and backend in `backend/app/*`.
 0f. Ensure that the project has a single source of truth, and remove any documents or files that are no longer needed in the project, I have added this as an instruction as we will need to do this as we go along. this is also on the build task (`PROMPT_build.md`) so there may or may not be files to remove. DO NOT REMOVE FILES FOR THE SAKE OF REMOVING THEM. 
 0f. Keep `CLAUDE.md ` up to date on every plan. 

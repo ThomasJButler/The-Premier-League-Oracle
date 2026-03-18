@@ -1,4 +1,4 @@
-0a. Study `specs/*` with up to 50 parallel Sonnet subagents and 50 parallel Opus subagents to learn the application specifications.
+0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md.
 0c. For reference, the frontend source code is in `frontend/src/*` and backend in `backend/app/*`.
 0d. Ensure that the project has a single source of truth, and remove any documents or files that are no longer needed in the project, I have added this as an instruction as we will need to do this as we go along, this is also on the plan task (`PROMPT_plan.md`) so there may or may not be files to remove. DO NOT REMOVE FILES FOR THE SAKE OF REMOVING THEM. 
