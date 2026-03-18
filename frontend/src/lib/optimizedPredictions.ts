@@ -1,6 +1,8 @@
 import { dataService } from '../services/dataService';
-import type { Match, Standing } from '../types';
+import type { Match, Standing, MLPrediction } from '../types';
+import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
+import { backendService } from '../services/backendService';
 import { VALUE_ODDS_MARGIN } from './constants';
 
 export interface EnhancedPredictionModel {
@@ -16,6 +18,7 @@ export interface EnhancedPredictionModel {
     form: number;
     h2h: number;
     standings: number;
+    ml?: number;
   };
   insights: string[];
   valueOdds?: {
@@ -53,6 +56,13 @@ const MODEL_WEIGHTS = {
   h2h: 0.10,
   standings: 0.15
 } as const;
+
+/**
+ * When the ML backend contributes to the ensemble, it gets this weight and
+ * the TypeScript model weights are scaled down proportionally. A 30% ML weight
+ * means the Python models contribute nearly a third of the final prediction.
+ */
+const ML_BACKEND_WEIGHT = 0.30;
 
 export class OptimizedPredictor {
   // Use the shared ELO system — single source of truth for team ratings
@@ -271,7 +281,21 @@ export class OptimizedPredictor {
       // 7. Head-to-head analysis
       const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
       
-      // 8. Combine all models with weighted approach
+      // 8. Attempt ML backend prediction (parallel — started earlier or fetched now)
+      let mlPrediction: MLPrediction | null = null;
+      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') === 'true') {
+        try {
+          mlPrediction = await backendService.predictMatch(homeTeam, awayTeam);
+          insights.push('ML backend prediction incorporated into ensemble');
+        } catch (err) {
+          if (!(err instanceof BackendUnavailableError)) {
+            console.warn('ML backend prediction failed:', err);
+          }
+          // Silent fallback — TypeScript ensemble handles it alone
+        }
+      }
+
+      // 9. Combine all models with weighted approach
       // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)
       const ratingDiffAbs = Math.abs(homeElo - awayElo);
       const eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600);
@@ -280,13 +304,16 @@ export class OptimizedPredictor {
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
-      const combinedProbabilities = this.combineModels({
-        elo: eloProbs,
-        poisson: poissonProbs,
-        form: formAnalysis.probabilities,
-        h2h: h2hAnalysis.probabilities,
-        standings: this.getStandingsProbabilities(homePosition, awayPosition)
-      });
+      const combinedProbabilities = this.combineModels(
+        {
+          elo: eloProbs,
+          poisson: poissonProbs,
+          form: formAnalysis.probabilities,
+          h2h: h2hAnalysis.probabilities,
+          standings: this.getStandingsProbabilities(homePosition, awayPosition)
+        },
+        mlPrediction
+      );
 
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
       // Home win rate derived from actual completed matches (fallback 0.46 if no data)
@@ -380,6 +407,17 @@ export class OptimizedPredictor {
       // Calculate value odds
       const valueOdds = this.calculateValueOdds(adjustedProbabilities);
 
+      // Report the effective weights used in this prediction
+      const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
+      const effectiveWeights: EnhancedPredictionModel['modelWeights'] = {
+        elo: MODEL_WEIGHTS.elo * tsScale,
+        poisson: MODEL_WEIGHTS.poisson * tsScale,
+        form: MODEL_WEIGHTS.form * tsScale,
+        h2h: MODEL_WEIGHTS.h2h * tsScale,
+        standings: MODEL_WEIGHTS.standings * tsScale,
+        ...(mlPrediction ? { ml: ML_BACKEND_WEIGHT } : {}),
+      };
+
       return {
         predictedResult: prediction.result,
         confidence,
@@ -387,7 +425,7 @@ export class OptimizedPredictor {
         predictedAwayGoals: predictedGoals.away,
         homeForm: formAnalysis.homeFormString,
         awayForm: formAnalysis.awayFormString,
-        modelWeights: { ...MODEL_WEIGHTS },
+        modelWeights: effectiveWeights,
         insights,
         valueOdds
       };
@@ -641,37 +679,53 @@ export class OptimizedPredictor {
     };
   }
 
-  private static combineModels(models: {
-    elo: { home: number; draw: number; away: number };
-    poisson: { homeWin: number; draw: number; awayWin: number };
-    form: { homeWin: number; draw: number; awayWin: number };
-    h2h: { homeWin: number; draw: number; awayWin: number };
-    standings: { homeWin: number; draw: number; awayWin: number };
-  }) {
+  /**
+   * Combine all sub-models into a single probability distribution.
+   *
+   * When an ML backend prediction is available, it joins the ensemble with its
+   * own weight (ML_BACKEND_WEIGHT). The TypeScript model weights are scaled down
+   * proportionally so they still sum to (1 - ML_BACKEND_WEIGHT).
+   */
+  private static combineModels(
+    models: {
+      elo: { home: number; draw: number; away: number };
+      poisson: { homeWin: number; draw: number; awayWin: number };
+      form: { homeWin: number; draw: number; awayWin: number };
+      h2h: { homeWin: number; draw: number; awayWin: number };
+      standings: { homeWin: number; draw: number; awayWin: number };
+    },
+    mlPrediction?: MLPrediction | null
+  ) {
+    // When the ML backend is contributing, scale TS weights down proportionally
+    const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
+
     const homeWin =
-      models.elo.home * MODEL_WEIGHTS.elo +
-      models.poisson.homeWin * MODEL_WEIGHTS.poisson +
-      models.form.homeWin * MODEL_WEIGHTS.form +
-      models.h2h.homeWin * MODEL_WEIGHTS.h2h +
-      models.standings.homeWin * MODEL_WEIGHTS.standings;
+      models.elo.home * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.homeWin * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.homeWin * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.homeWin * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.homeWin * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.home * ML_BACKEND_WEIGHT : 0);
 
     const draw =
-      models.elo.draw * MODEL_WEIGHTS.elo +
-      models.poisson.draw * MODEL_WEIGHTS.poisson +
-      models.form.draw * MODEL_WEIGHTS.form +
-      models.h2h.draw * MODEL_WEIGHTS.h2h +
-      models.standings.draw * MODEL_WEIGHTS.standings;
+      models.elo.draw * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.draw * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.draw * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.draw * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.draw * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.draw * ML_BACKEND_WEIGHT : 0);
 
     const awayWin =
-      models.elo.away * MODEL_WEIGHTS.elo +
-      models.poisson.awayWin * MODEL_WEIGHTS.poisson +
-      models.form.awayWin * MODEL_WEIGHTS.form +
-      models.h2h.awayWin * MODEL_WEIGHTS.h2h +
-      models.standings.awayWin * MODEL_WEIGHTS.standings;
+      models.elo.away * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.awayWin * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.awayWin * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.awayWin * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.awayWin * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.away * ML_BACKEND_WEIGHT : 0);
 
     // Normalize to ensure sum equals 1
     const total = homeWin + draw + awayWin;
-    
+
     return {
       homeWin: homeWin / total,
       draw: draw / total,

@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P3e — ML Backend Integrated into Prediction Ensemble (20 March 2026)
+- **OptimizedPredictor now merges ML backend predictions:** When `use_backend` is enabled in Settings and the Python backend is reachable, the ML prediction joins the ensemble as a 6th weighted model at 30% weight. The five TypeScript models (ELO, Poisson, Form, H2H, Standings) are scaled down proportionally to share the remaining 70%
+- **Silent fallback:** If the backend is unreachable or returns an error, the prediction proceeds with the TypeScript ensemble alone — no user-visible error, no degraded output
+- **Backtest mode excluded:** When `historicalMatches` is provided (backtest runner), the ML backend is skipped entirely to avoid per-match network overhead
+- **Transparent weight reporting:** `modelWeights` in the prediction output includes an `ml` key (0.30) when the backend contributed, and reports the scaled-down TS weights. Weights always sum to 1.0
+- **6 new tests** covering: backend called only when enabled, weight arithmetic, silent fallback, insight message, backtest exclusion
+- **Test count:** 344 → 350 tests across 21 files. All passing
+
 ### P2c — Backend Feature Flag in Settings (20 March 2026)
 - **ML Backend section in Settings:** New card with toggle switch, connection status indicator, and API token input — all conditional on the toggle being enabled
 - **`useBackend` toggle:** Persisted to `localStorage` as `use_backend`. Uses accessible `role="switch"` with `aria-checked`. When toggled on, immediately pings the backend

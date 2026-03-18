@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P2c — backend feature flag in Settings, test count now 344/21)
+Last updated: 20 March 2026 (P3e — ML backend integrated into prediction ensemble, test count now 350/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -532,10 +532,15 @@ Priority features to implement with real data:
 - [ ] `football_data_collector.py`: `time.sleep()` in `_enforce_rate_limit()` — blocks asyncio event loop if collector is ever called from async endpoints
 - [ ] `main.py`: `active_websockets.remove(websocket)` raises `ValueError` if socket was never appended (e.g. exception before `append`). Use `set.discard()` instead
 
-### P3e. OptimizedPredictor × ML Integration
+### P3e. OptimizedPredictor × ML Integration — DONE (20 March 2026)
 
-- [ ] When `useBackend` enabled and backend available, merge ML prediction with TypeScript ensemble
-- [ ] Silent fallback to TypeScript ensemble when backend unavailable
+When `use_backend` is enabled in localStorage and the ML backend is reachable, the Python prediction is merged into the TypeScript ensemble as a 6th weighted model (30% ML, remaining 70% split proportionally across ELO/Poisson/Form/H2H/Standings). Silent fallback when backend is down — no user-visible error. 6 new tests.
+
+- [x] When `useBackend` enabled and backend available, merge ML prediction with TypeScript ensemble
+- [x] Silent fallback to TypeScript ensemble when backend unavailable
+- [x] Skipped in backtest mode (historicalMatches) to avoid per-match network calls
+- [x] `modelWeights` in prediction output reflects effective weights (includes `ml` key when active)
+- [x] Insight added: "ML backend prediction incorporated into ensemble"
 
 ### P3f. LiveService with WebSocket
 
