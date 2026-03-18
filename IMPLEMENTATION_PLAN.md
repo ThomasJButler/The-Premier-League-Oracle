@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P1g + CodeRabbit review — 11 additional fixes committed, 8 unfixed issues tracked as P1h/P2/P3/P4)
+Last updated: 18 March 2026 (deep planning audit — 28 new findings across frontend, backend, deployment, and testing)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -77,6 +77,12 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 **`importBets` stores unvalidated data (data integrity):**
 
 - [ ] `betHistoryService.ts`: `importBets()` only checks `bet.id && bet.matchId` before writing. Negative odds, missing `profit` on resolved bets, and invalid `market` strings are silently stored and corrupt `getROI()`, `getWinRate()`, and `getMonthlyPL()`. Add: `odds > 1`, `stake > 0`, `market` in allowlist, `profit` present on resolved bets.
+
+**Frontend prediction model bugs (deep audit):**
+
+- [ ] `optimizedPredictions.ts`: H2H probability shrinkage (lines 552-554) sums to 1.1 not 1.0 — `(ratio * 0.8 + 0.1)` applied to all three outcomes yields `0.8 + 0.3 = 1.1`. Absorbed by `combineModels` normalisation but means H2H sub-model contributes ~10% more weight than its intended 10% share.
+- [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic in dead code (`AdvancedMatchPredictor` is never called at runtime).
+- [ ] `optimizedPredictions.ts`: error fallback (lines 377-389) silently swallows all prediction errors with no logging — user gets a static `confidence: 0.33, goals: 1-1` prediction with no indication anything went wrong. Add `console.warn` at minimum.
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
@@ -165,6 +171,22 @@ Spec 01 requires ELO ratings to auto-update from completed match results. Curren
 
 - [ ] `processCompletedMatches()` exists on `EloRatingSystem` but is not wired into `dataService` — ELO ratings never update automatically when match results load
 - [ ] Wire into `dataService.reconcilePredictions()` or a new lifecycle hook after fetching finished matches
+
+### P2l. Production Deployment — NEW (deep audit)
+
+The Vite dev proxy (`/api/football-data` → `https://api.football-data.org/v4`) only works locally. **No `vercel.json` exists** in the repo, so production deploys to Vercel cannot reach the Football-Data.org API — all `/api/football-data/*` requests will 404. The deployed app cannot fetch any match data.
+
+- [ ] Create `vercel.json` with rewrites or a Vercel serverless function at `api/football-data.js` to proxy requests (avoids CORS and hides API key from client)
+- [ ] Verify Football-Data.org CORS policy for browser-direct calls — if blocked, a serverless proxy is mandatory
+- [ ] Root `.env.example` still references Supabase (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) — update or remove
+- [ ] No `backend/.env.example` exists — create a template for required backend environment variables (FOOTBALL_DATA_API_KEY, OPENAI_API_KEY, SECRET_KEY)
+
+### P2m. Derive Hardcoded League Stats from Data — NEW (deep audit)
+
+Several hardcoded league statistics should be computed from actual match data:
+
+- [ ] `optimizedPredictions.ts`: `LEAGUE_AVG_HOME_WIN_RATE = 0.46` — should be derived from completed matches via `dataService.getMatches()`, similar to how `computeLeagueAverages()` already derives goal averages
+- [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — derive from actual match/referee data when available
 
 ---
 
@@ -265,7 +287,7 @@ Priority features to implement with real data:
 ### P3b. Data Collector Fixes
 
 - [ ] `football_data_collector.py`: `get_head_to_head()` returns empty DataFrame (stub)
-- [ ] `football_data_collector.py`: `get_team_form()` result-flip logic works but is confusingly written — could be misread as a bug
+- [ ] `football_data_collector.py`: `get_team_form()` returns mixed value types — home matches return raw `'H'`/`'A'`/`'D'` codes while away matches return flipped `'W'`/`'L'`/`'D'`. Any caller checking for `'W'` misses home wins; any caller checking for `'H'` misses away wins. Should consistently return `'W'`/`'D'`/`'L'` regardless of venue
 - [ ] Add retry logic to API client (currently no retries on failure)
 - [ ] **`modern_oracle.py`** calls `self.data_collector.get_team_stats(team_name)` — method doesn't exist on `FootballDataCollector`. Will raise `AttributeError` at runtime
 - [ ] **`modern_oracle.py`** calls `self.data_collector.get_team_form(team_name, last_n=5)` — wrong kwarg name, should be `n_matches`. Will raise `TypeError` at runtime
@@ -289,6 +311,10 @@ Priority features to implement with real data:
 - [ ] **`train.py` hardcoded CSV directory:** no fallback path — breaks environments that keep CSVs at a different location. Support `CSV_DIR` env override with legacy path fallback.
 - [ ] **Data leakage in `modern_oracle.py`:** `optimize_ensemble_weights()` samples a validation set from `training_data` but then passes the full `training_data` (including those validation samples) to `train()`. Models train on data they're validated against. Fix: exclude validation indices from the training split before calling `train()`.
 - [ ] Add pytest tests (currently 0% backend test coverage — `test_setup.py` only checks imports, no assertions)
+- [ ] Fix `lstm_predictor.py`: `prepare_sequences` calls `scaler.fit_transform` on inference data — re-fits the scaler with test-time statistics instead of using the training-fitted scaler. Should be `self.scaler.transform(features)` during prediction
+- [ ] Fix `transformer_model.py`: same `scaler.fit_transform` during inference bug — `prepare_data` re-fits at prediction time instead of using training scaler
+- [ ] Fix `xgboost_model.py`: `_optimize_hyperparameters` passes `n_estimators` to `xgb.train()` — `xgb.train` does not accept this param (uses `num_boost_round` instead). Optuna optimisation of tree count has no effect
+- [ ] Fix `modern_oracle.py`: `train_all_models` uses `training_data.sample(frac=0.2)` for validation — random split, not chronological. Leaks future match data into validation, inflating apparent accuracy
 
 ### P3d. Security Layer Fixes
 
@@ -308,6 +334,12 @@ Priority features to implement with real data:
 - [ ] `validators.py`: `ValidationError` raised incorrectly (will TypeError at runtime — Pydantic V2 doesn't accept bare string)
 - [ ] `validators.py`: SQL blacklist blocks natural language queries containing "from" or "where"
 - [ ] `lstm_predictor.py` and `transformer_model.py` have unguarded `import torch` at module level — will crash if torch not installed (handled by `modern_oracle.py` try/except, but the files themselves aren't safely importable)
+- [ ] `requirements.txt` missing `torch` — LSTM and Transformer models require PyTorch but it's only in `environment.yml` (conda), not pip requirements. `pip install -r requirements.txt` produces a non-functional backend for neural network features
+- [ ] `requirements.txt` includes `python-jose` (3.3.0) and `passlib` (1.7.4) — both unmaintained since 2022. Only used by dead security modules (`auth.py`). Remove from requirements or document as dead weight
+- [ ] `environment.yml` specifies Python 3.11 while `requirements.txt` header claims Python 3.13 — version mismatch between the two environment specs
+- [ ] `main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if the socket was never appended (e.g. exception occurs before `append` completes). Wrap in try/except or use a `set` with `discard()`
+- [ ] `.gitignore`: `__pycache__/` directories not fully excluded — only `backend/app/api/__pycache__` is listed. Add `__pycache__/` globally. Also missing `mlruns/` (MLflow tracking directory)
+- [ ] `validators.py`: SQL blacklist would reject team name "Nottingham Forest" — `'from'` is a substring of `'Forest'`. The `_contains_sql_injection` check uses substring matching (`keyword in text_lower`), not word boundary matching
 
 ### P3e. OptimizedPredictor × ML Integration
 
@@ -425,6 +457,13 @@ Priority features to implement with real data:
 - [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant — duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`
 - [ ] Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant — duplicated in `optimizedPredictions.ts` and `advancedPredictions.ts`
 - [ ] `predictionTracker.ts`: `resultAccuracy` is identical to `accuracy` in `getAccuracyStats` — redundant field
+- [ ] `advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime — entirely dead code (only `OptimizedPredictor` is used in production). 28 tests exercise it but no component imports it
+- [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` is never called anywhere in the codebase — dead code
+- [ ] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` not called by production code — only `calculateRestDays` is used by `OptimizedPredictor`
+- [ ] `optimizedPredictions.ts`: `formString` function has unused `team` parameter — declared but never read inside the function body
+- [ ] `dataService.ts`: `getCurrentSeasonMatches()` is an alias for `getMatches()` — never called by any component. `getTeamRecentMatches()` also never called
+- [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
+- [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
 
 ### P4g. Documentation Cleanup — NEW (18 March 2026)
 
@@ -529,6 +568,25 @@ All feature specifications in `specs/`:
 | `main.py` | WebSocket loop has no null-guard for oracle=None | P3c |
 | `main.py` | `response.dict()` deprecated (Pydantic v2) | P3d |
 | `main.py` | `/features/importance` doesn't guard against None LSTM/Transformer | P3c |
+| `lstm_predictor.py` | `prepare_sequences` calls `scaler.fit_transform` on inference data — should use `transform` only | P3c |
+| `transformer_model.py` | Same `scaler.fit_transform` during inference bug | P3c |
+| `xgboost_model.py` | `_optimize_hyperparameters` passes `n_estimators` to `xgb.train` — ignored (should be `num_boost_round`) | P3c |
+| `modern_oracle.py` | `train_all_models` uses random val split — data leakage from future matches into validation | P3c |
+| `football_data_collector.py` | `get_team_form()` returns mixed `'H'`/`'A'` and `'W'`/`'L'` values — inconsistent form codes | P3b |
+| `requirements.txt` | Missing `torch` — LSTM/Transformer non-functional via pip install | P3d |
+| `requirements.txt` | `python-jose` + `passlib` unmaintained since 2022 — dead security module deps | P3d |
+
+---
+
+## CSV Training Data (available in `backend/spreadsheets/`)
+
+**2,191 completed matches across 5.75 seasons** in `KnowledgeFilesCSV/`:
+- EPL 2020/21 through 2025/26 (partial) — 380 matches per full season
+- **Rich column set**: shots (`HS`/`AS`/`HST`/`AST`), fouls (`HF`/`AF`), corners (`HC`/`AC`), cards (`HY`/`AY`/`HR`/`AR`), referee, half-time scores, plus ~80 bookmaker odds columns
+- These CSVs contain data the free API does **not** provide — making them the primary source for training the ML backend
+- `fact_player_stats.csv` — 3,638 player records with goals, assists, xG, per-90 metrics
+
+**Training/inference feature mismatch**: The CSVs have shots, corners, cards, and odds data. At inference time (predicting future matches), the free Football-Data.org API does not return these fields. Features trained on CSV-only columns will receive nulls at inference. The `FreeTierFeatureEngineer` (P3-Free) must document which features are training-only vs available at inference.
 
 ---
 
@@ -567,6 +625,11 @@ All feature specifications in `specs/`:
 - `footballData.test.ts`: normalisation test re-implements logic inline instead of testing the actual function
 - Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed
 - `dashboard.spec.ts` E2E uses `click({ force: true })` to bypass mobile nav overlap — hides a real layout bug
+- `value.test.ts`: 3 warning tests wrap assertions in `if (homeBet)` guards — silently pass without asserting if no value bet is identified
+- `predictions.test.ts`: form trend test replicates the algorithm inline rather than testing the actual `analyzeFormTrend` function (not exported) — cannot detect bugs in the real implementation
+- `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
+- `betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats
+- `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
 
 **Untested components (10):** SeasonStats, StandingsTable, TopScorers, Help, App, ApiSetupWizard, MatchList, LiveTicker, MobileNav, Sidebar
 

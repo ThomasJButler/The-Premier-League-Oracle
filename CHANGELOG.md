@@ -4,6 +4,18 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Deep Planning Audit — 28 New Findings (18 March 2026)
+- **8 parallel research agents** studied all 8 specs, 18 Svelte components, all frontend libs/services, all backend Python files, all 21 test files + 6 E2E specs, CSV training data, and project configuration
+- **Critical production deployment gap**: no `vercel.json` exists — the Vite dev proxy (`/api/football-data`) only works locally. Production Vercel deploys cannot reach Football-Data.org API. All `/api/football-data/*` requests will 404 in production
+- **3 new backend ML bugs**: LSTM/Transformer `scaler.fit_transform` during inference (re-fits with test data instead of using training scaler), XGBoost `_optimize_hyperparameters` passes `n_estimators` to `xgb.train` (silently ignored — should be `num_boost_round`), `modern_oracle.py` `train_all_models` uses random validation split (data leakage from future matches)
+- **3 new frontend prediction bugs**: `optimizedPredictions.ts` H2H probability shrinkage sums to 1.1 not 1.0, `advancedPredictions.ts` ratingDiff > 200 threshold impossible to reach (already divided by 100), error fallback silently swallows all prediction errors
+- **7 new infrastructure findings**: `torch` missing from `requirements.txt`, `python-jose`/`passlib` unmaintained since 2022, `environment.yml` Python 3.11 vs `requirements.txt` Python 3.13 mismatch, `__pycache__`/`mlruns` not fully excluded in `.gitignore`, root `.env.example` references Supabase, no `backend/.env.example` template, WebSocket `remove()` can raise `ValueError`
+- **5 new test quality issues**: `value.test.ts` has 3 conditional assertions that silently pass, `predictions.test.ts` form trend test doesn't test the actual function, `backtest.test.ts` ELO restore entirely mocked, `betBuilder.test.ts` rivalry tests use wrong name formats, `ValueBets.test.ts` skips core scan flow
+- **8 new dead code items**: `AdvancedMatchPredictor.predictMatch` never called at runtime, `calculateShotValue` never called, `calculateFixtureDifficulty` not used by production code, `formString` unused parameter, `getCurrentSeasonMatches` alias never called, `BettingHistory` double load on startup, `exportPredictions`/`importPredictions` have no UI
+- **CSV training data documented**: 2,191 matches across 5.75 seasons in `backend/spreadsheets/KnowledgeFilesCSV/` with rich columns (shots, corners, cards, odds) — primary source for ML training. Training/inference feature mismatch flagged for `FreeTierFeatureEngineer`
+- **CLAUDE.md corrected**: fixed stale `.gitignore` note (was marked as missing, actually fixed), added spec 08, added production deployment gap, added CSV data note, added `torch` missing note
+- **IMPLEMENTATION_PLAN.md expanded**: added P2l (production deployment), P2m (derive league stats), 4 new P3c items (scaler, n_estimators, data leakage, random val split), 7 new P3d items, 8 new P4f items, 8 new backend stubs, 5 new test quality notes, CSV training data section
+
 ### P1g Logic Bug Sweep — 13 Silent Bugs Fixed (18 March 2026)
 - **`betBuilder.ts`** — `||` → `??` for `predictedHomeGoals`/`awayGoals`; 0 goals no longer treated as falsy and silently replaced with 1.3/1.1
 - **`betHistoryService.ts`** — three fixes: home clean sheet resolution inverted (was requiring home to score), bare 'win to nil' leg fell through unresolved, void bets included in monthly P/L

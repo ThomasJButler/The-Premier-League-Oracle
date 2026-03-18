@@ -85,6 +85,8 @@ All feature specifications live in `specs/`:
 - `06-prediction-tracking.md` - Accuracy tracking, auto-reconciliation
 - `07-ui-ux.md` - shadcn-svelte migration, dark mode, accessibility
 
+- `08-backend-training.md` - Backend ML training pipeline (free-tier + Pro-tier)
+
 These specs are the single source of truth for requirements.
 
 ### Coding Standards
@@ -118,8 +120,12 @@ These specs are the single source of truth for requirements.
 - `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"
 - `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)
 - `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
-- `.gitignore` is missing `backend/.env` — API keys could be accidentally committed
+- `.gitignore` has `backend/.env` (fixed 18 March 2026) — API keys protected
 - `backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files
+- **No `vercel.json` exists** — the Vite dev proxy (`/api/football-data`) only works locally. Production Vercel deploys cannot reach Football-Data.org API. A serverless proxy or Vercel rewrites needed for production deployment
+- CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` — 2,191 matches across 5.75 seasons with shots, corners, cards, odds columns (richer than what the free API provides). These are the primary source for ML training
+- `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
+- Root `.env.example` still references Supabase variables (stale)
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
