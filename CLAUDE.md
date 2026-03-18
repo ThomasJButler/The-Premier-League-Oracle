@@ -106,7 +106,7 @@ These specs are the single source of truth for requirements.
 
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
-- shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; `components.json` exists (enables `npx shadcn-svelte@latest add`)
+- shadcn-svelte: 5 components installed (Button, Card, Badge, Separator, Skeleton); Button wired in 5 components, Card wrapping 10 card-glass instances, Badge in 3 components (with `info`/`neutral` variants added). Orphaned `.btn-*`/`.badge-*` CSS removed from `app.css` (only `.btn-neon` kept). Remaining unwired: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar). `components.json` exists (enables `npx shadcn-svelte@latest add`)
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
@@ -177,6 +177,6 @@ These specs are the single source of truth for requirements.
 - `lib/utils.ts`: exports `getSeasonYear(date?)`, `SEASON_START_MONTH`, `getSeasonLabel()`, `cn()`, `focusTrap()` — the shared utility module for the frontend
 - No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
 - Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
-- Spec 07 (UI/UX) largest remaining gap — shadcn components installed but 0/5 wired into UI (Button, Card, Dialog, Badge, Sheet)
+- Spec 07 (UI/UX) at ~75% — 3/5 shadcn components wired (Button, Card, Badge); remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar), dead code removal, form string computation
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

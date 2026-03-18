@@ -198,14 +198,14 @@ The following must have proper ARIA labels:
 
 ## Acceptance Criteria
 
-> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+> Updated 25 March 2026 — Button, Card, Badge migrations complete
 
 - [x] shadcn-svelte initialised — `components.json` created, five components installed (Button, Card, Badge, Separator, Skeleton), `$lib/utils.ts` created with `cn()` utility (P2a, P2a-fix)
-- [ ] shadcn CSS variables fully mapped to existing palette in `app.css` (partially done — some variables exist but mapping is incomplete)
-- [ ] Button component replaces all `.btn*` CSS classes (shadcn Button installed but `.btn` classes still in use)
-- [ ] Card component wraps glassmorphism cards (shadcn Card installed but `.card-glass` classes still in use)
+- [x] shadcn CSS variables fully mapped to existing palette in `app.css` — all 16 variables defined in `:root` and `.dark` blocks
+- [x] Button component replaces all `.btn*` CSS classes — migrated across Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions (only `.btn-neon` kept as special-effect class override)
+- [x] Card component wraps glassmorphism cards — `<Card class="card-glass">` in Dashboard (8 cards) and ChatBot (2 cards)
 - [ ] Dialog component replaces ApiSetupWizard modal (not done — ApiSetupWizard still uses hand-rolled modal)
-- [ ] Badge component replaces all `.badge*` CSS classes (shadcn Badge installed but `.badge` classes still in use)
+- [x] Badge component replaces all `.badge*` CSS classes — migrated across Dashboard, MatchList, Predictions with `info` and `neutral` variants added
 - [x] Dark mode restores from localStorage on page load — shared theme store with localStorage persistence (P1b)
 - [ ] Sidebar uses shadcn Sheet on mobile (not done — still uses CSS transform)
 - [x] Probability bars have ARIA `role="meter"` attributes (P4b)

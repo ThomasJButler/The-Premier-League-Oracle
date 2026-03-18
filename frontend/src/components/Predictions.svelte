@@ -13,6 +13,8 @@
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
   import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2 } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
   import { aiAnalysisService } from '../services/aiAnalysis';
   import type { AnalysisInput } from '../services/aiAnalysis';
@@ -365,11 +367,11 @@
       </div>
       
       <!-- Predict Button -->
-      <button
+      <Button
         on:click={predictGameweek}
         disabled={isBatchPredicting || loading}
         data-testid="predict-gameweek"
-        class="btn-neon px-5 py-2.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+        class="btn-neon px-5 py-2.5"
       >
         {#if isBatchPredicting}
           <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -378,7 +380,7 @@
           <Calculator class="w-4 h-4" />
           Predict Gameweek
         {/if}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -392,7 +394,7 @@
         <div class="flex items-center gap-2">
           <BarChart3 class="w-5 h-5 text-primary" />
           <span class="font-semibold text-foreground">Prediction Accuracy</span>
-          <span class="badge badge-neutral text-xs">{accuracyStats.totalPredictions} predictions</span>
+          <Badge variant="neutral" class="text-xs">{accuracyStats.totalPredictions} predictions</Badge>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-lg font-bold text-primary">{accuracyStats.accuracy.toFixed(1)}%</span>
@@ -635,12 +637,12 @@
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
-                  <span
-                    class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}"
+                  <Badge
+                    variant={prediction.prediction.confidence_score > 0.75 ? 'success' : prediction.prediction.confidence_score > 0.6 ? 'warning' : 'neutral'}
                     title="{prediction.prediction.confidence_score > 0.75 ? 'High confidence — all models agree strongly' : prediction.prediction.confidence_score > 0.6 ? 'Moderate confidence — some model disagreement' : 'Low confidence — models disagree significantly'}"
                   >
                     {(prediction.prediction.confidence_score * 100).toFixed(0)}%
-                  </span>
+                  </Badge>
                 {/if}
               </div>
               
@@ -685,14 +687,16 @@
               {/if}
 
               {#if prediction.prediction && prediction.detailedAnalysis}
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   on:click={() => toggleCard(prediction.id)}
-                  class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
+                  class="w-full mt-2 flex items-center justify-center gap-2"
                   aria-label="View analysis for {prediction.home_team} vs {prediction.away_team}"
                 >
                   <Calculator class="w-4 h-4" />
                   Tap for Analysis
-                </button>
+                </Button>
               {:else}
                 <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
                   Click "Predict Gameweek" to generate analysis
@@ -706,12 +710,13 @@
                 <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-foreground">Analysis</h3>
-                    <button
+                    <Button
                       on:click={() => toggleCard(prediction.id)}
-                      class="btn btn-ghost btn-sm"
+                      variant="ghost"
+                      size="sm"
                       aria-label="Close analysis">
                       ×
-                    </button>
+                    </Button>
                   </div>
 
                   <!-- Predicted Score Section -->
@@ -879,11 +884,12 @@
                   <p class="text-sm text-muted-foreground mb-4">
                     Click the "Predict Gameweek" button to generate predictions and analysis for this match.
                   </p>
-                  <button 
+                  <Button
                     on:click={() => toggleCard(prediction.id)}
-                    class="btn btn-outline btn-sm">
+                    variant="outline"
+                    size="sm">
                     Go Back
-                  </button>
+                  </Button>
                 </div>
               {/if}
             </div>

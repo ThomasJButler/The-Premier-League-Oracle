@@ -5,6 +5,7 @@
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
+  import { Badge } from '$lib/components/ui/badge';
   import { getSeasonYear } from '../lib/utils';
 
   let matches: Match[] = [];
@@ -311,9 +312,9 @@
           <!-- Status/Actions -->
           <div class="flex items-center justify-center sm:justify-end space-x-2 mt-2 sm:mt-0 col-span-full sm:col-span-1">
             {#if match.result}
-              <span class="badge badge-neutral">Finished</span>
+              <Badge variant="neutral">Finished</Badge>
             {:else}
-              <span class="badge badge-info">Upcoming</span>
+              <Badge variant="info">Upcoming</Badge>
             {/if}
           </div>
         </div>

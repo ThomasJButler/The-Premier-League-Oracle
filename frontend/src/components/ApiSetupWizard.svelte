@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { Key, Shield, Zap, BookOpen, Info, ExternalLink, X } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   
@@ -324,43 +325,40 @@
     <!-- Navigation -->
     <div class="flex-shrink-0 px-8 pb-8">
       <div class="flex justify-between items-center pt-6 border-t border-border">
-        <button
+        <Button
           on:click={prevStep}
           disabled={currentStep === 1}
-          class="btn btn-secondary {currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+          variant="secondary"
         >
           Previous
-        </button>
+        </Button>
         
         <div class="flex gap-3">
           {#if currentStep === 3}
-            <button
+            <Button
               on:click={validateAndSave}
               disabled={!apiKey.trim() || isValidating}
-              class="btn btn-primary {!apiKey.trim() ? 'opacity-50 cursor-not-allowed' : ''}"
             >
               {#if isValidating}
                 Validating...
               {:else}
                 Validate & Save
               {/if}
-            </button>
+            </Button>
           {:else if currentStep === 4}
-            <button
+            <Button
               on:click={() => {
                 dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
               }}
-              class="btn btn-primary"
             >
               Start Using App
-            </button>
+            </Button>
           {:else}
-            <button
+            <Button
               on:click={nextStep}
-              class="btn btn-primary"
             >
               Next
-            </button>
+            </Button>
           {/if}
         </div>
       </div>

@@ -23,6 +23,9 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { TrendingUp, Users, Target, BarChart2, Trophy } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
   ChartJS.register(
     Title,
     Tooltip,
@@ -383,27 +386,27 @@
   {#if loading}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each Array(4) as _, i}
-        <div class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
+        <Card class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
           <div class="skeleton w-10 h-10 rounded-lg mb-3"></div>
           <div class="skeleton h-3 w-20 mb-2"></div>
           <div class="skeleton h-7 w-28 mb-2"></div>
           <div class="skeleton h-3 w-16"></div>
-        </div>
+        </Card>
       {/each}
     </div>
   {:else if error}
-    <div class="card-glass p-8 text-center border-destructive/20 animate-stagger">
+    <Card class="card-glass p-8 text-center border-destructive/20 animate-stagger">
       <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
         <Target class="w-6 h-6 text-destructive" />
       </div>
       <p class="text-destructive font-medium mb-1">{error}</p>
       <p class="text-sm text-muted-foreground mb-4">Check your API connection or try again</p>
-      <button on:click={loadDashboardData} class="btn btn-primary">Retry</button>
-    </div>
+      <Button on:click={loadDashboardData}>Retry</Button>
+    </Card>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
       {#each stats as stat, i}
-        <div
+        <Card
           class="card-glass p-5 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
           style="animation-delay: {400 + i * 100}ms"
           data-testid="stat-card"
@@ -416,29 +419,29 @@
           </div>
           <div class="text-2xl font-display font-bold text-foreground">{stat.value}</div>
           <div class="text-xs text-muted-foreground mt-1">{stat.change}</div>
-        </div>
+        </Card>
       {/each}
     </div>
   {/if}
 
   <!-- Charts Row -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
       <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
-    </div>
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
+    </Card>
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
       <div class="h-48 sm:h-56" role="img" aria-label="Bar chart showing monthly profit and loss from tracked bets">
         <canvas bind:this={profitChartCanvas}></canvas>
       </div>
-    </div>
+    </Card>
   </div>
 
   <!-- How We Predict -->
-  <div class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
+  <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
     <h3 class="text-sm font-display font-semibold text-foreground mb-4 flex items-center gap-2">
       <Target class="w-4 h-4 text-accent" />
       How We Predict
@@ -466,11 +469,11 @@
         current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
       </p>
     </div>
-  </div>
+  </Card>
 
   <!-- Recent Predictions + Upcoming Matches -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
+    <Card class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Recent Predictions</h3>
       {#if loading}
         <div class="space-y-3">
@@ -501,19 +504,19 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs text-muted-foreground">{prediction.confidence}%</span>
                 {#if prediction.wasCorrect !== null}
-                  <span class="badge {prediction.wasCorrect ? 'badge-success' : 'badge-error'}">
+                  <Badge variant={prediction.wasCorrect ? 'success' : 'destructive'}>
                     {prediction.wasCorrect ? 'Correct' : 'Incorrect'}
-                  </span>
+                  </Badge>
                 {:else}
-                  <span class="badge badge-neutral">Pending</span>
+                  <Badge variant="neutral">Pending</Badge>
                 {/if}
               </div>
             </li>
           {/each}
         </ul>
       {/if}
-    </div>
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
+    </Card>
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Upcoming Matches</h3>
       <ul class="space-y-3">
         {#each realMatchData.slice(0, 5) as match}
@@ -528,7 +531,7 @@
           <li class="text-sm text-muted-foreground">No upcoming matches</li>
         {/if}
       </ul>
-      <button class="btn btn-secondary btn-sm mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
-    </div>
+      <Button variant="secondary" size="sm" class="mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</Button>
+    </Card>
   </div>
 </div>

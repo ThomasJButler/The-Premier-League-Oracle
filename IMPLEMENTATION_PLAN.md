@@ -180,7 +180,7 @@ All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 37
 
 ### P2a. shadcn-svelte Completion — DONE (18 March 2026)
 
-5 components installed, `components.json` created. Component wiring deferred (CSS class system has diverged from shadcn styles).
+5 components installed, `components.json` created. **Component wiring completed (26 March 2026):** Button migrated in Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions; Card wrapping 10 card-glass instances in Dashboard + ChatBot; Badge wired in Dashboard, MatchList, Predictions (with `info`/`neutral` variants added). Orphaned `.btn-*`/`.badge-*` CSS classes removed from `app.css` (only `.btn-neon` kept for glow effect). Remaining: Dialog (ApiSetupWizard), Sheet (mobile sidebar).
 
 ### P2a-fix. shadcn-svelte `$lib/utils.ts` Missing — DONE (18 March 2026)
 
@@ -801,7 +801,7 @@ All feature specifications in `specs/`:
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — Kelly + auto-suggestions (P2g), ValueBets UI (P2i), bet storage pipeline (P1i), resolution bugs (P1g), betBuilder combos (P4d) all DONE; missing: accumulator/combination bet UI (deferred). **Spec markers: 11/12 (eighth audit)** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications. LiveTicker pulsing indicator confirmed done. **Spec markers: 9/10 (P5b sync)** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met.** No hardcoded accuracy values, real reconciliation, real dashboard stats. **Spec markers: 7/7** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~55% — dark mode (P1b), a11y wave 1+2 (P4b), P5d a11y fixes (LiveMatches tab panels, Dashboard profit chart, SeasonStats grids), components.json, `$lib/utils.ts` (P2a-fix) all DONE; **shadcn components installed but 0/5 wired** (Button, Card, Dialog, Badge, Sheet). **Spec markers: 9/17 (eighth audit — a11y items added)** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — dark mode (P1b), a11y wave 1+2 (P4b), P5d a11y fixes, components.json, `$lib/utils.ts` (P2a-fix) all DONE; **3/5 shadcn components wired** (Button across 5 components, Card wrapping 10 card-glass instances, Badge across 3 components with `info`/`neutral` variants added). Orphaned `.btn-*`/`.badge-*` CSS removed. Remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar). **Spec markers: 13/17** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Rate limiter broken (P5a). Pro-tier (P3a–P3c) deferred. **Spec markers: 23/24 (eighth audit)** |
 
 ---

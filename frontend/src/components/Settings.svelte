@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
@@ -320,17 +321,17 @@
                 placeholder="Enter your Football-Data.org key"
                 class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
               />
-              <button
+              <Button
                 on:click={saveFootballDataKey}
                 disabled={!footballDataKey.trim() || testing}
-                class="btn btn-sm btn-primary disabled:opacity-50"
+                size="sm"
               >
                 {#if testing}
                   <RefreshCw class="w-4 h-4 animate-spin" />
                 {:else}
                   Connect
                 {/if}
-              </button>
+              </Button>
             </div>
           </div>
           
@@ -487,13 +488,14 @@
           {:else}
             <span class="w-3 h-3 rounded-full bg-muted-foreground/30"></span>
           {/if}
-          <button
+          <Button
             on:click={checkBackendStatus}
             disabled={checkingBackend}
-            class="btn btn-sm btn-secondary disabled:opacity-50"
+            variant="secondary"
+            size="sm"
           >
             Test
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -510,12 +512,13 @@
             placeholder="Bearer token for authenticated endpoints"
             class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
           />
-          <button
+          <Button
             on:click={saveOracleToken}
-            class="btn btn-sm btn-secondary"
+            variant="secondary"
+            size="sm"
           >
             Save
-          </button>
+          </Button>
         </div>
         <p class="text-xs text-muted-foreground mt-1">
           Only needed if your backend requires authentication.
@@ -585,12 +588,13 @@
           <p class="text-sm font-medium text-foreground">Analysis Cache</p>
           <p class="text-xs text-muted-foreground">Clear cached analyses to fetch fresh ones</p>
         </div>
-        <button
+        <Button
           on:click={clearAiCache}
-          class="btn btn-sm btn-secondary"
+          variant="secondary"
+          size="sm"
         >
           Clear
-        </button>
+        </Button>
       </div>
     {/if}
   </div>
@@ -608,12 +612,13 @@
           <p class="text-sm font-medium text-foreground">Cache Size</p>
           <p class="text-xs text-muted-foreground">{cacheSize}</p>
         </div>
-        <button
+        <Button
           on:click={clearCache}
-          class="btn btn-sm btn-secondary"
+          variant="secondary"
+          size="sm"
         >
           Clear Cache
-        </button>
+        </Button>
       </div>
       
       <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -621,17 +626,17 @@
           <p class="text-sm font-medium text-foreground">Last Sync</p>
           <p class="text-xs text-muted-foreground">{lastSync}</p>
         </div>
-        <button
+        <Button
           on:click={syncData}
           disabled={testing}
-          class="btn btn-sm btn-primary disabled:opacity-50"
+          size="sm"
         >
           {#if testing}
             <RefreshCw class="w-4 h-4 animate-spin" />
           {:else}
             Sync Now
           {/if}
-        </button>
+        </Button>
       </div>
     </div>
   </div>

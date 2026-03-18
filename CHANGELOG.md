@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Spec 07 — shadcn Component Wiring (26 March 2026)
+- **Button migration:** Replaced all `.btn-*` CSS classes with shadcn `<Button>` across 5 components (Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions). Variant mapping: `.btn-primary` → default, `.btn-secondary` → secondary, `.btn-outline` → outline, `.btn-ghost` → ghost. `.btn-neon` kept as class override for glow effect CTA
+- **Card migration:** Wrapped 10 `.card-glass` divs with shadcn `<Card class="card-glass">` in Dashboard (8 cards) and ChatBot (2 cards). Glassmorphism aesthetic preserved via class layering
+- **Badge migration:** Replaced all `.badge-*` CSS classes with shadcn `<Badge>` across Dashboard, MatchList, Predictions. Added `info` (sky blue) and `neutral` (muted) variants to Badge component to match existing design
+- **CSS cleanup:** Removed ~60 lines of orphaned `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-outline`, `.btn-ghost`, `.btn-sm`, `.btn-icon`, `.badge`, `.badge-success`, `.badge-error`, `.badge-warning`, `.badge-info`, `.badge-neutral` classes from `app.css`
+- **Spec 07 completion:** 13/17 acceptance criteria now met (was 9/17). Remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar), dead code removal, form string computation
+- **Validation:** 375/375 tests passing, 0 type errors
+
 ### P5 Hardening Batch — Code Quality & ARIA Fixes (26 March 2026)
 - **P5j — Season year deduplication:** Extracted `getSeasonYear(date?)` and `SEASON_START_MONTH` constant to `lib/utils.ts`. Replaced inline `getMonth() >= 6` in `dataService.ts`, `footballData.ts`, `MatchList.svelte`, and `mockApi.ts` (4 locations). `getSeasonLabel()` now delegates to `getSeasonYear()` — single source of truth for the July boundary
 - **P5k — H2H fallback consistency:** `optimizedPredictions.ts` H2H no-data fallback now uses `DEFAULT_HOME_WIN_RATE` (0.46) from constants instead of hardcoded 0.40. Away/draw rates derived proportionally. Eliminates 6pp anti-home bias when H2H data is missing

@@ -299,50 +299,8 @@
   }
 }
 
-/* ─── BUTTONS ─── */
+/* ─── BUTTONS (special effects only — standard buttons use shadcn Button component) ─── */
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold;
-    @apply px-4 py-2.5 transition-all duration-200;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-    @apply disabled:pointer-events-none disabled:opacity-50;
-    @apply bg-primary text-primary-foreground;
-  }
-  .btn:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-  }
-
-  .btn-primary {
-    @apply bg-primary text-primary-foreground;
-  }
-  .btn-primary:hover {
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
-  }
-
-  .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
-  }
-
-  .btn-outline {
-    @apply border border-input bg-transparent text-foreground;
-  }
-  .btn-outline:hover {
-    @apply bg-muted/60;
-  }
-
-  .btn-ghost {
-    @apply bg-transparent hover:bg-muted/60 transition-all duration-200;
-  }
-
-  .btn-sm {
-    @apply h-9 rounded-md px-3 text-xs;
-  }
-
-  .btn-icon {
-    @apply h-10 w-10 p-0 inline-flex items-center justify-center;
-  }
-
   .btn-neon {
     @apply relative px-6 py-3 font-bold rounded-lg;
     background: var(--gradient-accent);
@@ -352,34 +310,6 @@
   }
   .btn-neon:hover {
     box-shadow: 0 0 24px rgba(0, 255, 135, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-}
-
-/* ─── BADGES ─── */
-@layer components {
-  .badge {
-    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold;
-    @apply transition-colors;
-  }
-
-  .badge-success {
-    @apply bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800;
-  }
-
-  .badge-error {
-    @apply bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800;
-  }
-
-  .badge-warning {
-    @apply bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800;
-  }
-
-  .badge-info {
-    @apply bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800;
-  }
-
-  .badge-neutral {
-    @apply bg-muted text-muted-foreground border-border;
   }
 }
 
