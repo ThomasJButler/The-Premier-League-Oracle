@@ -186,7 +186,7 @@
   <div class="card-glass p-6" data-testid="kelly-suggestions">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg" style="background: linear-gradient(135deg, #065f46, #047857);">
+        <div class="p-2 rounded-lg bg-gradient-to-br from-emerald-800 to-emerald-700 dark:from-emerald-900 dark:to-emerald-800">
           <Zap class="w-5 h-5 text-white" />
         </div>
         <div>
@@ -300,7 +300,7 @@
   <div class="card-glass p-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-6">
-      <div class="p-2 rounded-lg" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+      <div class="p-2 rounded-lg bg-gradient-to-br from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800">
         <Calculator class="w-5 h-5 text-white" />
       </div>
       <div>

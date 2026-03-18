@@ -456,7 +456,10 @@
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
-                  <span class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}">
+                  <span
+                    class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}"
+                    title="{prediction.prediction.confidence_score > 0.75 ? 'High confidence — all models agree strongly' : prediction.prediction.confidence_score > 0.6 ? 'Moderate confidence — some model disagreement' : 'Low confidence — models disagree significantly'}"
+                  >
                     {(prediction.prediction.confidence_score * 100).toFixed(0)}%
                   </span>
                 {/if}

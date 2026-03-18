@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P1f Frontend UX Critical Fixes — Partial (18 March 2026)
+- **Help.svelte rewritten** — replaced "Three-Model System" with accurate "Five-Component Ensemble" showing ELO (25%), Poisson (30%), Form (20%), H2H (10%), Standings (15%) with weight badges; removed xG model (unavailable on free tier); corrected polling frequency, export status, accuracy claims, mobile features
+- **Dashboard hero** — "Live Predictions" label → "Match Predictions"; hardcoded hex colours (`#0f172a`, `#111827`) → theme-aware Tailwind classes (`from-slate-900 via-gray-900 to-slate-800` with dark variants); description updated to reference five-component ensemble
+- **"How We Predict" section** — expanded from 4 to 5 items matching actual model; removed fake "Home Advantage"; added Trophy icon for Standings; each card now shows weight percentage
+- **KellyCalculator headers** — inline `style="background: linear-gradient(...)"` → Tailwind gradient classes with dark mode support
+- **Empty state improvement** — Dashboard "No predictions" panel now shows Target icon, guidance text, and "Go to Predictions" navigation link
+- **Error state standardisation** — LiveMatches and TopScorers error containers now use `border-destructive/50 bg-destructive/10` (was barely-visible `border-border bg-card`); spinner sizes standardised to `h-12 w-12 border-t-2 border-b-2`
+- **Confidence tooltip** — prediction card confidence badge now shows hover text explaining what the percentage means (high/moderate/low model agreement)
+- **Test count unchanged at 332** — added `Trophy` icon to Dashboard test mock
+
 ### P2h Oracle Chat Improvements — Complete (18 March 2026)
 - **Security warning banner** — collapsible `ShieldAlert` alert at top of chat explains that the OpenAI API key is visible in browser network tab; includes link to Settings page for key management
 - **Markdown rendering** — new `renderMarkdown()` function handles bold (`**`), italic (`*`), fenced code blocks (`` ``` ``), inline code (`` ` ``), bullet lists (`-`/`*`), and numbered lists; rendered inside `.prose-chat` styled container

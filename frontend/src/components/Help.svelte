@@ -107,11 +107,11 @@
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">📈 Team Stats</h4>
-                  <p class="text-sm">Detailed performance metrics including xG, form, and trends.</p>
+                  <p class="text-sm">Detailed performance metrics including form, home/away splits, and trends.</p>
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">🎯 Predictions</h4>
-                  <p class="text-sm">Multiple models including ELO, Poisson, and Expected Goals.</p>
+                  <p class="text-sm">Five-component ensemble: ELO, Poisson, Form, H2H, and Standings.</p>
                 </div>
               </div>
 
@@ -130,11 +130,15 @@
               <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Understanding Predictions</h2>
               
               <div class="mb-8">
-                <h3 class="text-xl font-semibold mb-4">Our Three-Model System</h3>
-                
+                <h3 class="text-xl font-semibold mb-4">Our Five-Component Ensemble</h3>
+                <p class="mb-4 text-muted-foreground">Each component contributes a weighted share to the final prediction. The ensemble combines them to produce more reliable forecasts than any single model alone.</p>
+
                 <div class="space-y-6">
                   <div class="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
-                    <h4 class="font-bold text-lg mb-2">🎲 ELO Rating System</h4>
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-bold text-lg">🎲 ELO Rating System</h4>
+                      <span class="text-sm font-mono bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded">25%</span>
+                    </div>
                     <p class="mb-3">Dynamic team strength ratings that adjust based on match results and opposition quality.</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -157,7 +161,10 @@
                   </div>
 
                   <div class="p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
-                    <h4 class="font-bold text-lg mb-2">📊 Poisson Distribution</h4>
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-bold text-lg">📊 Poisson Distribution</h4>
+                      <span class="text-sm font-mono bg-green-100 dark:bg-green-800 px-2 py-0.5 rounded">30%</span>
+                    </div>
                     <p class="mb-3">Statistical model that predicts goal probabilities based on team attacking and defensive strengths.</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -179,24 +186,79 @@
                     </div>
                   </div>
 
-                  <div class="p-6 bg-gradient-to-r from-slate-50 to-teal-50 dark:from-slate-900/20 dark:to-teal-900/20 rounded-xl">
-                    <h4 class="font-bold text-lg mb-2">⚡ Expected Goals (xG)</h4>
-                    <p class="mb-3">Advanced metric that measures the quality of chances created and conceded by teams.</p>
+                  <div class="p-6 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-bold text-lg">🔥 Form Analysis</h4>
+                      <span class="text-sm font-mono bg-amber-100 dark:bg-amber-800 px-2 py-0.5 rounded">20%</span>
+                    </div>
+                    <p class="mb-3">Analyses each team's recent results to capture momentum, streaks, and current performance level.</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <strong class="text-green-600">Best for:</strong>
                         <ul class="mt-1 space-y-1">
-                          <li>• True performance level</li>
-                          <li>• Identifying value bets</li>
-                          <li>• Future regression</li>
+                          <li>• Recent momentum shifts</li>
+                          <li>• Winning/losing streaks</li>
+                          <li>• Current confidence levels</li>
                         </ul>
                       </div>
                       <div>
                         <strong class="text-amber-600">Limitations:</strong>
                         <ul class="mt-1 space-y-1">
-                          <li>• Requires detailed data</li>
-                          <li>• Ignores finishing quality</li>
-                          <li>• Complex to understand</li>
+                          <li>• Small sample size</li>
+                          <li>• Doesn't account for fixtures</li>
+                          <li>• Can overreact to flukes</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-6 bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-bold text-lg">🤝 Head-to-Head</h4>
+                      <span class="text-sm font-mono bg-purple-100 dark:bg-purple-800 px-2 py-0.5 rounded">10%</span>
+                    </div>
+                    <p class="mb-3">Historical record between the two teams — some matchups have persistent patterns that other models miss.</p>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <strong class="text-green-600">Best for:</strong>
+                        <ul class="mt-1 space-y-1">
+                          <li>• Derby rivalries</li>
+                          <li>• Persistent bogey teams</li>
+                          <li>• Ground advantage</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <strong class="text-amber-600">Limitations:</strong>
+                        <ul class="mt-1 space-y-1">
+                          <li>• Squad turnover</li>
+                          <li>• Promoted teams have little H2H</li>
+                          <li>• Low weight by design</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="p-6 bg-gradient-to-r from-slate-50 to-teal-50 dark:from-slate-900/20 dark:to-teal-900/20 rounded-xl">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-bold text-lg">🏆 League Standings</h4>
+                      <span class="text-sm font-mono bg-teal-100 dark:bg-teal-800 px-2 py-0.5 rounded">15%</span>
+                    </div>
+                    <p class="mb-3">Current league position and points provide a baseline expectation of team quality across the season.</p>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <strong class="text-green-600">Best for:</strong>
+                        <ul class="mt-1 space-y-1">
+                          <li>• Season-long context</li>
+                          <li>• Mismatches (top vs bottom)</li>
+                          <li>• Relegation battles</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <strong class="text-amber-600">Limitations:</strong>
+                        <ul class="mt-1 space-y-1">
+                          <li>• Unreliable early season</li>
+                          <li>• Mid-table teams clustered</li>
+                          <li>• Doesn't reflect injuries</li>
                         </ul>
                       </div>
                     </div>
@@ -230,7 +292,7 @@
               <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🎯 The Golden Rules</h3>
                 <ol class="space-y-3">
-                  <li><strong>1. Consensus is Key:</strong> When all three models agree, accuracy jumps to 75-85%</li>
+                  <li><strong>1. Consensus is Key:</strong> When all five models agree, accuracy jumps to 75-85%</li>
                   <li><strong>2. Context Matters:</strong> Always check team news, injuries, and motivation</li>
                   <li><strong>3. Value Over Volume:</strong> Better to skip than force a prediction</li>
                   <li><strong>4. Track Everything:</strong> Learn from both wins and losses</li>
@@ -287,7 +349,7 @@
                   <h3 class="font-bold text-lg mb-3">🔮 Predictions</h3>
                   <p class="text-sm mb-3">Advanced statistical models for match outcome predictions.</p>
                   <ul class="text-sm space-y-1">
-                    <li>• Three-model consensus</li>
+                    <li>• Five-model ensemble</li>
                     <li>• Confidence ratings</li>
                     <li>• Expected scores</li>
                     <li>• Head-to-head history</li>
@@ -331,10 +393,10 @@
                   <h3 class="font-bold text-lg mb-3">📱 Mobile Features</h3>
                   <p class="text-sm mb-3">Full functionality on all devices with responsive design.</p>
                   <ul class="text-sm space-y-1">
-                    <li>• Swipe navigation</li>
-                    <li>• Touch-optimized controls</li>
-                    <li>• Offline caching</li>
-                    <li>• Push notifications</li>
+                    <li>• Bottom navigation bar</li>
+                    <li>• Touch-optimised controls</li>
+                    <li>• Offline data caching</li>
+                    <li>• Responsive layouts</li>
                   </ul>
                 </div>
               </div>
@@ -399,7 +461,7 @@
               <div class="space-y-6">
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">How accurate are the predictions?</h3>
-                  <p>Our models achieve 60-65% accuracy on average, with high-confidence predictions reaching 75-85% accuracy when all models agree.</p>
+                  <p>Accuracy varies by confidence level — high-confidence predictions (75%+) where all five models agree tend to be the most reliable. You can track your own accuracy over time in the Predictions view, which records how each prediction performed once the match completes.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
@@ -419,7 +481,7 @@
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">How often is data updated?</h3>
-                  <p>Match data updates in real-time during games. Statistics and predictions refresh every 5 minutes when you're using the app.</p>
+                  <p>Match data uses adaptive polling: every 30 seconds during live matches, every 5 minutes on matchdays, and every 30 minutes otherwise. Data is cached locally to minimise API calls.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
@@ -429,7 +491,7 @@
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
-                  <p>Currently, you can copy data from tables. Full export functionality is planned for a future update.</p>
+                  <p>Yes — the Betting History page has a CSV export button for your tracked bets. You can also copy data from tables directly.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">

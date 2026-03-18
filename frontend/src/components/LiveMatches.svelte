@@ -233,12 +233,12 @@
 
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
-      <AlertCircle class="w-12 h-12 mx-auto mb-4 text-red-500" />
-      <p class="text-red-500">{error}</p>
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">
+      <AlertCircle class="w-12 h-12 mx-auto mb-4 text-destructive" />
+      <p class="text-destructive">{error}</p>
       <button
         on:click={loadMatches}
         class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

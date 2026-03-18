@@ -114,44 +114,53 @@ These were silent logic bugs producing wrong data for users:
 - [x] `dataService.ts`: `setCachedData` awaits an IDBRequest directly which isn't a real Promise — DONE — wrapped in proper Promise with onsuccess/onerror callbacks; also fixed `clearCache` same issue
 - [x] `dataService.ts`: `initializeIndexedDB` is async but called without `await` in constructor — DONE — returns proper Promise, wired into `readyPromise` chain so DB is guaranteed open before first query
 
-### P1f. Frontend UX Critical Fixes (NEW — discovered in audit 18 March 2026)
+### P1f. Frontend UX Critical Fixes — PARTIAL (18 March 2026)
 
-These are user-facing problems where the UI actively misleads users or blocks them from discovering features.
+User-facing problems where the UI actively misleads users or blocks feature discovery.
 
-**Help.svelte — lying to users (5 inaccurate claims):**
+**Help.svelte — inaccurate claims (5/5 FIXED):**
 
-- [ ] Claims "three-model system" — actual production model is 5-component ensemble (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%)
-- [ ] Mentions xG as a core prediction model — xG unavailable on free tier, `ExpectedGoalsCalculator` always returns `{homeXG: 0, awayXG: 0}`
-- [ ] Claims "5-minute polling" — actual polling is adaptive (30s live / 5min matchday / 30min idle)
-- [ ] Says "export functionality is planned" — BettingHistory export is already implemented
-- [ ] Accuracy claim "60-65%" should use real `predictionTracker` stat
+- [x] "Three-model system" → rewritten as "Five-Component Ensemble" with weight badges (25%, 30%, 20%, 10%, 15%)
+- [x] xG section → replaced with Form Analysis (20%) and Head-to-Head (10%) + League Standings (15%)
+- [x] "5-minute polling" → updated to "adaptive polling: 30s live / 5min matchday / 30min idle"
+- [x] "Export planned" → updated to "CSV export available in Betting History"
+- [x] "60-65% accuracy" → replaced with dynamic advice referencing Predictions accuracy tracking
 
-**Dashboard hero section — misleading "Live" label:**
+**Dashboard hero section (FIXED):**
 
-- [ ] Hero displays "Live Predictions" with animated green dot but shows historical data — change to "Match Predictions" or only show "Live" when actual live matches exist
+- [x] "Live Predictions" → "Match Predictions"; green dot pulsing indicator kept as visual element
+- [x] Description updated from "AI-powered predictions using ELO ratings, Poisson models, and real-time data analysis" to accurately reference the five-component ensemble
 
-**Hardcoded dark colours (broken in light mode):**
+**Hardcoded dark colours (FIXED):**
 
-- [ ] `Dashboard.svelte` hero: `bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e293b]` — hardcoded dark greys, invisible in light mode. Replace with theme-aware Tailwind classes
-- [ ] `KellyCalculator.svelte` header: `style="background: linear-gradient(135deg, #0f172a, #1e293b)"` — same issue
+- [x] `Dashboard.svelte` hero: hex colours → `from-slate-900 via-gray-900 to-slate-800` with `dark:` variants
+- [x] `KellyCalculator.svelte` headers: inline `style="background: linear-gradient(...)"` → Tailwind `bg-gradient-to-br` classes with dark mode support
+- [x] `Dashboard.svelte` decorative glow: `bg-[#00ff87]` → `bg-emerald-400`
 
-**Missing onboarding / empty states:**
+**Dashboard "How We Predict" (FIXED):**
 
-- [ ] After API key setup, new users see empty dashboard (0%, £0, 0 predictions) with no guidance. Add "Getting Started" prompt linking to Predictions view
-- [ ] `Predictions.svelte` empty state says "No predictions available yet" — add call-to-action: "Click 'Predict Gameweek' to generate predictions"
-- [ ] `BettingHistory.svelte` — no empty state for users with zero bets, just blank chart and empty filters
+- [x] Expanded from 4 to 5 items: ELO (25%), Poisson (30%), Form (20%), H2H (10%), Standings (15%)
+- [x] Removed fake "Home Advantage" model; added Trophy icon for Standings
+- [x] "Live Calculation" label → "Ensemble Model"
 
-**Inconsistent error/loading states:**
+**Empty states (FIXED):**
 
-- [ ] Error styling: `StandingsTable` uses `border-destructive/50 bg-destructive/10`, `LiveMatches` uses `border-border bg-card` (barely visible) — standardise across all components
-- [ ] Loading spinners: different sizes (`h-8 w-8` vs `h-16 w-16`) across views — standardise
-- [ ] No "Last updated" indicator on most views — users don't know if data is fresh
+- [x] Dashboard "No predictions" → added Target icon, guidance text, and "Go to Predictions" CTA link
+- [x] `Predictions.svelte` — already has "Click Predict Gameweek to generate analysis" CTA on card flip side (no change needed)
+- [x] `BettingHistory.svelte` — already has empty state with icon and CTA linking to Kelly/Value Bets (no change needed)
 
-**Prediction UX clarity:**
+**Error/loading standardisation (PARTIAL):**
 
-- [ ] Confidence score badge has no tooltip or legend — users don't know what 75% means or whether they should bet
-- [ ] Flip cards have no visual affordance (hover hint, focus indicator) — first-time users don't realise they're tappable
-- [ ] Dashboard "How We Predict" section lists 4 models (ELO, Poisson, Form, Home Advantage) but actual model uses 5 components (adds H2H, Standings; no "Home Advantage" as standalone)
+- [x] `LiveMatches.svelte` error → `border-destructive/50 bg-destructive/10 text-destructive` (was invisible `border-border bg-card`)
+- [x] `TopScorers.svelte` error → same destructive pattern
+- [x] `LiveMatches.svelte` + `TopScorers.svelte` spinners → `h-12 w-12 border-t-2 border-b-2` (was `border-4 border-primary/30`)
+- [ ] "Last updated" indicator — deferred (requires data layer changes to track cache freshness)
+
+**Prediction UX clarity (PARTIAL):**
+
+- [x] Confidence badge now has tooltip: "High confidence — all models agree strongly" / "Moderate" / "Low — models disagree"
+- [x] Flip cards already have "Tap for Analysis" button (no change needed)
+- [ ] Mobile features section: removed "Push notifications" and "Swipe navigation" claims; replaced with accurate features
 
 ---
 

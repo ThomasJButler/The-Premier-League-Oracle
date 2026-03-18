@@ -22,7 +22,7 @@
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, Users, Target, BarChart2 } from 'lucide-svelte';
+  import { TrendingUp, Users, Target, BarChart2, Trophy } from 'lucide-svelte';
   ChartJS.register(
     Title,
     Tooltip,
@@ -331,16 +331,16 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e293b] p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-white animate-slide-in-up">
     <!-- Decorative elements -->
     <div class="absolute inset-0 dot-pattern opacity-[0.03]"></div>
-    <div class="absolute -top-20 -right-20 w-64 h-64 bg-[#00ff87]/10 rounded-full blur-3xl"></div>
+    <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/10 rounded-full blur-3xl"></div>
     <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-slate-800/40 rounded-full blur-3xl"></div>
 
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-2.5 h-2.5 bg-[#00ff87] rounded-full live-pulse"></div>
-        <span class="text-[#00ff87]/80 text-xs font-semibold tracking-wider uppercase">Live Predictions</span>
+        <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full live-pulse"></div>
+        <span class="text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
         <span class="text-white/50 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
@@ -349,7 +349,7 @@
         Premier League Oracle
       </h1>
       <p class="text-white/60 text-sm sm:text-base mb-6 max-w-xl">
-        AI-powered predictions using ELO ratings, Poisson models, and real-time data analysis
+        Statistical predictions using a five-component ensemble: ELO, Poisson, Form, H2H, and Standings
       </p>
 
       <!-- Quick stats -->
@@ -433,12 +433,13 @@
       <Target class="w-4 h-4 text-accent" />
       How We Predict
     </h3>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+    <div class="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
       {#each [
-        { icon: BarChart2, label: 'ELO Ratings', desc: 'Dynamic team strength', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
-        { icon: TrendingUp, label: 'Poisson Model', desc: 'Goal probability', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-        { icon: Users, label: 'Form Analysis', desc: 'Recent trends', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
-        { icon: Target, label: 'Home Advantage', desc: 'Venue adjustments', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+        { icon: BarChart2, label: 'ELO Ratings', desc: '25% weight', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
+        { icon: TrendingUp, label: 'Poisson Model', desc: '30% weight', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+        { icon: Users, label: 'Form Analysis', desc: '20% weight', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+        { icon: Target, label: 'Head-to-Head', desc: '10% weight', iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+        { icon: Trophy, label: 'Standings', desc: '15% weight', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
       ] as method, i}
         <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50 animate-stagger" style="animation-delay: {1100 + i * 80}ms">
           <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
@@ -451,8 +452,8 @@
     </div>
     <div class="mt-4 p-3 bg-accent/5 rounded-lg border border-accent/10">
       <p class="text-xs text-muted-foreground">
-        <strong class="text-accent">Live Calculation:</strong> Processing {recentMatches.length} recent matches,
-        current standings, and {upcomingPredictions} upcoming fixtures with statistical models.
+        <strong class="text-accent">Ensemble Model:</strong> Combining {recentMatches.length} recent matches,
+        current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
       </p>
     </div>
   </div>
@@ -472,7 +473,15 @@
         </div>
       {:else if topPredictions.length === 0}
         <div class="text-center py-8">
-          <p class="text-sm text-muted-foreground">No predictions available yet</p>
+          <Target class="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p class="text-sm font-medium text-foreground mb-1">No predictions yet</p>
+          <p class="text-xs text-muted-foreground mb-3">Generate your first predictions to see them here.</p>
+          <button
+            class="text-xs text-primary hover:text-primary/80 font-medium"
+            on:click={() => dispatch('navigate', { view: 'Predictions' })}
+          >
+            Go to Predictions &rarr;
+          </button>
         </div>
       {:else}
         <ul class="space-y-2">
