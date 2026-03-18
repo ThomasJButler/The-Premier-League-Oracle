@@ -19,7 +19,6 @@
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
   let bets: StoredBet[] = [];
-  let loading = true;
   let filterResult: 'all' | 'win' | 'loss' | 'pending' = 'all';
 
   let totalWagered = tweened(0, { duration: 800, easing: cubicOut });
@@ -40,8 +39,6 @@
   };
 
   function loadBettingHistory() {
-    loading = true;
-
     bets = betHistoryService.getAllBets();
 
     const roiData = betHistoryService.getROI();
@@ -53,8 +50,6 @@
     winRateTweened.set(betHistoryService.getWinRate());
 
     buildMonthlyChart();
-
-    loading = false;
   }
 
   function buildMonthlyChart() {
@@ -297,11 +292,7 @@
       </div>
     </div>
 
-    {#if loading}
-      <div class="flex-grow flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    {:else if bets.length === 0}
+    {#if bets.length === 0}
       <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-12">
         <PoundSterling class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>

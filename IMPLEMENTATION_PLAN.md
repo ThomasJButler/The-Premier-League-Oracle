@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P4c/P4f batch — season selector, movement icons, shared utils, dead code audit corrections. Test count 350/21)
+Last updated: 20 March 2026 (P4b/P4c/P4f batch — dead loading spinner, cursor-pointer fix, refreshDataSources removal, stale comments. Test count 344/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -607,7 +607,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `LiveMatches.svelte` tab buttons lack `role="tab"` / `role="tabpanel"` / `aria-selected` pattern
 - [ ] `Help.svelte` nav sections have no `aria-current` or `aria-selected`; mobile menu button lacks `aria-expanded`
 - [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
-- [ ] `SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler, `tabindex`, or keyboard support — misleading to keyboard/AT users
+- [x] ~~`SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler~~ **FIXED:** removed `cursor-pointer` from both `.stat-card` and `.stat-card-small` classes — cards are display-only with no interactive behaviour
 - [ ] `LiveTicker.svelte` has no `role="marquee"` or `aria-live` — screen readers treat as static text; no pause control fails WCAG 2.2.2
 - [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
 - [x] `MatchList.svelte` sort buttons — added `aria-pressed` on Date and Team sort buttons
@@ -635,7 +635,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
 - [x] ~~`BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values~~ **FIXED:** replaced with `PoundSterling` icon
 - [x] ~~`BettingHistory.svelte`: redundant double `loadBettingHistory()` call~~ **FIXED:** removed `onMount` wrapper — single module-scope call is sufficient for synchronous localStorage reads. Also removed now-unused `onMount` import
-- [ ] `BettingHistory.svelte`: loading spinner never renders — `loading = true` wraps synchronous localStorage code that completes before the DOM can repaint, so `{#if loading}` skeleton block is invisible (fifth audit)
+- [x] ~~`BettingHistory.svelte`: loading spinner never renders~~ **FIXED:** removed dead `loading` variable, `loading = true`/`loading = false` in `loadBettingHistory()`, and `{#if loading}` spinner block — all synchronous localStorage reads complete before DOM repaint
 - [x] ~~`MatchList.svelte:23-29`: `loadSeasons()` has no try/catch~~ **FIXED:** wrapped in try/catch with console.warn and user-facing error message
 - [x] `Settings.svelte:75-86` and `ApiSetupWizard.svelte:61-71`: artificial 5-second delay — FIXED in P4a for ApiSetupWizard (removed delay + double reload). Settings reload still exists but is intentional (user explicitly clicking "Connect")
 
@@ -698,15 +698,15 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `optimizedPredictions.ts`: `formString` function — removed unused `team` parameter and updated call sites
 - [x] `dataService.ts`: `getCurrentSeasonMatches()` — **NOT DEAD**. Called by Predictions.svelte and SeasonStats.svelte. The alias is a semantic convenience over `getMatches()`
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
-- [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
+- [x] ~~`BettingHistory.svelte`: `loadBettingHistory()` called twice on startup~~ **FIXED:** `onMount` wrapper removed in a prior fix — single module-scope call is sufficient for synchronous localStorage reads
 - [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
-- [ ] `dataService.ts`: `refreshDataSources()` — still present, none called from any component
+- [x] ~~`dataService.ts`: `refreshDataSources()` — dead method, no component called it~~ **FIXED:** removed method and its "alias" comment. Tests updated to call `refreshApiConfiguration()` directly
 - [x] `footballData.ts`: odds fields — changed `|| null` to `?? null` so a hypothetical odds value of `0` wouldn't be treated as missing
-- [ ] `ApiSetupWizard.svelte`: commented-out debug notes at lines 33, 44, 52–53 — stale test comments to clean up
+- [x] ~~`ApiSetupWizard.svelte`: stale comments at lines 30, 41~~ **FIXED:** removed redundant "Testing API key validation" and "API connection test completed" comments
 - [x] `optimizedPredictions.ts`: `form` field — removed from both `getEnhancedTeamStats()` return paths (no caller reads it)
 - [x] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore` — removed unused `isHome` parameter and updated call sites
-- [ ] `optimizedPredictions.ts`: `getTopOutcome()` duplicates `determinePrediction()` logic — one is redundant
-- [ ] `footballData.ts`: `getTeamByName()` — still present, never imported outside this file
+- [ ] `optimizedPredictions.ts`: `getTopOutcome()` and `determinePrediction()` have the same core logic — **NOT REDUNDANT on inspection:** different signatures (`getTopOutcome` takes 3 args, returns just the result letter; `determinePrediction` takes an object, returns `{ result, probability }`). Consolidating would make call sites more verbose for no benefit. Keep both
+- [ ] `footballData.ts`: `getTeamByName()` — **NOT DEAD on inspection:** called internally by `getTeamForm()` at line 435, which is called by `dataService.getTeamForm()`. Private helper, not dead code
 - [x] `MatchList.svelte`: season selector — added `<select>` dropdown in the header so fetched seasons are actually usable. Triggers `loadMatches()` on change
 - [x] `value.ts`: `calculateSharpeRatio()` — removed (dead function, see P4f)
 - [x] `value.ts`: `calculatePerformanceMetrics()` — removed (dead function, see P4f)

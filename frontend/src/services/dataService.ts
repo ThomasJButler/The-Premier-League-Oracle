@@ -444,12 +444,6 @@ class DataService {
   }
 
   // Refresh data source availability (useful after API key is set)
-  public async refreshDataSources(): Promise<void> {
-    this.readyPromise = this.checkDataSources();
-    await this.readyPromise;
-  }
-  
-  // Alias for refreshDataSources for backward compatibility
   public async refreshApiConfiguration(): Promise<void> {
     this.readyPromise = this.checkDataSources();
     await this.readyPromise;

@@ -422,7 +422,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each stats as stat, i}
           <div 
-            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300 cursor-pointer"
+            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300"
             style="animation-delay: {i * 100}ms"
           >
             <div class="flex items-start justify-between mb-4">
@@ -454,7 +454,7 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {#each additionalStats as stat, i}
             <div 
-              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300 cursor-pointer"
+              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300"
               style="animation-delay: {(stats.length + i) * 50}ms"
             >
               <div class="flex items-center gap-3 mb-2">

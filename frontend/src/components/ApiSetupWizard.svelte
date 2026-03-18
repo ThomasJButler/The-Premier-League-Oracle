@@ -27,29 +27,16 @@
     validationError = '';
     validationSuccess = false;
     
-    // Testing API key validation
-    
     try {
       const api = footballDataAPI;
-      
-      // Set the API key
       api.setApiKey(apiKey.trim());
-      
-      // Test the connection
+
       const isConnected = await api.testConnection();
-      
-      // API connection test completed
-      
+
       if (isConnected) {
         validationSuccess = true;
-
-        // Save to localStorage
         localStorage.setItem('football_data_api_key', apiKey.trim());
-
-        // Clear stale cache so fresh data loads with the new key
         await dataService.clearCache();
-
-        // Move to final step
         currentStep = 4;
       } else {
         validationError = `Invalid API key. Please check that you copied it correctly from ${

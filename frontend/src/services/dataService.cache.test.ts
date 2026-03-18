@@ -147,7 +147,7 @@ describe('DataService IndexedDB Cache', () => {
 
     // clearCache preserves the API key but resets the data source availability check, so re-enable it
     mockApi.hasApiKey.mockReturnValue(true);
-    await dataService.refreshDataSources();
+    await dataService.refreshApiConfiguration();
 
   });
 
@@ -216,7 +216,7 @@ describe('DataService IndexedDB Cache', () => {
     // Clear
     await dataService.clearCache();
     mockApi.hasApiKey.mockReturnValue(true);
-    await dataService.refreshDataSources();
+    await dataService.refreshApiConfiguration();
 
     // Next calls hit the API again
     await dataService.getMatches();
