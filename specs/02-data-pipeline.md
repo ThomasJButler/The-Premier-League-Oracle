@@ -18,8 +18,9 @@ The following items from this spec have been **implemented**:
 The following items **remain unimplemented or partially done**:
 
 - **5 seasons of historical data loading:** The method exists but there is no progressive loader that fetches all 5 seasons on first use with rate-limiting between requests.
-- **Supabase removal:** Most Supabase code has been removed, but the checklist below should be verified for completeness.
-- **Backend proxy:** Not yet configured in `vite.config.ts`.
+- **Supabase removal:** DONE. All Supabase code removed, verified 19 March 2026. Checklist below fully checked off.
+- **Football-Data.org proxy:** DONE. `/api/football-data` proxy configured in `vite.config.ts` for local development. In production, the frontend calls Football-Data.org directly (they send `Access-Control-Allow-Origin: *`).
+- **Backend ML proxy:** NOT DONE. `/api/oracle` → `http://localhost:8000` proxy for the Python ML backend is not yet configured in `vite.config.ts` (depends on P2b — backend service).
 
 ---
 

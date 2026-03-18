@@ -8,7 +8,7 @@
 
 The Python backend in `backend/` is fully built but **zero frontend code calls it**. It has:
 
-> **Note (March 2026 audit):** The backend server will not start due to broken LangChain/ChromaDB imports in `modern_oracle.py`. All 40+ feature engineering methods return `np.random.uniform()` random values. See `IMPLEMENTATION_PLAN.md` Phase 5 for the full remediation plan.
+> **Note (March 2026 audit — updated):** The backend server now starts with graceful degradation — all heavy deps (LangChain, ChromaDB, torch, shap, optuna) are wrapped in try/except with availability flags. ML endpoints are disabled when deps are missing but `/health` returns 200. Feature engineering methods no longer return `np.random.uniform()` — 63 methods now return hardcoded `0.0` (still stubs, but not random). See `IMPLEMENTATION_PLAN.md` P3 for the remediation plan.
 
 - FastAPI server: `backend/app/api/main.py`
 - XGBoost model: `backend/app/models/xgboost_model.py`

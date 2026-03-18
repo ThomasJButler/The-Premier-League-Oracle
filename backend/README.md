@@ -245,7 +245,7 @@ pytest
 pytest --cov=app
 ```
 
-No tests exist yet. Frontend has 275 Vitest tests; backend is next.
+No tests exist yet. Frontend has 364 Vitest tests across 21 files; backend is next.
 
 ---
 
@@ -273,10 +273,8 @@ Models are currently untrained scaffolds — the accuracy depends on training wi
 
 ## Links
 
-- [Jupyter Guide](JUPYTER_GUIDE.md)
-- [Training Guide](TRAINING_GUIDE.md)
-- [Beginner's Guide](docs/FOR_BEGINNERS.md)
 - [Interactive API Docs](http://localhost:8000/docs) (when server is running)
+- [Training Spec](../specs/08-backend-training.md)
 
 ---
 

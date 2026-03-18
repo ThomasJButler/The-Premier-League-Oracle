@@ -1,16 +1,16 @@
 # ⚽ The Premier League Oracle
 
-![Version](https://img.shields.io/badge/version-2.0-blue)
+![Version](https://img.shields.io/badge/version-3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
 ![Status](https://img.shields.io/badge/status-active-success)
+![Tests](https://img.shields.io/badge/tests-364%20passing-brightgreen)
 
-A comprehensive Premier League prediction platform backed by data science and machine learning. This tool analyses historical match data to provide statistically-sound predictions and uncover unusual statistics in Premier League football matches.
+A data-driven Premier League prediction platform that uses statistical models to predict match outcomes and analyse team performance. Built with Svelte, TypeScript, and a Python ML backend.
 
 ## Overview
 
-The Premier League Oracle is designed to be the ultimate prediction and analysis tool for the English Premier League. Unlike traditional betting tips that rely on emotion or gut feeling, this platform utilises pure data analysis and statistical models to generate objective predictions and reveal hidden patterns in football data.
-
+The Premier League Oracle eliminates emotional bias from football predictions. Instead of gut feeling, it uses an ensemble of statistical models — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings — to generate objective match predictions with confidence scores.
 
 | Desktop Screenshot | Mobile Screenshot |
 | ------------------ | ----------------- |
@@ -18,128 +18,96 @@ The Premier League Oracle is designed to be the ultimate prediction and analysis
 
 ### Data Source
 
-All match data is sourced from [Football-Data.org](https://www.football-data.org/) API for real-time updates and historical data. The platform uses advanced caching strategies to ensure optimal performance while respecting API rate limits.
+All match data comes from the [Football-Data.org](https://www.football-data.org/) API v4. The platform uses a 3-tier cache (memory → IndexedDB → API) to minimise API calls whilst keeping data fresh.
 
-### Key Features
+### Features
 
-- **Data-Driven Predictions**: Eliminates emotional bias through mathematical models
-- **Statistical Anomaly Detection**: Uncover unusual patterns and outlier performances
-- **Historical Analysis**: Access comprehensive statistics from past seasons
-- **Match Comparison**: Compare team performances across various metrics
-- **Trend Visualisation**: View performance trends and hidden patterns
-- **Informed Decision Making**: Make smarter predictions based on solid data
+- **Prediction Engine** — Weighted ensemble of 5 models (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%)
+- **Live Matches** — Real-time scores with smart polling (30s when live, 5min otherwise)
+- **Betting Intelligence** — Kelly Criterion calculator, value bet scanner, bet tracking with ROI
+- **Backtesting** — Validate model accuracy against historical seasons
+- **Season Stats** — League standings, top scorers, team performance breakdowns
+- **Dark/Light Mode** — Persisted theme preference with system detection fallback
+- **Oracle Chat** — AI-powered match analysis (requires OpenAI API key)
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 20+ and npm
 - A free API key from [Football-Data.org](https://www.football-data.org/client/register)
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/The-Premier-League-Oracle.git
-   cd The-Premier-League-Oracle
-   ```
+```bash
+git clone https://github.com/ThomasJButler/The-Premier-League-Oracle.git
+cd The-Premier-League-Oracle/frontend
+npm install
+npm run dev
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Open `http://localhost:5173` — the setup wizard will guide you through adding your API key.
 
-3. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+### Running Tests
 
-4. **Open in browser**
-   Navigate to `http://localhost:5173`
-
-5. **Set up your API key**
-   - The setup wizard will guide you through adding your Football-Data.org API key
-   - The app will automatically reload with live data
+```bash
+cd frontend
+npm run check        # TypeScript + Svelte type checking
+npm run test:run     # 364 unit tests (Vitest)
+npm run test:e2e     # 43 E2E tests × 3 viewports (Playwright)
+```
 
 ## Technology Stack
 
-- **Frontend**: Svelte 4.2, TypeScript, Tailwind CSS
-- **API**: Football-Data.org v4 API
-- **Build Tool**: Vite
-- **Charts**: Chart.js with svelte-chartjs
-- **Deployment**: Vercel
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Svelte 4, TypeScript, Tailwind CSS, Vite |
+| **Charts** | Chart.js with svelte-chartjs |
+| **Caching** | IndexedDB (3-tier: memory → IDB → API) |
+| **Testing** | Vitest (364 tests), Playwright (43 E2E tests) |
+| **Backend** | Python, FastAPI, XGBoost (optional — scaffolded, not yet trained) |
+| **API** | Football-Data.org v4 |
+| **Deployment** | Vercel |
+
+## Architecture
+
+```
+frontend/src/
+├── components/        # Svelte UI components
+├── lib/               # Prediction engine (ELO, Poisson, ensemble)
+├── services/          # Data layer, API client, betting services
+├── stores/            # Svelte stores (theme)
+├── types/             # TypeScript interfaces
+└── utils/             # Shared utilities
+
+backend/app/           # Python ML backend (optional)
+├── models/            # XGBoost, LSTM, Transformer scaffolds
+├── features/          # 150+ feature engineering pipeline
+├── data/              # Football-Data.org collector
+└── api/               # FastAPI server
+```
+
+The frontend prediction engine runs entirely in the browser — the Python backend is an optional enhancement for ML-based predictions (currently scaffolded but untrained).
+
+## Python Backend (Optional)
+
+The ML backend provides REST API endpoints for match predictions using XGBoost, LSTM, and Transformer models. It starts with graceful degradation — heavy dependencies (torch, shap, optuna) are optional.
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.api.main:app --reload --port 8000
+```
+
+See [backend/README.md](backend/README.md) for full API documentation.
 
 ## Responsible Usage
 
-This tool is designed to promote responsible engagement with football predictions. Rather than encouraging impulsive "headless betting", The Premier League Oracle provides a structured analytical approach to understanding match outcomes.
-
-## Development Status
-
-The Premier League Oracle is actively under development. My current focus is on refining the prediction algorithms and enhancing the user interface.
-
-## Future Enhancements
-
-I have an exciting roadmap planned for future versions:
-
-1. **Design Overhaul**
-   - Modern, responsive interface with improved data visualisations
-   - Customisable dashboard
-   - Dark/light mode toggle
-
-2. **Front-end Optimisation**
-   - Performance improvements for faster loading and interaction
-   - Enhanced mobile experience
-   - Progressive Web App (PWA) capabilities
-
-3. **Enhanced Prediction Features**
-   - Advanced statistical models including Bayesian inference
-   - Player-specific impact analysis
-   - Weather and external factor considerations
-   - Confidence intervals for predictions
-
-4. **AI Assistant**
-   - Natural language chat interface to query the database
-   - Personalised insights and recommendations
-   - Automatic trend detection and alerts
-
-5. **Standalone Application**
-   - Native mobile apps for iOS and Android
-   - Desktop application for Windows, macOS, and Linux
-   - Offline functionality with synchronisation
-
-6. **Expanded Coverage**
-   - Additional football leagues (La Liga, Bundesliga, Serie A, Ligue 1)
-   - Champions League version (based on the pre-2024 format with group stages)
-   - Exploration of other sports with rich statistical datasets
-
-## 📖 Documentation
-
-### For Users
-- [User Guide](./docs/user-guide.md) - Getting started and using features
-- [Maximizing Predictions](./docs/maximizing-predictions.md) - Get the most from prediction tools
-- **In-App Help**: Access guides directly from the app's Help section
-
-### For Developers
-- [API Integration](./docs/api-integration.md) - Football-Data.org API setup
-- [Developer Guide](./docs/developer-guide.md) - Architecture and contributing
-- [Troubleshooting](./docs/troubleshooting.md) - Common issues and solutions
-
-## 🏗️ Recent Updates (v2.0)
-
-- ✅ Migrated from Supabase to Football-Data.org API for real-time data
-- ✅ Implemented CORS proxy for seamless development
-- ✅ Enhanced UI/UX with glassmorphism design
-- ✅ Added comprehensive onboarding wizard
-- ✅ Improved prediction models with ELO, Poisson, and xG
-- ✅ Implemented intelligent caching with IndexedDB
+This tool promotes responsible engagement with football predictions. It provides a structured analytical approach to understanding match outcomes — not a guarantee of results. Predictions are based on statistical models and historical data. No prediction system is infallible.
 
 ## Contributing
 
-I welcome collaboration on The Premier League Oracle. It will be interesting to see where this project leads, and I'm open to contributions that align with the vision of creating an objective, data-driven analysis tool. Please feel free to submit issues or pull requests.
+Contributions are welcome. Please feel free to submit issues or pull requests that align with the vision of an objective, data-driven analysis tool.
 
-## Disclaimer
+## Licence
 
-The predictions provided by this tool are based on statistical models and historical data. While I strive for accuracy, no prediction system can guarantee results with absolute certainty. This tool is intended for entertainment and research purposes only.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details. The MIT license is appropriate for this type of open-source project as it allows for collaboration while maintaining attribution.
+MIT — see the [LICENSE](LICENSE) file for details.
