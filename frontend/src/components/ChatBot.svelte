@@ -64,13 +64,21 @@
     checkServerKey();
   });
 
-  /** Check whether the server-side chat proxy has an API key configured */
+  /** Check whether the server-side chat proxy has an API key configured.
+   * Probes via POST with an empty messages array: if the server has a key the
+   * request reaches the messages-validation step and returns "Messages array required";
+   * if the server has no key it returns "No API key configured" first.
+   */
   async function checkServerKey() {
     try {
-      const res = await fetch('/api/chat');
-      if (res.ok) {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [] }),
+      });
+      if (res.status === 400) {
         const data = await res.json();
-        if (data.hasServerKey) {
+        if (data.error?.includes('Messages array required')) {
           useServerKey = true;
           hasApiKey = true;
         }
@@ -334,7 +342,7 @@ Current data:\n`;
           </p>
           <ul class="text-xs text-muted-foreground mt-2 space-y-1">
             <li>• Your key is stored in localStorage (browser only)</li>
-            <li>• Requests are proxied server-side — the key is not visible in DevTools network traffic</li>
+            <li>• Your key is sent to our server-side proxy, which forwards it to OpenAI — it is not sent directly from your browser to OpenAI</li>
             <li>• Use a key with spend limits set in your OpenAI dashboard</li>
             <li>• You can remove it anytime via "Change key"</li>
           </ul>

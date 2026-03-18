@@ -187,7 +187,8 @@ export class OptimizedPredictor {
     homeTeam: string,
     awayTeam: string,
     historicalMatches?: Match[],
-    referee?: string | null
+    referee?: string | null,
+    matchDate?: string
   ): Promise<EnhancedPredictionModel> {
     const insights: string[] = [];
     
@@ -254,8 +255,9 @@ export class OptimizedPredictor {
       // 5. Calculate fatigue factor (needed before Poisson lambdas)
       // When backtesting with pre-fetched data, derive rest days locally
       // to avoid hitting dataService on every iteration.
+      const asOfDate = matchDate ? new Date(matchDate) : undefined;
       const fatigueFactor = historicalMatches
-        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches)
+        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches, asOfDate)
         : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches);
 
       // 6. Calculate Poisson predictions using Dixon-Coles lambdas
@@ -619,15 +621,15 @@ export class OptimizedPredictor {
    * Avoids hitting dataService — derives rest days directly from the match list.
    */
   private static calculateFatigueFromMatches(
-    homeTeam: string, awayTeam: string, matches: Match[]
+    homeTeam: string, awayTeam: string, matches: Match[], asOfDate?: Date
   ): { homeFatigue: number; awayFatigue: number } {
-    const now = new Date();
+    const ref = asOfDate ?? new Date();
     const restDaysFor = (team: string): number => {
       const teamMatches = matches
-        .filter(m => (m.home_team === team || m.away_team === team) && new Date(m.date) < now)
+        .filter(m => (m.home_team === team || m.away_team === team) && new Date(m.date) < ref)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       if (teamMatches.length === 0) return 7;
-      return Math.floor((now.getTime() - new Date(teamMatches[0].date).getTime()) / (1000 * 60 * 60 * 24));
+      return Math.floor((ref.getTime() - new Date(teamMatches[0].date).getTime()) / (1000 * 60 * 60 * 24));
     };
     return {
       homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam), 1),

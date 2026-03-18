@@ -177,7 +177,7 @@ describe('BackendService', () => {
         .rejects.toThrow(BackendUnavailableError);
     });
 
-    it('should include auth token when configured', async () => {
+    it('should NOT include auth token for predictMatch by default', async () => {
       localStorage.setItem('oracle_api_token', 'test-token-abc');
 
       vi.mocked(fetch).mockResolvedValueOnce({

@@ -120,7 +120,8 @@ export class BacktestRunner {
           match.home_team,
           match.away_team,
           historicalMatches,
-          match.referee
+          match.referee,
+          match.date
         );
       } catch {
         // If prediction fails, skip this match

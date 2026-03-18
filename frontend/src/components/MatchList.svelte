@@ -116,6 +116,7 @@
 
   onMount(async () => {
     await loadSeasons();
+    if (error) return;
     await loadMatches();
   });
 </script>

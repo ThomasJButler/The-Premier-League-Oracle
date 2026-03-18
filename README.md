@@ -108,6 +108,6 @@ This tool promotes responsible engagement with football predictions. It provides
 
 Contributions are welcome. Please feel free to submit issues or pull requests that align with the vision of an objective, data-driven analysis tool.
 
-## Licence
+## License
 
 MIT — see the [LICENSE](LICENSE) file for details.

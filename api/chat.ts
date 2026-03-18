@@ -15,11 +15,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  // GET: check whether the server has an API key configured
-  if (req.method === 'GET') {
-    return jsonResponse({ hasServerKey: !!process.env.OPENAI_API_KEY });
-  }
-
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -74,7 +69,12 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const data = await response.json();
+    let data: Record<string, unknown>;
+    try {
+      data = await response.json();
+    } catch {
+      return jsonResponse({ error: 'OpenAI returned an unexpected response.' }, 502);
+    }
     return jsonResponse(data);
   } catch {
     return jsonResponse({ error: 'Failed to connect to OpenAI.' }, 502);

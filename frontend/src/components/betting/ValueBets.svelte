@@ -53,10 +53,10 @@
     }
   }
 
-  function trackValueBet(bet: ValueBet) {
+  async function trackValueBet(bet: ValueBet) {
     if (!selectedMatch) return;
 
-    betHistoryService.storeBet({
+    await betHistoryService.storeBet({
       matchId: selectedMatch.id,
       matchDate: selectedMatch.date,
       homeTeam: selectedMatch.home_team,

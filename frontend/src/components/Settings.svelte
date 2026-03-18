@@ -238,7 +238,8 @@
         plTeams = standings.map(s => s.team.name).sort();
       }
     } catch {
-      // API unavailable — leave empty (user can still type manually)
+      // API unavailable — fall back to the static team list from the colour map
+      plTeams = Object.keys(teamColors).sort();
     }
   });
 </script>
@@ -425,6 +426,7 @@
         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {useBackend ? 'bg-primary' : 'bg-muted-foreground/30'}"
         role="switch"
         aria-checked={useBackend}
+        aria-label="Use ML backend"
       >
         <span
           class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {useBackend ? 'translate-x-6' : 'translate-x-1'}"

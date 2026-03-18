@@ -149,7 +149,7 @@
             <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-12">#</th>
             <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Player</th>
             <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Team</th>
-            <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider" aria-sort="descending">Goals</th>
+            <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Goals</th>
             <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Assists</th>
             <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Pens</th>
           </tr>
