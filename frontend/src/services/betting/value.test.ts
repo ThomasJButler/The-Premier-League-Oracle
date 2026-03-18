@@ -92,26 +92,26 @@ describe('ValueBettingEngine', () => {
     });
 
     it('should sort results by expected value descending', async () => {
+      // High expected goals (4.0 total) creates over 2.5 value alongside home win value
       vi.mocked(AdvancedMatchPredictor.predictMatch).mockResolvedValue(
         mockPrediction({
           homeWinProb: 0.60,
           drawProb: 0.25,
           awayWinProb: 0.15,
-          expectedHomeGoals: 2.0,
-          expectedAwayGoals: 0.8
+          expectedHomeGoals: 2.5,
+          expectedAwayGoals: 1.5
         })
       );
 
       const result = await ValueBettingEngine.identifyValueBets(
         'match-1', 'Arsenal', 'Chelsea', new Date('2026-03-15'),
-        standardOdds({ home: 2.00, draw: 3.00, away: 5.00 }),
+        standardOdds({ home: 2.00, draw: 3.00, away: 5.00, over25: 2.00, under25: 1.90 }),
         1000
       );
 
-      if (result.length > 1) {
-        for (let i = 0; i < result.length - 1; i++) {
-          expect(result[i].expectedValue).toBeGreaterThanOrEqual(result[i + 1].expectedValue);
-        }
+      expect(result.length).toBeGreaterThan(1);
+      for (let i = 0; i < result.length - 1; i++) {
+        expect(result[i].expectedValue).toBeGreaterThanOrEqual(result[i + 1].expectedValue);
       }
     });
 
@@ -207,15 +207,14 @@ describe('ValueBettingEngine', () => {
       );
 
       const homeBet = result.find(b => b.market === 'home');
-      if (homeBet) {
-        expect(homeBet.reasoning.length).toBeGreaterThanOrEqual(3);
-        expect(homeBet.reasoning[0]).toContain('Our model');
-        expect(homeBet.reasoning[1]).toContain('Edge');
-        expect(homeBet.reasoning[2]).toContain('Expected Value');
-        // Insights sliced to first 2
-        expect(homeBet.reasoning).toContain('Strong home form');
-        expect(homeBet.reasoning).toContain('Weak away defence');
-      }
+      expect(homeBet).toBeDefined();
+      expect(homeBet!.reasoning.length).toBeGreaterThanOrEqual(3);
+      expect(homeBet!.reasoning[0]).toContain('Our model');
+      expect(homeBet!.reasoning[1]).toContain('Edge');
+      expect(homeBet!.reasoning[2]).toContain('Expected Value');
+      // Insights sliced to first 2
+      expect(homeBet!.reasoning).toContain('Strong home form');
+      expect(homeBet!.reasoning).toContain('Weak away defence');
     });
 
     it('should include correct EV calculation', async () => {
@@ -229,12 +228,11 @@ describe('ValueBettingEngine', () => {
       );
 
       const homeBet = result.find(b => b.market === 'home');
-      if (homeBet) {
-        // EV = (0.60 * 2.10) - 1 = 0.26
-        expect(homeBet.expectedValue).toBeCloseTo(0.26, 2);
-        // Implied probability = 1 / 2.10 ≈ 0.476
-        expect(homeBet.impliedProbability).toBeCloseTo(1 / 2.10, 2);
-      }
+      expect(homeBet).toBeDefined();
+      // EV = (0.60 * 2.10) - 1 = 0.26
+      expect(homeBet!.expectedValue).toBeCloseTo(0.26, 2);
+      // Implied probability = 1 / 2.10 ≈ 0.476
+      expect(homeBet!.impliedProbability).toBeCloseTo(1 / 2.10, 2);
     });
   });
 
@@ -304,11 +302,10 @@ describe('ValueBettingEngine', () => {
       ];
 
       const result = ValueBettingEngine.findArbitrage(bookmakers);
-      if (result.length > 0) {
-        expect(result[0].bookmakers[0]).toBe('Bet365');  // Best home
-        expect(result[0].bookmakers[1]).toBe('Betfair');  // Best draw
-        expect(result[0].bookmakers[2]).toBe('Paddy');    // Best away
-      }
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].bookmakers[0]).toBe('Bet365');  // Best home
+      expect(result[0].bookmakers[1]).toBe('Betfair');  // Best draw
+      expect(result[0].bookmakers[2]).toBe('Paddy');    // Best away
     });
 
     it('should select first bookmaker when odds are tied', () => {
@@ -318,12 +315,11 @@ describe('ValueBettingEngine', () => {
       ];
 
       const result = ValueBettingEngine.findArbitrage(bookmakers);
-      if (result.length > 0) {
-        // First bookmaker wins ties
-        expect(result[0].bookmakers[0]).toBe('Bet365');
-        expect(result[0].bookmakers[1]).toBe('Bet365');
-        expect(result[0].bookmakers[2]).toBe('Bet365');
-      }
+      expect(result.length).toBeGreaterThan(0);
+      // First bookmaker wins ties
+      expect(result[0].bookmakers[0]).toBe('Bet365');
+      expect(result[0].bookmakers[1]).toBe('Bet365');
+      expect(result[0].bookmakers[2]).toBe('Bet365');
     });
   });
 
@@ -488,9 +484,8 @@ describe('ValueBettingEngine', () => {
 
       // Check that warnings are populated (specific content depends on Kelly calculation)
       const homeBet = result.find(b => b.market === 'home');
-      if (homeBet) {
-        expect(Array.isArray(homeBet.warnings)).toBe(true);
-      }
+      expect(homeBet).toBeDefined();
+      expect(Array.isArray(homeBet!.warnings)).toBe(true);
     });
 
     it('should warn about long odds', async () => {
@@ -505,9 +500,8 @@ describe('ValueBettingEngine', () => {
       );
 
       const awayBet = result.find(b => b.market === 'away');
-      if (awayBet) {
-        expect(awayBet.warnings.some(w => w.includes('Long odds'))).toBe(true);
-      }
+      expect(awayBet).toBeDefined();
+      expect(awayBet!.warnings.some(w => w.includes('Long odds'))).toBe(true);
     });
 
     it('should warn about low model confidence', async () => {
@@ -522,9 +516,8 @@ describe('ValueBettingEngine', () => {
       );
 
       const homeBet = result.find(b => b.market === 'home');
-      if (homeBet) {
-        expect(homeBet.warnings.some(w => w.includes('Low model confidence'))).toBe(true);
-      }
+      expect(homeBet).toBeDefined();
+      expect(homeBet!.warnings.some(w => w.includes('Low model confidence'))).toBe(true);
     });
   });
 
@@ -541,9 +534,8 @@ describe('ValueBettingEngine', () => {
       );
 
       const homeBet = result.find(b => b.market === 'home');
-      if (homeBet) {
-        expect(homeBet.expectedValue).toBeGreaterThan(0);
-      }
+      expect(homeBet).toBeDefined();
+      expect(homeBet!.expectedValue).toBeGreaterThan(0);
     });
 
     it('should handle all markets simultaneously', async () => {

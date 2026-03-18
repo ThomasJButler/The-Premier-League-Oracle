@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4h (partial) — Test Quality: Conditional Assertions and Tautological Tests (19 March 2026)
+- **`value.test.ts` conditional assertions fixed:** 9 assertion blocks wrapped in `if (homeBet)` / `if (result.length > 0)` guards converted to unconditional `expect(x).toBeDefined()` + `x!` assertions. The sorting test was also updated to produce multiple value bets (1X2 + over 2.5 goals) so the sort order is actually exercised
+- **`types.test.ts` tautological tests removed:** Reduced from 18 tests to 4 — removed 14 tests that created objects with literal values then asserted those same literals back (TypeScript already guarantees this). Kept only the 4 tests that validate derived business rules: home+away=total stats, points formula, goal difference formula, and form string regex
+- **Net test count:** 378 → 364 tests across 21 files, all passing. Fewer tests, but every remaining assertion can now actually fail when the code it guards breaks
+
 ### P2v — Backtest Performance: Zero dataService Calls Per Match (19 March 2026)
 - **Backtest fast path in `predictMatch`:** When `historicalMatches` is provided (as in `BacktestRunner`), all 6 per-match `dataService` calls are bypassed. Poisson averages, fatigue, and form all derive from the pre-fetched match array. Standings are replaced with ELO-derived positions, which are more accurate for historical backtesting
 - **New `calculateFatigueFromMatches()` method:** Computes rest days directly from the provided match list, avoiding 2 `dataService.getMatches()` calls per match that `FatigueAnalyzer.calculateRestDays` would otherwise make

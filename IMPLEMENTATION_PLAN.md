@@ -705,16 +705,16 @@ Priority features to implement with real data:
 
 ### P4h. Test Quality Improvements — NEW (19 March 2026)
 
-Test suite has 378 passing tests but several are structurally unable to catch regressions:
+Test suite has 364 passing tests but several are structurally unable to catch regressions:
 
 **Conditional assertions that silently pass without asserting:**
 
-- [ ] `value.test.ts` — 6 assertion blocks wrapped in `if (homeBet)` / `if (awayBet)` / `if (result.length > 0)` guards. If the engine returns no results (broken), assertions are skipped and the test passes green
+- [x] ~~`value.test.ts` — 6 assertion blocks wrapped in `if (homeBet)` / `if (awayBet)` / `if (result.length > 0)` guards~~ **FIXED:** All 9 conditional blocks converted to unconditional `expect(x).toBeDefined()` guards. Sorting test updated to produce multiple value bets (1X2 + goals markets) so sorting is actually exercised
 - [ ] `kelly.test.ts:240` — arbitrage stakes assertions guarded by `if (result.isArbitrage)`. If detection is broken, test trivially passes
 
 **Tautological tests that cannot fail:**
 
-- [ ] `types.test.ts` — 16 tests assert `expect(x.field).toBe(value)` where `value` is what was just assigned. These are circular checks the TypeScript compiler already guarantees. Consider replacing with runtime validation tests or removing entirely
+- [x] ~~`types.test.ts` — 16 tests assert `expect(x.field).toBe(value)` where `value` is what was just assigned~~ **FIXED:** Reduced from 18 tests to 4 — kept only consistency validation tests (home+away=total, points formula, goal difference formula, form string regex). Removed 14 tautological tests that TypeScript already guarantees
 - [ ] `footballData.test.ts` — "Data Transformation" describe block re-implements result-determination and team-name-normalisation logic inline instead of testing the actual `FootballDataAPI` functions. Would pass even if `transformMatch` were deleted
 
 **Tests that can never fail:**
@@ -927,7 +927,7 @@ All feature specifications in `specs/`:
 - `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
 - ~~`betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats~~ **CORRECTED (third audit):** rivalry check now works correctly via `normaliseTeamName()`. Tests are valid.
 - `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
-- `value.test.ts`: 6 conditional assertions wrapped in `if` guards that silently pass without asserting if the engine returns no results (see P4h)
+- ~~`value.test.ts`: 6 conditional assertions wrapped in `if` guards~~ **FIXED (P4h)**
 - `kelly.test.ts:240`: arbitrage assertions guarded by `if (result.isArbitrage)` — trivially passes if detection broken
 - `types.test.ts`: 16 tautological tests that assert `x.field === value` where `value` was just assigned — cannot fail
 - `dataService.test.ts:190-200`: error test uses try/catch that passes regardless of implementation behaviour
