@@ -50,9 +50,16 @@ vi.mock('lucide-svelte', () => {
   };
   return {
     Calculator: stub, AlertTriangle: stub, TrendingUp: stub,
-    Zap: stub, RefreshCw: stub
+    Zap: stub, RefreshCw: stub, BookmarkPlus: stub, Check: stub
   };
 });
+
+// Mock betHistoryService
+vi.mock('../../services/betting/betHistoryService', () => ({
+  betHistoryService: {
+    storeBet: vi.fn(() => ({ id: 'test-bet-1', createdAt: new Date().toISOString() }))
+  }
+}));
 
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({

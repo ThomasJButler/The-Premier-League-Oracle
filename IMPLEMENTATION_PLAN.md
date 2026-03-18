@@ -84,14 +84,14 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 - [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic but **class is NOT dead code** — `value.ts:72` calls `AdvancedMatchPredictor.predictMatch()` for value bet scanning.
 - [ ] `optimizedPredictions.ts`: error fallback (lines 377-389) silently swallows all prediction errors with no logging — user gets a static `confidence: 0.33, goals: 1-1` prediction with no indication anything went wrong. Add `console.warn` at minimum.
 
-### P1i. Bet Storage Pipeline Broken — NEW (19 March 2026)
+### P1i. Bet Storage Pipeline Broken — DONE (18 March 2026)
 
-**Critical functional gap:** `betHistoryService.storeBet()` is never called from any component. The entire bet history feature writes nothing — `BettingHistory.svelte` will always show the empty state, ROI calculations return zero, monthly P/L chart is empty.
+`betHistoryService.storeBet()` now wired into both betting UIs. 378/378 tests passing, 0 type errors.
 
-- [ ] Wire `storeBet()` into `KellyCalculator.svelte` via a "Place Bet" action when user accepts a suggested bet
-- [ ] Alternatively, add a "Track Bet" button to `ValueBets.svelte` scan results
-- [ ] Verify `BettingHistory.svelte` displays stored bets correctly once pipeline is connected
-- [ ] `betHistoryService.getBetsByMonth()` and `clearHistory()` are also never called from any component — wire or remove
+- [x] `KellyCalculator.svelte`: "Track Bet" button on each Kelly suggestion — stores match result bet with halfKelly fraction, model confidence, and calculated stake. Shows "Tracked" state after click
+- [x] `ValueBets.svelte`: "Track Bet" button on each value bet result — maps ValueBet market format (`'home'`, `'over2.5'`, `'btts'`) to StoredBet market format (`'match_result'`, `'over_2_5'`, `'btts'`). Shows "Tracked" state after click
+- [x] `BettingHistory.svelte` already reads from `betHistoryService.getAllBets()` — stored bets appear on next page load
+- [ ] `betHistoryService.getBetsByMonth()` and `clearHistory()` are still never called from any component — defer to P4f dead code cleanup
 
 ### P1j. ChatBot XSS Risk — NEW (19 March 2026)
 
@@ -761,7 +761,7 @@ All feature specifications in `specs/`:
 | `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~60% — ELO dynamic + persistence, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); ELO auto-update not wired to dataService (P2k), no AI analysis (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~60% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g) |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); bet storage pipeline wired (P1i — KellyCalculator + ValueBets → betHistoryService → BettingHistory); betHistoryService resolution bugs fixed (P1g) |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created but `$lib/utils.ts` missing (P2a-fix blocker), 0/5 ARIA requirements met |
@@ -807,7 +807,7 @@ All feature specifications in `specs/`:
 | `Predictions.svelte` | `was_correct: false` hardcoded when storing predictions — never reflects actual outcome | P1k |
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
 | `MatchList.svelte` | `selectedSeason = '2024-2025'` hardcoded fallback — stale each season | P4c |
-| `betHistoryService.ts` | `storeBet()` never called from any component — bet history pipeline non-functional | P1i |
+| ~~`betHistoryService.ts`~~ | ~~`storeBet()` never called~~ — FIXED: wired into KellyCalculator + ValueBets via "Track Bet" buttons | ~~P1i~~ |
 | ~~`betBuilder.ts`~~ | ~~Corner/card probabilities can exceed 1.0~~ — FIXED: clamped to [0, 0.99] | ~~P1l~~ |
 | ~~`KellyCalculator.svelte`~~ | ~~`prob = 1.05 / odds` inflates probability~~ — FIXED: uses model confidence as ourProbability | ~~P1l~~ |
 | ~~`footballData.ts`~~ | ~~`halfTimeResult` bug: `!0 === true`~~ — FIXED: explicit null/undefined check | ~~P1l~~ |

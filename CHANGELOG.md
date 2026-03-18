@@ -12,6 +12,12 @@ All notable changes to The Premier League Oracle are documented here.
 - **Settings API key trimmed:** `saveFootballDataKey()` now trims whitespace before passing to `setApiKey()`. Also removed redundant duplicate `localStorage.setItem` call (already handled by `setApiKey` internally)
 - Updated Settings test to remove redundant `localStorage.setItem` assertion (no longer needed since `setApiKey` handles storage)
 
+### P1i Bet Storage Pipeline Wired (18 March 2026)
+- **KellyCalculator.svelte:** "Track Bet" button on each auto-suggestion — stores match result bet with halfKelly fraction, model confidence, and calculated stake. Shows "Tracked" confirmation state
+- **ValueBets.svelte:** "Track Bet" button on each value bet scan result — maps ValueBet market format (`'home'`, `'over2.5'`, `'btts'`) to StoredBet format (`'match_result'`, `'over_2_5'`, `'btts'`). Shows "Tracked" confirmation state
+- **Pipeline complete:** KellyCalculator/ValueBets → `betHistoryService.storeBet()` → localStorage → `BettingHistory.svelte` (reads via `getAllBets()`)
+- Updated KellyCalculator tests with betHistoryService mock and new icon stubs
+
 ### Fifth Planning Audit — ~11 New Findings (18 March 2026)
 - **8 parallel research agents** (Sonnet) audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure — comprehensive cross-referencing against existing plan
 - **shadcn-svelte `$lib/utils.ts` missing (P2a-fix):** `components.json` references `$lib/utils` for `cn()` utility but the file doesn't exist — hidden blocker for UI migration. Any new shadcn component import will fail at build time

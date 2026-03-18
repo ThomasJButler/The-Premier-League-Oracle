@@ -18,10 +18,11 @@
 
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Calculator, AlertTriangle, TrendingUp, Zap, RefreshCw } from 'lucide-svelte';
+  import { Calculator, AlertTriangle, TrendingUp, Zap, RefreshCw, BookmarkPlus, Check } from 'lucide-svelte';
   import { KellyCalculator } from '../../services/betting/kelly';
   import { dataService } from '../../services/dataService';
   import { OptimizedPredictor, type EnhancedPredictionModel } from '../../lib/optimizedPredictions';
+  import { betHistoryService } from '../../services/betting/betHistoryService';
   import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../../utils/teamLogos';
 
@@ -36,6 +37,27 @@
   let suggestionsError: string | null = null;
   let confidenceThreshold = 65; // percentage, spec says >= 65%
   let showSuggestions = true;
+  let trackedBets: Set<string> = new Set();
+
+  function trackBet(suggestion: KellySuggestion) {
+    const selection = suggestion.predictedResult === 'H' ? 'home'
+      : suggestion.predictedResult === 'A' ? 'away' : 'draw';
+
+    betHistoryService.storeBet({
+      matchId: suggestion.matchId,
+      matchDate: suggestion.date,
+      homeTeam: suggestion.homeTeam,
+      awayTeam: suggestion.awayTeam,
+      market: 'match_result',
+      selection,
+      odds: suggestion.bookmakerOdds,
+      stake: suggestion.stake,
+      kellyFraction: suggestion.kelly.halfKelly,
+      confidence: suggestion.confidence
+    });
+
+    trackedBets = new Set([...trackedBets, suggestion.matchId]);
+  }
 
   /**
    * Load upcoming matches, predict each, and generate Kelly suggestions.
@@ -282,6 +304,22 @@
             {#if suggestion.insights.length > 0}
               <p class="text-xs text-muted-foreground mt-1.5 truncate">{suggestion.insights[0]}</p>
             {/if}
+
+            <!-- Track Bet button -->
+            <div class="mt-2 pt-2 border-t border-border/30">
+              {#if trackedBets.has(suggestion.matchId)}
+                <span class="inline-flex items-center gap-1 text-xs text-emerald-500">
+                  <Check class="w-3.5 h-3.5" /> Tracked
+                </span>
+              {:else}
+                <button
+                  class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  on:click={() => trackBet(suggestion)}
+                >
+                  <BookmarkPlus class="w-3.5 h-3.5" /> Track Bet
+                </button>
+              {/if}
+            </div>
           </div>
         {/each}
       </div>

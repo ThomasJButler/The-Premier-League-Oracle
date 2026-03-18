@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Search, AlertTriangle, TrendingUp, CheckCircle } from 'lucide-svelte';
+  import { Search, AlertTriangle, TrendingUp, CheckCircle, BookmarkPlus, Check } from 'lucide-svelte';
   import { dataService } from '../../services/dataService';
   import { ValueBettingEngine, type ValueBet, type MarketOdds } from '../../services/betting/value';
+  import { betHistoryService } from '../../services/betting/betHistoryService';
   import type { Match } from '../../types';
   import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../../utils/teamLogos';
@@ -27,6 +28,49 @@
 
   $: selectedMatch = upcomingMatches.find(m => m.id === selectedMatchId) ?? null;
   $: hasBasicOdds = homeOdds > 1 && drawOdds > 1 && awayOdds > 1;
+
+  let trackedBets: Set<string> = new Set();
+
+  /** Map ValueBet market format to StoredBet market format */
+  function mapMarket(market: ValueBet['market']): 'match_result' | 'btts' | 'over_2_5' | 'over_3_5' | 'combo' {
+    switch (market) {
+      case 'home': case 'draw': case 'away': return 'match_result';
+      case 'over2.5': case 'under2.5': return 'over_2_5';
+      case 'btts': return 'btts';
+      default: return 'match_result';
+    }
+  }
+
+  function mapSelection(market: ValueBet['market']): string {
+    switch (market) {
+      case 'home': return 'home';
+      case 'draw': return 'draw';
+      case 'away': return 'away';
+      case 'over2.5': return 'over';
+      case 'under2.5': return 'under';
+      case 'btts': return 'yes';
+      default: return market;
+    }
+  }
+
+  function trackValueBet(bet: ValueBet) {
+    if (!selectedMatch) return;
+
+    betHistoryService.storeBet({
+      matchId: selectedMatch.id,
+      matchDate: selectedMatch.date,
+      homeTeam: selectedMatch.home_team,
+      awayTeam: selectedMatch.away_team,
+      market: mapMarket(bet.market),
+      selection: mapSelection(bet.market),
+      odds: bet.bookmakerOdds,
+      stake: bet.kellyStake.recommendedStake,
+      kellyFraction: bet.kellyStake.halfKelly,
+      confidence: bet.ourProbability
+    });
+
+    trackedBets = new Set([...trackedBets, `${selectedMatch.id}_${bet.market}`]);
+  }
 
   /**
    * Load upcoming matches from the data service.
@@ -316,6 +360,22 @@
                     </div>
                   </div>
                 {/if}
+
+                <!-- Track Bet button -->
+                <div class="mt-2 pt-2 border-t border-border/30">
+                  {#if trackedBets.has(`${selectedMatch?.id}_${bet.market}`)}
+                    <span class="inline-flex items-center gap-1 text-xs text-emerald-500">
+                      <Check class="w-3.5 h-3.5" /> Tracked
+                    </span>
+                  {:else}
+                    <button
+                      class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                      on:click={() => trackValueBet(bet)}
+                    >
+                      <BookmarkPlus class="w-3.5 h-3.5" /> Track Bet
+                    </button>
+                  {/if}
+                </div>
               </div>
             {/each}
           </div>

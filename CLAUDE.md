@@ -126,7 +126,7 @@ These specs are the single source of truth for requirements.
 - CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` — 2,191 matches across 5.75 seasons with shots, corners, cards, odds columns (richer than what the free API provides). These are the primary source for ML training
 - `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
 - Root `.env.example` still references Supabase variables (stale)
-- **`betHistoryService.storeBet()` is never called from any component** — the entire bet history persistence pipeline is non-functional. BettingHistory.svelte shows empty state, ROI/P&L calculations return zero. Wire `storeBet()` into KellyCalculator or ValueBets via a "Place Bet" / "Track Bet" action
+- ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
 - `ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML from OpenAI — potential XSS via prompt injection. Needs `DOMPurify` or a safe markdown renderer
 - `Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions. `predictionTracker.updateWithResult()` corrects this later but the initial value is misleading
 - No CI/CD — no `.github/workflows/` directory. All testing is manual
