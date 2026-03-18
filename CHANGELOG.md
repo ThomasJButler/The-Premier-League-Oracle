@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4f — Remove dead `predictions.ts` module (20 March 2026)
+- **`predictions.ts` removed:** Original v1 prediction model had zero imports from any production component. Was entirely dead at runtime but had 11 passing tests creating false confidence that prediction logic was well-tested
+- **`predictions.test.ts` removed:** 11 tests that exercised only the dead module, not the production `optimizedPredictions.ts` model
+- **Test count:** 328 → 317 tests across 20 files (was 21). All passing
+
 ### P1h — ChatBot API Key Security Fix (20 March 2026)
 - **Vercel Edge Function `api/chat.ts`:** Created server-side proxy that forwards chat requests to OpenAI. The API key never leaves the server — no longer visible in browser DevTools network tab
 - **Server-side key support:** When `OPENAI_API_KEY` is set as a Vercel environment variable, users don't need to provide their own key — the chat "just works" out of the box

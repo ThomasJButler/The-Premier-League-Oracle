@@ -109,11 +109,11 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
-- Frontend has 328 Vitest tests across 21 test files, all passing (was 364 — 36 removed: 34 for dead code, 2 tautological)
+- Frontend has 317 Vitest tests across 20 test files, all passing (was 364 — 47 removed: 34 for dead code, 2 tautological, 11 for dead predictions.ts module)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
-- `predictions.ts` is entirely dead at runtime — zero imports from any component; only tested, never called
+- ~~`predictions.ts` was entirely dead at runtime~~ **REMOVED:** module and 11 misleading tests deleted. Production model is `optimizedPredictions.ts`
 - 3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)
 - ~~`ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab)~~ **FIXED:** Created `api/chat.ts` Vercel Edge Function that proxies OpenAI calls. ChatBot calls `/api/chat` instead. Vite dev middleware provides local proxy. `OPENAI_API_KEY` env var enables server-side key (users skip key setup)
 - Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
@@ -131,7 +131,7 @@ These specs are the single source of truth for requirements.
 - ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
 - ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests, and production build on push/PR to `main` and `v3.0-*` branches
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
-- ~~Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass~~ **FIXED:** tautological tests removed (18→4), conditional assertions made unconditional. Remaining: `predictions.test.ts` tests a dead module, `kelly.test.ts:240` has guarded arb assertion. See P4h in IMPLEMENTATION_PLAN.md
+- ~~Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass~~ **FIXED:** tautological tests removed (18→4), conditional assertions made unconditional. ~~`predictions.test.ts` tests a dead module~~ **REMOVED** (P4f). `kelly.test.ts:240` guarded arb assertion also removed. See P4h in IMPLEMENTATION_PLAN.md
 - ~~`EloRatingSystem.processCompletedMatches()` exists but is never called~~ **FIXED:** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings auto-update when match results load
 - **`AdvancedMatchPredictor` is NOT dead code** — called by `value.ts:72` for value bet scanning. Previously mislabelled as dead in the plan (corrected third audit)
 - ~~`betBuilder.ts`: corner/card probability overflow~~ — FIXED: clamped to [0, 0.99]

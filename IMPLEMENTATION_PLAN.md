@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (cleanup pass — P4f dead code removed, P4g docs updated, P4h test quality fixes applied, test count corrected to 328)
+Last updated: 20 March 2026 (P4f — predictions.ts dead module removed, test count corrected to 317)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -669,7 +669,7 @@ Priority features to implement with real data:
 - [x] `footballData.ts`: dead type exports `FDSquadMember`, `FDPlayer`, `FootballDataConfig` removed
 - [x] `dataService.ts`: `getStatus()`, `getDataSourceStatus()`, `getPredictionAccuracy()`, `getTeamRecentMatches()`, `setCacheTimeout()`, `disableCache()`, `enableCache()` removed
 - [ ] `dataService.ts`: `refreshApiConfiguration` is a stub alias for `checkDataSources` — should call `refreshDataSources` instead
-- [ ] `predictions.ts`: entire module is dead at runtime — zero imports from any component. Has 11 tests but produces no output in production. Consider deprecating or removing
+- [x] `predictions.ts`: dead module removed — zero imports from any component, 11 misleading tests removed
 - [x] `kelly.ts`: dead exports `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` removed
 - [ ] `kelly.ts`: `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
 - [x] `value.ts`: `OddsProvider` interface, `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` removed
@@ -707,7 +707,7 @@ Priority features to implement with real data:
 
 ### P4h. Test Quality Improvements — PARTIAL (19 March 2026)
 
-Test suite has 328 passing tests (was 364; 36 removed for dead functions and tautological assertions). Several structural issues remain:
+Test suite has 317 passing tests (was 364; 47 removed — 34 for dead code, 2 tautological, 11 for dead predictions.ts module). Several structural issues remain:
 
 **Conditional assertions that silently pass without asserting:**
 
@@ -725,7 +725,7 @@ Test suite has 328 passing tests (was 364; 36 removed for dead functions and tau
 
 **Other quality issues:**
 
-- [ ] `predictions.test.ts` — 11 tests exercise the entirely dead `predictions.ts` module. Gives false confidence that a model is tested which is never used in production
+- [x] `predictions.test.ts` — 11 tests exercising the entirely dead `predictions.ts` module removed alongside the module itself
 - [ ] `backtest.test.ts` — ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught
 - [ ] Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed; does not verify the component lifecycle actually triggers data loads
 
@@ -910,11 +910,10 @@ All feature specifications in `specs/`:
 | `optimizedPredictions.test.ts` | 12 | Passing |
 | `ValueBets.test.ts` | 12 | Passing |
 | `dataService.cache.test.ts` | 8 | Passing |
-| `predictions.test.ts` | 11 | Passing |
 | `dataService.test.ts` | 8 | Passing |
 | `Settings.test.ts` | 8 | Passing |
 | `LiveMatches.test.ts` | 7 | Passing |
-| **Total** | **328** | **All passing** |
+| **Total** | **317** | **All passing** |
 
 **Known test quality issues:**
 - `types.test.ts`: reduced from 18 to 4 tests — tautological assertions removed (P4h DONE)
@@ -924,7 +923,7 @@ All feature specifications in `specs/`:
 - `kelly.test.ts`: reduced from 20 to 13 tests — dead function tests removed including guarded arbitrage test (P4f + P4h DONE)
 - Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed
 - `dashboard.spec.ts` E2E uses `click({ force: true })` to bypass mobile nav overlap — hides a real layout bug
-- `predictions.test.ts`: form trend test replicates the algorithm inline rather than testing the actual `analyzeFormTrend` function (not exported) — cannot detect bugs in the real implementation
+- ~~`predictions.test.ts`: form trend test replicates the algorithm inline~~ **REMOVED** alongside the dead `predictions.ts` module (P4f)
 - `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
 - ~~`betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats~~ **CORRECTED (third audit):** rivalry check now works correctly via `normaliseTeamName()`. Tests are valid.
 - `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
