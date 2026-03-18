@@ -4,6 +4,12 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Stub Fixes — betBuilder and Settings (18 March 2026)
+- **`betBuilder.ts`** — `bothCleanSheets.prediction` was unconditionally `false`; now uses `> 0.08` threshold (PL 0-0 avg ~7-8%)
+- **`betBuilder.ts`** — Win-to-nil probability was hardcoded `0.30`; now derived from `favProb × favCleanSheet`
+- **`Settings.svelte`** — "Connected" status was assumed from saved API key; now calls `testConnection()` on mount with "Verifying…" spinner
+- **`optimizedPredictions.ts`** — Error fallback weights already fixed (P1e); stubs table updated
+
 ### P2d IndexedDB Cache Tests — Complete (18 March 2026)
 - **New `dataService.cache.test.ts`** — 11 tests covering the full IndexedDB cache lifecycle
 - Tests: store creation, cache hit (matches + standings), TTL expiry re-fetch, clearCache, disableCache bypass, enableCache restore, setCacheTimeout, separate keys per query type, per-team keys, clearCache removes API key
