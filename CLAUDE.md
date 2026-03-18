@@ -106,7 +106,7 @@ These specs are the single source of truth for requirements.
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
 - shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; `components.json` exists (enables `npx shadcn-svelte@latest add`)
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
-- Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but 49 methods return hardcoded `0.0` — tactics, player-level, betting market, weather features all stubbed. **2 `np.random` calls remain** in `lstm_predictor.py:523` (fake feature importance) and `modern_oracle.py:581` (fake ensemble optimisation)
+- Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
 - Frontend has 378 Vitest tests across 21 test files, all passing
@@ -133,6 +133,16 @@ These specs are the single source of truth for requirements.
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
 - Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
 - `EloRatingSystem.processCompletedMatches()` exists but is never called — ELO ratings never auto-update from match results
+- **`AdvancedMatchPredictor` is NOT dead code** — called by `value.ts:72` for value bet scanning. Previously mislabelled as dead in the plan (corrected third audit)
+- `betBuilder.ts`: corner/card probability values can exceed 1.0 — no clamp on linear formula. Live bug affecting `suggestedCombos` confidence calculations
+- `KellyCalculator.svelte:92`: `prob = 1.05 / odds` inflates probability by 5% — generates false-positive value bets
+- `footballData.ts:366`: halfTimeResult bug — `!0 === true` means 0-0 half-time scores treated as null
+- `dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)
+- Two parallel fatigue models exist: `FatigueAnalyzer.getFatigueMultiplier()` (used by `AdvancedMatchPredictor` via `value.ts`) and `OptimizedPredictor.calculateFatigueFactor()` — different thresholds, inconsistent results
+- Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom` — installed but never imported
+- `.gitignore` gaps: only one `__pycache__` path covered, missing `backend/cache/`, `backend/logs/`, `backend/mlruns/`
+- `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
+- `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — enum mismatch breaks cross-module bet resolution
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

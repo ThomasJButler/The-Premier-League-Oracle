@@ -4,6 +4,21 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### Third Planning Audit — ~80 New Findings (18 March 2026)
+- **6 parallel research agents** audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure
+- **Live probability bugs (P1l):** betBuilder corner/card probabilities can exceed 1.0 (no clamp on linear formula); KellyCalculator inflates probability by 5% (`1.05/odds` instead of `1/odds`); footballData halfTimeResult bug treats 0-0 scores as null (`!0 === true`)
+- **Cache TTL lies (P1m):** dataService comments claim 24h and 30m cache TTLs but actual implementation defaults to 5 minutes; season data cached in wrong IndexedDB store; dual-cache architecture between footballData and dataService with no coordination
+- **Plan corrections:** `AdvancedMatchPredictor` is NOT dead code (called by `value.ts` for value bet scanning); rivalry check IS fixed via `normaliseTeamName()`; backend stub count corrected from 49 to 63
+- **Parallel fatigue models (P2q):** two different fatigue implementations with different thresholds exist — `FatigueAnalyzer.getFatigueMultiplier()` vs `OptimizedPredictor.calculateFatigueFactor()` — producing inconsistent results
+- **Config/infra debt (P2r):** 3 dead frontend dependencies (`tailwind-variants`, `bits-ui`, `happy-dom`); `.gitignore` missing `__pycache__/` globally, `backend/cache/`, `backend/logs/`, `backend/mlruns/`; Python version mismatch (3.13 vs 3.11); no Node version pinning; heavy dead backend dependencies (`boto3`, `hvac`, `azure-*`, `sqlalchemy`) for unused security modules
+- **LSTM synthetic training (P2s):** `lstm_predictor.py:537-540` generates random noise training data as fallback — trains a meaningless model without any warning
+- **Type safety gaps (P2t):** `any[]` in Dashboard, `any` params in betBuilder, dead `Prediction` type imported in Predictions.svelte, untyped `currentView` routing string
+- **Market format mismatch (P2u):** `StoredBet.market` uses underscored format (`over_2_5`) while `ValueBet.market` uses dotted format (`over2.5`) — cross-module bet resolution silently fails
+- **Backend bugs:** LangChain ReAct prompt missing required variables, blocking sync call on async event loop, optuna imported without guard, XGBoost feature ordering bug, derby detection always 0.0 for CSV training, league positions cumulative across all seasons
+- **15+ new accessibility findings:** LiveTicker no `role`/`aria-live`/pause control (WCAG 2.2.2 failure), TopScorers div grid instead of semantic table, sort buttons no `aria-pressed`, flip cards no contextual `aria-label`, filter selects missing labels
+- **12+ new component data accuracy issues:** Help.svelte additional misleading claims, ApiSetupWizard dead step and non-spinning emoji, StandingsTable arrows only on top 5, circular Kelly calculation in Predictions, `DollarSign` icon for GBP values
+- **10+ new dead code findings:** `footballData.ts` methods (`getRecentResults`, `getTeamByName`, `getHeadToHead`), `MatchList.svelte` dead season selector, `optimizedPredictions.ts` dead form string and unused parameters, `value.ts` division-by-zero on empty inputs
+
 ### Second Planning Audit — 12 New Findings (19 March 2026)
 - **8 parallel research agents** re-audited all 8 specs, 18 Svelte components, frontend libs/services, backend Python files, 21 test files + 6 E2E specs, and project configuration
 - **Critical: bet storage pipeline broken (P1i)** — `betHistoryService.storeBet()` is never called from any component. The entire bet history feature writes nothing — `BettingHistory.svelte` always shows empty state, ROI/P&L calculations return zero

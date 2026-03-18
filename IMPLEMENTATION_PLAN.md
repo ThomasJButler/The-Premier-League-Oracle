@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (second planning audit — 12 new findings; bet storage pipeline broken, ChatBot XSS, no CI/CD, test quality gaps)
+Last updated: 18 March 2026 (third planning audit — ~80 new findings across 6 parallel agents; live probability bugs, cache TTL lies, config debt, accessibility gaps)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -81,7 +81,7 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 **Frontend prediction model bugs (deep audit):**
 
 - [ ] `optimizedPredictions.ts`: H2H probability shrinkage (lines 552-554) sums to 1.1 not 1.0 — `(ratio * 0.8 + 0.1)` applied to all three outcomes yields `0.8 + 0.3 = 1.1`. Absorbed by `combineModels` normalisation but means H2H sub-model contributes ~10% more weight than its intended 10% share.
-- [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic in dead code (`AdvancedMatchPredictor` is never called at runtime).
+- [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic but **class is NOT dead code** — `value.ts:72` calls `AdvancedMatchPredictor.predictMatch()` for value bet scanning.
 - [ ] `optimizedPredictions.ts`: error fallback (lines 377-389) silently swallows all prediction errors with no logging — user gets a static `confidence: 0.33, goals: 1-1` prediction with no indication anything went wrong. Add `console.warn` at minimum.
 
 ### P1i. Bet Storage Pipeline Broken — NEW (19 March 2026)
@@ -101,6 +101,41 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 
 - [ ] `Predictions.svelte:215` — `was_correct: false` is hardcoded when storing predictions via `predictionTracker.storePrediction()`. The field is never updated to reflect actual outcomes from the storage call. `predictionTracker.updateWithResult()` does correctly update stored predictions later via reconciliation, but the initial `was_correct: false` is misleading metadata. Consider removing the field from the initial storage call or deriving it only from `updateWithResult()`.
 - [ ] `Predictions.svelte:47` — `totalGameweeks = 38` is hardcoded and never updated from API season data despite the comment claiming it will be.
+
+### P1l. Live Probability Bugs — NEW (18 March 2026, third audit)
+
+**betBuilder probability overflow:** Corner and card probability values can exceed 1.0 — there is no clamp on the linear formula. For a team with `expectedCorners = 15`, `totalOver85.probability = 0.55 + (15 - 8.5) * 0.1 = 1.2`. Same issue in `calculateCards()`: at `expectedCards = 10`, probability = 1.35. These feed directly into `suggestedCombos` confidence calculations, producing nonsensical results.
+
+- [ ] `betBuilder.ts`: clamp all probability outputs to `[0, 1]` in `calculateCorners()` and `calculateCards()`
+- [ ] `betBuilder.ts`: audit all other probability calculations for the same overflow pattern
+
+**KellyCalculator probability inflation:** `prob = 1.05 / oddsForOutcome` inflates the derived probability by 5%. The correct formula is `1 / odds`. With odds of 2.00, this gives `0.525` instead of `0.50`, making every bet appear to have an edge when there may be none. Generates false-positive value bets.
+
+- [ ] `KellyCalculator.svelte:92`: change `1.05 / oddsForOutcome` to `1 / oddsForOutcome`
+
+**footballData halfTimeResult bug for 0-0 scores:** `!0` evaluates to `true` in JavaScript, so a 0-0 scoreline at half-time is treated as `null` (no half-time result recorded). Only half-time scores where both values are ≥ 1 are correctly classified. Affects `SeasonStats` late-drama calculations and any feature using `half_time_result`.
+
+- [ ] `footballData.ts:366`: change `!fdMatch.score.halfTime.home || !fdMatch.score.halfTime.away` to `fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.away === null`
+
+**Dashboard auto-retry with no backoff:** `loadDashboardData()` retries every 5s on error with no maximum retry count or exponential backoff. If the API key is missing or invalid, this spams the Football-Data.org API indefinitely, burning rate-limit quota.
+
+- [ ] `Dashboard.svelte`: add maximum retry count (e.g. 3) and exponential backoff on error
+
+**Settings untrimmed API key:** `saveFootballDataKey()` stores the raw value without `.trim()`, while `ApiSetupWizard` does trim. A user pasting a key with trailing whitespace gets a corrupted key stored in localStorage.
+
+- [ ] `Settings.svelte:108`: add `.trim()` before `localStorage.setItem`
+
+### P1m. Data Layer Cache Bugs — NEW (18 March 2026, third audit)
+
+**dataService cache TTL mismatches:** Comments claim specific TTLs but the actual implementation uses the default 5-minute timeout:
+
+- [ ] `dataService.ts:528`: comment says "Historical data rarely changes — use 24h cache" but no `ttlMs` is passed to `getCachedData`, so it uses 5 minutes
+- [ ] `dataService.ts:549`: comment says "30min cache" for `getTeamRecentMatches` but again gets 5 minutes
+- [ ] `dataService.ts:179`: `getCurrentSeason()` caches season data in the `teamStats` IndexedDB store — semantic mismatch, clearing team stats silently clears the season too
+
+**footballData double-cache architecture:** The `FootballDataAPI` class maintains its own in-memory `Map` cache with its own TTL, independently of the IndexedDB cache in `dataService.ts`. After `setApiKey()`, the in-memory cache is cleared but IndexedDB is not, so they can serve different data for the same endpoint.
+
+- [ ] Consider consolidating to a single cache layer, or at minimum documenting the dual-cache behaviour
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
@@ -230,6 +265,68 @@ No `.github/workflows/` directory exists. Zero automated testing on push or PR. 
 - [ ] Update `specs/02-data-pipeline.md` — check off all 7 Supabase removal items (confirmed absent from codebase)
 - [ ] Delete or update root `.env.example` — still references `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
 
+### P2q. Parallel Fatigue Models — NEW (18 March 2026, third audit)
+
+Two different fatigue models exist in the codebase with different thresholds, producing inconsistent results for the same rest-day inputs:
+
+- [ ] `advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` — only called by `AdvancedMatchPredictor` (used in value bet scanning)
+- [ ] `optimizedPredictions.ts`: `calculateFatigueFactor()` (lines 566–577) — inline step function used by `OptimizedPredictor` (production model)
+- [ ] Consolidate into a single fatigue model in `advancedPredictions.ts` and import from both callers
+
+### P2r. Config & Infrastructure Cleanup — NEW (18 March 2026, third audit)
+
+**Dead dependencies in `package.json`:**
+
+- [ ] Remove `tailwind-variants` — installed but never imported anywhere
+- [ ] Remove `bits-ui` — installed but never imported (even shadcn-svelte components don't use it)
+- [ ] Remove `happy-dom` from devDependencies — `jsdom` is configured in vitest, `happy-dom` is unused
+- [ ] Add `@types/node` to devDependencies — relied upon implicitly for `path` and `__dirname` in vite.config
+
+**Version pinning:**
+
+- [ ] Add `engines` field to `frontend/package.json` or create `.nvmrc` to pin Node.js version
+- [ ] Fix Python version mismatch: `requirements.txt` says 3.13, `Dockerfile` uses 3.11, `environment.yml` uses 3.11 — align all to one version
+
+**`.gitignore` gaps:**
+
+- [ ] Add `**/__pycache__/` globally — currently only `backend/app/api/__pycache__` is listed; 3 other `__pycache__` dirs are unprotected
+- [ ] Add `backend/cache/` — football data collector may write cached responses to disk
+- [ ] Add `backend/logs/` and `backend/mlruns/` — auto-created at runtime, would pollute repo
+
+**Build configuration:**
+
+- [ ] `vite.config.ts`: remove `console.log` from proxy handler (fires on every API call in dev)
+- [ ] `vite.config.ts`: remove unnecessary `secure: false` on proxy (Football-Data.org has a valid cert)
+- [ ] `vite.config.ts`: consider adding `build` block with chunk splitting and sourcemaps for production
+- [ ] `tsconfig.json`: consider enabling `strict: true` in the app tsconfig (currently only enabled in `tsconfig.node.json`)
+
+**Production readiness:**
+
+- [ ] `index.html`: replace default Vite favicon with project branding; add `<meta name="description">` and Open Graph tags
+- [ ] `app.css`: `.gradient-text` animation is imperceptible — both gradient stops are near-identical dark colours; dead CPU cycles
+
+**Backend dead dependencies in `requirements.txt`:**
+
+- [ ] Remove or mark as optional: `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity` — heavy deps (~30MB+) for `secrets.py` which is never imported by `main.py`
+- [ ] Remove `sqlalchemy` — only imported by unused `auth.py`
+- [ ] Add `pyyaml` and `httpx` if needed (present in `environment.yml` but missing from `requirements.txt`)
+
+### P2s. LSTM Synthetic Training Data — NEW (18 March 2026, third audit)
+
+- [ ] `lstm_predictor.py:537-540` generates entirely synthetic training data using `np.random.randn` (features) and `np.random.randint` (labels) when training without real data. This is distinct from the feature importance stub at line 523. The LSTM can "train" on random noise without error, producing a trained-but-meaningless model with no warning. Add: guard that raises `ValueError("No real training data provided")` instead of falling back to random data.
+
+### P2t. Type Safety Gaps — NEW (18 March 2026, third audit)
+
+- [ ] `Dashboard.svelte:38`: `topPredictions: any[]` — production display typed as `any`
+- [ ] `betBuilder.ts:206,234,306,350-355`: private methods `calculateCorners`, `calculateCards`, `calculateHalfTimeResult`, `buildCombos` all take `any`-typed parameters
+- [ ] `Predictions.svelte:7,19`: imports dead legacy `Prediction` type from `types/index.ts` (diverges from `StoredPrediction` which is the actual runtime type)
+- [ ] `ChatBot.svelte:274`: `handleKeydown` event parameter typed as `any` instead of `KeyboardEvent`
+- [ ] `App.svelte`: `currentView` is a plain string — use a `type ViewName` union to catch routing typos at compile time
+
+### P2u. betHistoryService Market Format Mismatch — NEW (18 March 2026, third audit)
+
+- [ ] `StoredBet.market` uses `'over_2_5'` (underscores) while `ValueBet.market` from `value.ts` uses `'over2.5'` (no separator). If code ever stores a `ValueBet` market into a `StoredBet`, the enum mismatch breaks `didBetWin()` resolution silently (falls to `default: return null`). Align market string formats between the two modules.
+
 ---
 
 ## P3 — Backend ML
@@ -314,7 +411,7 @@ python -m pytest tests/ -v                               # All tests
 
 ### P3a. Real Feature Engineering
 
-`advanced_engineering.py` — no `np.random.*` calls (was 102), but **49 methods return hardcoded `0.0`** for: tactics, player-level, betting market, weather, and advanced metric features. ~75 features compute real data from scorelines/results.
+`advanced_engineering.py` — no `np.random.*` calls (was 102), but **63 methods return hardcoded `0.0`** for: advanced metrics (13), betting features (10), tactical features (10), player impact (5), external factors (7), plus contextual stubs. ~75 features compute real data from scorelines/results. Third audit corrected count from 49 to 63.
 
 Priority features to implement with real data:
 - [ ] Rolling goals scored/conceded (last 5, 10 matches) — data available from free tier
@@ -322,7 +419,13 @@ Priority features to implement with real data:
 - [ ] Rest days since last match — data available
 - [ ] H2H win rates — fix `get_head_to_head()` returning empty DataFrame
 - [ ] xG proxies from shots data — limited by free tier
-- [ ] Remove or honestly document the ~49 `return 0.0` stub methods (tactics, weather, player-level require paid data sources)
+- [ ] Remove or honestly document the ~63 `return 0.0` stub methods (tactics, weather, player-level require paid data sources)
+
+**Derby detection broken for CSV training (third audit):**
+
+- [ ] `_is_derby_match()` uses Football-Data.org canonical names (e.g. `'Manchester United FC'`) but CSV training data uses short names (e.g. `'Man United'`). Derby detection always returns `0.0` during training from CSVs
+- [ ] `_compute_league_positions()` builds cumulative all-time points rather than per-season. A team relegated in 2019 still accumulates points from the full historical dataset — wrong for multi-season training
+- [ ] `warnings.filterwarnings('ignore')` at module level silences all Python warnings globally for any importing module — makes debugging harder
 
 **Constraint:** Football-Data.org free tier does not provide xG, shots, possession, cards, corners data — ~70 features will remain stubs unless a paid data source is added.
 
@@ -357,6 +460,12 @@ Priority features to implement with real data:
 - [ ] Fix `transformer_model.py`: same `scaler.fit_transform` during inference bug — `prepare_data` re-fits at prediction time instead of using training scaler
 - [ ] Fix `xgboost_model.py`: `_optimize_hyperparameters` passes `n_estimators` to `xgb.train()` — `xgb.train` does not accept this param (uses `num_boost_round` instead). Optuna optimisation of tree count has no effect
 - [ ] Fix `modern_oracle.py`: `train_all_models` uses `training_data.sample(frac=0.2)` for validation — random split, not chronological. Leaks future match data into validation, inflating apparent accuracy
+- [ ] Fix `modern_oracle.py`: `predict_match_natural_language()` calls `self.agent_executor.run()` synchronously inside an `async` method — blocks the asyncio event loop for 2–30 seconds during LLM round-trips. Use `asyncio.to_thread()` or async LangChain interface
+- [ ] Fix `modern_oracle.py`: LangChain `create_react_agent` is wired with a `PromptTemplate` missing `{tools}` and `{tool_names}` variables — will cause `KeyError` or broken agent execution at runtime
+- [ ] Fix `lstm_predictor.py:537-540`: synthetic `np.random.randn`/`np.random.randint` fallback training data — LSTM can "train" on noise without error, producing a meaningless model with no warning
+- [ ] Fix `lstm_predictor.py` + `transformer_model.py`: `torch.load()` called without `weights_only=True` — PyTorch 2.0+ security warning for unsafe deserialisation from untrusted files
+- [ ] Fix `xgboost_model.py`: `_optimize_hyperparameters()` imports `optuna` unconditionally inside the method body, bypassing the top-level `OPTUNA_AVAILABLE` guard — `ImportError` if optuna not installed
+- [ ] Fix `xgboost_model.py`: `predict_single_match()` passes feature dict → DataFrame without ensuring column ordering matches `self.feature_names` — silent NaN injection or wrong-column mapping possible
 
 ### P3d. Security Layer Fixes
 
@@ -382,6 +491,11 @@ Priority features to implement with real data:
 - [ ] `main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if the socket was never appended (e.g. exception occurs before `append` completes). Wrap in try/except or use a `set` with `discard()`
 - [ ] `.gitignore`: `__pycache__/` directories not fully excluded — only `backend/app/api/__pycache__` is listed. Add `__pycache__/` globally. Also missing `mlruns/` (MLflow tracking directory)
 - [ ] `validators.py`: SQL blacklist would reject team name "Nottingham Forest" — `'from'` is a substring of `'Forest'`. The `_contains_sql_injection` check uses substring matching (`keyword in text_lower`), not word boundary matching
+- [ ] `validators.py`: `html.escape()` applied to team names breaks `&` characters — `Brighton & Hove Albion` becomes `Brighton &amp; Hove Albion`, causing team lookup mismatches if passed to ML models or API calls
+- [ ] `auth.py`: HS256 used despite docstring claiming RS256 (asymmetric) — symmetric key means any holder can forge tokens
+- [ ] `main.py`: CORS only allows `localhost:5173` and `localhost:4173` — no production Vercel domain listed, blocking deployed frontend from calling the backend API
+- [ ] `football_data_collector.py`: `time.sleep()` in `_enforce_rate_limit()` — blocks asyncio event loop if collector is ever called from async endpoints
+- [ ] `main.py`: `active_websockets.remove(websocket)` raises `ValueError` if socket was never appended (e.g. exception before `append`). Use `set.discard()` instead
 
 ### P3e. OptimizedPredictor × ML Integration
 
@@ -447,6 +561,12 @@ Priority features to implement with real data:
 - [ ] `SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler, `tabindex`, or keyboard support — misleading to keyboard/AT users
 - [ ] `KellyCalculator.svelte` results panel has no `aria-live` — won't be announced when calculation updates
 - [ ] `ValueBets.svelte` scan results have no `aria-live` region
+- [ ] `LiveTicker.svelte` has no `role="marquee"` or `aria-live` — screen readers treat as static text; no pause control fails WCAG 2.2.2
+- [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
+- [ ] `MatchList.svelte` sort buttons have no `aria-pressed` to indicate active sort
+- [ ] `Predictions.svelte` flip-card "Tap for Analysis" buttons lack `aria-label` with match context
+- [ ] `App.svelte` `<main>` element has no `aria-label` for landmark name
+- [ ] `BettingHistory.svelte` filter `<select>` has no `<label>` element
 
 ### P4c. Component Data Accuracy Cleanup
 
@@ -458,6 +578,17 @@ Priority features to implement with real data:
 - [ ] `SeasonStats.svelte`: no error state in template — if fetch fails, shows empty grid forever (loading stops but nothing renders). The `catch` block at line 29 swallows errors silently with no user feedback
 - [ ] `MatchList.svelte:12`: `selectedSeason = '2024-2025'` hardcoded fallback — will go stale each season
 - [x] `Settings.svelte`: "Connected" status without real API ping — FIXED (now calls `testConnection()` on mount)
+- [ ] `Help.svelte:101`: "📊 Live Standings" describes Dashboard — but Dashboard doesn't show standings (that's `StandingsTable.svelte`)
+- [ ] `Help.svelte:489`: FAQ "The app caches recent data for offline viewing" — overstates capability; IndexedDB expires and there is no Service Worker
+- [ ] `Help.svelte:295`: "75-85% accuracy when all models agree" — fabricated, never validated against backtest data
+- [ ] `ApiSetupWizard.svelte:284`: "AI-powered predictions" listed as a Football-Data.org feature — misleading (AI is from OpenAI via ChatBot, not the data source)
+- [ ] `ApiSetupWizard.svelte`: Step 3 "Choose Provider" has only one hardcoded option — dead step, should auto-advance or be removed
+- [ ] `StandingsTable.svelte`: `getMovementIcon` only renders arrows for top 5 positions — rest of the table shows no movement indicator, creating visual inconsistency
+- [ ] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` creates circular Kelly recommendation — model is both the predictor and the bookmaker; Kelly stake will almost always be near zero
+- [ ] `ApiSetupWizard.svelte:430`: `⏳` emoji inside `animate-spin` span does not actually spin (emoji aren't CSS-transformable)
+- [ ] `LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)` — double-negative is confusing; use `addDays(now, 7)` from date-fns
+- [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
+- [ ] `BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values — inconsistent with UK-focused branding
 
 ### P4d. betBuilder Improvements
 
@@ -470,6 +601,8 @@ Priority features to implement with real data:
 - [ ] Market correlation in combo probability (e.g. clean sheet + over 2.5 negatively correlated)
 - [ ] `'Over 1.5 first half goals'` probability hardcoded as `0.35`
 - [ ] Rivalry list includes Championship teams (West Brom, Birmingham City, Sunderland) that will never appear in PL API data — dead entries
+
+**Plan correction (third audit):** `checkRivalry()` now works correctly via `normaliseTeamName()` which strips `FC`/`AFC`/`CF` suffixes. The previously documented "short names never match API names" issue is resolved.
 
 ### P4e. CSS & Theme Polish
 
@@ -505,7 +638,7 @@ Priority features to implement with real data:
 - [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant — duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`
 - [ ] Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant — duplicated in `optimizedPredictions.ts` and `advancedPredictions.ts`
 - [ ] `predictionTracker.ts`: `resultAccuracy` is identical to `accuracy` in `getAccuracyStats` — redundant field
-- [ ] `advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime — entirely dead code (only `OptimizedPredictor` is used in production). 28 tests exercise it but no component imports it
+- [ ] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Remove from dead code list
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` is never called anywhere in the codebase — dead code
 - [ ] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` not called by production code — only `calculateRestDays` is used by `OptimizedPredictor`
 - [ ] `optimizedPredictions.ts`: `formString` function has unused `team` parameter — declared but never read inside the function body
@@ -517,6 +650,15 @@ Priority features to implement with real data:
 - [ ] `dataService.ts`: additional dead public methods beyond already-listed: `getPredictionAccuracy()`, `setCacheTimeout()`, `disableCache()`, `enableCache()`, `refreshDataSources()` — none called from any component
 - [ ] `footballData.ts:383`: `|| null` on odds fields instead of `?? null` — semantically wrong for `0` values (harmless in practice since odds can't be 0)
 - [ ] `ApiSetupWizard.svelte`: commented-out debug notes at lines 33, 44, 52–53 — stale test comments to clean up
+- [ ] `optimizedPredictions.ts`: `form: '?????' ` field in `getEnhancedTeamStats()` fallback is dead output — never read by anything
+- [ ] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore(form, isHome)` has unused `isHome` parameter — vestigial
+- [ ] `optimizedPredictions.ts`: `getTopOutcome()` duplicates `determinePrediction()` logic — one is redundant
+- [ ] `footballData.ts`: `getRecentResults()` is an unused duplicate of `getRecentMatches()` — never imported outside tests
+- [ ] `footballData.ts`: `getTeamByName()`, `getHeadToHead()`, exported types `FDSquadMember`, `FDPlayer`, `FootballDataConfig` — all dead (never imported outside this file)
+- [ ] `MatchList.svelte`: season selector UI is fetched (`loadSeasons()`) but has no `<select>` in the template — dead code path
+- [ ] `value.ts`: `calculateSharpeRatio()` divides by zero silently for empty arrays — returns `NaN`
+- [ ] `value.ts`: `calculatePerformanceMetrics()` divides by `totalBets`/`totalStaked` with no guard for empty input — returns `NaN` across all fields
+- [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
 
 ### P4h. Test Quality Improvements — NEW (19 March 2026)
 
@@ -613,12 +755,19 @@ All feature specifications in `specs/`:
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
 | `MatchList.svelte` | `selectedSeason = '2024-2025'` hardcoded fallback — stale each season | P4c |
 | `betHistoryService.ts` | `storeBet()` never called from any component — bet history pipeline non-functional | P1i |
+| `betBuilder.ts` | Corner/card probabilities can exceed 1.0 — no clamp on linear formula | P1l |
+| `KellyCalculator.svelte` | `prob = 1.05 / odds` inflates probability by 5% — false-positive value bets | P1l |
+| `footballData.ts` | `halfTimeResult` bug: `!0 === true` treats 0-0 half-time as null | P1l |
+| `advancedPredictions.ts` | `SEED_RATINGS` includes relegated teams (Leicester, Leeds, Luton, Burnley, Sheff Utd) and Sunderland (not in PL) | Low |
+| `advancedPredictions.ts` | Two parallel fatigue models with different thresholds (AdvancedMatchPredictor vs OptimizedPredictor) | P2q |
+| `dataService.ts` | Cache TTL comments lie about actual TTL (claim 24h/30m, deliver 5m) | P1m |
+| `advanced_engineering.py` | `0.45` fallback win rate when no match data — hardcoded league average | Low |
 
 ### Backend
 
 | Location | Problem | Priority |
 |----------|---------|----------|
-| `advanced_engineering.py` | 49 methods return `0.0` (tactics, players, betting, weather, advanced) | P3a |
+| `advanced_engineering.py` | 63 methods return `0.0` (tactics, players, betting, weather, advanced — was 49, corrected in third audit) | P3a |
 | `football_data_collector.py` | `get_head_to_head()` returns empty DataFrame | P3b |
 | `football_data_collector.py` | `get_team_form()` confusing result-flip logic | P3b |
 | `lstm_predictor.py` | `get_feature_importance()` returns `np.random.random()` | P3c |
@@ -656,6 +805,13 @@ All feature specifications in `specs/`:
 | `football_data_collector.py` | `get_team_form()` returns mixed `'H'`/`'A'` and `'W'`/`'L'` values — inconsistent form codes | P3b |
 | `requirements.txt` | Missing `torch` — LSTM/Transformer non-functional via pip install | P3d |
 | `requirements.txt` | `python-jose` + `passlib` unmaintained since 2022 — dead security module deps | P3d |
+| `lstm_predictor.py` | Synthetic `np.random` training data fallback — trains on noise without error | P2s |
+| `modern_oracle.py` | LangChain ReAct prompt missing `{tools}`/`{tool_names}` — broken agent execution | P3c |
+| `modern_oracle.py` | Blocking `agent_executor.run()` in async method — freezes event loop | P3c |
+| `advanced_engineering.py` | `_is_derby_match()` uses API names but CSVs have short names — always returns `0.0` during training | P3a |
+| `advanced_engineering.py` | `_compute_league_positions()` cumulative all-time, not per-season — wrong for multi-season | P3a |
+| `validators.py` | `html.escape()` corrupts `Brighton & Hove Albion` to `Brighton &amp; Hove Albion` | P3d |
+| `requirements.txt` | `boto3`, `hvac`, `azure-*`, `sqlalchemy` — heavy dead deps for unused security modules | P2r |
 
 ---
 
@@ -709,7 +865,7 @@ All feature specifications in `specs/`:
 - `value.test.ts`: 3 warning tests wrap assertions in `if (homeBet)` guards — silently pass without asserting if no value bet is identified
 - `predictions.test.ts`: form trend test replicates the algorithm inline rather than testing the actual `analyzeFormTrend` function (not exported) — cannot detect bugs in the real implementation
 - `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
-- `betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats
+- ~~`betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats~~ **CORRECTED (third audit):** rivalry check now works correctly via `normaliseTeamName()`. Tests are valid.
 - `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
 - `value.test.ts`: 6 conditional assertions wrapped in `if` guards that silently pass without asserting if the engine returns no results (see P4h)
 - `kelly.test.ts:240`: arbitrage assertions guarded by `if (result.isArbitrage)` — trivially passes if detection broken
