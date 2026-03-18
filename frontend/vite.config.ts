@@ -90,6 +90,16 @@ export default defineConfig({
       $lib: path.resolve(__dirname, './src/lib')
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'chart': ['chart.js', 'svelte-chartjs'],
+          'vendor': ['date-fns', 'dompurify'],
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api/football-data': {
