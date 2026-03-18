@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2i Value Bet Scanner — Complete (18 March 2026)
+- **New `ValueBets.svelte` component** — wires the tested-but-orphaned `ValueBettingEngine` (38 existing tests) to a user-facing UI
+- **Match selector** dropdown populated from upcoming matches (next 14 days), auto-filters completed matches
+- **User-entered odds inputs**: 1X2 market (required) + optional Over/Under 2.5 Goals; bankroll input
+- **"Scan for Value" button**: calls `ValueBettingEngine.identifyValueBets()` with user odds + predicted probabilities from `AdvancedMatchPredictor`
+- **Results display**: edge %, EV %, Kelly stake, model reasoning, and risk warnings for each identified value bet
+- **Navigation**: added to Sidebar (under Betting section) and MobileNav with Search icon
+- **12 new tests** in `ValueBets.test.ts` covering container, header, empty state, match selector, odds inputs, scan button, bankroll, optional markets, API error, completed match filter, team logos
+- **Test count 320 → 332**: 18 test files, 332/332 passing, 0 type errors
+
 ### P2g Kelly Auto-Suggestions — Complete (18 March 2026)
 - **Suggested Bets panel** added above the manual Kelly Calculator — fetches upcoming matches (next 14 days), runs each through `OptimizedPredictor.predictMatch()`, computes Kelly stake, and displays value bets sorted by edge percentage
 - **Confidence threshold slider** (40–90%, default 65%) lets users tune aggressiveness — lower threshold shows more suggestions with weaker edges, higher shows fewer but stronger

@@ -236,14 +236,16 @@ Still missing:
 - [ ] Persist chat sessions to localStorage with configurable history length
 - [ ] Add backend prediction results to system prompt when backend available
 
-### P2i. Wire ValueBettingEngine to UI (NEW — discovered in audit #4)
+### P2i. Wire ValueBettingEngine to UI — DONE (18 March 2026)
 
-`ValueBettingEngine` in `betting/value.ts` is tested (38 tests) but has **zero UI consumers** — no component imports or calls it. The old `ValueBets.svelte` was removed.
+`ValueBettingEngine` in `betting/value.ts` now has a full UI consumer.
 
-- [ ] Create a ValueBets view or integrate into KellyCalculator / Predictions
-- [ ] Wire `identifyValueBets()` to use real match predictions + user-entered odds
-- [ ] Display value bets with edge, EV, and Kelly stake
-- [ ] Wire `OddsProvider` interface (currently defined but never implemented)
+- [x] Created `ValueBets.svelte` — match selector, user-entered odds inputs (1X2 + optional O/U 2.5), bankroll, "Scan for Value" button
+- [x] Wired `identifyValueBets()` to real match predictions + user-entered odds
+- [x] Displays value bets with edge, EV, Kelly stake, reasoning, and warnings
+- [x] Added to App routing, Sidebar, and MobileNav navigation
+- [x] 12 tests covering: container, header, empty state, match selector, odds inputs, scan button, bankroll, optional markets, API error, completed match filter, team logos
+- [ ] Wire `OddsProvider` interface — deferred until an odds API is selected
 
 ---
 
