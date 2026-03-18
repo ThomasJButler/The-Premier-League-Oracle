@@ -5,13 +5,13 @@
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
+  import { getSeasonYear } from '../lib/utils';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
   // Compute current season from date (July onwards = new season). Overwritten by API if available.
-  const now = new Date();
-  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const year = getSeasonYear();
   let selectedSeason = `${year}-${year + 1}`;
   let loading = true;
   let error: string | null = null;

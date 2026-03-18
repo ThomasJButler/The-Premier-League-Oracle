@@ -146,7 +146,9 @@ function buildStandingsResponse() {
 
 function buildCompetitionResponse() {
   const now = new Date();
-  const seasonStart = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  // Season boundary: July (month 6) onwards = new season. See getSeasonYear() in src/lib/utils.ts
+  const SEASON_START_MONTH = 6;
+  const seasonStart = now.getMonth() >= SEASON_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
   return {
     id: 2021,
     name: 'Premier League',

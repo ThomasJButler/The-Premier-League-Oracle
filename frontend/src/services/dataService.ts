@@ -3,6 +3,7 @@ import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
 import { sharedEloSystem } from '../lib/advancedPredictions';
+import { getSeasonYear } from '../lib/utils';
 
 interface DataSource {
   type: 'api';
@@ -94,12 +95,6 @@ class DataService {
       // Test API availability with the key
       const season = await activeApi.getCurrentSeason();
       this.apiSource.available = season !== null;
-      
-      if (this.apiSource.available) {
-        // Football-Data (Free) is available and working
-      } else {
-        // Football-Data is not working
-      }
     } catch (error) {
       // Error checking API availability
       this.apiSource.available = false;
@@ -300,10 +295,8 @@ class DataService {
         const teamStats = await this.getActiveApi().getTeamStats(teamName);
         if (teamStats) {
           // Transform Football API stats to our TeamStats format
-          const currentYear = new Date().getFullYear();
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
-          // July onwards (getMonth() >= 6) = new season — matches footballData.ts boundary
-          const seasonYear = new Date().getMonth() >= 6 ? currentYear : currentYear - 1;
+          const seasonYear = getSeasonYear();
           // Compute home/away splits from recent matches
           let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
           let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
@@ -338,7 +331,7 @@ class DataService {
           }
 
           const stats: TeamStats = {
-            id: `${teamName}_${currentYear}`,
+            id: `${teamName}_${seasonYear}`,
             season_id: String(seasonYear),
             team_name: teamName,
             matches_played: teamStats.played,

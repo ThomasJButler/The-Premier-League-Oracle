@@ -1,9 +1,13 @@
 import type { Match, MatchStatus, Season, TeamForm } from '../../types';
+import { getSeasonYear } from '../../lib/utils';
+
+/** Football-Data.org competition ID for the Premier League */
+const PREMIER_LEAGUE_ID = 2021;
 
 interface FootballDataConfig {
   apiKey: string;
   baseUrl: string;
-  competitionId: number; // Premier League = 2021
+  competitionId: number;
 }
 
 interface FDTeam {
@@ -122,7 +126,7 @@ class FootballDataAPI {
     this.config = {
       apiKey,
       baseUrl,
-      competitionId: 2021 // Premier League
+      competitionId: PREMIER_LEAGUE_ID
     };
     
     // Football-Data API initialised: mode, API key status
@@ -343,7 +347,7 @@ class FootballDataAPI {
     
     // Derive season year from match date (July onwards = new season)
     const matchDate = new Date(fdMatch.utcDate);
-    const seasonYear = matchDate.getMonth() >= 6 ? matchDate.getFullYear() : matchDate.getFullYear() - 1;
+    const seasonYear = getSeasonYear(matchDate);
 
     return {
       id: fdMatch.id.toString(),

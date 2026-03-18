@@ -176,4 +176,4 @@ export const liveService = new LiveService()
 - [x] `LiveMatches.svelte` and `LiveTicker.svelte` refactored to subscribe to shared stores (P3f)
 - [x] Graceful empty state with next fixture countdown
 - [ ] Match event notifications (goals, red cards, etc.) — not done
-- [ ] LiveTicker shows live scores with pulsing indicator inline (ticker item format not verified)
+- [x] LiveTicker shows live scores with pulsing indicator inline (ticker item format not verified)

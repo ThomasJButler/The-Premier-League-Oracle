@@ -142,6 +142,7 @@
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-2 mb-6">
       <div class="grid grid-cols-3 gap-2" role="tablist" aria-label="Match categories">
         <button
+          id="tab-live"
           role="tab"
           aria-selected={showSection === 'live'}
           aria-controls="panel-live"
@@ -157,6 +158,7 @@
         </button>
 
         <button
+          id="tab-recent"
           role="tab"
           aria-selected={showSection === 'recent'}
           aria-controls="panel-recent"
@@ -172,6 +174,7 @@
         </button>
 
         <button
+          id="tab-upcoming"
           role="tab"
           aria-selected={showSection === 'upcoming'}
           aria-controls="panel-upcoming"
@@ -205,7 +208,7 @@
       </button>
     </div>
   {:else if showSection === 'live' && liveMatches.length > 0}
-    <div class="grid gap-4">
+    <div id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="grid gap-4">
       {#each liveMatches as match, index}
         <div
           class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-l-4 border-red-500"
@@ -275,6 +278,7 @@
     </div>
   {:else if showSection === 'recent'}
     <!-- Recent Matches -->
+    <div id="panel-recent" role="tabpanel" aria-labelledby="tab-recent">
     {#if recentMatches.length > 0}
       <div class="grid gap-4">
         {#each recentMatches as match, index}
@@ -326,8 +330,10 @@
         <p class="text-muted-foreground">No recent matches in the last 3 days</p>
       </div>
     {/if}
+    </div>
   {:else if showSection === 'upcoming'}
     <!-- Upcoming Matches -->
+    <div id="panel-upcoming" role="tabpanel" aria-labelledby="tab-upcoming">
     {#if upcomingMatches.length > 0}
       <div class="grid gap-4">
         {#each upcomingMatches as match, index}
@@ -375,6 +381,7 @@
         <p class="text-muted-foreground">No upcoming matches in the next 7 days</p>
       </div>
     {/if}
+    </div>
   {:else}
     <!-- No live matches — show countdown to next kickoff -->
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-12 text-center">

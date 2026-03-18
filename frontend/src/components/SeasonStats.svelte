@@ -4,10 +4,13 @@
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type IconComponent = new (...args: any[]) => any;
+
   interface SeasonStat {
     label: string;
     value: string | number;
-    icon: any;
+    icon: IconComponent;
     color: string;
     description: string;
   }
@@ -419,7 +422,7 @@
     <!-- Primary Stats -->
     <div class="mb-12">
       <h3 class="text-lg font-semibold font-display text-foreground mb-4">Key Insights</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Key season statistics">
         {#each stats as stat, i}
           <div 
             class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300"
@@ -451,7 +454,7 @@
     {#if additionalStats.length > 0}
       <div class="mb-8">
         <h3 class="text-lg font-semibold font-display text-foreground mb-4">Extended Analytics</h3>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" aria-label="Extended season analytics">
           {#each additionalStats as stat, i}
             <div 
               class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300"

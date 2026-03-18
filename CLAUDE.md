@@ -163,15 +163,18 @@ These specs are the single source of truth for requirements.
 - `main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`, all clients share one bucket. Needs `request.client.host` extraction
 - `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken
 - `ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged — XSS regression from P1j fix would be invisible to tests
-- `betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`
-- `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)
+- ~~`betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`~~ **FIXED:** `normaliseTeamName()` now converts `&` to `and`
+- ~~`frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)~~ **FIXED:** pinned to `^20.17.0`
 - `.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed
-- Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)
+- ~~Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)~~ **FIXED:** all 5 specs synced (P5b done 26 March 2026)
 - `liveService.ts:235`: WebSocket URL hardcodes port `8000` — will silently fail in production deployments where backend is not on same hostname:8000. Polling fallback masks the failure
-- Season year calculation `getMonth() >= 6` duplicated in 3 places: `dataService.ts:306`, `footballData.ts:346`, `MatchList.svelte:14` — should be extracted to `lib/utils.ts`
-- `optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46` — inconsistent priors in the same ensemble
-- `dataService.ts:98-101`: empty if/else branches with comment-only bodies — Supabase removal remnants
-- `advancedPredictions.ts:29`: `maxGoals = 10` default in PoissonPredictor, spec says cap at 7
+- ~~Season year calculation `getMonth() >= 6` duplicated in 3 places~~ **FIXED:** extracted `getSeasonYear()` and `SEASON_START_MONTH` to `lib/utils.ts` (P5j)
+- ~~`optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46`~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5k)
+- ~~`dataService.ts:98-101`: empty if/else branches with comment-only bodies~~ **FIXED:** collapsed (P5l)
+- ~~`advancedPredictions.ts:29`: `maxGoals = 10` default in PoissonPredictor, spec says cap at 7~~ **FIXED:** changed to 7 (P5l)
+- `Predictions.svelte:7` imports `Prediction` type from `types/index.ts` — investigated and found to be ACTIVELY USED for view-level prediction mapping (not dead code as previously thought)
+- `footballData.ts`: `competitionId` now uses named `PREMIER_LEAGUE_ID` constant (was magic number 2021)
+- `lib/utils.ts`: exports `getSeasonYear(date?)`, `SEASON_START_MONTH`, `getSeasonLabel()`, `cn()`, `focusTrap()` — the shared utility module for the frontend
 - No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
 - Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
 - Spec 07 (UI/UX) largest remaining gap — shadcn components installed but 0/5 wired into UI (Button, Card, Dialog, Badge, Sheet)

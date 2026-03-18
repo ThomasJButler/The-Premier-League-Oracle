@@ -431,7 +431,7 @@
     </div>
     <div class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
-      <div class="h-48 sm:h-56">
+      <div class="h-48 sm:h-56" role="img" aria-label="Bar chart showing monthly profit and loss from tracked bets">
         <canvas bind:this={profitChartCanvas}></canvas>
       </div>
     </div>

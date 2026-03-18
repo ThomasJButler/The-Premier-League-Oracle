@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P5 Hardening Batch — Code Quality & ARIA Fixes (26 March 2026)
+- **P5j — Season year deduplication:** Extracted `getSeasonYear(date?)` and `SEASON_START_MONTH` constant to `lib/utils.ts`. Replaced inline `getMonth() >= 6` in `dataService.ts`, `footballData.ts`, `MatchList.svelte`, and `mockApi.ts` (4 locations). `getSeasonLabel()` now delegates to `getSeasonYear()` — single source of truth for the July boundary
+- **P5k — H2H fallback consistency:** `optimizedPredictions.ts` H2H no-data fallback now uses `DEFAULT_HOME_WIN_RATE` (0.46) from constants instead of hardcoded 0.40. Away/draw rates derived proportionally. Eliminates 6pp anti-home bias when H2H data is missing
+- **P5l — Dead code and magic numbers:** Removed empty if/else branches in `dataService.ts` (Supabase remnants). Extracted `PREMIER_LEAGUE_ID = 2021` constant in `footballData.ts`. Changed Poisson `maxGoals` from 10 to 7 per spec 01 (test tolerance relaxed for tail truncation). Confirmed `Prediction` type in `Predictions.svelte` is actively used (corrected plan)
+- **P5d — ARIA accessibility:** LiveMatches tab panels now have `id`, `role="tabpanel"`, and `aria-labelledby` attributes matching their tab buttons. Dashboard profit chart container has `role="img"` and `aria-label`. SeasonStats stat grids have descriptive `aria-label` attributes. Also fixed `icon: any` type in SeasonStats
+- **P5g — Config and infrastructure:** `normaliseTeamName()` in `betBuilder.ts` now converts `&` to `and` — Crystal Palace/Brighton rivalry now fires when API sends `Brighton & Hove Albion FC`. `@types/node` pinned to `^20.17.0` to match Node 20 runtime (was `^25.5.0`)
+- **P5h — Help.svelte accuracy:** Kelly formula section now correctly describes Half-Kelly staking (was showing full Kelly). Replaced aspirational features ("Track bankroll growth", "Trend analysis") with accurate descriptions of implemented functionality
+- **P5b — Spec markers synced:** Updated `specs/05-live-data.md` LiveTicker pulsing indicator to done. Confirmed specs 03, 04, 07, 08 already in sync
+- **Validation:** 375/375 tests passing, 0 type errors
+
 ### Eighth Planning Audit — Comprehensive Spec Compliance (25 March 2026)
 - **5-agent parallel codebase sweep:** Compared all source code against all 8 spec files, audited frontend for stubs/TODOs/hardcoded values, audited backend for issues, verified every acceptance criterion with code evidence
 - **Spec compliance audit results:** Spec 06 is 100% complete (7/7 criteria). Spec 07 is the largest gap — shadcn components installed but 0/5 migration criteria actioned (Button, Card, Dialog, Badge, Sheet). Updated all spec completion percentages: 01 (80%), 02 (65%), 03 (85%), 04 (90%), 05 (80%), 06 (100%), 07 (55%), 08 (95%)

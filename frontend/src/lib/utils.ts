@@ -54,13 +54,28 @@ export function focusTrap(node: HTMLElement, active = true) {
 }
 
 /**
+ * Zero-indexed month from which a new Premier League season is considered
+ * to have started (July = 6). Fixture lists publish in July; the first
+ * match is typically in August.
+ */
+export const SEASON_START_MONTH = 6;
+
+/**
+ * Return the starting calendar year of the PL season that `date` falls in.
+ * July onwards = new season, e.g. July 2025 → 2025 (season 2025/26).
+ * January 2026 → 2025 (still the 2025/26 season).
+ */
+export function getSeasonYear(date: Date = new Date()): number {
+  return date.getMonth() >= SEASON_START_MONTH
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+}
+
+/**
  * Derive the current Premier League season label from today's date.
  * July onwards (month >= 6) starts the new season, e.g. "2025/26".
  */
 export function getSeasonLabel(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
-  return `${year - 1}/${year.toString().slice(-2)}`;
+  const year = getSeasonYear();
+  return `${year}/${(year + 1).toString().slice(-2)}`;
 }

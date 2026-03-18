@@ -324,11 +324,12 @@
 
               <h3 class="text-xl font-semibold mb-4">Kelly Criterion Calculator</h3>
               <div class="p-6 bg-muted rounded-xl">
-                <p class="mb-4">Use our Kelly Calculator to determine optimal stake sizes:</p>
+                <p class="mb-4">The app uses <strong>Half-Kelly</strong> staking — halving the full Kelly recommendation for a safer risk profile:</p>
                 <div class="bg-card p-4 rounded-lg font-mono text-sm">
-                  Stake % = (Probability × Odds - 1) / (Odds - 1)
+                  Full Kelly = (Probability × Odds - 1) / (Odds - 1)<br/>
+                  Recommended Stake = Full Kelly ÷ 2
                 </div>
-                <p class="text-sm mt-4 text-amber-600">⚠️ Never bet more than 25% of Kelly recommendation for safety.</p>
+                <p class="text-sm mt-4 text-muted-foreground">Half-Kelly reduces variance significantly while retaining most of the theoretical edge.</p>
               </div>
             </div>
 
@@ -364,9 +365,9 @@
                   <p class="text-sm mb-3">Optimize your stake sizes using the Kelly Criterion formula.</p>
                   <ul class="text-sm space-y-1">
                     <li>• Input odds and probability</li>
-                    <li>• Get recommended stake</li>
-                    <li>• Adjust for risk tolerance</li>
-                    <li>• Track bankroll growth</li>
+                    <li>• Get Half-Kelly recommended stake</li>
+                    <li>• Auto-suggested bets from predictions</li>
+                    <li>• Track placed bets in Betting History</li>
                   </ul>
                 </div>
                 
@@ -387,8 +388,8 @@
                   <ul class="text-sm space-y-1">
                     <li>• Natural language queries</li>
                     <li>• Statistical explanations</li>
-                    <li>• Trend analysis</li>
-                    <li>• Custom recommendations</li>
+                    <li>• Match-specific analysis</li>
+                    <li>• Prediction context and reasoning</li>
                   </ul>
                 </div>
                 

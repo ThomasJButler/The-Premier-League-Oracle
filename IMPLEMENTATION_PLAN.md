@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 25 March 2026 (Eighth audit — 5-agent comprehensive sweep comparing all source code against all 8 specs. Spec 06 is 100% complete. Spec 07 shadcn migration is the largest remaining gap. 5 new findings added. No TODO/FIXME/HACK comments remain in codebase. Next: P5 hardening, spec marker sync, shadcn migration.)
+Last updated: 26 March 2026 (P5 hardening batch — spec markers synced for specs 03-05, 07, 08; P5d a11y fixes applied; P5g config fixes; P5h Help.svelte corrections; P5j season year utility extracted; P5k H2H fallback aligned; P5l dead code cleaned up. Active stubs table updated.)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -799,9 +799,9 @@ All feature specifications in `specs/`:
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — DataService + 3-tier cache work; all data methods implemented; backend proxy configured in vite.config.ts; missing: progressive 5-season bulk loader with rate limiting. **Spec markers: 6/8 (eighth audit — backend proxy confirmed present)** |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~85% — backendService (P2b), ML ensemble (P3e), Settings UI (P2c), WebSocket (P3f), Vite proxy, MLPrediction type all DONE; missing: AGENTS.md historical data command. **Spec markers: 7/8 (eighth audit)** |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — Kelly + auto-suggestions (P2g), ValueBets UI (P2i), bet storage pipeline (P1i), resolution bugs (P1g), betBuilder combos (P4d) all DONE; missing: accumulator/combination bet UI (deferred). **Spec markers: 11/12 (eighth audit)** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications, LiveTicker per-item pulse verification. **Spec markers: 8/10 (eighth audit)** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — liveService.ts with shared stores (P3f), WebSocket reconnect, adaptive polling (30s/5m/30m) all DONE; missing: match event notifications. LiveTicker pulsing indicator confirmed done. **Spec markers: 9/10 (P5b sync)** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met.** No hardcoded accuracy values, real reconciliation, real dashboard stats. **Spec markers: 7/7** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~55% — dark mode (P1b), a11y wave 1+2 (P4b), components.json, `$lib/utils.ts` (P2a-fix) all DONE; **shadcn components installed but 0/5 wired** (Button, Card, Dialog, Badge, Sheet). **Spec markers: 9/17 (eighth audit — a11y items added)** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~55% — dark mode (P1b), a11y wave 1+2 (P4b), P5d a11y fixes (LiveMatches tab panels, Dashboard profit chart, SeasonStats grids), components.json, `$lib/utils.ts` (P2a-fix) all DONE; **shadcn components installed but 0/5 wired** (Button, Card, Dialog, Badge, Sheet). **Spec markers: 9/17 (eighth audit — a11y items added)** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: DONE** — 86 features, XGBoost + LR baseline, 62 backend tests. Rate limiter broken (P5a). Pro-tier (P3a–P3c) deferred. **Spec markers: 23/24 (eighth audit)** |
 
 ---
@@ -818,10 +818,8 @@ All feature specifications in `specs/`:
 | ~~`advancedPredictions.ts`~~ | ~~`ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}`~~ — **REMOVED in P4f:** entire class deleted (dead code, no shots data on free tier) | ~~P4f~~ |
 | `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
 | `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) — should be derived from match data | Low |
-| `advancedPredictions.ts` | `maxGoals = 10` in PoissonPredictor — spec says cap at 7 | P5l |
 | `optimizedPredictions.ts` | `MODEL_WEIGHTS` — static ensemble weights, not derived from backtesting | Low |
 | ~~`optimizedPredictions.ts`~~ | ~~`LEAGUE_AVG_HOME_WIN_RATE = 0.46` — hardcoded~~ — **FIXED in P2m:** now computed from completed matches via `computeLeagueAverages()` | ~~P2m~~ |
-| `optimizedPredictions.ts` | H2H no-data fallback `homeWinRate: 0.40` inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` | P5k |
 | `optimizedPredictions.ts` | `eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600)` — base 26.5% and scale 600 hardcoded | Low |
 | `optimizedPredictions.ts` | Form weight array `[0.35, 0.25, 0.20, 0.12, 0.08]` — arbitrary decay, not empirically derived | Low |
 | `optimizedPredictions.ts` | `homeMomentum * 1.1` / `awayMomentum * 0.9` — arbitrary 10% home advantage in form | Low |
@@ -857,10 +855,7 @@ All feature specifications in `specs/`:
 | `advanced_engineering.py` | `0.45` fallback win rate when no match data — hardcoded league average | Low |
 | `liveService.ts` | WebSocket `onmessage` handler for `data.liveMatches` — dead code, backend never sends this | P5g |
 | `liveService.ts` | WebSocket URL hardcodes port `8000` — breaks production deployments | P5i |
-| `betBuilder.ts` | Crystal Palace/Brighton rivalry: `'Brighton and Hove Albion'` vs API `'Brighton & Hove Albion FC'` — `&` vs `and` mismatch | P5g |
-| `footballData.ts` | `competitionId: 2021` magic number — should be a named constant | P5l |
-| `dataService.ts` | Empty if/else branches at lines 98-101 (Supabase removal remnants) | P5l |
-| `Predictions.svelte` | Still imports dead legacy `Prediction` type from `types/index.ts` | P5l |
+| `Predictions.svelte` | CORRECTED: not dead — `Prediction` type is actively used for view-level prediction mapping at line 259 | — |
 
 ### Backend
 
@@ -951,11 +946,11 @@ Several spec files have severely outdated completion markers that don't reflect 
 | `specs/07-ui-ux.md` | 0 of 11 criteria | ~35% (dark mode, a11y wave 1+2, components.json, utils.ts all done) | 35pp |
 | `specs/08-backend-training.md` | 0 of 6 criteria | ~60% (P3-Free pipeline complete with 62 tests) | 60pp |
 
-- [ ] Update `specs/03-backend-integration.md` acceptance criteria to reflect P2b, P2c, P3e, P3f completion
-- [ ] Update `specs/04-betting-intelligence.md` to reflect P2g, P2i, P1i completion
-- [ ] Update `specs/05-live-data.md` to reflect P3f completion
-- [ ] Update `specs/07-ui-ux.md` to reflect P1b, P4b, P2a, P2a-fix completion
-- [ ] Update `specs/08-backend-training.md` to reflect P3-Free completion
+- [x] Update `specs/03-backend-integration.md` acceptance criteria to reflect P2b, P2c, P3e, P3f completion (already in sync)
+- [x] Update `specs/04-betting-intelligence.md` to reflect P2g, P2i, P1i completion (already in sync)
+- [x] Update `specs/05-live-data.md` to reflect P3f completion (LiveTicker pulsing indicator confirmed done)
+- [x] Update `specs/07-ui-ux.md` to reflect P1b, P4b, P2a, P2a-fix completion (already in sync)
+- [x] Update `specs/08-backend-training.md` to reflect P3-Free completion (already in sync)
 
 ### P5c. Backend CI Pipeline — NEW (24 March 2026)
 
@@ -968,9 +963,9 @@ The 62 backend tests are never run in CI. A Python regression will not be caught
 
 Three ARIA gaps found by the component audit:
 
-- [ ] `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but the corresponding panel `<div>` elements have no `id` attributes — broken ARIA association
-- [ ] `Dashboard.svelte`: profit chart canvas has no `aria-label` or `role="img"` (the accuracy chart above it has both)
-- [ ] `SeasonStats.svelte`: stat card grid has no `aria-label` descriptions for screen readers
+- [x] `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but the corresponding panel `<div>` elements have no `id` attributes — broken ARIA association. FIXED: added id attributes and role="tabpanel" with aria-labelledby on each panel
+- [x] `Dashboard.svelte`: profit chart canvas has no `aria-label` or `role="img"` (the accuracy chart above it has both). FIXED: added role="img" and aria-label to profit chart container
+- [x] `SeasonStats.svelte`: stat card grid has no `aria-label` descriptions for screen readers. FIXED: added aria-label to both stat grids
 
 ### P5e. Test Quality — NEW (24 March 2026)
 
@@ -991,17 +986,17 @@ Remaining `any` types in production code (not catch blocks):
 
 ### P5g. Config & Infrastructure — NEW (24 March 2026)
 
-- [ ] `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 — allows use of APIs that don't exist at runtime. Pin to `^20.x.x`
+- [x] `frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 — allows use of APIs that don't exist at runtime. FIXED: pinned to ^20.17.0 to match Node 20 runtime
 - [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency
 - [ ] `.gitignore`: `backend/chroma_db/` not gitignored — `chroma.sqlite3` generated database exists on disk and could be committed
 - [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
-- [ ] `betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry entry uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'` — `normaliseTeamName()` strips `FC` but doesn't handle `&` vs `and`, so this specific rivalry never fires
+- [x] `betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry entry uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'` — `normaliseTeamName()` strips `FC` but doesn't handle `&` vs `and`, so this specific rivalry never fires. FIXED: normaliseTeamName() now converts & to 'and' before comparison
 - [ ] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` is dead code — the backend `/ws/predictions` endpoint doesn't send this payload. Acknowledged in comments but should be documented or removed
 
 ### P5h. Help.svelte Minor Inaccuracies — NEW (24 March 2026)
 
-- [ ] Shows full Kelly formula `Stake % = (Probability × Odds - 1) / (Odds - 1)` but the app actually uses Half-Kelly (divides by 2). Should mention Half-Kelly
-- [ ] "Features Guide" still lists some aspirational features as implemented (e.g. "Track bankroll growth", "Trend analysis")
+- [x] Shows full Kelly formula `Stake % = (Probability × Odds - 1) / (Odds - 1)` but the app actually uses Half-Kelly (divides by 2). Should mention Half-Kelly. FIXED: now shows Half-Kelly formula with explanation
+- [x] "Features Guide" still lists some aspirational features as implemented (e.g. "Track bankroll growth", "Trend analysis"). FIXED: replaced 'Track bankroll growth' and 'Trend analysis' with accurate feature descriptions
 
 ### P5i. WebSocket URL Hardcodes Port 8000 — NEW (25 March 2026, eighth audit)
 
@@ -1020,21 +1015,21 @@ The pattern `new Date().getMonth() >= 6 ? currentYear : currentYear - 1` (July o
 
 All three use `getMonth() >= 6` but the month boundary is a magic number with no shared constant.
 
-- [ ] Extract `getSeasonYear(date?: Date)` utility to `lib/utils.ts` and import in all 3 locations
-- [ ] Add a named constant `SEASON_START_MONTH = 6` (July, zero-indexed)
+- [x] Extract `getSeasonYear(date?: Date)` utility to `lib/utils.ts` and import in all 3 locations. DONE: getSeasonYear() and SEASON_START_MONTH exported from lib/utils.ts. Used by dataService.ts, footballData.ts, MatchList.svelte. E2E mockApi.ts uses inline constant with cross-reference comment
+- [x] Add a named constant `SEASON_START_MONTH = 6` (July, zero-indexed)
 
 ### P5k. H2H Fallback Inconsistent with DEFAULT_HOME_WIN_RATE — NEW (25 March 2026, eighth audit)
 
 `optimizedPredictions.ts:566` uses `homeWinRate: 0.40` as the H2H no-data fallback, but `constants.ts` exports `DEFAULT_HOME_WIN_RATE = 0.46` (used elsewhere as the league average). Two different home-win priors exist in the same ensemble, causing a subtle bias when H2H data is missing (H2H module predicts 40% home, but the rest of the ensemble assumes 46%).
 
-- [ ] Align H2H no-data fallback with `DEFAULT_HOME_WIN_RATE` from `constants.ts`
+- [x] Align H2H no-data fallback with `DEFAULT_HOME_WIN_RATE` from `constants.ts`. DONE: H2H fallback now uses DEFAULT_HOME_WIN_RATE (0.46) with proportional away/draw split
 
 ### P5l. Minor Dead Code and Type Cleanup — NEW (25 March 2026, eighth audit)
 
-- [ ] `dataService.ts:98-101` — empty if/else branches with comment-only bodies (`// Football-Data (Free) is available and working` / `// Football-Data is not working`). Supabase removal remnants — collapse to a single assignment
-- [ ] `Predictions.svelte:7` — still imports dead legacy `Prediction` type from `types/index.ts` (was deferred in P2t). The actual runtime type is `StoredPrediction`
-- [ ] `footballData.ts:125` — `competitionId: 2021` is a magic number for Premier League. Should be a named constant export (e.g. `PREMIER_LEAGUE_ID = 2021`)
-- [ ] `advancedPredictions.ts:29` — `maxGoals = 10` default in PoissonPredictor. Spec 01 says cap at 7. OptimizedPredictor doesn't override it, so score matrix calculates up to 10-10 (121 cells vs 64)
+- [x] `dataService.ts:98-101` — empty if/else branches with comment-only bodies (`// Football-Data (Free) is available and working` / `// Football-Data is not working`). Supabase removal remnants — collapse to a single assignment. DONE: collapsed to single assignment
+- [x] `Predictions.svelte:7` — CORRECTED: Prediction type is actively used by Predictions.svelte view-level prediction mapping at line 259 — not dead code
+- [x] `footballData.ts:125` — `competitionId: 2021` is a magic number for Premier League. Should be a named constant export (e.g. `PREMIER_LEAGUE_ID = 2021`). DONE: extracted as PREMIER_LEAGUE_ID constant
+- [x] `advancedPredictions.ts:29` — `maxGoals = 10` default in PoissonPredictor. Spec 01 says cap at 7. OptimizedPredictor doesn't override it, so score matrix calculates up to 10-10 (121 cells vs 64). DONE: changed to maxGoals = 7 per spec. Test tolerance relaxed from 5 to 2 decimal places for Poisson truncation
 - [ ] `TopScorers.svelte:56` — `(s: any)` cast is unnecessary; `FDScorer` type is already available from the import chain
 - [ ] No TODO/FIXME/HACK comments remain in the codebase (verified in eighth audit) — this is healthy
 

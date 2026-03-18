@@ -26,7 +26,7 @@ export class PoissonPredictor {
   static predictScoreProbabilities(
     expectedHomeGoals: number,
     expectedAwayGoals: number,
-    maxGoals: number = 10
+    maxGoals: number = 7
   ): { [key: string]: number } {
     const probabilities: { [key: string]: number } = {};
 

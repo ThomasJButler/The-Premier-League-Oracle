@@ -557,18 +557,20 @@ export class OptimizedPredictor {
     ).slice(0, 10); // Last 10 H2H matches
 
     if (h2hMatches.length === 0) {
-      // No H2H data — use slight home advantage as default (consistent rates and probabilities)
+      // No H2H data — use league-average home advantage (consistent with ensemble priors)
+      const awayRate = (1 - DEFAULT_HOME_WIN_RATE) * 0.55; // ~0.297
+      const drawRate = 1 - DEFAULT_HOME_WIN_RATE - awayRate; // ~0.263
       return {
         totalMatches: 0,
         homeWins: 0,
         awayWins: 0,
         draws: 0,
-        homeWinRate: 0.40,
-        awayWinRate: 0.30,
+        homeWinRate: DEFAULT_HOME_WIN_RATE,
+        awayWinRate: awayRate,
         probabilities: {
-          homeWin: 0.40,
-          draw: 0.30,
-          awayWin: 0.30
+          homeWin: DEFAULT_HOME_WIN_RATE,
+          draw: drawRate,
+          awayWin: awayRate
         }
       };
     }

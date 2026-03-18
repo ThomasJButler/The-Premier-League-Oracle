@@ -308,7 +308,10 @@ export class BetBuilderPredictor {
    * can match the rivalry list.
    */
   private static normaliseTeamName(name: string): string {
-    return name.replace(/\s+(FC|AFC|CF)$/i, '').trim();
+    return name
+      .replace(/\s+(FC|AFC|CF)$/i, '')
+      .replace(/\s*&\s*/g, ' and ')
+      .trim();
   }
 
   private static checkRivalry(team1: string, team2: string): boolean {
