@@ -115,7 +115,7 @@ These specs are the single source of truth for requirements.
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
 - `predictions.ts` is entirely dead at runtime — zero imports from any component; only tested, never called
 - 3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)
-- `ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab) — security warning banner added but architecture unchanged
+- ~~`ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab)~~ **FIXED:** Created `api/chat.ts` Vercel Edge Function that proxies OpenAI calls. ChatBot calls `/api/chat` instead. Vite dev middleware provides local proxy. `OPENAI_API_KEY` env var enables server-side key (users skip key setup)
 - Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
 - `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"
 - `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)

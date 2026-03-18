@@ -73,7 +73,7 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 
 **ChatBot API key exposure (security — active risk):**
 
-- [ ] `ChatBot.svelte` makes direct browser→OpenAI calls — API key visible in DevTools network tab. Route OpenAI calls through a backend proxy endpoint so the key is never sent to the client. Until then, users should be warned not to use their primary key. Architecture fix required — not a one-liner.
+- [x] `ChatBot.svelte` — API key exposure fixed. Created Vercel Edge Function at `api/chat.ts` that proxies OpenAI calls server-side. ChatBot now calls `/api/chat` instead of OpenAI directly. Vite dev middleware mirrors the proxy locally. When `OPENAI_API_KEY` is set in Vercel env vars, users don't need to provide their own key at all. Security warning updated from amber to blue (informational rather than danger).
 
 **`importBets` stores unvalidated data (data integrity) — DONE (18 March 2026):**
 

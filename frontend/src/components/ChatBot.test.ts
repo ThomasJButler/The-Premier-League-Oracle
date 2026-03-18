@@ -66,7 +66,14 @@ describe('ChatBot Component', () => {
     vi.clearAllMocks();
     // Re-apply localStorage mock defaults (setup.ts mocks are cleared by clearAllMocks)
     vi.mocked(localStorage.getItem).mockReturnValue(null);
-    // Let fetch mock remain cleared — tests that need it set it individually
+    // Default: the /api/chat GET (server key check) returns no server key
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/chat' && (!opts || (opts as RequestInit).method !== 'POST')) {
+        return { ok: true, json: () => Promise.resolve({ hasServerKey: false }) } as Response;
+      }
+      // For other calls, return a default rejected response (tests override as needed)
+      return { ok: false, status: 500, json: () => Promise.resolve({ error: 'Not mocked' }) } as Response;
+    });
   });
 
   afterEach(() => {
@@ -136,13 +143,13 @@ describe('ChatBot Component', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('openai_api_key', 'sk-1234567890abcdef');
   });
 
-  it('should show security warning banner after connecting', async () => {
+  it('should show security notice banner after connecting with user key', async () => {
     render(ChatBot);
 
     await connectApiKey();
 
     await waitFor(() => {
-      expect(screen.getByText(/Your API key is sent directly to OpenAI/)).toBeInTheDocument();
+      expect(screen.getByText(/Your API key is routed through our server proxy/)).toBeInTheDocument();
     });
   });
 
@@ -190,12 +197,21 @@ describe('ChatBot Component', () => {
   });
 
   it('should send message and display API response', async () => {
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        choices: [{ message: { content: 'Arsenal look strong this season.' } }]
-      })
-    } as Response);
+    // Override fetch to return a chat response for POST, keep GET default
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/chat') {
+        if ((opts as RequestInit)?.method === 'POST') {
+          return {
+            ok: true,
+            json: () => Promise.resolve({
+              choices: [{ message: { content: 'Arsenal look strong this season.' } }]
+            })
+          } as Response;
+        }
+        return { ok: true, json: () => Promise.resolve({ hasServerKey: false }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
 
     const { component } = render(ChatBot);
 
@@ -212,21 +228,30 @@ describe('ChatBot Component', () => {
     });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.openai.com/v1/chat/completions',
+      '/api/chat',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          'Authorization': 'Bearer sk-1234567890abcdef'
+          'Content-Type': 'application/json'
         })
       })
     );
   });
 
   it('should show error message on API 401', async () => {
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: false,
-      status: 401
-    } as Response);
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/chat') {
+        if ((opts as RequestInit)?.method === 'POST') {
+          return {
+            ok: false,
+            status: 401,
+            json: () => Promise.resolve({ error: 'Invalid API key. Please check your OpenAI key.' })
+          } as Response;
+        }
+        return { ok: true, json: () => Promise.resolve({ hasServerKey: false }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
 
     const { component } = render(ChatBot);
 
@@ -243,10 +268,19 @@ describe('ChatBot Component', () => {
   });
 
   it('should show rate limit error on 429', async () => {
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: false,
-      status: 429
-    } as Response);
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/chat') {
+        if ((opts as RequestInit)?.method === 'POST') {
+          return {
+            ok: false,
+            status: 429,
+            json: () => Promise.resolve({ error: 'Rate limited by OpenAI. Please wait a moment and try again.' })
+          } as Response;
+        }
+        return { ok: true, json: () => Promise.resolve({ hasServerKey: false }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
 
     const { component } = render(ChatBot);
 
@@ -272,20 +306,28 @@ describe('ChatBot Component', () => {
       await (component as any).sendMessage();
     });
 
-    // fetch should not have been called (beyond any setup calls)
+    // fetch should not have been called with /api/chat POST (beyond any setup calls)
     const fetchCalls = vi.mocked(globalThis.fetch).mock.calls.filter(
-      ([url]) => typeof url === 'string' && url.includes('openai.com')
+      ([url, opts]) => typeof url === 'string' && url === '/api/chat' && (opts as RequestInit)?.method === 'POST'
     );
     expect(fetchCalls).toHaveLength(0);
   });
 
   it('should persist messages to localStorage', async () => {
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({
-        choices: [{ message: { content: 'Test reply' } }]
-      })
-    } as Response);
+    vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/chat') {
+        if ((opts as RequestInit)?.method === 'POST') {
+          return {
+            ok: true,
+            json: () => Promise.resolve({
+              choices: [{ message: { content: 'Test reply' } }]
+            })
+          } as Response;
+        }
+        return { ok: true, json: () => Promise.resolve({ hasServerKey: false }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
 
     const { component } = render(ChatBot);
 

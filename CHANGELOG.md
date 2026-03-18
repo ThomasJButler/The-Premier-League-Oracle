@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1h — ChatBot API Key Security Fix (20 March 2026)
+- **Vercel Edge Function `api/chat.ts`:** Created server-side proxy that forwards chat requests to OpenAI. The API key never leaves the server — no longer visible in browser DevTools network tab
+- **Server-side key support:** When `OPENAI_API_KEY` is set as a Vercel environment variable, users don't need to provide their own key — the chat "just works" out of the box
+- **User-provided key still supported:** When no server key is configured, users can enter their own key. Requests go through the proxy rather than directly to OpenAI from the browser
+- **Vite dev middleware:** Added `chatApiProxy()` plugin to `vite.config.ts` that mirrors the Edge Function locally — `/api/chat` works in both `npm run dev` and production
+- **ChatBot.svelte:** `fetch('https://api.openai.com/...')` replaced with `fetch('/api/chat')`. Added `checkServerKey()` on mount to auto-detect server key availability. Security banner updated from amber (danger) to blue (informational)
+- **`.env.example` updated:** Documents `OPENAI_API_KEY` with usage instructions
+- **Tests updated:** All 18 ChatBot tests pass with new proxy URL assertions and mock structure
+
 ### P4g + P4f + P4h — Documentation, Dead Code, and Test Quality Cleanup (19 March 2026)
 - **README.md rewritten:** Version badge v2.0 → v3.0, clone URL fixed (ThomasJButler), install instructions corrected (`cd frontend && npm install`), current feature list (prediction engine, live matches, betting intelligence, backtesting, dark mode), dead `docs/` links removed, stale "Future Enhancements" and "Recent Updates (v2.0)" sections removed
 - **backend/README.md:** Broken links to deleted JUPYTER_GUIDE.md, TRAINING_GUIDE.md, and docs/FOR_BEGINNERS.md removed; test count updated to 364→328
