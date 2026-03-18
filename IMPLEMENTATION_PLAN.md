@@ -701,10 +701,10 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
 - [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
 - [ ] `dataService.ts`: `refreshDataSources()` — still present, none called from any component
-- [ ] `footballData.ts:383`: `|| null` on odds fields instead of `?? null` — semantically wrong for `0` values (harmless in practice since odds can't be 0)
+- [x] `footballData.ts`: odds fields — changed `|| null` to `?? null` so a hypothetical odds value of `0` wouldn't be treated as missing
 - [ ] `ApiSetupWizard.svelte`: commented-out debug notes at lines 33, 44, 52–53 — stale test comments to clean up
-- [ ] `optimizedPredictions.ts`: `form: '?????' ` field in `getEnhancedTeamStats()` fallback is dead output — never read by anything
-- [ ] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore(form, isHome)` has unused `isHome` parameter — vestigial
+- [x] `optimizedPredictions.ts`: `form` field — removed from both `getEnhancedTeamStats()` return paths (no caller reads it)
+- [x] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore` — removed unused `isHome` parameter and updated call sites
 - [ ] `optimizedPredictions.ts`: `getTopOutcome()` duplicates `determinePrediction()` logic — one is redundant
 - [ ] `footballData.ts`: `getTeamByName()` — still present, never imported outside this file
 - [x] `MatchList.svelte`: season selector — added `<select>` dropdown in the header so fetched seasons are actually usable. Triggers `loadMatches()` on change

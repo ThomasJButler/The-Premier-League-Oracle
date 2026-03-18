@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4f — Dead Parameters, Dead Fields, Null Coalesce Fix (20 March 2026)
+- **`calculateFormScore` cleaned up:** Removed unused `isHome` parameter — function body never references it
+- **`getEnhancedTeamStats` form field removed:** Dead output field `form: '?????'` and `form: standing.form` — no caller reads it
+- **Odds null coalesce fix:** Changed `|| null` to `?? null` on `home_odds`, `draw_odds`, `away_odds` in `footballData.ts` to correctly handle potential zero values
+
 ### P4f — Dead Code Removal (20 March 2026)
 - **`calculateShotValue` removed:** Dead function on `ExpectedGoalsCalculator` — never called by any production code (only tested in isolation). 4 tests removed
 - **`calculateFixtureDifficulty` removed:** Dead function on `FatigueAnalyzer` — never called by production code (only `calculateRestDays` and `getFatigueMultiplier` are used). 2 tests removed

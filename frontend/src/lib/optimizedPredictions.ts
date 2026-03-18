@@ -466,8 +466,7 @@ export class OptimizedPredictor {
         avgGoalsConceded: Math.max(0.5, avgGoalsConceded),
         pointsPerGame: Math.max(0.3, Math.min(3, pointsPerGame)),
         cleanSheetRate: Math.max(0.1, Math.min(0.5, 0.3 + relativeStrength * 0.1)),
-        winRate: Math.max(0.1, Math.min(0.8, winRate)),
-        form: '?????' // No form data available — will be computed from match results
+        winRate: Math.max(0.1, Math.min(0.8, winRate))
       };
     }
 
@@ -478,8 +477,7 @@ export class OptimizedPredictor {
       avgGoalsConceded: standing.goalsAgainst / gamesPlayed,
       pointsPerGame: standing.points / gamesPlayed,
       cleanSheetRate: Math.exp(-(standing.goalsAgainst / gamesPlayed)), // Poisson P(0 goals conceded)
-      winRate: standing.won / gamesPlayed,
-      form: standing.form
+      winRate: standing.won / gamesPlayed
     };
   }
 
@@ -489,7 +487,7 @@ export class OptimizedPredictor {
       dataService.getTeamForm(awayTeam, historicalMatches)
     ]);
 
-    const calculateFormScore = (form: any[], isHome: boolean = false) => {
+    const calculateFormScore = (form: any[]) => {
       if (!form || form.length === 0) {
         // Return neutral form score when no form data available.
         // Previously this derived from ELO, which double-counted ELO's
@@ -508,8 +506,8 @@ export class OptimizedPredictor {
       return Math.max(0.1, Math.min(0.9, score)); // Ensure reasonable bounds
     };
 
-    const homeFormScore = calculateFormScore(homeForm, true);
-    const awayFormScore = calculateFormScore(awayForm, false);
+    const homeFormScore = calculateFormScore(homeForm);
+    const awayFormScore = calculateFormScore(awayForm);
     
     const formString = (form: any[]) => {
       if (!form || form.length === 0) {
