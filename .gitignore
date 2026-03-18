@@ -11,6 +11,7 @@ node_modules
 # Environment files (contain API keys)
 /.env
 frontend/.env
+backend/.env
 
 # Build output
 frontend/dist/

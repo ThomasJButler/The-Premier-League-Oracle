@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### 8-Agent Comprehensive Planning Audit (18 March 2026)
+- **8 parallel subagents** studied all 8 specs, 18 Svelte components, all frontend libs/services, all backend Python files, all 21 test files + 6 E2E specs, and all project documentation
+- **Test counts corrected**: 378 Vitest tests across 21 files (was documented as 275/13); 43 Playwright E2E tests across 6 files × 3 viewports = 123 executions (was 27/5, 2 skipped → now 0 skipped)
+- **12 new logic bugs discovered**: `betBuilder.ts` treats 0 goals as falsy (`|| 1.3`), `betHistoryService.ts` clean sheet resolution wrong, `TopScorers.svelte` treats 0 assists as null, `BettingHistory.svelte` uses non-existent CSS variables, `dataService.ts` clearCache removes API key, `optimizedPredictions.ts` ELO double-counted in form fallback, `backtest.ts` doesn't sort chronologically or reset ELO state, and more
+- **Spec status updated**: spec 01 ~45%, spec 02 ~55%, spec 03 0%, spec 04 ~65%, spec 05 ~65%, spec 06 ~95%, spec 07 ~15%, spec 08 0%
+- **Documentation gaps found**: README.md has v2.0 badge and broken `docs/` links; `backend/README.md` has broken links to deleted guides; `backend/docs/FOR_BEGINNERS.md` still exists with broken tutorial links; `.gitignore` missing `backend/.env`; 4 specs have stale status notes
+- **CLAUDE.md updated**: corrected test counts, component coverage (8 tested, 10 untested), shadcn `components.json` exists, 3 remaining service files (not 4), lateDrama clarification, Help.svelte remaining issues
+- **IMPLEMENTATION_PLAN.md rewritten**: added P1g (12 new logic bugs), P2j (backtest reliability), P2k (ELO auto-update), P4g (documentation cleanup); updated all summary tables; trimmed completed sections; expanded stubs tables; added test quality notes
+- **`.gitignore` fixed**: added `backend/.env` to prevent accidental API key commits
+
 ### Stub Fixes — betBuilder and Settings (18 March 2026)
 - **`betBuilder.ts`** — `bothCleanSheets.prediction` was unconditionally `false`; now uses `> 0.08` threshold (PL 0-0 avg ~7-8%)
 - **`betBuilder.ts`** — Win-to-nil probability was hardcoded `0.30`; now derived from `favProb × favCleanSheet`
