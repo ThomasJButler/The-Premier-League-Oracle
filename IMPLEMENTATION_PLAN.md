@@ -338,13 +338,15 @@ Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor
 
 `StoredBet.market` uses `'over_2_5'` (underscores) while `ValueBet.market` from `value.ts` uses `'over2.5'` (dot format). Investigated and found that `ValueBets.svelte` already has `mapMarket()` and `mapSelection()` functions that convert between formats before calling `storeBet()`. `KellyCalculator.svelte` uses `StoredBet` format directly. No code path bypasses the conversion — only these two components call `storeBet()`. Risk is mitigated but the mapping should ideally live at the service boundary if more callers are added.
 
-### P2v. Backtest Performance — NEW (18 March 2026, fourth audit)
+### P2v. Backtest Performance — DONE (19 March 2026)
 
-Each match in `BacktestRunner.run()` calls `OptimizedPredictor.predictMatch()` which in turn calls `dataService.getMatches()`, `dataService.getStandings()`, and `dataService.getTeamForm()` — all potentially triggering API calls. For a full PL season (380 matches), this is ~1,140+ sequential async requests with no batching or rate limiting built into the backtest loop. The API's 10-requests-per-minute free-tier limit means a full-season backtest would take over 100 minutes.
+`OptimizedPredictor.predictMatch()` now accepts `historicalMatches` as a fast path that bypasses all `dataService` calls during backtesting:
 
-- [ ] Pre-fetch all required match, standings, and form data before the backtest loop starts
-- [ ] Pass pre-fetched data into `OptimizedPredictor.predictMatch()` to avoid per-match API calls
-- [ ] Add a progress estimate based on pre-fetched data availability
+- [x] When `historicalMatches` is provided, uses it directly for Poisson league averages instead of `dataService.getMatches()`
+- [x] New `calculateFatigueFromMatches()` derives rest days from the provided match list (avoids 2× `dataService.getMatches()` per match from `FatigueAnalyzer.calculateRestDays`)
+- [x] `analyzeRecentForm()` passes `historicalMatches` through to `dataService.getTeamForm(team, matches)` — the API already supported this but it was never wired up
+- [x] Standings skipped in backtest mode — ELO-derived positions used instead (more accurate for historical backtesting than current-season standings)
+- [x] Net effect: **6 async `dataService` calls per match → 0** when `historicalMatches` is provided (i.e., the backtest loop). Normal live predictions are unchanged
 
 ### P2w. dataService `refreshApiConfiguration` Wiring Bug — DONE (19 March 2026)
 

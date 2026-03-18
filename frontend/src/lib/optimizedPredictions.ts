@@ -183,16 +183,25 @@ export class OptimizedPredictor {
     
     try {
       // 1. Get current standings and team positions
+      // In backtest mode (historicalMatches provided), skip dataService.getStandings()
+      // to avoid both stale data and per-match API overhead. ELO-derived positions are
+      // a better proxy for historical standings anyway.
       let standings: Standing[] = [];
       let homePosition = 0;
       let awayPosition = 0;
-      
-      try {
-        standings = await dataService.getStandings();
-        homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
-        awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
-      } catch (error) {
-        // Use ELO-derived positions as fallback
+
+      if (!historicalMatches) {
+        try {
+          standings = await dataService.getStandings();
+          homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
+          awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
+        } catch {
+          // Falls through to ELO-derived positions below
+        }
+      }
+
+      if (!homePosition || !awayPosition) {
+        // Use ELO-derived positions as fallback (or primary in backtest mode)
         const allRatings = this.eloSystem.getAllRatings();
         const sortedTeams = Object.entries(allRatings).sort((a, b) => b[1] - a[1]);
         homePosition = sortedTeams.findIndex(([team]) => team === homeTeam) + 1;
@@ -223,14 +232,21 @@ export class OptimizedPredictor {
       );
 
       // 4. Calculate fatigue factor (needed before Poisson lambdas)
-      const fatigueFactor = await this.calculateFatigueFactor(homeTeam, awayTeam);
+      // When backtesting with pre-fetched data, derive rest days locally
+      // to avoid hitting dataService on every iteration.
+      const fatigueFactor = historicalMatches
+        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches)
+        : await this.calculateFatigueFactor(homeTeam, awayTeam);
 
       // 5. Calculate Poisson predictions using Dixon-Coles lambdas
-      let allMatches: Match[] = [];
-      try {
-        allMatches = await dataService.getMatches();
-      } catch {
-        // No match data available — lambdas will use fallback path
+      // Use pre-fetched historical matches when available (backtest mode)
+      let allMatches: Match[] = historicalMatches ?? [];
+      if (!historicalMatches) {
+        try {
+          allMatches = await dataService.getMatches();
+        } catch {
+          // No match data available — lambdas will use fallback path
+        }
       }
       const leagueAvgs = this.computeLeagueAverages(allMatches);
       const rawLambdas =
@@ -249,8 +265,8 @@ export class OptimizedPredictor {
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
-      // 6. Analyze recent form
-      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam);
+      // 6. Analyze recent form (pass historical matches to avoid dataService calls in backtest)
+      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, historicalMatches);
 
       // 7. Head-to-head analysis
       const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
@@ -429,10 +445,10 @@ export class OptimizedPredictor {
     };
   }
 
-  private static async analyzeRecentForm(homeTeam: string, awayTeam: string) {
+  private static async analyzeRecentForm(homeTeam: string, awayTeam: string, historicalMatches?: Match[]) {
     const [homeForm, awayForm] = await Promise.all([
-      dataService.getTeamForm(homeTeam),
-      dataService.getTeamForm(awayTeam)
+      dataService.getTeamForm(homeTeam, historicalMatches),
+      dataService.getTeamForm(awayTeam, historicalMatches)
     ]);
 
     const calculateFormScore = (form: any[], isHome: boolean = false) => {
@@ -558,6 +574,27 @@ export class OptimizedPredictor {
         draw: (draws / total) * 0.7 + 0.1,
         awayWin: (awayWins / total) * 0.7 + 0.1
       }
+    };
+  }
+
+  /**
+   * Calculate fatigue from pre-fetched match data (backtest mode).
+   * Avoids hitting dataService — derives rest days directly from the match list.
+   */
+  private static calculateFatigueFromMatches(
+    homeTeam: string, awayTeam: string, matches: Match[]
+  ): { homeFatigue: number; awayFatigue: number } {
+    const now = new Date();
+    const restDaysFor = (team: string): number => {
+      const teamMatches = matches
+        .filter(m => (m.home_team === team || m.away_team === team) && new Date(m.date) < now)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      if (teamMatches.length === 0) return 7;
+      return Math.floor((now.getTime() - new Date(teamMatches[0].date).getTime()) / (1000 * 60 * 60 * 24));
+    };
+    return {
+      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam), 1),
+      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(awayTeam), 1)
     };
   }
 

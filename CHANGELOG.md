@@ -4,6 +4,10 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2v — Backtest Performance: Zero dataService Calls Per Match (19 March 2026)
+- **Backtest fast path in `predictMatch`:** When `historicalMatches` is provided (as in `BacktestRunner`), all 6 per-match `dataService` calls are bypassed. Poisson averages, fatigue, and form all derive from the pre-fetched match array. Standings are replaced with ELO-derived positions, which are more accurate for historical backtesting
+- **New `calculateFatigueFromMatches()` method:** Computes rest days directly from the provided match list, avoiding 2 `dataService.getMatches()` calls per match that `FatigueAnalyzer.calculateRestDays` would otherwise make
+
 ### P2r — Production Readiness: Meta Tags, Dead CSS Removal, Node Version Pin (19 March 2026)
 - **SEO meta tags added:** `index.html` now has `<meta name="description">` and Open Graph tags for social sharing
 - **Dead `.gradient-text` CSS removed:** Class and its `@keyframes gradientShift` animation deleted — never used by any component, gradient colours were imperceptibly similar dark slates

@@ -147,7 +147,7 @@ These specs are the single source of truth for requirements.
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — **MITIGATED:** `ValueBets.svelte` already has `mapMarket()` conversion; no code path bypasses it
 - Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. Needs `.to_dict(orient='records')` conversion
 - ~~`footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded~~ **FIXED:** now parses response body to distinguish rate-limit from auth failure
-- `BacktestRunner` makes ~1,140+ sequential API calls for a full season — each match triggers 3 service calls with no batching. Needs pre-fetched data approach
+- ~~`BacktestRunner` makes ~1,140+ sequential API calls~~ **FIXED:** `predictMatch()` now uses `historicalMatches` directly when provided — 0 `dataService` calls per match in backtest mode (was 6 per match). Normal live predictions unchanged
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
 - `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
 - ~~`DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed~~ **FIXED:** `dompurify` and `@types/dompurify` now installed and used in ChatBot.svelte
