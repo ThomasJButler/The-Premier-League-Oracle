@@ -344,14 +344,14 @@ export class ExpectedGoalsCalculator {
 
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
-  static async calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
+  static async calculateRestDays(teamName: string, matchDate: Date, allMatches?: Match[]): Promise<number> {
     try {
-      const matches = await dataService.getMatches();
-      const teamMatches = matches.filter(match => 
+      const matches = allMatches ?? await dataService.getMatches();
+      const teamMatches = matches.filter(match =>
         (match.home_team === teamName || match.away_team === teamName) &&
         new Date(match.date) < matchDate
       ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+
       if (teamMatches.length === 0) return 7; // Default rest days
       const lastMatch = new Date(teamMatches[0].date);
       return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
@@ -390,14 +390,17 @@ export class AdvancedMatchPredictor {
     valueBets: Array<{ outcome: string; odds: number; expectedValue: number }>;
     insights: string[];
   }> {
+    // Fetch all matches once — used for fatigue, league averages, and insights
+    const allMatches = await dataService.getMatches();
+
     // 1. Get team ratings from the shared ELO system
     const homeRating = sharedEloSystem.getTeamRating(homeTeam);
     const awayRating = sharedEloSystem.getTeamRating(awayTeam);
 
-    // 2. Calculate rest days and fatigue
+    // 2. Calculate rest days and fatigue (pass matches to avoid redundant fetches)
     const [homeRestDays, awayRestDays] = await Promise.all([
-      FatigueAnalyzer.calculateRestDays(homeTeam, matchDate),
-      FatigueAnalyzer.calculateRestDays(awayTeam, matchDate)
+      FatigueAnalyzer.calculateRestDays(homeTeam, matchDate, allMatches),
+      FatigueAnalyzer.calculateRestDays(awayTeam, matchDate, allMatches)
     ]);
 
     const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1);
@@ -411,7 +414,6 @@ export class AdvancedMatchPredictor {
     const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
 
     // Derive league average goals from completed matches (fallback: 1.5 / 1.2)
-    const allMatches = await dataService.getMatches();
     const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
     let baseHomeGoals = 1.5;
     let baseAwayGoals = 1.2;

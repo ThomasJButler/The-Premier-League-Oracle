@@ -241,23 +241,24 @@ export class OptimizedPredictor {
         awayElo
       );
 
-      // 4. Calculate fatigue factor (needed before Poisson lambdas)
-      // When backtesting with pre-fetched data, derive rest days locally
-      // to avoid hitting dataService on every iteration.
-      const fatigueFactor = historicalMatches
-        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches)
-        : await this.calculateFatigueFactor(homeTeam, awayTeam);
-
-      // 5. Calculate Poisson predictions using Dixon-Coles lambdas
-      // Use pre-fetched historical matches when available (backtest mode)
+      // 4. Fetch match data once — used for fatigue, Poisson, standings, referee
       let allMatches: Match[] = historicalMatches ?? [];
       if (!historicalMatches) {
         try {
           allMatches = await dataService.getMatches();
         } catch {
-          // No match data available — lambdas will use fallback path
+          // No match data available — fallback paths will handle empty array
         }
       }
+
+      // 5. Calculate fatigue factor (needed before Poisson lambdas)
+      // When backtesting with pre-fetched data, derive rest days locally
+      // to avoid hitting dataService on every iteration.
+      const fatigueFactor = historicalMatches
+        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches)
+        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches);
+
+      // 6. Calculate Poisson predictions using Dixon-Coles lambdas
       const leagueAvgs = this.computeLeagueAverages(allMatches);
       const rawLambdas =
         this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
@@ -631,22 +632,6 @@ export class OptimizedPredictor {
     return {
       homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam), 1),
       awayFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(awayTeam), 1)
-    };
-  }
-
-  private static async calculateFatigueFactor(homeTeam: string, awayTeam: string) {
-    const now = new Date();
-    const [homeRestDays, awayRestDays] = await Promise.all([
-      FatigueAnalyzer.calculateRestDays(homeTeam, now),
-      FatigueAnalyzer.calculateRestDays(awayTeam, now)
-    ]);
-
-    // Delegate to FatigueAnalyzer for consistent fatigue calculation
-    // across both the production model and value bet scanning.
-    // recentFixtures=1 as a safe default (we only know rest days here).
-    return {
-      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1),
-      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(awayRestDays, 1)
     };
   }
 
