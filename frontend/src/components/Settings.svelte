@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles, Heart } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { onMount } from 'svelte';

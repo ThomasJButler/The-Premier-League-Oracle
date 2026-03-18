@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4f (partial) — Dead Imports, Variables, and CSS Cleanup (19 March 2026)
+- **Dead lucide-svelte imports removed:** `TrendingUp`/`TrendingDown`/`fade` from StandingsTable, `Target`/`User` from TopScorers, `Sparkles`/`Key` from Settings, `Sparkles` from ApiSetupWizard, `Check`/`Calendar` from MatchList, `fly` from Help
+- **Dead variables removed:** `predictionAccuracy: number[]` from Dashboard (declared, never assigned), `showSuggestions = true` from KellyCalculator (declared, never toggled)
+- **Dead global CSS removed:** Entire `<style global>` block from BettingHistory — 6 CSS classes (`shadow-glow-success-sm/md`, `shadow-glow-error-sm/md`, `.th`, `.td`) defined but never referenced in any template
+
 ### P4h (partial) — Test Quality: Conditional Assertions and Tautological Tests (19 March 2026)
 - **`value.test.ts` conditional assertions fixed:** 9 assertion blocks wrapped in `if (homeBet)` / `if (result.length > 0)` guards converted to unconditional `expect(x).toBeDefined()` + `x!` assertions. The sorting test was also updated to produce multiple value bets (1X2 + over 2.5 goals) so the sort order is actually exercised
 - **`types.test.ts` tautological tests removed:** Reduced from 18 tests to 4 — removed 14 tests that created objects with literal values then asserted those same literals back (TypeScript already guarantees this). Kept only the 4 tests that validate derived business rules: home+away=total stats, points formula, goal difference formula, and form string regex

@@ -367,24 +367,3 @@
   </div>
 </div>
 
-<style global lang="postcss">
-  .shadow-glow-success-sm {
-    box-shadow: 0 0 8px hsla(var(--success-hsl) / 0.3), inset 0 0 10px hsla(var(--success-hsl) / 0.05);
-  }
-  .shadow-glow-success-md {
-    box-shadow: 0 0 15px hsla(var(--success-hsl) / 0.4), inset 0 0 15px hsla(var(--success-hsl) / 0.1);
-  }
-  .shadow-glow-error-sm {
-    box-shadow: 0 0 8px hsla(var(--error-hsl) / 0.3), inset 0 0 10px hsla(var(--error-hsl) / 0.05);
-  }
-  .shadow-glow-error-md {
-    box-shadow: 0 0 15px hsla(var(--error-hsl) / 0.4), inset 0 0 15px hsla(var(--error-hsl) / 0.1);
-  }
-
-  .th {
-    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
-  }
-  .td {
-    @apply px-4 py-3 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300;
-  }
-</style>

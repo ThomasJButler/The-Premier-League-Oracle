@@ -4,7 +4,7 @@
   import type { Match, Season } from '../types';
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
-  import { ArrowUpDown, Filter, Calendar, Check, Users } from 'lucide-svelte';
+  import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];

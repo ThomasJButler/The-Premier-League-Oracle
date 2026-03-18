@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Trophy, Target, User, Flag } from 'lucide-svelte';
+  import { Trophy, Flag } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import { fade, fly } from 'svelte/transition';
   

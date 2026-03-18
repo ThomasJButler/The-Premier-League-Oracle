@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Book, HelpCircle, TrendingUp, Shield, Zap, ExternalLink, ChevronRight, Home } from 'lucide-svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   
   let selectedSection = 'getting-started';
   let showMobileMenu = false;

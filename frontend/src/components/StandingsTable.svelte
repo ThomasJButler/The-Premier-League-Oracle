@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Trophy, TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { Trophy, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import type { Standing } from '../types';
-  import { fade, fly } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   
   let standings: Standing[] = [];

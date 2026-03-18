@@ -657,12 +657,12 @@ Priority features to implement with real data:
 
 - [x] `Predictions.svelte`: remove dead imports `Database`, `Clock` — DONE
 - [x] `SeasonStats.svelte`: remove unused `animatedValue` tweened store — DONE
-- [ ] `StandingsTable.svelte`: remove dead imports `TrendingUp`, `TrendingDown`, `fade`
-- [ ] `TopScorers.svelte`: remove dead imports `Target`, `User`
-- [ ] `Settings.svelte`: remove dead import `Sparkles`
-- [ ] `ApiSetupWizard.svelte`: remove dead import `Sparkles`; clean up stale test comments
-- [ ] `MatchList.svelte`: remove dead import `Check`
-- [ ] `BettingHistory.svelte`: remove dead `.th`/`.td` CSS classes in `<style global>`
+- [x] ~~`StandingsTable.svelte`: remove dead imports `TrendingUp`, `TrendingDown`, `fade`~~ **DONE**
+- [x] ~~`TopScorers.svelte`: remove dead imports `Target`, `User`~~ **DONE**
+- [x] ~~`Settings.svelte`: remove dead imports `Sparkles`, `Key`~~ **DONE**
+- [x] ~~`ApiSetupWizard.svelte`: remove dead import `Sparkles`~~ **DONE**; clean up stale test comments
+- [x] ~~`MatchList.svelte`: remove dead imports `Check`, `Calendar`~~ **DONE**
+- [x] ~~`BettingHistory.svelte`: remove dead `<style global>` block (6 unreferenced CSS classes)~~ **DONE**
 - [ ] Extract `getSeasonLabel()` to shared utility — duplicated in StandingsTable, TopScorers, SeasonStats
 - [ ] `footballData.ts`: `getTeamSquad()`, `getPlayer()`, `getTeam()`, `getRecentResults()` are never called — remove or keep for future use
 - [ ] `dataService.ts`: `getStatus()` and `getDataSourceStatus()` are never called — remove dead methods
@@ -683,7 +683,7 @@ Priority features to implement with real data:
 - [ ] `dataService.ts`: `getCurrentSeasonMatches()` is an alias for `getMatches()` — never called by any component. `getTeamRecentMatches()` also never called
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
 - [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
-- [ ] `Help.svelte`: dead import `fly` from `svelte/transition` — never used in template
+- [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
 - [ ] `value.ts`: `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` — 4 static methods never called from any component
 - [ ] `dataService.ts`: additional dead public methods beyond already-listed: `getPredictionAccuracy()`, `setCacheTimeout()`, `disableCache()`, `enableCache()`, `refreshDataSources()` — none called from any component
 - [ ] `footballData.ts:383`: `|| null` on odds fields instead of `?? null` — semantically wrong for `0` values (harmless in practice since odds can't be 0)
@@ -697,9 +697,9 @@ Priority features to implement with real data:
 - [ ] `value.ts`: `calculateSharpeRatio()` divides by zero silently for empty arrays — returns `NaN`
 - [ ] `value.ts`: `calculatePerformanceMetrics()` divides by `totalBets`/`totalStaked` with no guard for empty input — returns `NaN` across all fields
 - [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
-- [ ] `Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template — dead variable
-- [ ] `KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template — dead state
-- [ ] `Settings.svelte`: dead imports `Sparkles` and `Key` from lucide-svelte — neither used in template
+- [x] ~~`Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template~~ **DONE**
+- [x] ~~`KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template~~ **DONE**
+- [x] ~~`Settings.svelte`: dead imports `Sparkles` and `Key` from lucide-svelte~~ **DONE**
 - [ ] `advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance when no `eloSystem` is passed — diverges from singleton pattern, reads localStorage independently
 - [ ] `BettingHistory.svelte`: `<style global>` defines 5 CSS classes (`.shadow-glow-success-sm`, `.shadow-glow-success-md`, `.shadow-glow-error-sm`, `.shadow-glow-error-md`, `.th`, `.td`) never referenced in template
 

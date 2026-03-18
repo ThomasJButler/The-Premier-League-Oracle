@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, Sparkles, RefreshCw } from 'lucide-svelte';
+  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, RefreshCw } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   

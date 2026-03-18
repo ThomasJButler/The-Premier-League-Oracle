@@ -36,7 +36,6 @@
   let suggestionsLoading = false;
   let suggestionsError: string | null = null;
   let confidenceThreshold = 65; // percentage, spec says >= 65%
-  let showSuggestions = true;
   let trackedBets: Set<string> = new Set();
 
   function trackBet(suggestion: KellySuggestion) {
