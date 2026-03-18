@@ -40,8 +40,6 @@ export interface MonthlyPL {
 class BetHistoryService {
   private readonly STORAGE_KEY = 'pl_oracle_bets';
   private bets: Map<string, StoredBet>;
-  private static idCounter = 0;
-
   constructor() {
     this.bets = new Map();
     this.loadBets();
@@ -72,8 +70,7 @@ class BetHistoryService {
    * Store a new bet. Returns the created StoredBet with generated id and timestamp.
    */
   public storeBet(bet: Omit<StoredBet, 'id' | 'createdAt'>): StoredBet {
-    BetHistoryService.idCounter++;
-    const id = `bet_${bet.matchId}_${Date.now()}_${BetHistoryService.idCounter}`;
+    const id = `bet_${bet.matchId}_${crypto.randomUUID()}`;
 
     const storedBet: StoredBet = {
       ...bet,

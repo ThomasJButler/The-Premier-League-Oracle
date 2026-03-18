@@ -278,9 +278,10 @@ Current data:\n`;
     }
   }
 
-  function handleKeydown(e: any) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  function handleKeydown(e: Event) {
+    const ke = e as KeyboardEvent;
+    if (ke.key === 'Enter' && !ke.shiftKey) {
+      ke.preventDefault();
       if (hasApiKey) {
         sendMessage();
       } else {

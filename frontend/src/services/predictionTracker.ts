@@ -48,8 +48,6 @@ export interface AccuracyStats {
 class PredictionTracker {
   private readonly STORAGE_KEY = 'pl_oracle_predictions';
   private predictions: Map<string, StoredPrediction>;
-  private static idCounter = 0;
-
   constructor() {
     this.predictions = new Map();
     this.loadPredictions();
@@ -94,8 +92,7 @@ class PredictionTracker {
     matchDate: string,
     matchday?: number
   ): void {
-    PredictionTracker.idCounter++;
-    const id = `${matchId}_${Date.now()}_${PredictionTracker.idCounter}`;
+    const id = `${matchId}_${crypto.randomUUID()}`;
     const storedPrediction: StoredPrediction = {
       id,
       matchId,

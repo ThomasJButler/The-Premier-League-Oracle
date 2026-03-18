@@ -1,7 +1,7 @@
 import { PoissonPredictor } from './advancedPredictions';
 import { OptimizedPredictor } from './optimizedPredictions';
 import { dataService } from '../services/dataService';
-import type { Match } from '../types';
+import type { Match, TeamStats } from '../types';
 
 export interface BetBuilderPrediction {
   matchId: string;
@@ -203,7 +203,7 @@ export class BetBuilderPredictor {
     };
   }
   
-  private static calculateCorners(homeStats: any, awayStats: any) {
+  private static calculateCorners(homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined) {
     // Simplified corner prediction based on attacking style
     // Teams that attack more generally win more corners
     const avgCorners = 9.5; // League average
@@ -231,7 +231,7 @@ export class BetBuilderPredictor {
     };
   }
   
-  private static calculateCards(homeTeam: string, awayTeam: string, homeStats: any, awayStats: any) {
+  private static calculateCards(homeTeam: string, awayTeam: string, homeStats: TeamStats | null | undefined, awayStats: TeamStats | null | undefined) {
     // Base card expectation
     let expectedCards = 3.2; // League average
     
@@ -303,7 +303,7 @@ export class BetBuilderPredictor {
    * blend each full-time probability towards a draw-heavy prior and then
    * normalise to guarantee the three values sum to exactly 1.0.
    */
-  private static calculateHalfTimeResult(fullTimeResult: any) {
+  private static calculateHalfTimeResult(fullTimeResult: BetBuilderPrediction['matchResult']) {
     const ftBias = 0.4; // 40 % correlation with full-time
     // Prior: draws much more common at half-time
     const priorHome = 0.25;
@@ -347,12 +347,12 @@ export class BetBuilderPredictor {
   }
   
   private static generateSuggestedCombos(
-    matchResult: any,
-    btts: any,
-    totalGoals: any,
-    corners: any,
-    cards: any,
-    cleanSheets: any,
+    matchResult: BetBuilderPrediction['matchResult'],
+    btts: BetBuilderPrediction['bothTeamsToScore'],
+    totalGoals: BetBuilderPrediction['totalGoals'],
+    corners: BetBuilderPrediction['corners'],
+    cards: BetBuilderPrediction['cards'],
+    cleanSheets: BetBuilderPrediction['cleanSheets'],
     homeTeam: string,
     awayTeam: string
   ): BetBuilderCombo[] {

@@ -35,7 +35,7 @@
 
   let recentMatches: Match[] = [];
   let predictionAccuracy: number[] = [];
-  let topPredictions: any[] = [];
+  let topPredictions: Array<{ match: string; confidence: number; prediction: string; wasCorrect: boolean | null }> = [];
   let loading = true;
   let error: string | null = null;
   let overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });

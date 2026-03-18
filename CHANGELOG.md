@@ -4,6 +4,12 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2t, P2w, P2x — Type Safety, API Config Bug, and ID Collisions (19 March 2026)
+- **Type safety improvements (P2t):** Replaced 11 `any`-typed parameters across `Dashboard.svelte`, `betBuilder.ts`, `ChatBot.svelte`, and `App.svelte` with proper types. `App.svelte` now has a `ViewName` union type preventing routing typos at compile time
+- **refreshApiConfiguration race condition fixed (P2w):** `dataService.ts` `refreshApiConfiguration()` now reassigns `readyPromise` before awaiting, preventing stale state when concurrent calls hit `ensureReady()`
+- **ID collision risk eliminated (P2x):** `predictionTracker.ts` and `betHistoryService.ts` now use `crypto.randomUUID()` instead of `Date.now() + idCounter` — eliminates multi-tab collision risk and removes page-reload counter reset issue
+- **Market format mismatch assessed (P2u):** Confirmed `ValueBets.svelte` already handles the `over2.5` → `over_2_5` conversion via `mapMarket()`. No code path bypasses the conversion — risk mitigated
+
 ### P2a-fix, P2j, P2k — Shared Utilities and ELO Auto-Update (19 March 2026)
 - **`$lib/utils.ts` created (P2a-fix):** shadcn-svelte `cn()` utility (`clsx` + `tailwind-merge`) now exists — unblocks all shadcn components that import from `$lib/utils`
 - **`VALUE_ODDS_MARGIN` constant extracted (P2j):** Created `lib/constants.ts` with `VALUE_ODDS_MARGIN = 1.05`. Replaced duplicated inline values in `advancedPredictions.ts`, `optimizedPredictions.ts`, and `backtest.ts` — single source of truth for the bookmaker margin

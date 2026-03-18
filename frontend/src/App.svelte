@@ -20,7 +20,9 @@
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  let currentView = 'Dashboard'; // Default view
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+
+  let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
   let isTransitioning = false;
   let showApiSetup = false;
@@ -28,11 +30,12 @@
   let dashboardComponent: Dashboard;
   
   function navigate(event: CustomEvent<{ view: string }>) {
-    if (event.detail.view === currentView) return;
-    
+    const view = event.detail.view as ViewName;
+    if (view === currentView) return;
+
     isTransitioning = true;
     setTimeout(() => {
-      currentView = event.detail.view;
+      currentView = view;
       setTimeout(() => {
         isTransitioning = false;
       }, 50);

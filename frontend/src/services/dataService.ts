@@ -467,7 +467,8 @@ class DataService {
   
   // Alias for refreshDataSources for backward compatibility
   public async refreshApiConfiguration(): Promise<void> {
-    await this.checkDataSources();
+    this.readyPromise = this.checkDataSources();
+    await this.readyPromise;
   }
 
   // Get prediction accuracy for a season

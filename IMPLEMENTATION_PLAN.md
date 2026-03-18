@@ -330,17 +330,17 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 
 - [ ] `lstm_predictor.py:537-540` generates entirely synthetic training data using `np.random.randn` (features) and `np.random.randint` (labels) when training without real data. This is distinct from the feature importance stub at line 523. The LSTM can "train" on random noise without error, producing a trained-but-meaningless model with no warning. Add: guard that raises `ValueError("No real training data provided")` instead of falling back to random data.
 
-### P2t. Type Safety Gaps — NEW (18 March 2026, third audit)
+### P2t. Type Safety Gaps — PARTIAL (19 March 2026)
 
-- [ ] `Dashboard.svelte:38`: `topPredictions: any[]` — production display typed as `any`
-- [ ] `betBuilder.ts:206,234,306,350-355`: private methods `calculateCorners`, `calculateCards`, `calculateHalfTimeResult`, `buildCombos` all take `any`-typed parameters
-- [ ] `Predictions.svelte:7,19`: imports dead legacy `Prediction` type from `types/index.ts` (diverges from `StoredPrediction` which is the actual runtime type)
-- [ ] `ChatBot.svelte:274`: `handleKeydown` event parameter typed as `any` instead of `KeyboardEvent`
-- [ ] `App.svelte`: `currentView` is a plain string — use a `type ViewName` union to catch routing typos at compile time
+- [x] `Dashboard.svelte:38`: `topPredictions` now properly typed with inline `Array<{ match: string; confidence: number; prediction: string; wasCorrect: boolean | null }>`
+- [x] `betBuilder.ts:206,234,306,350-355`: `calculateCorners`/`calculateCards` now typed as `TeamStats | null | undefined`; `calculateHalfTimeResult` and `generateSuggestedCombos` now use `BetBuilderPrediction` indexed types
+- [ ] `Predictions.svelte:7,19`: imports dead legacy `Prediction` type from `types/index.ts` (diverges from `StoredPrediction` which is the actual runtime type) — deferred
+- [x] `ChatBot.svelte:281`: `handleKeydown` now accepts `Event` with `KeyboardEvent` cast (Svelte 4 type system quirk prevents direct `KeyboardEvent` typing on `on:keydown`)
+- [x] `App.svelte`: `currentView` now typed as `ViewName` union (13 valid view names); `navigate` casts from `string` at the event boundary
 
-### P2u. betHistoryService Market Format Mismatch — NEW (18 March 2026, third audit)
+### P2u. betHistoryService Market Format Mismatch — MITIGATED (19 March 2026)
 
-- [ ] `StoredBet.market` uses `'over_2_5'` (underscores) while `ValueBet.market` from `value.ts` uses `'over2.5'` (no separator). If code ever stores a `ValueBet` market into a `StoredBet`, the enum mismatch breaks `didBetWin()` resolution silently (falls to `default: return null`). Align market string formats between the two modules.
+`StoredBet.market` uses `'over_2_5'` (underscores) while `ValueBet.market` from `value.ts` uses `'over2.5'` (dot format). Investigated and found that `ValueBets.svelte` already has `mapMarket()` and `mapSelection()` functions that convert between formats before calling `storeBet()`. `KellyCalculator.svelte` uses `StoredBet` format directly. No code path bypasses the conversion — only these two components call `storeBet()`. Risk is mitigated but the mapping should ideally live at the service boundary if more callers are added.
 
 ### P2v. Backtest Performance — NEW (18 March 2026, fourth audit)
 
@@ -350,13 +350,13 @@ Each match in `BacktestRunner.run()` calls `OptimizedPredictor.predictMatch()` w
 - [ ] Pass pre-fetched data into `OptimizedPredictor.predictMatch()` to avoid per-match API calls
 - [ ] Add a progress estimate based on pre-fetched data availability
 
-### P2w. dataService `refreshApiConfiguration` Wiring Bug — NEW (18 March 2026, fourth audit)
+### P2w. dataService `refreshApiConfiguration` Wiring Bug — DONE (19 March 2026)
 
-- [ ] `dataService.ts`: `refreshApiConfiguration()` is a stub alias for `checkDataSources()` but does NOT update `readyPromise`. A caller using `refreshApiConfiguration()` instead of `refreshDataSources()` will leave `ensureReady()` resolving against stale state. Either remove the alias or make it call `refreshDataSources()`
+- [x] `refreshApiConfiguration()` now reassigns `this.readyPromise = this.checkDataSources()` before awaiting, matching the pattern in `refreshDataSources()`. Concurrent `ensureReady()` calls now wait for the fresh check
 
-### P2x. ID Collision Risk in Singletons — NEW (18 March 2026, fourth audit)
+### P2x. ID Collision Risk in Singletons — DONE (19 March 2026)
 
-- [ ] `predictionTracker.ts` and `betHistoryService.ts` both use `${matchId}_${Date.now()}_${idCounter}` for IDs, where `idCounter` is a static class property that resets to 0 on every page load. If two browser tabs simultaneously store a prediction/bet for the same match in the same millisecond, IDs can collide. Consider using `crypto.randomUUID()` instead
+- [x] `predictionTracker.ts` and `betHistoryService.ts` now use `crypto.randomUUID()` for ID generation, eliminating multi-tab and same-millisecond collision risks. Removed `static idCounter` from both classes
 
 ---
 
