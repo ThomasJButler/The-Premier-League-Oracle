@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2b — Backend Service Bridge (20 March 2026)
+- **`backendService.ts` created:** Singleton service class that bridges the frontend to the Python ML backend. Methods: `isAvailable()` (health check with 30s caching), `predictMatch()`, `predictBatch()`, `getTeamStats()`. All methods throw `BackendUnavailableError` on failure for graceful degradation
+- **ML types added to `types/index.ts`:** `MLPrediction`, `MLBatchResponse`, `MLHealthResponse` interfaces and `BackendUnavailableError` error class — matched to the actual backend API contract (not spec 03's assumed paths)
+- **Vite proxy:** `/api/oracle` → `http://localhost:8000` added to `vite.config.ts` for local development
+- **19 tests:** Health check caching (30s TTL), cache invalidation, successful predictions, error paths (non-OK status, network failure), batch with mixed success/error results, URL encoding for team names with spaces
+- **Test count:** 317 → 336 tests across 21 files (was 20). All passing
+
 ### P4f — Remove dead `predictions.ts` module (20 March 2026)
 - **`predictions.ts` removed:** Original v1 prediction model had zero imports from any production component. Was entirely dead at runtime but had 11 passing tests creating false confidence that prediction logic was well-tested
 - **`predictions.test.ts` removed:** 11 tests that exercised only the dead module, not the production `optimizedPredictions.ts` model

@@ -105,6 +105,12 @@ export default defineConfig({
             }
           });
         }
+      },
+      // Python ML backend (spec 03)
+      '/api/oracle': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/oracle/, '')
       }
     }
   }

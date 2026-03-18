@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P4f — predictions.ts dead module removed, test count corrected to 317)
+Last updated: 20 March 2026 (P2b — backend service bridge with 19 tests, test count now 336/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -170,18 +170,18 @@ All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 37
 - [x] Create `frontend/src/lib/utils.ts` with `cn()` utility
 - [x] Verify `clsx` and `tailwind-merge` are in `frontend/package.json`
 
-### P2b. Backend Service (frontend bridge)
+### P2b. Backend Service (frontend bridge) — DONE (20 March 2026)
 
-No frontend code calls the Python backend. **0 of 8 acceptance criteria from spec 03 met.**
+Frontend can now communicate with the Python ML backend. Created `backendService.ts` singleton with health check caching (30s TTL), AbortController timeouts, and graceful error handling via `BackendUnavailableError`. 19 tests covering all methods, caching, error paths, and URL encoding.
 
-**New file:** `frontend/src/services/backendService.ts`
-
-- [ ] `isAvailable()` — pings `/health`, returns bool
-- [ ] `predictMatch(homeTeam, awayTeam)` — calls `/predict`
-- [ ] `predictBatch(matches)` — calls `/predict/batch`
-- [ ] All methods throw `BackendUnavailableError` if backend down
-- [ ] Add Vite proxy: `/api/oracle` → `http://localhost:8000` in `vite.config.ts`
-- [ ] Add `MLPrediction` interface to `types/index.ts`
+- [x] `isAvailable()` — pings `/health`, returns bool, caches result for 30s
+- [x] `predictMatch(homeTeam, awayTeam)` — calls `/predict`
+- [x] `predictBatch(matches)` — calls `/predict/batch`
+- [x] `getTeamStats(teamName, lastNMatches)` — calls `/teams/{name}/stats`
+- [x] All methods throw `BackendUnavailableError` if backend down
+- [x] Add Vite proxy: `/api/oracle` → `http://localhost:8000` in `vite.config.ts`
+- [x] Add `MLPrediction`, `MLBatchResponse`, `MLHealthResponse` interfaces to `types/index.ts`
+- [x] 19 tests in `backendService.test.ts` (health caching, error paths, URL encoding, batch mixed results)
 
 ### P2c. Backend Feature Flag in Settings
 
@@ -957,7 +957,7 @@ All feature specifications in `specs/`:
 
 | File | Purpose | Priority |
 |------|---------|----------|
-| `frontend/src/services/backendService.ts` | Frontend-backend bridge | P2b |
+| `frontend/src/services/backendService.ts` | Frontend-backend bridge | P2b — DONE |
 | `frontend/src/services/liveService.ts` | WebSocket live data | P3f |
 | `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g |
 | `backend/app/features/free_tier_features.py` | Free-tier feature engineer (~83 features) | P3-Free |
