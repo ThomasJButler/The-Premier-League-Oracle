@@ -2,6 +2,18 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## [Unreleased] - v3.0-BackendMLTraining Branch
+
+### P3-Free: Free-Tier ML Training Pipeline (21 March 2026)
+- **FreeTierFeatureEngineer** (`backend/app/features/free_tier_features.py`): Standalone feature engineering class computing 86 features across 8 categories — basic stats (12), form & momentum (20), H2H (15), contextual (12), time series (9), derived (5), half-time (5), match stats (8). Fully decoupled from the 150-feature `AdvancedFeatureEngineer` (which has 63 stub methods). Includes bidirectional team name normalisation (28 PL teams + aliases), CSV loading with UTF-8 BOM handling, and graceful degradation when match stats columns are missing
+- **Training script** (`backend/train_free_tier.py`): End-to-end pipeline — loads CSV data, builds chronological feature matrix with warmup filter (MIN_PRIOR_MATCHES=5), trains XGBoost multi-class classifier (Home/Draw/Away) with early stopping, trains logistic regression baseline for comparison, evaluates with accuracy/log loss/Brier score/AUC-ROC/confusion matrix/calibration curve, saves model + metadata to joblib
+- **API endpoints** (`backend/app/api/main.py`): `POST /predict/free` returns probability distribution with rate limiting (60 req/min per IP) and team name validation (422 for unknown teams, 503 when model not loaded). `GET /models/free-tier/info` returns training metadata. Input validation fires before resource checks (422 before 503)
+- **62 backend tests** across 3 test files — all passing:
+  - `test_free_tier_features.py` (39 tests): feature completeness, no data leakage, team name normalisation, edge cases (empty data, unknown teams), non-zero value checks
+  - `test_train_free_tier.py` (12 tests): build_dataset shapes, chronological split, CSV loading, model save/load
+  - `test_predict_free_tier.py` (11 tests): endpoint responses, rate limiting, team name resolution
+- **Edge case fix**: `_get_team_matches()` now ensures synthetic columns (`team_result`, `team_goals`, etc.) exist on empty DataFrames, preventing `KeyError` crashes for unknown teams
+
 ## [Unreleased] - v3.0-Frontend Branch
 
 ### Betting Intelligence & Theme (20 March 2026)

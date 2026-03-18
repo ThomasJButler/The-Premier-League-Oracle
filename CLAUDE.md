@@ -63,7 +63,9 @@ uvicorn app.api.main:app --reload --port 8000
 ### Backend Structure (`backend/app/`)
 - `api/main.py` - FastAPI server with prediction endpoints
 - `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
-- `features/advanced_engineering.py` - 150+ feature engineering pipeline
+- `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
+- `features/free_tier_features.py` - Free-tier feature engineering (86 features, standalone, fully functional)
+- `train_free_tier.py` - Free-tier training script (XGBoost + LR baseline, chronological split)
 - `data/football_data_collector.py` - Historical data collection
 - `security/` - Auth, secrets, validators
 
@@ -108,7 +110,7 @@ These specs are the single source of truth for requirements.
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
-- Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
+- ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
 - Frontend has 335 Vitest tests across 21 test files, all passing (was 364 — 62 removed; 33 added: 19 backendService, 8 Settings ML backend, 6 ML ensemble integration)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
