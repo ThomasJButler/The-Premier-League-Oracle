@@ -372,7 +372,7 @@ export class BetBuilderPredictor {
           'Over 7.5 corners'
         ],
         combinedOdds: Math.round(safeOdds * 100) / 100,
-        confidence: 0.65,
+        confidence: Math.round(matchResult.confidence * Math.max(totalGoals.over25.probability, totalGoals.under35.probability) * corners.totalOver85.probability * 100) / 100,
         reasoning: 'High probability selections with good combined odds'
       });
     }
@@ -393,7 +393,7 @@ export class BetBuilderPredictor {
           'Over 2.5 cards'
         ],
         combinedOdds: Math.round(valueOdds * 100) / 100,
-        confidence: 0.45,
+        confidence: Math.round(matchResult.confidence * btts.yesProb * totalGoals.over25.probability * cards.totalOver25.probability * 100) / 100,
         reasoning: 'Good value with attacking teams likely to score'
       });
     }
@@ -424,7 +424,7 @@ export class BetBuilderPredictor {
           'Over 3.5 cards'
         ],
         combinedOdds: Math.round(aggressiveOdds * 100) / 100,
-        confidence: 0.25,
+        confidence: Math.round(favProb * favCleanSheet * corners.totalOver95.probability * cards.totalOver35.probability * 100) / 100,
         reasoning: `Banking on ${favTeam} dominance with defensive control`
       });
     }
@@ -445,7 +445,7 @@ export class BetBuilderPredictor {
           'Over 9.5 corners'
         ],
         combinedOdds: Math.round(goalsOdds * 100) / 100,
-        confidence: 0.40,
+        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * 0.35 * corners.totalOver95.probability * 100) / 100,
         reasoning: 'High-scoring game expected with open play'
       });
     }

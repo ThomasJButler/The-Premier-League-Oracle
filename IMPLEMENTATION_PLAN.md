@@ -545,7 +545,7 @@ All feature specifications in `specs/`:
 | ~~`optimizedPredictions.ts`~~ | ~~Error fallback returns different weights than success path~~ **FIXED** — both paths now use shared `MODEL_WEIGHTS` constant (fixed in P1e) | ~~Low~~ |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | P4d |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | P4d |
-| `betBuilder.ts` | Combo confidence values (0.65, 0.45, 0.25, 0.40) hardcoded | P4d |
+| ~~`betBuilder.ts`~~ | ~~Combo confidence values (0.65, 0.45, 0.25, 0.40) hardcoded~~ **FIXED** — now product of individual selection probabilities | ~~P4d~~ |
 | ~~`betBuilder.ts`~~ | ~~`bothCleanSheets: { prediction: false }` unconditional~~ **FIXED** — now `bothCleanSheets > 0.08` (PL 0-0 average ~7-8%) | ~~P4d~~ |
 | `betBuilder.ts` | `'Over 1.5 first half goals'` probability hardcoded as `0.35` | P4d |
 | ~~`betBuilder.ts`~~ | ~~`'win to nil'` probability hardcoded as `0.30`~~ **FIXED** — now derived from `favProb × favCleanSheet` (clamped ≥ 0.05) | ~~P4d~~ |
