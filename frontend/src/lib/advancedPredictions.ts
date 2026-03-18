@@ -1,6 +1,6 @@
 import { dataService } from '../services/dataService';
 import type { Match } from '../types';
-import { VALUE_ODDS_MARGIN } from './constants';
+import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
 // Advanced team rating system using ELO
 export interface TeamRating {
@@ -485,7 +485,7 @@ export class RefereeAnalyzer {
       const refereeMatches = matches.filter(match => match.referee === refereeName);
 
       if (refereeMatches.length === 0) {
-        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
       }
 
       const totalMatches = refereeMatches.length;
@@ -501,7 +501,7 @@ export class RefereeAnalyzer {
       };
     } catch (error) {
       // Error getting referee stats
-      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }
   }
 }

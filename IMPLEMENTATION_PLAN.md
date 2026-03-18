@@ -685,12 +685,12 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `kelly.ts`: dead exports `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` removed
 - [x] `kelly.ts`: `getRiskLevel` — removed unused `kellyFraction` parameter (only `edge` and `probability` used)
 - [x] `value.ts`: `OddsProvider` interface, `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` removed
-- [ ] `value.ts`: `calculateCLV` returns `betId: ''` (stub) — any remaining CLV usage needs proper bet tracking
+- [x] ~~`value.ts`: `calculateCLV` dead code~~ **ALREADY REMOVED:** function was deleted in a prior P4f batch
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
 - [ ] `advancedPredictions.ts`: `dataService.getMatches()` called 3× per prediction — once in `FatigueAnalyzer` and twice in `predictMatch`. Fetch once at the start of `predictMatch` and pass the array to helper methods.
 - [ ] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with slightly different signatures — maintenance risk
-- [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant — duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`
-- [ ] Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant — duplicated in `optimizedPredictions.ts` and `advancedPredictions.ts`
+- [x] ~~Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant~~ **ALREADY DONE:** exists in `lib/constants.ts`, imported by all three files
+- [x] ~~Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant~~ **DONE:** added `DEFAULT_HOME_WIN_RATE` to `lib/constants.ts`, imported in `optimizedPredictions.ts` (fallback in `computeLeagueAverages`) and `advancedPredictions.ts` (RefereeAnalyzer fallbacks)
 - [x] `predictionTracker.ts`: `resultAccuracy` — removed redundant field identical to `accuracy` (both computed from `predictedResult === actualResult`). Updated test mocks
 - [ ] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Remove from dead code list
 - [x] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` — removed (dead code, only called by tests). 4 tests removed
@@ -710,12 +710,12 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `MatchList.svelte`: season selector — added `<select>` dropdown in the header so fetched seasons are actually usable. Triggers `loadMatches()` on change
 - [x] `value.ts`: `calculateSharpeRatio()` — removed (dead function, see P4f)
 - [x] `value.ts`: `calculatePerformanceMetrics()` — removed (dead function, see P4f)
-- [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
+- [x] ~~`predictions.ts`: `TeamStats`/`TeamForm` shadowed types~~ **RESOLVED:** entire `predictions.ts` module was deleted (P4f). No collision possible
 - [x] ~~`Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template~~ **DONE**
 - [x] ~~`KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template~~ **DONE**
 - [x] ~~`Settings.svelte`: dead imports `Sparkles` and `Key` from lucide-svelte~~ **DONE**
 - [ ] `advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance when no `eloSystem` is passed — diverges from singleton pattern, reads localStorage independently
-- [ ] `BettingHistory.svelte`: `<style global>` defines 5 CSS classes (`.shadow-glow-success-sm`, `.shadow-glow-success-md`, `.shadow-glow-error-sm`, `.shadow-glow-error-md`, `.th`, `.td`) never referenced in template
+- [x] ~~`BettingHistory.svelte`: dead `<style global>` classes~~ **ALREADY REMOVED:** cleaned up in a prior P4f batch (see line 678)
 
 ### P4h. Test Quality Improvements — PARTIAL (19 March 2026)
 

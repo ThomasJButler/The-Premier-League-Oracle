@@ -3,7 +3,7 @@ import type { Match, Standing, MLPrediction } from '../types';
 import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
-import { VALUE_ODDS_MARGIN } from './constants';
+import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -76,7 +76,7 @@ export class OptimizedPredictor {
     const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
 
     if (completed.length === 0) {
-      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: 0.46, teamStrengths: new Map() };
+      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
     }
 
     // League totals
