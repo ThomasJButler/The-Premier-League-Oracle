@@ -48,8 +48,14 @@ try:
 except ImportError:
     logger.warning("MLflow not available — experiment tracking disabled")
 
-# XGBoost — always available (in requirements.txt)
-from app.models.xgboost_model import XGBoostPredictor
+# XGBoost — expected to be available (in requirements.txt) but guarded for safety
+XGBOOST_AVAILABLE = False
+try:
+    from app.models.xgboost_model import XGBoostPredictor
+    XGBOOST_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"XGBoostPredictor unavailable ({e})")
+    XGBoostPredictor = None  # type: ignore
 
 # LSTM and Transformer require torch — optional, not in requirements.txt
 TORCH_AVAILABLE = False
@@ -62,8 +68,17 @@ except ImportError as e:
     LSTMPredictor = None  # type: ignore
     TransformerPredictor = None  # type: ignore
 
-from app.features.advanced_engineering import AdvancedFeatureEngineer
-from app.data.football_data_collector import FootballDataCollector
+try:
+    from app.features.advanced_engineering import AdvancedFeatureEngineer
+except ImportError as e:
+    logger.warning(f"AdvancedFeatureEngineer unavailable ({e})")
+    AdvancedFeatureEngineer = None  # type: ignore
+
+try:
+    from app.data.football_data_collector import FootballDataCollector
+except ImportError as e:
+    logger.warning(f"FootballDataCollector unavailable ({e})")
+    FootballDataCollector = None  # type: ignore
 
 # Vector database — optional
 CHROMADB_AVAILABLE = False
@@ -73,12 +88,36 @@ try:
 except ImportError:
     logger.warning("ChromaDB not available — vector similarity search disabled")
 
-# Additional imports
-import optuna
-from sklearn.model_selection import cross_val_score
-import joblib
-import redis
+# Additional imports — all optional, server starts without them
 import json
+
+OPTUNA_AVAILABLE = False
+try:
+    import optuna
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    logger.warning("optuna not available — hyperparameter optimisation disabled")
+
+SKLEARN_AVAILABLE = False
+try:
+    from sklearn.model_selection import cross_val_score
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    logger.warning("scikit-learn not available — cross-validation disabled")
+
+JOBLIB_AVAILABLE = False
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    logger.warning("joblib not available — model serialisation disabled")
+
+REDIS_AVAILABLE = False
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    logger.warning("redis not available — result caching disabled")
 
 
 class ModernPremierLeagueOracle:
@@ -111,11 +150,21 @@ class ModernPremierLeagueOracle:
             mlflow_tracking_uri: MLflow tracking server URI
         """
         # Data collection
-        self.data_collector = FootballDataCollector(api_key)
-        self.feature_engineer = AdvancedFeatureEngineer()
-        
+        if FootballDataCollector is not None:
+            self.data_collector = FootballDataCollector(api_key)
+        else:
+            raise ImportError("FootballDataCollector is required but not available")
+
+        if AdvancedFeatureEngineer is not None:
+            self.feature_engineer = AdvancedFeatureEngineer()
+        else:
+            raise ImportError("AdvancedFeatureEngineer is required but not available")
+
         # Models
-        self.xgboost_model = XGBoostPredictor()
+        if XGBoostPredictor is not None:
+            self.xgboost_model = XGBoostPredictor()
+        else:
+            raise ImportError("XGBoostPredictor is required but not available")
         self.lstm_model = LSTMPredictor() if TORCH_AVAILABLE else None
         self.transformer_model = TransformerPredictor() if TORCH_AVAILABLE else None
         
@@ -135,17 +184,21 @@ class ModernPremierLeagueOracle:
                 logger.warning(f"MLflow setup failed ({e}) — experiment tracking disabled")
 
         # Redis for caching — optional, predictions continue without it
-        try:
-            self.redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
-            self.redis_client.ping()
-        except Exception as e:
-            logger.warning(f"Redis unavailable ({e}) — result caching disabled")
-            self.redis_client = None
+        self.redis_client = None
+        if REDIS_AVAILABLE:
+            try:
+                self.redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+                self.redis_client.ping()
+            except Exception as e:
+                logger.warning(f"Redis unavailable ({e}) — result caching disabled")
+                self.redis_client = None
         
-        # LangChain setup (if API key provided)
-        self.langchain_enabled = openai_api_key is not None
+        # LangChain setup (if API key provided AND langchain installed)
+        self.langchain_enabled = openai_api_key is not None and LANGCHAIN_AVAILABLE
         if self.langchain_enabled:
             self._setup_langchain(openai_api_key)
+        elif openai_api_key is not None and not LANGCHAIN_AVAILABLE:
+            logger.warning("OpenAI key provided but LangChain not installed — NL queries disabled")
         
         # Vector database for similarity search
         self._setup_vector_store()
@@ -496,14 +549,18 @@ class ModernPremierLeagueOracle:
                                   n_trials: int = 100) -> Dict[str, float]:
         """
         Optimize ensemble weights using Optuna.
-        
+
         Args:
             historical_data: Historical match data
             n_trials: Number of optimization trials
-            
+
         Returns:
             Optimized weights
         """
+        if not OPTUNA_AVAILABLE:
+            logger.warning("optuna not available — using default ensemble weights")
+            return self.ensemble_weights
+
         def objective(trial):
             # Suggest weights
             w_xgb = trial.suggest_float('xgboost', 0.1, 0.6)
@@ -546,49 +603,41 @@ class ModernPremierLeagueOracle:
                         labels: pd.Series,
                         track_with_mlflow: bool = True):
         """
-        Train all models with MLflow tracking.
-        
+        Train all models with optional MLflow tracking.
+
         Args:
             training_data: Training features
             labels: Training labels
             track_with_mlflow: Whether to track with MLflow
         """
-        if track_with_mlflow:
+        use_mlflow = track_with_mlflow and MLFLOW_AVAILABLE
+
+        val_data = training_data.sample(frac=0.2, random_state=42)
+        val_labels = labels.loc[val_data.index]
+
+        if use_mlflow:
             with mlflow.start_run(run_name="ensemble_training"):
-                # Train XGBoost
                 with mlflow.start_run(run_name="xgboost_training", nested=True):
                     xgb_results = self.xgboost_model.train(
-                        training_data, labels,
-                        training_data.sample(frac=0.2),
-                        labels.sample(frac=0.2)
+                        training_data, labels, val_data, val_labels
                     )
-                    mlflow.log_metrics(xgb_results)
                     mlflow.xgboost.log_model(self.xgboost_model.model, "xgboost_model")
-                
-                # Train LSTM
-                with mlflow.start_run(run_name="lstm_training", nested=True):
-                    lstm_results = self.lstm_model.train(
-                        training_data, labels,
-                        training_data.sample(frac=0.2),
-                        labels.sample(frac=0.2)
-                    )
-                    mlflow.log_metrics(lstm_results)
-                    mlflow.pytorch.log_model(self.lstm_model.model, "lstm_model")
-                
-                # Train Transformer
-                with mlflow.start_run(run_name="transformer_training", nested=True):
-                    transformer_results = self.transformer_model.train(
-                        training_data, labels,
-                        training_data.sample(frac=0.2),
-                        labels.sample(frac=0.2)
-                    )
-                    mlflow.log_metrics(transformer_results)
-                    mlflow.pytorch.log_model(self.transformer_model.model, "transformer_model")
+
+                if self.lstm_model is not None:
+                    with mlflow.start_run(run_name="lstm_training", nested=True):
+                        self.lstm_model.train(training_data, labels, val_data, val_labels)
+                        mlflow.pytorch.log_model(self.lstm_model.model, "lstm_model")
+
+                if self.transformer_model is not None:
+                    with mlflow.start_run(run_name="transformer_training", nested=True):
+                        self.transformer_model.train(training_data, labels, val_data, val_labels)
+                        mlflow.pytorch.log_model(self.transformer_model.model, "transformer_model")
         else:
-            # Train without tracking
-            self.xgboost_model.train(training_data, labels)
-            self.lstm_model.train(training_data, labels)
-            self.transformer_model.train(training_data, labels)
+            self.xgboost_model.train(training_data, labels, val_data, val_labels)
+            if self.lstm_model is not None:
+                self.lstm_model.train(training_data, labels, val_data, val_labels)
+            if self.transformer_model is not None:
+                self.transformer_model.train(training_data, labels, val_data, val_labels)
     
     # Tool functions for LangChain
     def _predict_match_tool(self, input_str: str) -> str:

@@ -9,6 +9,7 @@
   import LiveTicker from './components/LiveTicker.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
+  import ValueBets from './components/betting/ValueBets.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
@@ -17,6 +18,7 @@
   import StandingsTable from './components/StandingsTable.svelte';
   import ChatBot from './components/ChatBot.svelte';
   import { onMount } from 'svelte';
+  import { isDarkMode } from './stores/theme';
 
   let currentView = 'Dashboard'; // Default view
   let isSidebarOpen = false; // Start with sidebar closed
@@ -47,14 +49,8 @@
       isSidebarOpen = true;
     }
 
-    // Restore saved theme — default to dark (sports data looks better dark)
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      // Default to dark mode unless explicitly set to light
-      document.documentElement.classList.add('dark');
-    }
+    // Initialise shared theme store — respects localStorage then prefers-color-scheme
+    isDarkMode.init();
 
     // Restore favourite team theme
     const savedTeam = localStorage.getItem('favourite_team');
@@ -109,7 +105,7 @@
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 relative">
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative">
       <!-- Page transition overlay -->
       {#if isTransitioning}
         <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
@@ -125,6 +121,8 @@
           <Predictions />
         {:else if currentView === 'Kelly Calculator'}
           <KellyCalculator />
+        {:else if currentView === 'Value Bets'}
+          <ValueBets />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
         {:else if currentView === 'Season Stats'}

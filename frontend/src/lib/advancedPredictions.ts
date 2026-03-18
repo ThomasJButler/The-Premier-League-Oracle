@@ -471,10 +471,18 @@ export class AdvancedMatchPredictor {
     const adjustedHomeRating = homeRating * homeFatigue;
     const adjustedAwayRating = awayRating * awayFatigue;
 
-    // 4. Calculate expected goals using adjusted ratings
+    // 4. Calculate expected goals using adjusted ratings and real league averages
     const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
-    const baseHomeGoals = 1.5; // League average
-    const baseAwayGoals = 1.2; // Slightly lower for away teams
+
+    // Derive league average goals from completed matches (fallback: 1.5 / 1.2)
+    const allMatches = await dataService.getMatches();
+    const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
+    let baseHomeGoals = 1.5;
+    let baseAwayGoals = 1.2;
+    if (completed.length > 0) {
+      baseHomeGoals = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
+      baseAwayGoals = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+    }
 
     const expectedHomeGoals = baseHomeGoals * Math.exp(ratingDiff * 0.1);
     const expectedAwayGoals = baseAwayGoals * Math.exp(-ratingDiff * 0.1);

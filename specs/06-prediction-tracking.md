@@ -4,14 +4,30 @@
 
 ---
 
+## Current Implementation Status (as of March 2026)
+
+The following items from this spec have been **implemented**:
+
+- **Requirement 1 (Replace hardcoded accuracy stub):** DONE. `getPredictionAccuracy()` in `dataService.ts` now calls `predictionTracker.getAccuracyStats()` and returns real data from localStorage. No hardcoded values remain.
+- **Requirement 2 (Auto-reconciliation):** DONE. `dataService.reconcilePredictions()` is implemented and called automatically whenever `getMatches()` returns finished results. It also resolves pending bets via `betHistoryService.resolveMatchBets()`. `Dashboard.svelte` additionally reconciles on load.
+- **Requirement 3 (Dashboard stats — real data):** DONE. `Dashboard.svelte` imports `predictionTracker` and `betHistoryService` directly. `overallAccuracy` uses `predictionTracker.getAccuracyStats()`, `profitMargin` uses `betHistoryService.getROI()`, `totalPredictions` uses `predictionTracker.getAccuracyStats().totalPredictions`, and `betsPlaced` uses `betHistoryService.getAllBets().length`. All four stats are fed by real data with tweened animations.
+- **Requirement 4 (Accuracy breakdown panel):** DONE. `Predictions.svelte` displays a collapsible accuracy panel with per-outcome accuracy (Home/Draw/Away), per-confidence band accuracy (High/Medium/Low), rolling last-10 accuracy, exact score accuracy, and current/best streaks. Uses `predictionTracker.getAccuracyStats()`.
+- **Requirement 6 (Prediction store on generate):** DONE. `Predictions.svelte` calls `predictionTracker.storePrediction()` for every prediction in the batch prediction loop, including the gameweek number.
+
+The following items **remain unimplemented**:
+
+- **Requirement 5 (Gameweek history):** PARTIALLY DONE. `predictionTracker` has `getAccuracyByGameweek()` and `Dashboard.svelte` uses it for the accuracy trend chart. However, a dedicated `gameweek_accuracy` localStorage key as described in the spec is not used — accuracy is derived on the fly from stored predictions that include a `matchday` field.
+
+---
+
 ## Current State
 
-| Location | Problem |
-|----------|---------|
-| `frontend/src/services/dataService.ts` — `getPredictionAccuracy()` | Returns `{total: 100, correct: 65, accuracy: 0.65}` hardcoded — always |
-| `frontend/src/services/predictionTracker.ts` | Fully implemented but rarely called |
+| Location | Status |
+|----------|--------|
+| `frontend/src/services/dataService.ts` — `getPredictionAccuracy()` | Calls `predictionTracker.getAccuracyStats()` — returns real data |
+| `frontend/src/services/predictionTracker.ts` | Fully implemented, called by Dashboard, Predictions, and dataService |
 | `frontend/src/services/predictionPersistence.ts` | Supabase-based — **removed** |
-| `frontend/src/components/Dashboard.svelte` | `overallAccuracy`, `profitMargin`, `totalPredictions`, `betsPlaced` fed by stubs |
+| `frontend/src/components/Dashboard.svelte` | All four stats (`overallAccuracy`, `profitMargin`, `totalPredictions`, `betsPlaced`) use real data from `predictionTracker` and `betHistoryService` |
 
 ---
 
@@ -23,54 +39,15 @@ The `predictionPersistence.ts` file has already been deleted. All code that prev
 
 ---
 
-## Requirement 1: Replace the Hardcoded Accuracy Stub
+## Requirement 1: Replace the Hardcoded Accuracy Stub — IMPLEMENTED
 
-In `frontend/src/services/dataService.ts`, the method `getPredictionAccuracy()` must call the real tracker:
-
-```typescript
-getPredictionAccuracy() {
-  return predictionTracker.getAccuracyStats()
-}
-```
-
-`predictionTracker.getAccuracyStats()` returns real data from localStorage. This single change propagates through to the Dashboard and all accuracy displays.
+`getPredictionAccuracy()` in `dataService.ts` now calls `predictionTracker.getAccuracyStats()` and maps the result to the expected return shape. No hardcoded values remain.
 
 ---
 
-## Requirement 2: Auto-Reconciliation on Startup
+## Requirement 2: Auto-Reconciliation on Startup — IMPLEMENTED
 
-When the DataService loads completed match results, it should automatically resolve any pending predictions.
-
-**Add to `dataService.ts` — reconciliation logic:**
-
-```typescript
-async reconcilePredictions(completedMatches: Match[]): Promise<void> {
-  const pending = predictionTracker.getPendingPredictions()
-
-  for (const prediction of pending) {
-    const match = completedMatches.find(m =>
-      m.id === prediction.matchId &&
-      m.status === 'FINISHED'
-    )
-
-    if (match && match.score) {
-      const homeGoals = match.score.fullTime.home
-      const awayGoals = match.score.fullTime.away
-      const actualResult = homeGoals > awayGoals ? 'H' :
-                          awayGoals > homeGoals ? 'A' : 'D'
-
-      predictionTracker.updateWithResult(
-        prediction.matchId,
-        actualResult,
-        homeGoals,
-        awayGoals
-      )
-    }
-  }
-}
-```
-
-Call `reconcilePredictions()` every time `getMatches(status: 'FINISHED')` returns new data.
+`dataService.reconcilePredictions(completedMatches)` is implemented and called automatically inside `getMatches()` whenever finished matches are returned. It iterates completed matches, finds unresolved predictions via `predictionTracker.getMatchPredictions()`, calls `predictionTracker.updateWithResult()`, and also resolves placed bets via `betHistoryService.resolveMatchBets()`. Returns the number of predictions reconciled. `Dashboard.svelte` also reconciles on load as an additional safety net.
 
 ---
 
@@ -133,10 +110,10 @@ Currently the Predictions component does call `predictionTracker` in some paths 
 
 ## Acceptance Criteria
 
-- [ ] `getPredictionAccuracy()` in dataService returns real data from PredictionTracker
-- [ ] `reconcilePredictions()` runs on match result load and auto-resolves pending predictions
-- [ ] Dashboard stats (`overallAccuracy`, `totalPredictions`, `profitMargin`, `betsPlaced`) use real values
-- [ ] Accuracy breakdown panel in Predictions component (per-outcome and per-confidence)
-- [ ] Gameweek accuracy stored and charted over time
-- [ ] Every generated prediction is stored via `predictionTracker.storePrediction()`
-- [ ] No hardcoded accuracy values anywhere in the codebase
+- [x] `getPredictionAccuracy()` in dataService returns real data from PredictionTracker
+- [x] `reconcilePredictions()` runs on match result load and auto-resolves pending predictions
+- [x] Dashboard stats (`overallAccuracy`, `totalPredictions`, `profitMargin`, `betsPlaced`) use real values
+- [x] Accuracy breakdown panel in Predictions component (per-outcome and per-confidence)
+- [x] Gameweek accuracy derived from stored predictions with `matchday` field and charted in Dashboard
+- [x] Every generated prediction is stored via `predictionTracker.storePrediction()`
+- [x] No hardcoded accuracy values anywhere in the codebase

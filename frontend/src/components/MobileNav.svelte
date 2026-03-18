@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle } from 'lucide-svelte';
+  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let currentView: string;
@@ -20,6 +20,7 @@
     { name: 'Oracle Chat', icon: MessageCircle, view: 'Oracle Chat' },
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
+    { name: 'Value Bets', icon: Search, view: 'Value Bets' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
@@ -70,8 +71,8 @@
   </div>
 {/if}
 
-<!-- Bottom nav bar -->
-<nav class="mobile-nav">
+<!-- Bottom nav bar — hidden on large screens where the sidebar is visible -->
+<nav class="mobile-nav lg:hidden">
   <div class="flex justify-around items-center">
     {#each primaryItems as item}
       <button

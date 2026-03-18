@@ -2,6 +2,206 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## [Unreleased] - v3.0-BackendMLTraining Branch
+
+### P1g Logic Bug Sweep — 13 Silent Bugs Fixed (18 March 2026)
+- **`betBuilder.ts`** — `||` → `??` for `predictedHomeGoals`/`awayGoals`; 0 goals no longer treated as falsy and silently replaced with 1.3/1.1
+- **`betHistoryService.ts`** — three fixes: home clean sheet resolution inverted (was requiring home to score), bare 'win to nil' leg fell through unresolved, void bets included in monthly P/L
+- **`TopScorers.svelte`** — `||` → `??` for assists/penalties (0 now displays); position fallback `'Forward'` → `'Unknown'`
+- **`BettingHistory.svelte`** — Chart.js CSS variables corrected: `--text-muted` → `--muted-foreground`, `--text-base` → `--foreground`
+- **`dataService.ts`** — `clearCache()` no longer removes the user's API key; `getPredictionAccuracy(seasonId)` now filters by season date range instead of returning global stats
+- **`optimizedPredictions.ts`** — form fallback returns neutral 0.5 instead of deriving from ELO (was double-counting ELO at 45% effective weight)
+- **`backtest.ts`** — matches sorted chronologically (prevents data leakage), ELO system snapshot/restored for reproducibility
+- **`ValueBets.svelte`** — BTTS odds inputs added to template (variable existed but had no `<input>`)
+- **Tests updated**: `backtest.test.ts` (chronological context + ELO mock), `betBuilder.test.ts` (falsy-zero), `dataService.cache.test.ts` (API key preserved), `dataService.test.ts` (predictionTracker mock)
+- **378/378 tests passing, 0 type errors**
+
+### 8-Agent Comprehensive Planning Audit (18 March 2026)
+- **8 parallel subagents** studied all 8 specs, 18 Svelte components, all frontend libs/services, all backend Python files, all 21 test files + 6 E2E specs, and all project documentation
+- **Test counts corrected**: 378 Vitest tests across 21 files (was documented as 275/13); 43 Playwright E2E tests across 6 files × 3 viewports = 123 executions (was 27/5, 2 skipped → now 0 skipped)
+- **12 new logic bugs discovered**: `betBuilder.ts` treats 0 goals as falsy (`|| 1.3`), `betHistoryService.ts` clean sheet resolution wrong, `TopScorers.svelte` treats 0 assists as null, `BettingHistory.svelte` uses non-existent CSS variables, `dataService.ts` clearCache removes API key, `optimizedPredictions.ts` ELO double-counted in form fallback, `backtest.ts` doesn't sort chronologically or reset ELO state, and more
+- **Spec status updated**: spec 01 ~45%, spec 02 ~55%, spec 03 0%, spec 04 ~65%, spec 05 ~65%, spec 06 ~95%, spec 07 ~15%, spec 08 0%
+- **Documentation gaps found**: README.md has v2.0 badge and broken `docs/` links; `backend/README.md` has broken links to deleted guides; `backend/docs/FOR_BEGINNERS.md` still exists with broken tutorial links; `.gitignore` missing `backend/.env`; 4 specs have stale status notes
+- **CLAUDE.md updated**: corrected test counts, component coverage (8 tested, 10 untested), shadcn `components.json` exists, 3 remaining service files (not 4), lateDrama clarification, Help.svelte remaining issues
+- **IMPLEMENTATION_PLAN.md rewritten**: added P1g (12 new logic bugs), P2j (backtest reliability), P2k (ELO auto-update), P4g (documentation cleanup); updated all summary tables; trimmed completed sections; expanded stubs tables; added test quality notes
+- **`.gitignore` fixed**: added `backend/.env` to prevent accidental API key commits
+
+### Stub Fixes — betBuilder and Settings (18 March 2026)
+- **`betBuilder.ts`** — `bothCleanSheets.prediction` was unconditionally `false`; now uses `> 0.08` threshold (PL 0-0 avg ~7-8%)
+- **`betBuilder.ts`** — Win-to-nil probability was hardcoded `0.30`; now derived from `favProb × favCleanSheet`
+- **`Settings.svelte`** — "Connected" status was assumed from saved API key; now calls `testConnection()` on mount with "Verifying…" spinner
+- **`optimizedPredictions.ts`** — Error fallback weights already fixed (P1e); stubs table updated
+
+### P2d IndexedDB Cache Tests — Complete (18 March 2026)
+- **New `dataService.cache.test.ts`** — 11 tests covering the full IndexedDB cache lifecycle
+- Tests: store creation, cache hit (matches + standings), TTL expiry re-fetch, clearCache, disableCache bypass, enableCache restore, setCacheTimeout, separate keys per query type, per-team keys, clearCache removes API key
+- Uses `fake-indexeddb` for a real in-memory IndexedDB implementation instead of mocking
+- Shared singleton approach — avoids `vi.resetModules()` timing issues with DataService constructor
+- **Test count 367 → 378**: 21 test files, 378/378 passing, 0 type errors
+
+### Stub Fix — Derive league average goals from match data (18 March 2026)
+- **`advancedPredictions.ts`** — `baseHomeGoals`/`baseAwayGoals` now computed from completed match data instead of hardcoded 1.5/1.2
+- **`predictions.ts`** — `leagueAvgHome`/`leagueAvgAway` similarly derived from completed matches via `dataService.getMatches()`
+- Both files fall back to 1.5/1.2 when no completed matches are available (e.g., start of season)
+- `optimizedPredictions.ts` already correct — its `computeLeagueAverages()` has always derived from match data
+- All three prediction models now use consistent, data-driven league averages
+
+### P2a shadcn-svelte Completion — Done (18 March 2026)
+- **Created `components.json`** — enables `npx shadcn-svelte@latest add` for future component installation
+- CSS variable mapping already complete: `:root` + `.dark` blocks have all shadcn tokens plus custom `success`/`warning`
+- Tailwind config already maps all semantic colours via `hsl(var(--token))` pattern
+- Component wiring deferred: CSS class system (`.btn`, `.card-glass`, `.skeleton`) has diverged from shadcn component styles — swapping would change visual design and break tests
+- 20 team-specific colour overrides already wired via `[data-team]` attribute selectors
+
+### P2d ChatBot Component Tests — Complete (18 March 2026)
+- **New `ChatBot.test.ts`** — 18 tests covering the full Oracle Chat component
+- Tests: container render, header, API key setup form, OpenAI link, disabled state without key, short key validation, save valid key, security warning banner, "Change key" visibility, clear API key, clear chat, character counter, send message + API response display, 401/429 error handling, empty message guard, localStorage persistence
+- Added `export` to `saveApiKey()`, `clearApiKey()`, `sendMessage()`, `clearChat()` for testability
+- Uses `fireEvent.input()` to drive `bind:value` on password and chat inputs (DOM interaction pattern)
+- Verifies `localStorage.setItem`/`removeItem` calls via the global mock from `setup.ts`
+- Mocks `globalThis.fetch` for OpenAI API response testing (success, 401, 429)
+- **Test count 349 → 367**: 20 test files, 367/367 passing, 0 type errors
+
+### P2f-UI Backtest Runner UI — Complete (18 March 2026)
+- **Backtest button** in Predictions accuracy panel — "Run Backtest" with `FlaskConical` icon triggers retrospective simulation on all completed matches
+- **Progress feedback** — progress bar with match count updates during execution via `BacktestRunner` progress callback
+- **Results grid** — displays overall accuracy %, total matches tested, log loss, and Brier score
+- **Per-outcome breakdown** — Home / Draw / Away accuracy with correct/total counts for granular model evaluation
+- **Error handling** — shows clear message when fewer than 5 completed matches available
+- **3 new Predictions tests** — button render, results display after run, error state for insufficient data
+- **Test count 346 → 349**: 19 test files, 349/349 passing, 0 type errors
+
+### P2d Predictions Component Tests — Partial (18 March 2026)
+- **New `Predictions.test.ts`** — 14 tests covering the core prediction view
+- Tests: header render, gameweek selector with 38 options, Predict Gameweek button, loading spinner, match loading by gameweek, API error state, completed gameweek message, gameweek filtering (only shows selected week), accuracy panel visibility, team logos, OptimizedPredictor integration, predictionTracker storage
+- Added `export` to `loadGameweekMatches()` and `predictGameweek()` for testability
+- Full BetBuilderPrediction mock matching the complete interface shape
+- **Test count 332 → 346**: 19 test files, 346/346 passing, 0 type errors
+
+### P1f Frontend UX Critical Fixes — Partial (18 March 2026)
+- **Help.svelte rewritten** — replaced "Three-Model System" with accurate "Five-Component Ensemble" showing ELO (25%), Poisson (30%), Form (20%), H2H (10%), Standings (15%) with weight badges; removed xG model (unavailable on free tier); corrected polling frequency, export status, accuracy claims, mobile features
+- **Dashboard hero** — "Live Predictions" label → "Match Predictions"; hardcoded hex colours (`#0f172a`, `#111827`) → theme-aware Tailwind classes (`from-slate-900 via-gray-900 to-slate-800` with dark variants); description updated to reference five-component ensemble
+- **"How We Predict" section** — expanded from 4 to 5 items matching actual model; removed fake "Home Advantage"; added Trophy icon for Standings; each card now shows weight percentage
+- **KellyCalculator headers** — inline `style="background: linear-gradient(...)"` → Tailwind gradient classes with dark mode support
+- **Empty state improvement** — Dashboard "No predictions" panel now shows Target icon, guidance text, and "Go to Predictions" navigation link
+- **Error state standardisation** — LiveMatches and TopScorers error containers now use `border-destructive/50 bg-destructive/10` (was barely-visible `border-border bg-card`); spinner sizes standardised to `h-12 w-12 border-t-2 border-b-2`
+- **Confidence tooltip** — prediction card confidence badge now shows hover text explaining what the percentage means (high/moderate/low model agreement)
+- **Test count unchanged at 332** — added `Trophy` icon to Dashboard test mock
+
+### P2h Oracle Chat Improvements — Complete (18 March 2026)
+- **Security warning banner** — collapsible `ShieldAlert` alert at top of chat explains that the OpenAI API key is visible in browser network tab; includes link to Settings page for key management
+- **Markdown rendering** — new `renderMarkdown()` function handles bold (`**`), italic (`*`), fenced code blocks (`` ``` ``), inline code (`` ` ``), bullet lists (`-`/`*`), and numbered lists; rendered inside `.prose-chat` styled container
+- **Batched context API calls** — replaced 3 sequential try/catch blocks with a single `Promise.allSettled()` call for parallel fetch of standings, form data, and predictions; reduces system prompt build latency
+- **Chat persistence** — messages saved to `localStorage` under `oracle_chat_history` key (max 50 messages); restored on mount with reactive `$:` auto-save on every message change
+- **Constants extracted**: `STORAGE_KEY_MESSAGES`, `STORAGE_KEY_API_KEY`, `MAX_STORED_MESSAGES` replace magic strings
+- **Test count unchanged at 332** — ChatBot has no dedicated unit tests (tested via E2E in `oracle-chat.spec.ts`)
+
+### P2i Value Bet Scanner — Complete (18 March 2026)
+- **New `ValueBets.svelte` component** — wires the tested-but-orphaned `ValueBettingEngine` (38 existing tests) to a user-facing UI
+- **Match selector** dropdown populated from upcoming matches (next 14 days), auto-filters completed matches
+- **User-entered odds inputs**: 1X2 market (required) + optional Over/Under 2.5 Goals; bankroll input
+- **"Scan for Value" button**: calls `ValueBettingEngine.identifyValueBets()` with user odds + predicted probabilities from `AdvancedMatchPredictor`
+- **Results display**: edge %, EV %, Kelly stake, model reasoning, and risk warnings for each identified value bet
+- **Navigation**: added to Sidebar (under Betting section) and MobileNav with Search icon
+- **12 new tests** in `ValueBets.test.ts` covering container, header, empty state, match selector, odds inputs, scan button, bankroll, optional markets, API error, completed match filter, team logos
+- **Test count 320 → 332**: 18 test files, 332/332 passing, 0 type errors
+
+### P2g Kelly Auto-Suggestions — Complete (18 March 2026)
+- **Suggested Bets panel** added above the manual Kelly Calculator — fetches upcoming matches (next 14 days), runs each through `OptimizedPredictor.predictMatch()`, computes Kelly stake, and displays value bets sorted by edge percentage
+- **Confidence threshold slider** (40–90%, default 65%) lets users tune aggressiveness — lower threshold shows more suggestions with weaker edges, higher shows fewer but stronger
+- **Reactive bankroll**: changing the bankroll input recalculates all suggestion stakes instantly via Svelte reactivity
+- **Probability extraction**: reverses `valueOdds` margin (1.05) to get true predicted probabilities for each outcome; falls back to confidence-based estimate when `valueOdds` absent
+- **Filters**: skips completed matches, predictions below confidence threshold, and negative EV bets
+- **`KellySuggestion` interface** exported from module context for type safety
+- **Test count 312 → 320**: KellyCalculator tests expanded from 7 to 15 — added suggestions empty state, API error, low-confidence filter, completed match skip, suggestion display, count text
+- **320/320 tests passing, 0 type errors**
+
+### P2f Backtest Runner — Complete (18 March 2026)
+- **New file `backtest.ts`**: `BacktestRunner` class runs completed matches through the ensemble predictor retrospectively, comparing predicted vs actual results
+- **Metrics**: overall accuracy %, per-outcome accuracy (H/D/A), log loss (calibration), Brier score (probability quality)
+- **Probability extraction**: reverses `valueOdds` (margin 1.05) back to normalised probabilities; falls back to confidence-based split when `valueOdds` absent
+- **Progress callback**: reports `(completed, total)` after each match for UI integration
+- **Error resilience**: skipped matches (prediction failures) still report progress; metrics computed from successful predictions only
+- **15 new tests** in `backtest.test.ts` covering accuracy, per-outcome breakdown, probability extraction, log loss (perfect + wrong), Brier score (perfect + worst case + uniform), progress callbacks, error handling, historical match exclusion, referee pass-through
+- **Test count 297 → 312**: 17 test files, 312/312 passing, 0 type errors
+
+### P2d Component Unit Tests — Partial (18 March 2026)
+- **Test count 275 → 297**: 22 new tests across 3 new test files (16 total test files now)
+- **`LiveMatches.test.ts`** (7 tests): header render, loading spinner, tab display after load, auto-switch to upcoming, error state with Try Again, recent match display with auto-switch, service call verification
+- **`Settings.test.ts`** (8 tests): header, API input + Connect button, not connected default, connected flow via button click, favourite team dropdown, data management section, cache/sync buttons, disabled Connect when empty
+- **`KellyCalculator.test.ts`** (7 tests): container render, header, input fields, auto-calculate with defaults, result labels, value bet indicator, edge percentage
+- **`LiveMatches.svelte`**: exported `loadMatches()` for testability (matches `Dashboard.svelte` `refresh()` pattern)
+- **Key finding**: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x + Svelte 4 — call exported methods directly via `(component as any).method()`
+- **297/297 tests passing, 0 type errors**
+
+### P1c E2E Test Maintenance — Complete (18 March 2026)
+- **Test count 27 → 123**: Expanded from 27 tests (2 skipped) to 41 unique tests × 3 viewports = 123 total (0 skipped)
+- **New `oracle-chat.spec.ts`**: 8 tests covering ChatBot component — container renders, API key setup, welcome message, input/send disabled states, key save/reject flows, clear chat, character counter
+- **Prediction tests unblocked**: Fixed 2 previously-skipped tests. `prediction generation` now clicks predict, waits for completion, verifies scores and card flip analysis. `accuracy panel toggle` seeds settled predictions via localStorage then reloads to reinitialise PredictionTracker singleton
+- **Kelly Calculator edge cases**: 2 new tests — no-value warning when probability < implied odds, edge percentage and value bet indicator with defaults
+- **Mobile detection fix**: `helpers.ts` threshold updated from 768px to 1024px to match P1d CSS breakpoint alignment
+- **123/123 E2E tests passing, 275/275 unit tests passing, 0 type errors**
+
+### P1d Mobile UX Overhaul — Complete (18 March 2026)
+- **Navigation dead zone fixed**: Mobile nav CSS used `md:hidden` (768px) but sidebar auto-opens at 1024px — tablet users (768-1024px) had NO navigation. Changed to `lg:hidden` to match sidebar breakpoint
+- **Season Stats added to Sidebar**: Was only reachable via mobile "More" menu; desktop sidebar skipped it entirely
+- **Content hidden behind mobile nav**: Added `pb-20 lg:pb-8` bottom padding to main content area so last items aren't clipped by the fixed bottom navigation bar
+- **Prediction cards responsive**: Flip cards now 360px on mobile, 400px on `sm:+`; controls row wraps with `flex-wrap`; grid uses `sm:grid-cols-2` for earlier two-column layout; accuracy grids tightened to `gap-2 sm:gap-3`
+- **ChatBot mobile-safe**: Viewport height adjusted from `14rem` to `18rem` offset to account for mobile nav; API key card padding responsive; message bubbles get `break-words` for long URLs
+- **KellyCalculator stacks on mobile**: Results grid uses `grid-cols-1 sm:grid-cols-2`; stake amount text responsive `text-2xl sm:text-3xl`
+- **Dashboard charts responsive**: Chart heights use `h-48 sm:h-56`; "How We Predict" grid gap tightened; prediction list items stack vertically on mobile with `truncate`
+- **7 files changed, 275/275 tests passing, 0 type errors**
+
+### P1e Frontend Correctness Bugs — Complete (18 March 2026)
+- **7 of 8 P1e bugs fixed** — all silent logic errors producing wrong data for users
+- **SeasonStats card stats**: Now show "N/A" with "Card data unavailable on free tier" explanation when Football-Data.org free tier returns null for yellow/red card fields (was silently showing 0)
+- **Season boundary unified**: Both `footballData.ts` and `dataService.ts` now use `getMonth() >= 6` (July onwards = new season). Previously `dataService.ts` used `>= 7` (August), causing season ID mismatches for July matches
+- **Model weights extracted**: `optimizedPredictions.ts` now uses a single `MODEL_WEIGHTS` constant — was duplicated in `combineModels()`, return value, and error fallback (which had DIFFERENT weights: form 0.25 vs 0.20, h2h 0.15 vs 0.10)
+- **H2H fallback consistency**: When no head-to-head data, `homeWinRate` (0.40) and `awayWinRate` (0.30) now match probabilities. Previously rates were 0.33/0.33 but probabilities were 0.40/0.30
+- **Dead code removed**: 4 dead state variables from `Predictions.svelte` (`selectedMatch`, `predictionInProgress`, `currentPrediction`, `visible`), 2 dead imports (`Clock`, `Database`), unused `animatedValue` tweened store from `SeasonStats.svelte` (plus `tweened`/`cubicOut` imports)
+- **IndexedDB cache fixed**: `setCachedData` and `clearCache` now properly wrap IDB operations in Promises (was `await`-ing `IDBRequest` which resolves immediately). `initializeIndexedDB` returns a real Promise wired into `readyPromise` chain — DB guaranteed open before first query
+- **Test setup improved**: Mock IndexedDB in `setup.ts` updated to simulate async callback pattern (fires `onsuccess` on next microtask) so Promise-based IDB wrappers resolve correctly
+- **lateDrama false positive**: Audit #4 reported `full_time_result` doesn't exist on `Match` type — it does (line 41 of `types/index.ts`), and `transformMatch` populates it. No fix needed; updated description to "Results changed after halftime"
+- **275/275 tests passing, 0 type errors**
+
+### Deep Audit #4 — 9-Agent Comprehensive Sweep (17 March 2026)
+- **9-agent parallel audit**: Studied all 7 specs, all 17 Svelte components, all frontend lib/services/types/stores/utils, all 10 backend Python files, all 13 unit test files + 5 E2E specs, and root documentation
+- **8 new correctness bugs discovered**: `SeasonStats.svelte` lateDrama always 0 (references non-existent `full_time_result` field), `SeasonStats.svelte` card stats always 0 (free-tier returns null), season boundary inconsistency between `footballData.ts` (month >= 6) and `dataService.ts` (month >= 7), `optimizedPredictions.ts` model weights duplicated in two places, H2H fallback probabilities inconsistent (0.33 vs 0.40), `dataService.ts` `setCachedData` awaits IDBRequest (not a real Promise), `dataService.ts` `initializeIndexedDB` not awaited in constructor
+- **Backend runtime bugs confirmed**: `modern_oracle.py` calls non-existent `data_collector.get_team_stats()` (AttributeError) and uses wrong kwarg `last_n` instead of `n_matches` (TypeError); bearer tokens on 2 endpoints never verified; global exception handler leaks raw error strings
+- **Dead code catalogued**: 3 unused backend security modules (`auth.py`, `secrets.py`, `validators.py` — none imported by `main.py`); `ValueBettingEngine` tested (38 tests) but has zero UI consumers; 11 dead imports across 7 components; `getSeasonLabel()` duplicated in 3 files; `Predictions.svelte` has 4 dead state variables; `footballData.ts` has 2 uncalled methods
+- **Help.svelte accuracy audit**: 5 inaccurate claims identified (push notifications, xG on dashboard, 3-model system, 5-min polling, export "planned" when already implemented)
+- **New P1e section added**: 8 frontend correctness bugs that produce wrong data for users
+- **New P2i section added**: Wire `ValueBettingEngine` to UI (tested but entirely unwired)
+- **New P4f section added**: Dead imports and code duplication cleanup across 12 files
+- **Stubs table expanded**: 29 frontend entries (was 26), 27 backend entries (was 17) — now includes all discovered issues
+- **CLAUDE.md updated**: Added 2 remaining `np.random` calls in backend, unused security modules note, dead `Prediction` type, broken lateDrama, `ValueBettingEngine` unwired, `Help.svelte` inaccuracies, component test coverage gap (14/16 untested)
+
+### P1a Frontend Bug Fixes — Complete (18 March 2026)
+- All 20 correctness bugs fixed across components, prediction engine, and services
+- Tests updated to match corrected behaviour. 275/275 passing, 0 type errors
+- `betBuilder.ts` rivalry normalisation, `optimizedPredictions.ts` fatigue in Poisson lambda, `kelly.ts` half/quarter-Kelly fractions, `value.ts` CLV formula corrected, dark mode shared store, Chart.js memory leak fixed, and more
+
+### Fix Backend Startup — P0a Complete (17 March 2026)
+- **Backend now starts gracefully** without all ML dependencies installed — all optional imports (`shap`, `optuna`, `redis`, `sklearn`, `joblib`, `langchain`, `chromadb`, `torch`) wrapped in try/except with availability flags
+- **`main.py`**: Guarded `redis.asyncio`, `AdvancedFeatureEngineer`, and `FootballDataCollector` imports; fixed lifespan null-check crash (`oracle.xgboost_model` called when `oracle is None`); fixed model performance endpoint null-checking LSTM/Transformer; fixed invalid CORS config (`allow_origins=["*"]` + `allow_credentials=True` → explicit frontend origins)
+- **`xgboost_model.py`**: `shap` and `joblib` imports guarded with `SHAP_AVAILABLE`/`JOBLIB_AVAILABLE` flags; SHAP explainer creation and model save/load now check availability before use
+- **`modern_oracle.py`**: `optuna`, `sklearn`, `joblib`, `redis` imports guarded; `XGBoostPredictor`, `AdvancedFeatureEngineer`, `FootballDataCollector` imports guarded; `train_all_models` checks `MLFLOW_AVAILABLE` and null-checks LSTM/Transformer; `optimize_ensemble_weights` returns defaults when optuna unavailable; LangChain setup checks `LANGCHAIN_AVAILABLE`
+- **P0c confirmed done**: All 5 stale documentation files already absent from this branch
+- **Test count corrected**: 275 Vitest tests (was documented as ~244)
+- **Verified**: `python3 -c "from app.api.main import app"` succeeds; uvicorn lifespan completes; `/health` endpoint returns 200
+
+### Comprehensive Planning Audit (17 March 2026)
+- **21-agent deep audit**: Parallel analysis of all 7 specs, all frontend libs/services/components, all backend files, test suites, and project documentation
+- **IMPLEMENTATION_PLAN.md rewritten**: Synthesised findings into prioritised bullet list (P0-P4) with 80+ action items, expanded stubs table (33 entries), test coverage matrix, and spec implementation status percentages
+- **Backend feature engineering corrected**: `advanced_engineering.py` no longer has `np.random.*` calls (was 102 in prior audit), but 49 methods now return hardcoded `0.0` — a different but equally blocking pattern for ML training
+- **Test count corrected**: Actual count is ~244 Vitest tests (was documented as 275); 27 Playwright E2E tests (2 skipped)
+- **20+ new bugs documented**: `betBuilder.ts` rivalry dead code, `calculateHalfTimeResult` probability sum bug, fatigue not applied to Poisson lambda, Dashboard Chart.js memory leak, `dataService.getMatchesBySeason()` ignoring argument, CLV sign inversion in `value.ts`, and more
+- **Spec gap analysis**: spec 03 (backend integration) at 0%, spec 07 (UI/UX) at ~10%, spec 06 (prediction tracking) at ~90%
+- **Stale files identified**: 5 backend docs still exist on this branch that were deleted on v2.0-Development; SUPABASE_SETUP_GUIDE.md still at root
+- **CLAUDE.md updated**: Corrected test counts, backend feature engineering status, shadcn-svelte state, active branch references
+
+---
+
 ## [Unreleased] - v2.0-Development Branch
 
 ### Prediction Tracking, Accuracy Breakdown & Bet Auto-Resolution (14 March 2026)

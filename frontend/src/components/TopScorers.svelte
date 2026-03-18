@@ -67,7 +67,7 @@
           id: s.player?.id || 0,
           name: s.player?.name || 'Unknown',
           nationality: s.player?.nationality || 'Unknown',
-          position: s.player?.position || 'Forward',
+          position: s.player?.position || 'Unknown',
           dateOfBirth: s.player?.dateOfBirth
         },
         team: {
@@ -76,8 +76,8 @@
           crest: s.team?.crest
         },
         goals: s.goals || s.numberOfGoals || 0,
-        assists: s.assists || s.numberOfAssists || null,
-        penalties: s.penalties || s.penaltyGoals || null
+        assists: s.assists ?? s.numberOfAssists ?? null,
+        penalties: s.penalties ?? s.penaltyGoals ?? null
       }));
       
       if (scorers.length === 0) {
@@ -137,11 +137,11 @@
   
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
-      <p class="text-red-500">{error}</p>
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">
+      <p class="text-destructive">{error}</p>
       <button 
         on:click={loadTopScorers}
         class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

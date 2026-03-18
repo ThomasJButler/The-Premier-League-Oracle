@@ -26,11 +26,25 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from typing import Dict, List, Tuple, Optional, Any
-import shap
-import joblib
 from datetime import datetime
 import logging
 from pathlib import Path
+
+# SHAP — optional, used for model interpretability
+SHAP_AVAILABLE = False
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    pass
+
+# joblib — optional, used for model serialisation
+JOBLIB_AVAILABLE = False
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    pass
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -147,7 +161,10 @@ class XGBoostPredictor:
         self.feature_importance = self.model.get_score(importance_type='gain')
         
         # Create SHAP explainer for interpretability
-        self.explainer = shap.TreeExplainer(self.model)
+        if SHAP_AVAILABLE:
+            self.explainer = shap.TreeExplainer(self.model)
+        else:
+            logger.info("SHAP not available — model explanations disabled")
         
         # Store training metadata
         self.training_date = datetime.now()
@@ -372,7 +389,9 @@ class XGBoostPredictor:
         """Save the trained model to disk."""
         if self.model is None:
             raise ValueError("No model to save! Train first.")
-        
+        if not JOBLIB_AVAILABLE:
+            raise ImportError("joblib is required to save models — install it with: pip install joblib")
+
         model_data = {
             'model': self.model,
             'feature_names': self.feature_names,
@@ -381,24 +400,28 @@ class XGBoostPredictor:
             'version': self.model_version,
             'training_date': self.training_date
         }
-        
+
         joblib.dump(model_data, path)
         logger.info(f"Model saved to {path}")
-    
+
     def load_model(self, path: str):
         """Load a trained model from disk."""
+        if not JOBLIB_AVAILABLE:
+            raise ImportError("joblib is required to load models — install it with: pip install joblib")
+
         model_data = joblib.load(path)
-        
+
         self.model = model_data['model']
         self.feature_names = model_data['feature_names']
         self.params = model_data['params']
         self.feature_importance = model_data.get('feature_importance', {})
         self.model_version = model_data.get('version', 'unknown')
         self.training_date = model_data.get('training_date')
-        
-        # Recreate SHAP explainer
-        self.explainer = shap.TreeExplainer(self.model)
-        
+
+        # Recreate SHAP explainer if available
+        if SHAP_AVAILABLE:
+            self.explainer = shap.TreeExplainer(self.model)
+
         logger.info(f"Model loaded from {path}")
 
 

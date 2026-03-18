@@ -78,8 +78,8 @@ export class BetBuilderPredictor {
     ]);
     
     // Calculate average goals for Poisson distribution
-    const homeGoalsExpected = basePrediction.predictedHomeGoals || 1.3;
-    const awayGoalsExpected = basePrediction.predictedAwayGoals || 1.1;
+    const homeGoalsExpected = basePrediction.predictedHomeGoals ?? 1.3;
+    const awayGoalsExpected = basePrediction.predictedAwayGoals ?? 1.1;
     
     // Generate score probabilities
     const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
@@ -265,31 +265,67 @@ export class BetBuilderPredictor {
     };
   }
   
+  /**
+   * Normalise a team name by stripping common suffixes so that both
+   * API canonical names ("Arsenal FC") and short display names ("Arsenal")
+   * can match the rivalry list.
+   */
+  private static normaliseTeamName(name: string): string {
+    return name.replace(/\s+(FC|AFC|CF)$/i, '').trim();
+  }
+
   private static checkRivalry(team1: string, team2: string): boolean {
     const rivalries = [
       ['Manchester United', 'Manchester City'],
       ['Manchester United', 'Liverpool'],
-      ['Arsenal', 'Tottenham'],
+      ['Arsenal', 'Tottenham Hotspur'],
       ['Liverpool', 'Everton'],
       ['Chelsea', 'Arsenal'],
-      ['Chelsea', 'Tottenham']
+      ['Chelsea', 'Tottenham Hotspur'],
+      ['Wolverhampton Wanderers', 'West Bromwich Albion'],
+      ['Nottingham Forest', 'Leicester City'],
+      ['Newcastle United', 'Sunderland'],
+      ['Aston Villa', 'Birmingham City']
     ];
-    
-    return rivalries.some(rivalry => 
-      (rivalry.includes(team1) && rivalry.includes(team2))
+
+    const n1 = this.normaliseTeamName(team1);
+    const n2 = this.normaliseTeamName(team2);
+
+    return rivalries.some(([a, b]) =>
+      (n1 === a && n2 === b) || (n1 === b && n2 === a)
     );
   }
   
+  /**
+   * Estimate half-time result probabilities from full-time probabilities.
+   *
+   * Half-time draws are historically ~40 % in the Premier League, so we
+   * blend each full-time probability towards a draw-heavy prior and then
+   * normalise to guarantee the three values sum to exactly 1.0.
+   */
   private static calculateHalfTimeResult(fullTimeResult: any) {
-    // Simplified: half-time tends to be more draws, with slight tendency toward full-time result
-    const ftBias = 0.4; // 40% correlation with full-time
-    
-    return {
-      prediction: fullTimeResult.prediction,
-      homeWinProb: fullTimeResult.homeWinProb * ftBias + 0.25 * (1 - ftBias),
-      drawProb: 0.40, // Draws more common at half-time
-      awayWinProb: fullTimeResult.awayWinProb * ftBias + 0.25 * (1 - ftBias)
-    };
+    const ftBias = 0.4; // 40 % correlation with full-time
+    // Prior: draws much more common at half-time
+    const priorHome = 0.25;
+    const priorDraw = 0.45;
+    const priorAway = 0.25;
+    // Note: prior doesn't sum to 0.95 not 1.0, but the normalisation below fixes that
+
+    let homeWinProb = fullTimeResult.homeWinProb * ftBias + priorHome * (1 - ftBias);
+    let drawProb    = fullTimeResult.drawProb    * ftBias + priorDraw * (1 - ftBias);
+    let awayWinProb = fullTimeResult.awayWinProb * ftBias + priorAway * (1 - ftBias);
+
+    // Normalise so probabilities sum to exactly 1.0
+    const total = homeWinProb + drawProb + awayWinProb;
+    homeWinProb /= total;
+    drawProb    /= total;
+    awayWinProb /= total;
+
+    const prediction: 'H' | 'A' | 'D' = homeWinProb > drawProb && homeWinProb > awayWinProb ? 'H'
+                                      : awayWinProb > drawProb ? 'A'
+                                      : 'D';
+
+    return { prediction, homeWinProb, drawProb, awayWinProb };
   }
   
   private static calculateCleanSheets(scoreProbabilities: { [key: string]: number }) {
@@ -306,7 +342,7 @@ export class BetBuilderPredictor {
     return {
       homeCleanSheet: { prediction: homeCleanSheet > 0.3, probability: homeCleanSheet },
       awayCleanSheet: { prediction: awayCleanSheet > 0.3, probability: awayCleanSheet },
-      bothCleanSheets: { prediction: false, probability: bothCleanSheets }
+      bothCleanSheets: { prediction: bothCleanSheets > 0.08, probability: bothCleanSheets }
     };
   }
   
@@ -336,7 +372,7 @@ export class BetBuilderPredictor {
           'Over 7.5 corners'
         ],
         combinedOdds: Math.round(safeOdds * 100) / 100,
-        confidence: 0.65,
+        confidence: Math.round(matchResult.confidence * Math.max(totalGoals.over25.probability, totalGoals.under35.probability) * corners.totalOver85.probability * 100) / 100,
         reasoning: 'High probability selections with good combined odds'
       });
     }
@@ -357,7 +393,7 @@ export class BetBuilderPredictor {
           'Over 2.5 cards'
         ],
         combinedOdds: Math.round(valueOdds * 100) / 100,
-        confidence: 0.45,
+        confidence: Math.round(matchResult.confidence * btts.yesProb * totalGoals.over25.probability * cards.totalOver25.probability * 100) / 100,
         reasoning: 'Good value with attacking teams likely to score'
       });
     }
@@ -367,9 +403,16 @@ export class BetBuilderPredictor {
       const favTeam = matchResult.homeWinProb > matchResult.awayWinProb ? homeTeam : awayTeam;
       const favProb = Math.max(matchResult.homeWinProb, matchResult.awayWinProb);
       
-      const aggressiveOdds = (1 / favProb) * 
-                             (1 / 0.3) * // Win to nil is roughly 30% when team wins
-                             (1 / corners.totalOver95.probability) * 
+      // Win-to-nil = P(team wins) × P(team keeps clean sheet | team wins)
+      // Approximate as favProb × favCleanSheet, clamped to a reasonable range
+      const favCleanSheet = matchResult.homeWinProb > matchResult.awayWinProb
+        ? cleanSheets.homeCleanSheet.probability
+        : cleanSheets.awayCleanSheet.probability;
+      const winToNilProb = Math.max(0.05, favProb * favCleanSheet);
+
+      const aggressiveOdds = (1 / favProb) *
+                             (1 / winToNilProb) *
+                             (1 / corners.totalOver95.probability) *
                              (1 / cards.totalOver35.probability) * 1.2;
       
       combos.push({
@@ -381,7 +424,7 @@ export class BetBuilderPredictor {
           'Over 3.5 cards'
         ],
         combinedOdds: Math.round(aggressiveOdds * 100) / 100,
-        confidence: 0.25,
+        confidence: Math.round(favProb * favCleanSheet * corners.totalOver95.probability * cards.totalOver35.probability * 100) / 100,
         reasoning: `Banking on ${favTeam} dominance with defensive control`
       });
     }
@@ -402,7 +445,7 @@ export class BetBuilderPredictor {
           'Over 9.5 corners'
         ],
         combinedOdds: Math.round(goalsOdds * 100) / 100,
-        confidence: 0.40,
+        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * 0.35 * corners.totalOver95.probability * 100) / 100,
         reasoning: 'High-scoring game expected with open play'
       });
     }

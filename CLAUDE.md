@@ -97,22 +97,29 @@ These specs are the single source of truth for requirements.
 
 ### Current Focus Areas
 - See `IMPLEMENTATION_PLAN.md` for the prioritised task list
-- Active development on branch `v2.0-Development`
-- Ralph loop configured in `how-to-ralph-wiggum/`
+- Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
+- Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
 
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
-- shadcn-svelte needs initialising before UI migration (Phase 6 in plan)
-- Backend server will NOT start — broken LangChain/ChromaDB imports in `modern_oracle.py` must be fixed first
-- Backend models are scaffolded but need training data and pipeline completion — 102 `np.random.*` calls in feature engineering return random values
-- Backend has 0% test coverage (no pytest tests)
-- Frontend has 275 Vitest tests across 13 test files, all passing
+- shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; `components.json` exists (enables `npx shadcn-svelte@latest add`)
+- Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
+- Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but 49 methods return hardcoded `0.0` — tactics, player-level, betting market, weather features all stubbed. **2 `np.random` calls remain** in `lstm_predictor.py:523` (fake feature importance) and `modern_oracle.py:581` (fake ensemble optimisation)
+- Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
+- Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
+- Frontend has 378 Vitest tests across 21 test files, all passing
+- 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
+- 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
-- 4 new service files need creating: backendService, liveService, aiAnalysis, backtest
-- `ValueBets.svelte` now uses manual odds entry — users input real bookmaker odds for value analysis (Math.random() removed)
-- Predictions.svelte uses Kelly Criterion for stake sizing (replaced arbitrary linear formula)
-- Dynamic season labels in StandingsTable and TopScorers (replaced hardcoded "2024/25")
-- DataService dead methods removed (`setDataSource`, `getApiProvider`); live cache uses 60s TTL
+- `predictions.ts` is entirely dead at runtime — zero imports from any component; only tested, never called
+- 3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)
+- `ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab) — security warning banner added but architecture unchanged
+- Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
+- `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"
+- `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)
+- `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
+- `.gitignore` is missing `backend/.env` — API keys could be accidentally committed
+- `backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

@@ -52,7 +52,7 @@ export interface OddsProvider {
 export class ValueBettingEngine {
   private static readonly MIN_VALUE_EDGE = 0.03; // 3% minimum edge
   private static readonly MIN_CONFIDENCE = 0.55; // 55% minimum confidence
-  private static readonly MAX_ODDS_MOVEMENT = 0.15; // 15% max odds movement to consider
+
 
   /**
    * Identify value bets for a match
@@ -162,7 +162,7 @@ export class ValueBettingEngine {
       }
       
     } catch (error) {
-      // Error identifying value bets
+      console.warn('ValueBettingEngine: failed to identify value bets', error);
     }
     
     // Sort by expected value
@@ -339,7 +339,8 @@ export class ValueBettingEngine {
     openingOdds: number,
     closingOdds: number
   ): ClosingLineValue {
-    const clv = ((closingOdds - openingOdds) / openingOdds) * 100;
+    // Positive CLV = we got better odds than the closing line (value captured)
+    const clv = ((openingOdds - closingOdds) / closingOdds) * 100;
     
     return {
       betId: '',

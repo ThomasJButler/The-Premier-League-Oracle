@@ -133,7 +133,7 @@ describe('BetBuilderPredictor', () => {
       expect(result.matchId).toBe('Arsenal-Chelsea');
     });
 
-    it('should fall back to default expected goals when prediction has falsy values', async () => {
+    it('should use 0 expected goals when prediction returns 0 (not treat as falsy)', async () => {
       vi.mocked(OptimizedPredictor.predictMatch).mockResolvedValue(
         mockPrediction({ predictedHomeGoals: 0, predictedAwayGoals: 0 })
       );
@@ -144,8 +144,8 @@ describe('BetBuilderPredictor', () => {
 
       await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
 
-      // Fallback values: 1.3 home, 1.1 away, max score 7
-      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(1.3, 1.1, 7);
+      // 0 is a valid value — ?? only falls back on null/undefined
+      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(0, 0, 7);
     });
 
     it('should use real expected goals when prediction provides them', async () => {
@@ -391,7 +391,7 @@ describe('BetBuilderPredictor', () => {
     it('should increase expected cards for rivalry matches', async () => {
       vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
 
-      const rivalryResult = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Tottenham');
+      const rivalryResult = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Tottenham Hotspur');
 
       // Reset and test non-rivalry
       vi.clearAllMocks();
@@ -409,16 +409,20 @@ describe('BetBuilderPredictor', () => {
       );
     });
 
-    it('should detect all six hardcoded rivalries', async () => {
+    it('should detect all ten hardcoded rivalries', async () => {
       vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
 
       const rivalries = [
         ['Manchester United', 'Manchester City'],
         ['Manchester United', 'Liverpool'],
-        ['Arsenal', 'Tottenham'],
+        ['Arsenal', 'Tottenham Hotspur'],
         ['Liverpool', 'Everton'],
         ['Chelsea', 'Arsenal'],
-        ['Chelsea', 'Tottenham']
+        ['Chelsea', 'Tottenham Hotspur'],
+        ['Wolverhampton Wanderers', 'West Bromwich Albion'],
+        ['Nottingham Forest', 'Leicester City'],
+        ['Newcastle United', 'Sunderland'],
+        ['Aston Villa', 'Birmingham City']
       ];
 
       for (const [home, away] of rivalries) {
@@ -477,24 +481,31 @@ describe('BetBuilderPredictor', () => {
       expect(result.halfTimeResult.prediction).toBe(result.matchResult.prediction);
     });
 
-    it('should always have drawProb of 0.40 (hardcoded)', async () => {
+    it('should produce normalised HT probabilities that sum to 1.0', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.50, '1-0': 0.30, '0-0': 0.10, '0-1': 0.10 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      expect(result.halfTimeResult.drawProb).toBe(0.40);
+      const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
+      expect(sum).toBeCloseTo(1.0, 6);
     });
 
-    it('should apply 40% correlation bias to full-time probabilities', async () => {
+    it('should apply 40% correlation bias to full-time probabilities with normalisation', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.60, '0-0': 0.20, '0-1': 0.20 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // homeWinProb FT = 0.60
-      // HT homeWinProb = 0.60 * 0.4 + 0.25 * 0.6 = 0.24 + 0.15 = 0.39
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.39, 2);
+      // Priors: home=0.25, draw=0.45, away=0.25 (sum=0.95, normalisation required)
+      // FT homeWin=0.60: raw = 0.60*0.4 + 0.25*0.6 = 0.39
+      // FT draw=0.20:    raw = 0.20*0.4 + 0.45*0.6 = 0.35
+      // FT away=0.20:    raw = 0.20*0.4 + 0.25*0.6 = 0.23
+      // total = 0.97, homeWinProb = 0.39/0.97 ≈ 0.4021
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4021, 2);
+      // And sum to 1
+      const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
+      expect(sum).toBeCloseTo(1.0, 6);
     });
   });
 
@@ -533,8 +544,8 @@ describe('BetBuilderPredictor', () => {
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       expect(result.cleanSheets.bothCleanSheets.probability).toBeCloseTo(0.15, 2);
-      // bothCleanSheets.prediction is always false (hardcoded)
-      expect(result.cleanSheets.bothCleanSheets.prediction).toBe(false);
+      // bothCleanSheets.prediction is true when P(0-0) > 0.08 (league average ~7-8%)
+      expect(result.cleanSheets.bothCleanSheets.prediction).toBe(true);
     });
 
     it('should handle missing 0-0 score gracefully', async () => {
@@ -574,7 +585,9 @@ describe('BetBuilderPredictor', () => {
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       const safeCombo = result.suggestedCombos.find(c => c.name === 'Safe Builder');
       expect(safeCombo).toBeDefined();
-      expect(safeCombo!.confidence).toBe(0.65);
+      // Confidence = product of individual selection probabilities (3 legs)
+      expect(safeCombo!.confidence).toBeGreaterThan(0);
+      expect(safeCombo!.confidence).toBeLessThanOrEqual(1);
       expect(safeCombo!.selections).toHaveLength(3);
       expect(safeCombo!.combinedOdds).toBeGreaterThan(0);
     });
@@ -588,7 +601,9 @@ describe('BetBuilderPredictor', () => {
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       const valueCombo = result.suggestedCombos.find(c => c.name === 'Value Builder');
       expect(valueCombo).toBeDefined();
-      expect(valueCombo!.confidence).toBe(0.45);
+      // Confidence = product of 4 selection probabilities
+      expect(valueCombo!.confidence).toBeGreaterThan(0);
+      expect(valueCombo!.confidence).toBeLessThanOrEqual(1);
       expect(valueCombo!.selections).toHaveLength(4);
     });
 
@@ -600,7 +615,9 @@ describe('BetBuilderPredictor', () => {
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       const highRisk = result.suggestedCombos.find(c => c.name === 'High Risk Builder');
       expect(highRisk).toBeDefined();
-      expect(highRisk!.confidence).toBe(0.25);
+      // Confidence = product of 4 selection probabilities
+      expect(highRisk!.confidence).toBeGreaterThan(0);
+      expect(highRisk!.confidence).toBeLessThanOrEqual(1);
       expect(highRisk!.selections.some(s => s.includes('Arsenal'))).toBe(true);
     });
 
@@ -612,7 +629,9 @@ describe('BetBuilderPredictor', () => {
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
       const goalsGalore = result.suggestedCombos.find(c => c.name === 'Goals Galore');
       expect(goalsGalore).toBeDefined();
-      expect(goalsGalore!.confidence).toBe(0.40);
+      // Confidence = product of 4 selection probabilities
+      expect(goalsGalore!.confidence).toBeGreaterThan(0);
+      expect(goalsGalore!.confidence).toBeLessThanOrEqual(1);
     });
 
     it('should generate no combos when all thresholds are unmet', async () => {

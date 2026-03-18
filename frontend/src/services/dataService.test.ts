@@ -20,7 +20,9 @@ vi.mock('./predictionTracker', () => ({
       streak: { current: 0, best: 0, worst: 0 }
     })),
     getMatchPredictions: vi.fn(() => []),
-    updateWithResult: vi.fn()
+    getRecentPredictions: vi.fn(() => []),
+    updateWithResult: vi.fn(),
+    cleanOldPredictions: vi.fn()
   }
 }));
 

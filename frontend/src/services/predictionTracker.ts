@@ -53,6 +53,7 @@ class PredictionTracker {
   constructor() {
     this.predictions = new Map();
     this.loadPredictions();
+    this.cleanOldPredictions();
   }
 
   // Load predictions from localStorage

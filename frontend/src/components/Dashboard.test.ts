@@ -147,7 +147,8 @@ vi.mock('lucide-svelte', () => {
     TrendingUp: stub,
     Users: stub,
     Target: stub,
-    BarChart2: stub
+    BarChart2: stub,
+    Trophy: stub
   };
 });
 

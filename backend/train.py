@@ -1,7 +1,7 @@
 """
 Training script for the Premier League Oracle XGBoost model.
 
-Loads 6 seasons of match data from local CSVs in spreadsheets/KnowledgeFilesCSV/,
+Loads 6 seasons of match data from local CSVs in backend/spreadsheets/KnowledgeFilesCSV/,
 engineers features from real match results, and trains an XGBoost classifier to
 predict H/D/A outcomes. No API key required.
 
@@ -11,7 +11,7 @@ Usage:
 
 Requirements:
     - conda activate anaconda-ml-ai (or equivalent env with all deps)
-    - EPL*.csv files present in ../spreadsheets/KnowledgeFilesCSV/
+    - EPL*.csv files present in spreadsheets/KnowledgeFilesCSV/
 
 Output:
     - models/xgboost_model.pkl  (saved model)
@@ -166,7 +166,7 @@ def print_class_accuracy(y_true: pd.Series, y_pred: np.ndarray) -> None:
 # CSV loader — uses local season files instead of the Football-Data.org API
 # ---------------------------------------------------------------------------
 
-CSV_DIR = Path(__file__).parent.parent / "spreadsheets" / "KnowledgeFilesCSV"
+CSV_DIR = Path(__file__).parent / "spreadsheets" / "KnowledgeFilesCSV"
 
 
 def load_csv_data() -> pd.DataFrame:

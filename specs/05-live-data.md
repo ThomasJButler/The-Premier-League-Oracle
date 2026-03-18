@@ -4,27 +4,39 @@
 
 ---
 
-## Current State
+## Current Implementation Status (as of March 2026)
 
-| Component | Problem |
-|-----------|---------|
-| `frontend/src/components/LiveMatches.svelte` | `liveMatches = []` hardcoded — never fetches live data |
-| `frontend/src/components/LiveTicker.svelte` | Fetches upcoming/recent matches, but no live scores |
-| `frontend/src/services/dataService.ts` | No `getLiveMatches()` method |
+The following items from this spec have been **implemented**:
+
+- **Requirement 1 (getLiveMatches):** DONE. `dataService.getLiveMatches()` exists with 60-second IndexedDB cache. Delegates to `footballDataAPI.getLiveMatches()`. Returns empty array on error.
+- **Requirement 2 (Smart polling):** DONE. `LiveMatches.svelte` implements adaptive polling: 30s when matches are live, 5min when a match is within 3 hours, 30min otherwise. Backs off to 30min after 3 consecutive empty polls. Uses `setInterval` with `onMount`/`onDestroy`.
+- **Requirement 3 (LiveMatches component):** DONE. `LiveMatches.svelte` calls `dataService.getLiveMatches()` on mount. Displays live match cards with team names, logos, score, match minute, half-time score, and status badges (LIVE/HALF TIME/EXTRA TIME/PENALTIES with pulse animation). Shows a "No Live Matches" empty state with next kickoff countdown. Also displays tabbed views for recent (3 days) and upcoming (7 days) matches.
+- **Requirement 7 (Graceful empty state):** DONE. Shows next kickoff countdown with `formatDistanceToNow`.
+
+The following items **remain unimplemented**:
+
+- **Requirement 4 (LiveTicker enhancement):** Not verified whether `LiveTicker.svelte` shows live scores with pulsing indicator.
+- **Requirement 5 (WebSocket / LiveService):** `liveService.ts` does not exist. No WebSocket integration.
 
 ---
 
-## Requirement 1: getLiveMatches() in DataService
+## Current State
 
-Add to `frontend/src/services/dataService.ts`:
+| Component | Status |
+|-----------|--------|
+| `frontend/src/components/LiveMatches.svelte` | Fully implemented — fetches live data, smart polling, match cards, empty state with countdown |
+| `frontend/src/components/LiveTicker.svelte` | Fetches upcoming/recent matches — live score integration not verified |
+| `frontend/src/services/dataService.ts` | `getLiveMatches()` implemented with 60s cache |
 
-```typescript
-async getLiveMatches(): Promise<Match[]>
-```
+---
 
-- Fetches `GET /competitions/PL/matches?status=LIVE` via the Vite proxy
+## Requirement 1: getLiveMatches() in DataService — IMPLEMENTED
+
+`dataService.getLiveMatches()` is implemented:
+
+- Fetches via `footballDataAPI.getLiveMatches()` (which calls `GET /competitions/PL/matches?status=LIVE`)
 - Cache TTL: 60 seconds in IndexedDB
-- Returns empty array (never throws) when no live matches
+- Returns empty array on error or when no live matches (never throws)
 - Maps the Football-Data.org response to the existing `Match` type
 
 ---
@@ -63,14 +75,15 @@ function getPollingInterval(): number {
 
 ---
 
-## Requirement 3: LiveMatches Component
+## Requirement 3: LiveMatches Component — IMPLEMENTED
 
-Remove the `liveMatches = []` stub. The component should:
+The `liveMatches = []` is now populated from `dataService.getLiveMatches()` (not hardcoded). The component:
 
-1. Call `dataService.getLiveMatches()` on mount
-2. Set up the smart polling interval
-3. Display match cards with: team names, logos, current score, match minute
-4. Show a "No live matches" state with the next kickoff time when empty
+1. Calls `dataService.getLiveMatches()` on mount via `loadMatches()`
+2. Uses adaptive smart polling (`scheduleNextPoll()` — 30s/5min/30min based on state)
+3. Displays live match cards with: team names, logos (via `getTeamLogo`), current score, match minute (derived from API or estimated from kickoff time), half-time score, status badges with pulse animation
+4. Shows a "No Live Matches" empty state with next kickoff countdown using `formatDistanceToNow`
+5. Also shows tabbed views for recent (3 days) and upcoming (7 days) matches
 
 Match card fields from Football-Data.org LIVE response:
 - `homeTeam.name`, `awayTeam.name`
@@ -152,10 +165,10 @@ export const liveService = new LiveService()
 
 ## Acceptance Criteria
 
-- [ ] `liveMatches = []` stub removed from `LiveMatches.svelte`
-- [ ] `dataService.getLiveMatches()` fetches from Football-Data.org LIVE endpoint
-- [ ] Smart polling manager adjusts interval based on time/day
-- [ ] LiveMatches shows real scores with current minute when in play
+- [x] `liveMatches = []` populated from API (not hardcoded) in `LiveMatches.svelte`
+- [x] `dataService.getLiveMatches()` fetches from Football-Data.org LIVE endpoint
+- [x] Smart polling manager adjusts interval based on live state (30s/5min/30min with adaptive backoff)
+- [x] LiveMatches shows real scores with current minute when in play
 - [ ] LiveTicker shows live scores with pulsing indicator, falls back to upcoming fixtures
 - [ ] `LiveService` uses WebSocket when backend available, polling otherwise
-- [ ] Graceful empty state with next fixture countdown
+- [x] Graceful empty state with next fixture countdown

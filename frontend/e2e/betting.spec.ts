@@ -44,6 +44,26 @@ test.describe('Kelly Calculator', () => {
     await expect(page.getByText('Stake Amount')).toBeVisible();
   });
 
+  test('shows no-value warning when probability is below implied odds', async ({ page }) => {
+    const calculator = page.locator('[data-testid="kelly-calculator"]');
+    // Set probability below implied (odds 2.0 = 50% implied, set to 30%)
+    const probInput = calculator.locator('input[type="number"]').nth(2);
+    await probInput.fill('30');
+
+    // Warning about no value should appear
+    await expect(page.getByText(/don't offer value/i)).toBeVisible({ timeout: 3000 });
+  });
+
+  test('shows edge percentage and value bet indicator', async ({ page }) => {
+    const results = page.locator('[data-testid="kelly-results"]');
+    await expect(results).toBeVisible({ timeout: 3000 });
+
+    // Edge indicator should be visible
+    await expect(page.getByText('Your edge:')).toBeVisible();
+    // Value bet indicator should show (defaults: prob 55%, odds 2.0 = positive edge)
+    await expect(page.getByText('Value bet')).toBeVisible();
+  });
+
   test('screenshot - Kelly calculator', async ({ page }) => {
     // Verify calculator and results loaded before screenshot
     await expect(page.locator('[data-testid="kelly-results"]')).toBeVisible({ timeout: 3000 });

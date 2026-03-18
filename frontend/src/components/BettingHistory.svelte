@@ -180,10 +180,10 @@
       y: {
         beginAtZero: true,
         grid: {
-          color: 'hsla(var(--text-base) / 0.1)'
+          color: 'hsla(var(--muted-foreground) / 0.1)'
         },
         ticks: {
-          color: 'hsl(var(--text-muted))',
+          color: 'hsl(var(--muted-foreground))',
           callback: (value: number | string) => `£${value}`
         }
       },
@@ -192,7 +192,7 @@
           display: false
         },
         ticks: {
-          color: 'hsl(var(--text-muted))'
+          color: 'hsl(var(--muted-foreground))'
         }
       }
     },

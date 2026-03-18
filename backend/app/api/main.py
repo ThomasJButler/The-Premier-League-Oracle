@@ -24,7 +24,6 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 import asyncio
-import redis.asyncio as redis
 import json
 import logging
 from pathlib import Path
@@ -33,6 +32,15 @@ import os
 # Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Redis — optional, server starts without it
+REDIS_AVAILABLE = False
+try:
+    import redis.asyncio as aioredis
+    REDIS_AVAILABLE = True
+except ImportError:
+    logger.warning("redis package not available — caching disabled")
+    aioredis = None  # type: ignore
 
 # Our modules — oracle import is optional so the server can start without all dependencies
 try:
@@ -43,8 +51,21 @@ except ImportError as e:
     ModernPremierLeagueOracle = None  # type: ignore
     ORACLE_AVAILABLE = False
 
-from app.features.advanced_engineering import AdvancedFeatureEngineer
-from app.data.football_data_collector import FootballDataCollector
+try:
+    from app.features.advanced_engineering import AdvancedFeatureEngineer
+    FEATURE_ENGINEER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"AdvancedFeatureEngineer unavailable ({e})")
+    AdvancedFeatureEngineer = None  # type: ignore
+    FEATURE_ENGINEER_AVAILABLE = False
+
+try:
+    from app.data.football_data_collector import FootballDataCollector
+    DATA_COLLECTOR_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"FootballDataCollector unavailable ({e})")
+    FootballDataCollector = None  # type: ignore
+    DATA_COLLECTOR_AVAILABLE = False
 
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
@@ -53,8 +74,8 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 # Global instances
-oracle: Optional[ModernPremierLeagueOracle] = None
-redis_client: Optional[redis.Redis] = None
+oracle: Optional['ModernPremierLeagueOracle'] = None
+redis_client = None
 active_websockets: List[WebSocket] = []
 
 # Security
@@ -136,13 +157,16 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting Premier League Oracle API...")
 
     # Initialize Redis — optional, server starts without it
-    try:
-        redis_client = await redis.from_url(REDIS_URL)
-        await redis_client.ping()
-        logger.info("✅ Redis connected")
-    except Exception as e:
-        logger.warning(f"Redis unavailable ({e}) — caching disabled, running without Redis")
-        redis_client = None
+    if REDIS_AVAILABLE:
+        try:
+            redis_client = await aioredis.from_url(REDIS_URL)
+            await redis_client.ping()
+            logger.info("Redis connected")
+        except Exception as e:
+            logger.warning(f"Redis unavailable ({e}) — caching disabled")
+            redis_client = None
+    else:
+        logger.info("Redis package not installed — caching disabled")
 
     # Initialize Oracle system — optional, endpoints degrade gracefully without it
     if ORACLE_AVAILABLE and ModernPremierLeagueOracle is not None:
@@ -158,18 +182,20 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Oracle system not available — ML endpoints disabled")
     
-    # Load pre-trained models if they exist
+    # Load pre-trained models if they exist and oracle initialised successfully
     model_dir = Path("models")
-    if model_dir.exists():
+    if oracle is not None and model_dir.exists():
         try:
             oracle.xgboost_model.load_model(str(model_dir / "xgboost_model.pkl"))
-            oracle.lstm_model.load_model(str(model_dir / "lstm_model.pt"))
-            oracle.transformer_model.load_model(str(model_dir / "transformer_model.pt"))
-            logger.info("✅ Loaded pre-trained models")
+            if oracle.lstm_model is not None:
+                oracle.lstm_model.load_model(str(model_dir / "lstm_model.pt"))
+            if oracle.transformer_model is not None:
+                oracle.transformer_model.load_model(str(model_dir / "transformer_model.pt"))
+            logger.info("Loaded pre-trained models")
         except Exception as e:
             logger.warning(f"Could not load pre-trained models: {e}")
-    
-    logger.info("✅ Oracle system initialized!")
+
+    logger.info("Oracle API startup complete")
     
     yield
     
@@ -194,7 +220,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["http://localhost:5173", "http://localhost:4173"],  # Frontend dev/preview origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -397,22 +423,26 @@ async def get_model_performance():
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
     
+    models_info = {
+        'xgboost': {
+            'trained': oracle.xgboost_model.model is not None,
+            'features': len(oracle.xgboost_model.feature_names) if oracle.xgboost_model.feature_names else 0
+        }
+    }
+    if oracle.lstm_model is not None:
+        models_info['lstm'] = {
+            'trained': oracle.lstm_model.model is not None,
+            'sequence_length': oracle.lstm_model.sequence_length
+        }
+    if oracle.transformer_model is not None:
+        models_info['transformer'] = {
+            'trained': oracle.transformer_model.model is not None,
+            'sequence_length': oracle.transformer_model.sequence_length
+        }
+
     return {
         'ensemble_weights': oracle.ensemble_weights,
-        'models': {
-            'xgboost': {
-                'trained': oracle.xgboost_model.model is not None,
-                'features': len(oracle.xgboost_model.feature_names) if oracle.xgboost_model.feature_names else 0
-            },
-            'lstm': {
-                'trained': oracle.lstm_model.model is not None,
-                'sequence_length': oracle.lstm_model.sequence_length
-            },
-            'transformer': {
-                'trained': oracle.transformer_model.model is not None,
-                'sequence_length': oracle.transformer_model.sequence_length
-            }
-        },
+        'models': models_info,
         'timestamp': datetime.now().isoformat()
     }
 

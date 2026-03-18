@@ -12,7 +12,8 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Clock, Users, BarChart3, Calculator, Database, Package, ChevronDown, ChevronUp } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical } from 'lucide-svelte';
+  import { BacktestRunner, type BacktestResult } from '../lib/backtest';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -29,15 +30,10 @@
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
   }> = [];
-  let accuracy = { total: 0, correct: 0, accuracy: 0 };
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
   let rollingLast10Accuracy = 0;
   let loading = true;
-  let selectedMatch: Match | null = null;
-  let predictionInProgress = false;
-  let currentPrediction: any = null;
-  let visible = false;
   let error: string | null = null;
   let flippedCards = new Set<string>(); // Track which cards are flipped
   
@@ -48,8 +44,49 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
+  let totalGameweeks = 38; // Updated from API season data if available
 
-  async function loadGameweekMatches(gameweek: number) {
+  // Backtest state
+  let backtestResult: BacktestResult | null = null;
+  let isBacktesting = false;
+  let backtestProgress = 0;
+  let backtestTotal = 0;
+  let backtestError: string | null = null;
+
+  export async function runBacktest() {
+    if (isBacktesting) return;
+
+    isBacktesting = true;
+    backtestResult = null;
+    backtestError = null;
+    backtestProgress = 0;
+    backtestTotal = 0;
+
+    try {
+      // Fetch completed matches from the current season
+      const allMatches = await dataService.getMatches({ recent: true, days: 365 });
+      const completedMatches = allMatches.filter(m => m.result);
+
+      if (completedMatches.length < 5) {
+        backtestError = 'Need at least 5 completed matches to run a backtest.';
+        isBacktesting = false;
+        return;
+      }
+
+      const runner = new BacktestRunner(completedMatches);
+      backtestResult = await runner.run((completed, total) => {
+        backtestProgress = completed;
+        backtestTotal = total;
+      });
+    } catch (err) {
+      console.error('Backtest failed:', err);
+      backtestError = 'Backtest failed. Please try again.';
+    } finally {
+      isBacktesting = false;
+    }
+  }
+
+  export async function loadGameweekMatches(gameweek: number) {
     loading = true;
     error = null;
     predictions = [];
@@ -81,12 +118,6 @@
         predictionStatus: 'pending' as const
       }));
       
-      // Get accuracy stats
-      const currentAccuracy = await dataService.getPredictionAccuracy('2025-2026');
-      if (currentAccuracy) {
-        accuracy = currentAccuracy;
-      }
-
       // Load full accuracy breakdown from PredictionTracker
       const fullStats = predictionTracker.getAccuracyStats(90);
       if (fullStats.totalPredictions > 0) {
@@ -101,7 +132,6 @@
         rollingLast10Accuracy = (correct10 / recent10.length) * 100;
       }
       
-      visible = true;
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
       // Error loading predictions
@@ -110,7 +140,7 @@
     }
   }
   
-  async function predictGameweek() {
+  export async function predictGameweek() {
     if (isBatchPredicting) return;
     
     isBatchPredicting = true;
@@ -248,8 +278,9 @@
       if (season?.currentMatchday) {
         selectedGameweek = season.currentMatchday;
       }
+      // PL always has 38 gameweeks; totalGameweeks defaults to 38 above
     } catch {
-      // Fall back to week 1 if API unavailable
+      // Fall back to week 1 / 38 gameweeks if API unavailable
     }
     loadGameweekMatches(selectedGameweek);
   });
@@ -264,7 +295,7 @@
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <h2 class="text-2xl font-bold font-display text-foreground">Match Predictions</h2>
     
-    <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
       <!-- Gameweek Selector -->
       <div class="flex items-center gap-2">
         <label for="gameweek" class="text-sm font-medium">Gameweek:</label>
@@ -275,7 +306,7 @@
           class="px-3 py-1.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           disabled={isBatchPredicting}
         >
-          {#each Array(38) as _, i}
+          {#each Array(totalGameweeks) as _, i}
             <option value={i + 1}>Week {i + 1}</option>
           {/each}
         </select>
@@ -326,7 +357,7 @@
           <!-- Per-Outcome Accuracy -->
           <div>
             <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Outcome</h4>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
               {#each [
                 { label: 'Home Win', value: accuracyStats.homeWinAccuracy, colour: 'bg-blue-500' },
                 { label: 'Draw', value: accuracyStats.drawAccuracy, colour: 'bg-amber-500' },
@@ -346,7 +377,7 @@
           <!-- Per-Confidence Band -->
           <div>
             <h4 class="text-sm font-semibold font-display text-foreground mb-2">By Confidence Band</h4>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
               {#each [
                 { label: 'High (>70%)', value: accuracyStats.highConfidenceAccuracy, colour: 'bg-green-500' },
                 { label: 'Medium (50-70%)', value: accuracyStats.mediumConfidenceAccuracy, colour: 'bg-yellow-500' },
@@ -384,8 +415,94 @@
               </div>
             </div>
           </div>
+
         </div>
       {/if}
+
+      <!-- Backtest Runner — always visible when accuracy panel exists -->
+      <div class="border-t border-border mt-4 pt-4 px-1">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <FlaskConical class="w-4 h-4 text-teal-500" />
+            <span class="text-sm font-semibold font-display text-foreground">Model Backtest</span>
+          </div>
+          <button
+            on:click={runBacktest}
+            disabled={isBacktesting}
+            data-testid="run-backtest"
+            class="text-xs px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+          >
+            {#if isBacktesting}
+              <div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Running...
+            {:else}
+              Run Backtest
+            {/if}
+          </button>
+        </div>
+        <p class="text-xs text-muted-foreground mb-3">
+          Runs completed matches through the prediction model retrospectively to measure true accuracy, log loss, and Brier score.
+        </p>
+
+        {#if isBacktesting && backtestTotal > 0}
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs text-muted-foreground">
+              <span>Processing matches...</span>
+              <span>{backtestProgress} / {backtestTotal}</span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-1.5">
+              <div class="bg-teal-500 h-1.5 rounded-full transition-all duration-200" style="width: {(backtestProgress / backtestTotal) * 100}%"></div>
+            </div>
+          </div>
+        {/if}
+
+        {#if backtestError}
+          <div class="text-xs text-destructive bg-destructive/10 rounded-lg p-3">
+            {backtestError}
+          </div>
+        {/if}
+
+        {#if backtestResult}
+          <div class="space-y-3" in:fade={{ duration: 200 }}>
+            <!-- Summary Row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5">Accuracy</div>
+                <div class="text-lg font-bold text-foreground">{backtestResult.overallAccuracy.toFixed(1)}%</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5">Matches</div>
+                <div class="text-lg font-bold text-foreground">{backtestResult.totalMatches}</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5"
+                  title="Log loss measures calibration — lower is better. Perfect = 0, random = 1.10">Log Loss</div>
+                <div class="text-lg font-bold {backtestResult.logLoss < 1.0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">{backtestResult.logLoss.toFixed(3)}</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5"
+                  title="Brier score measures probability quality — lower is better. Perfect = 0, worst = 2.0">Brier Score</div>
+                <div class="text-lg font-bold {backtestResult.brierScore < 0.5 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">{backtestResult.brierScore.toFixed(3)}</div>
+              </div>
+            </div>
+
+            <!-- Per-Outcome Breakdown -->
+            <div class="grid grid-cols-3 gap-2">
+              {#each [
+                { label: 'Home', data: backtestResult.outcomeAccuracy.home, colour: 'bg-blue-500' },
+                { label: 'Draw', data: backtestResult.outcomeAccuracy.draw, colour: 'bg-amber-500' },
+                { label: 'Away', data: backtestResult.outcomeAccuracy.away, colour: 'bg-emerald-500' }
+              ] as outcome}
+                <div class="text-center p-2 bg-muted rounded-lg">
+                  <div class="text-xs text-muted-foreground mb-0.5">{outcome.label}</div>
+                  <div class="text-sm font-bold text-foreground">{outcome.data.accuracy.toFixed(0)}%</div>
+                  <div class="text-xs text-muted-foreground">{outcome.data.correct}/{outcome.data.total}</div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -431,7 +548,7 @@
       <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
     </div>
   {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {#each predictions as prediction, i (prediction.id)}
         <div class="flip-card relative" style="animation-delay: {i * 50}ms">
           <!-- Status Indicator Overlay -->
@@ -466,7 +583,10 @@
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
-                  <span class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}">
+                  <span
+                    class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}"
+                    title="{prediction.prediction.confidence_score > 0.75 ? 'High confidence — all models agree strongly' : prediction.prediction.confidence_score > 0.6 ? 'Moderate confidence — some model disagreement' : 'Low confidence — models disagree significantly'}"
+                  >
                     {(prediction.prediction.confidence_score * 100).toFixed(0)}%
                   </span>
                 {/if}
@@ -593,10 +713,13 @@
                     <div class="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-700">
                       <div class="flex items-center gap-2 mb-1">
                         <Users class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                        <span class="font-semibold text-amber-800 dark:text-amber-200">Betting Tip</span>
+                        <span class="font-semibold text-amber-800 dark:text-amber-200">Estimated Stake</span>
                       </div>
                       <div class="text-sm text-amber-700 dark:text-amber-300">
-                        Recommended stake: {prediction.detailedAnalysis.recommendedStake.toFixed(1)}% of bankroll
+                        Kelly stake: {prediction.detailedAnalysis.recommendedStake.toFixed(1)}% of bankroll
+                      </div>
+                      <div class="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">
+                        Based on model-estimated odds — not real bookmaker prices
                       </div>
                     </div>
                   {/if}
@@ -702,10 +825,16 @@
   .flip-card {
     background-color: transparent;
     width: 100%;
-    height: 400px;
+    height: 360px;
     perspective: 1000px;
     animation: slideInUp 0.6s ease-out forwards;
     opacity: 0;
+  }
+
+  @media (min-width: 640px) {
+    .flip-card {
+      height: 400px;
+    }
   }
 
   .flip-card-inner {

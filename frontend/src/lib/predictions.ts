@@ -246,7 +246,7 @@ export async function predictMatch(homeTeam: string, awayTeam: string): Promise<
   }
 
   // === ENHANCED PREDICTION ALGORITHM ===
-  
+
   // Weight distribution for different factors
   const WEIGHTS = {
     h2h: 0.30,        // 30% - Head-to-head history
@@ -256,9 +256,15 @@ export async function predictMatch(homeTeam: string, awayTeam: string): Promise<
     formTrend: 0.10    // 10% - Form trajectory
   };
 
-  // 1. Calculate base predictions from season averages
-  const leagueAvgHome = 1.5; // Average home goals in Premier League
-  const leagueAvgAway = 1.2; // Average away goals in Premier League
+  // 1. Derive league average goals from completed matches (fallback: 1.5 / 1.2)
+  const allMatches = await dataService.getMatches();
+  const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
+  let leagueAvgHome = 1.5;
+  let leagueAvgAway = 1.2;
+  if (completed.length > 0) {
+    leagueAvgHome = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
+    leagueAvgAway = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+  }
   
   let baseHomeGoals = homeStats.avgGoalsScored * 0.6 + leagueAvgHome * 0.4;
   let baseAwayGoals = awayStats.avgGoalsScored * 0.6 + leagueAvgAway * 0.4;
@@ -353,8 +359,8 @@ export async function predictMatch(homeTeam: string, awayTeam: string): Promise<
     confidence = confidence * 0.8 + formConsistency * 0.2;
   }
   
-  // Cap confidence between 15% and 85%
-  confidence = Math.max(0.15, Math.min(0.85, confidence));
+  // Cap confidence — unified with OptimizedPredictor [0.25, 0.95]
+  confidence = Math.max(0.25, Math.min(0.95, confidence));
   
   // 10. Generate detailed insights
   const insights: string[] = [];

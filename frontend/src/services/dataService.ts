@@ -1,5 +1,5 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
-import { footballDataAPI } from './api/footballData';
+import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
 
@@ -16,8 +16,8 @@ class DataService {
   private readyPromise: Promise<void>;
 
   constructor() {
-    this.initializeIndexedDB();
-    this.readyPromise = this.checkDataSources();
+    // Initialise IndexedDB first, then check data sources — both must complete before queries
+    this.readyPromise = this.initializeIndexedDB().then(() => this.checkDataSources());
   }
 
   /** Wait for initial data source check to complete before querying */
@@ -25,54 +25,57 @@ class DataService {
     await this.readyPromise;
   }
   
-  private async initializeIndexedDB(): Promise<void> {
-    if (!('indexedDB' in window)) {
-      // IndexedDB not available
-      return;
+  private initializeIndexedDB(): Promise<void> {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      // IndexedDB not available (SSR or unsupported browser)
+      return Promise.resolve();
     }
-    
-    const request = indexedDB.open('PremierLeagueOracle', 2);
 
-    request.onerror = () => {
-      // Failed to open IndexedDB
-    };
+    return new Promise((resolve) => {
+      const request = indexedDB.open('PremierLeagueOracle', 2);
 
-    request.onsuccess = () => {
-      this.cacheDb = request.result;
-      // IndexedDB initialized
-    };
+      request.onerror = () => {
+        // Failed to open IndexedDB — cache will be disabled but app still works
+        resolve();
+      };
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      const oldVersion = event.oldVersion;
+      request.onsuccess = () => {
+        this.cacheDb = request.result;
+        resolve();
+      };
 
-      if (oldVersion < 1) {
-        // Fresh install — create all stores with correct keyPath
-        const matchStore = db.createObjectStore('matches', { keyPath: 'id' });
-        matchStore.createIndex('date', 'date', { unique: false });
-        db.createObjectStore('standings', { keyPath: 'id' });
-        db.createObjectStore('teamStats', { keyPath: 'id' });
-        db.createObjectStore('scorers', { keyPath: 'id' });
-      }
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
-      if (oldVersion >= 1 && oldVersion < 2) {
-        // Upgrade from v1: fix keyPaths (standings used 'team_id', teamStats used 'team_name')
-        // and add missing scorers store
-        if (db.objectStoreNames.contains('standings')) {
-          db.deleteObjectStore('standings');
-        }
-        db.createObjectStore('standings', { keyPath: 'id' });
-
-        if (db.objectStoreNames.contains('teamStats')) {
-          db.deleteObjectStore('teamStats');
-        }
-        db.createObjectStore('teamStats', { keyPath: 'id' });
-
-        if (!db.objectStoreNames.contains('scorers')) {
+        if (oldVersion < 1) {
+          // Fresh install — create all stores with correct keyPath
+          const matchStore = db.createObjectStore('matches', { keyPath: 'id' });
+          matchStore.createIndex('date', 'date', { unique: false });
+          db.createObjectStore('standings', { keyPath: 'id' });
+          db.createObjectStore('teamStats', { keyPath: 'id' });
           db.createObjectStore('scorers', { keyPath: 'id' });
         }
-      }
-    };
+
+        if (oldVersion >= 1 && oldVersion < 2) {
+          // Upgrade from v1: fix keyPaths (standings used 'team_id', teamStats used 'team_name')
+          // and add missing scorers store
+          if (db.objectStoreNames.contains('standings')) {
+            db.deleteObjectStore('standings');
+          }
+          db.createObjectStore('standings', { keyPath: 'id' });
+
+          if (db.objectStoreNames.contains('teamStats')) {
+            db.deleteObjectStore('teamStats');
+          }
+          db.createObjectStore('teamStats', { keyPath: 'id' });
+
+          if (!db.objectStoreNames.contains('scorers')) {
+            db.createObjectStore('scorers', { keyPath: 'id' });
+          }
+        }
+      };
+    });
   }
   
   private async checkDataSources(): Promise<void> {
@@ -151,17 +154,22 @@ class DataService {
   
   private async setCachedData<T>(storeName: string, key: string, data: T): Promise<void> {
     if (!this.useCache || !this.cacheDb) return;
-    
-    const transaction = this.cacheDb.transaction([storeName], 'readwrite');
-    const store = transaction.objectStore(storeName);
-    
-    await store.put({
-      id: key,
-      data,
-      timestamp: Date.now()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.cacheDb!.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put({
+        id: key,
+        data,
+        timestamp: Date.now()
+      });
+
+      request.onsuccess = () => resolve();
+      // Cache writes are non-critical — resolve silently rather than propagating IDB errors
+      request.onerror = () => resolve();
     });
   }
-  
+
   // Main data fetching methods - API only
   public async getCurrentSeason(): Promise<Season | null> {
     await this.ensureReady();
@@ -268,12 +276,12 @@ class DataService {
     throw new Error('No data source available for standings');
   }
   
-  public async getTopScorers(limit: number = 20): Promise<any[]> {
+  public async getTopScorers(limit: number = 20): Promise<FDScorer[]> {
     await this.ensureReady();
     const cacheKey = `top_scorers_${limit}`;
-    
+
     // Try cache first
-    const cached = await this.getCachedData<any[]>('scorers', cacheKey);
+    const cached = await this.getCachedData<FDScorer[]>('scorers', cacheKey);
     if (cached) return cached;
     
     // Get from API
@@ -308,7 +316,41 @@ class DataService {
           // Transform Football API stats to our TeamStats format
           const currentYear = new Date().getFullYear();
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
-          const seasonYear = new Date().getMonth() >= 7 ? currentYear : currentYear - 1;
+          // July onwards (getMonth() >= 6) = new season — matches footballData.ts boundary
+          const seasonYear = new Date().getMonth() >= 6 ? currentYear : currentYear - 1;
+          // Compute home/away splits from recent matches
+          let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          let totalCleanSheets = 0;
+          let totalFailedToScore = 0;
+
+          try {
+            const allMatches = await this.getMatches();
+            const teamMatches = allMatches.filter(m =>
+              m.home_team.toLowerCase() === teamName.toLowerCase() ||
+              m.away_team.toLowerCase() === teamName.toLowerCase()
+            ).filter(m => m.result !== null); // only finished matches
+
+            for (const m of teamMatches) {
+              const isHome = m.home_team.toLowerCase() === teamName.toLowerCase();
+              const gf = isHome ? (m.home_goals ?? 0) : (m.away_goals ?? 0);
+              const ga = isHome ? (m.away_goals ?? 0) : (m.home_goals ?? 0);
+              const bucket = isHome ? homeStats : awayStats;
+
+              bucket.played++;
+              bucket.goalsFor += gf;
+              bucket.goalsAgainst += ga;
+              if (ga === 0) { bucket.cleanSheets++; totalCleanSheets++; }
+              if (gf === 0) totalFailedToScore++;
+
+              if (m.result === 'D') { bucket.draws++; }
+              else if ((isHome && m.result === 'H') || (!isHome && m.result === 'A')) { bucket.wins++; }
+              else { bucket.losses++; }
+            }
+          } catch {
+            // If match fetch fails, splits stay at 0 — overall stats still correct
+          }
+
           const stats: TeamStats = {
             id: `${teamName}_${currentYear}`,
             season_id: String(seasonYear),
@@ -319,21 +361,21 @@ class DataService {
             losses: teamStats.losses,
             goals_for: teamStats.goalsFor,
             goals_against: teamStats.goalsAgainst,
-            clean_sheets: 0, // Not available from API
-            failed_to_score: 0, // Not available from API
+            clean_sheets: totalCleanSheets,
+            failed_to_score: totalFailedToScore,
             points: teamStats.points,
-            home_matches_played: 0, // Calculate separately if needed
-            home_wins: 0,
-            home_draws: 0,
-            home_losses: 0,
-            home_goals_for: 0,
-            home_goals_against: 0,
-            away_matches_played: 0,
-            away_wins: 0,
-            away_draws: 0,
-            away_losses: 0,
-            away_goals_for: 0,
-            away_goals_against: 0,
+            home_matches_played: homeStats.played,
+            home_wins: homeStats.wins,
+            home_draws: homeStats.draws,
+            home_losses: homeStats.losses,
+            home_goals_for: homeStats.goalsFor,
+            home_goals_against: homeStats.goalsAgainst,
+            away_matches_played: awayStats.played,
+            away_wins: awayStats.wins,
+            away_draws: awayStats.draws,
+            away_losses: awayStats.losses,
+            away_goals_for: awayStats.goalsFor,
+            away_goals_against: awayStats.goalsAgainst,
             updated_at: new Date().toISOString()
           };
           
@@ -399,8 +441,14 @@ class DataService {
     return [];
   }
 
-  // Get matches by season — currently returns all matches (free tier only has current season)
+  // Get matches by season — extracts year and delegates to getHistoricalMatches
   public async getMatchesBySeason(seasonId: string): Promise<Match[]> {
+    // seasonId is "2024-2025" or "2024/25" — extract the starting year
+    const yearMatch = seasonId.match(/^(\d{4})/);
+    if (yearMatch) {
+      return this.getHistoricalMatches(parseInt(yearMatch[1], 10));
+    }
+    // Fallback: return current season matches
     return this.getMatches();
   }
 
@@ -416,12 +464,33 @@ class DataService {
   }
 
   // Get prediction accuracy for a season
+  // seasonId is "2024-2025" or "2024/25" — extracts start year, filters predictions
+  // whose matchDate falls within that season (Aug startYear to Jul startYear+1)
   public async getPredictionAccuracy(seasonId: string): Promise<{ total: number; correct: number; accuracy: number; }> {
-    const stats = predictionTracker.getAccuracyStats();
+    // Extract start year from seasonId (e.g. "2025" from "2025-2026" or "2025/26")
+    const yearMatch = seasonId.match(/^(\d{4})/);
+    const allPredictions = predictionTracker.getRecentPredictions(10000);
+    const resolved = allPredictions.filter(p => p.actualResult !== undefined);
+
+    let filtered = resolved;
+    if (yearMatch) {
+      const startYear = parseInt(yearMatch[1], 10);
+      // PL season: August of startYear to July of startYear+1
+      const seasonStart = new Date(startYear, 7, 1); // 1 Aug
+      const seasonEnd = new Date(startYear + 1, 7, 1); // 1 Aug next year (exclusive)
+
+      filtered = resolved.filter(p => {
+        const d = new Date(p.matchDate);
+        return d >= seasonStart && d < seasonEnd;
+      });
+    }
+
+    const total = filtered.length;
+    const correct = filtered.filter(p => p.isCorrect).length;
     return {
-      total: stats.totalPredictions,
-      correct: stats.correctPredictions,
-      accuracy: stats.totalPredictions > 0 ? stats.accuracy / 100 : 0
+      total,
+      correct,
+      accuracy: total > 0 ? correct / total : 0
     };
   }
 
@@ -544,24 +613,20 @@ class DataService {
   // Cache management utilities
   public async clearCache(): Promise<void> {
     if (!this.cacheDb) return;
-    
+
     const storeNames = ['matches', 'standings', 'teamStats', 'scorers'];
     const transaction = this.cacheDb.transaction(storeNames, 'readwrite');
-    
-    for (const storeName of storeNames) {
+
+    // IDBRequest.clear() doesn't return a Promise — wrap each in one
+    await Promise.all(storeNames.map(storeName => new Promise<void>((resolve, reject) => {
       const store = transaction.objectStore(storeName);
-      await store.clear();
-    }
+      const request = store.clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    })));
     
-    // Clear API key when clearing cache
-    localStorage.removeItem('football_data_api_key');
-    // No need for provider selection anymore
-    
-    // Clear API keys from the services
-    // Only football-data API now
-    footballDataAPI.clearApiKey();
-    
-    // Cache and API keys cleared
+    // Cache cleared — API key is intentionally preserved so the user
+    // doesn't have to re-enter it after a simple cache flush.
   }
   
   public setCacheTimeout(minutes: number): void {
