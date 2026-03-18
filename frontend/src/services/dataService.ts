@@ -2,6 +2,7 @@ import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
+import { sharedEloSystem } from '../lib/advancedPredictions';
 
 interface DataSource {
   type: 'api';
@@ -614,6 +615,11 @@ class DataService {
         match.away_goals
       );
     }
+
+    // Update ELO ratings from completed matches so the ensemble
+    // model has current ratings for future predictions.
+    // processCompletedMatches is idempotent — it skips already-processed matches.
+    sharedEloSystem.processCompletedMatches(completedMatches);
 
     return reconciled;
   }

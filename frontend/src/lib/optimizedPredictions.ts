@@ -1,6 +1,7 @@
 import { dataService } from '../services/dataService';
 import type { Match, Standing } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
+import { VALUE_ODDS_MARGIN } from './constants';
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -750,14 +751,11 @@ export class OptimizedPredictor {
   }
 
   private static calculateValueOdds(probabilities: { homeWin: number; draw: number; awayWin: number }) {
-    // Convert probabilities to decimal odds
-    // Add small margin for bookmaker edge
-    const margin = 1.05;
-    
+    // Convert probabilities to decimal odds with bookmaker margin
     return {
-      home: probabilities.homeWin > 0 ? (1 / probabilities.homeWin) * margin : 10.0,
-      draw: probabilities.draw > 0 ? (1 / probabilities.draw) * margin : 4.0,
-      away: probabilities.awayWin > 0 ? (1 / probabilities.awayWin) * margin : 10.0
+      home: probabilities.homeWin > 0 ? (1 / probabilities.homeWin) * VALUE_ODDS_MARGIN : 10.0,
+      draw: probabilities.draw > 0 ? (1 / probabilities.draw) * VALUE_ODDS_MARGIN : 4.0,
+      away: probabilities.awayWin > 0 ? (1 / probabilities.awayWin) * VALUE_ODDS_MARGIN : 10.0
     };
   }
 }

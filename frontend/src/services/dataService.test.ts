@@ -26,6 +26,20 @@ vi.mock('./predictionTracker', () => ({
   }
 }));
 
+// Mock betHistoryService
+vi.mock('./betting/betHistoryService', () => ({
+  betHistoryService: {
+    resolveMatchBets: vi.fn()
+  }
+}));
+
+// Mock sharedEloSystem
+vi.mock('../lib/advancedPredictions', () => ({
+  sharedEloSystem: {
+    processCompletedMatches: vi.fn(() => 0)
+  }
+}));
+
 // Mock the dependencies
 vi.mock('./api/footballData', () => ({
   footballDataAPI: {

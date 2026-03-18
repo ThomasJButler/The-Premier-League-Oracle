@@ -1,5 +1,6 @@
 import { dataService } from '../services/dataService';
 import type { Match } from '../types';
+import { VALUE_ODDS_MARGIN } from './constants';
 
 // Advanced team rating system using ELO
 export interface TeamRating {
@@ -500,11 +501,10 @@ export class AdvancedMatchPredictor {
     const confidence = (ratingReliability + fatigueCertainty) / 2;
 
     // 7. Value betting — derive fair odds from model probabilities (no hardcoded bookmaker odds)
-    const margin = 1.05;
     const fairOdds = {
-      home: outcomes.homeWin > 0 ? (1 / outcomes.homeWin) * margin : 10.0,
-      draw: outcomes.draw > 0 ? (1 / outcomes.draw) * margin : 4.0,
-      away: outcomes.awayWin > 0 ? (1 / outcomes.awayWin) * margin : 10.0,
+      home: outcomes.homeWin > 0 ? (1 / outcomes.homeWin) * VALUE_ODDS_MARGIN : 10.0,
+      draw: outcomes.draw > 0 ? (1 / outcomes.draw) * VALUE_ODDS_MARGIN : 4.0,
+      away: outcomes.awayWin > 0 ? (1 / outcomes.awayWin) * VALUE_ODDS_MARGIN : 10.0,
     };
     // Without real bookmaker odds, value bets are empty — model odds ≈ fair odds by definition
     const valueBets: Array<{ outcome: string; odds: number; expectedValue: number }> = [];

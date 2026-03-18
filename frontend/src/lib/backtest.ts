@@ -29,8 +29,7 @@ export interface BacktestPrediction {
 
 export type BacktestProgressCallback = (completed: number, total: number) => void;
 
-// Margin used by OptimizedPredictor.calculateValueOdds — probability = margin / odds
-const VALUE_ODDS_MARGIN = 1.05;
+import { VALUE_ODDS_MARGIN } from './constants';
 
 /**
  * Extract outcome probabilities from the prediction model.

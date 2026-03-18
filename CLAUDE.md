@@ -132,7 +132,7 @@ These specs are the single source of truth for requirements.
 - No CI/CD — no `.github/workflows/` directory. All testing is manual
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
 - Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
-- `EloRatingSystem.processCompletedMatches()` exists but is never called — ELO ratings never auto-update from match results
+- ~~`EloRatingSystem.processCompletedMatches()` exists but is never called~~ **FIXED:** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings auto-update when match results load
 - **`AdvancedMatchPredictor` is NOT dead code** — called by `value.ts:72` for value bet scanning. Previously mislabelled as dead in the plan (corrected third audit)
 - ~~`betBuilder.ts`: corner/card probability overflow~~ — FIXED: clamped to [0, 0.99]
 - ~~`KellyCalculator.svelte`: circular Kelly calculation~~ — FIXED: now uses model confidence as ourProbability, valueOdds as bookmakerOdds
@@ -149,7 +149,7 @@ These specs are the single source of truth for requirements.
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
 - `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
 - ~~`DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed~~ **FIXED:** `dompurify` and `@types/dompurify` now installed and used in ChatBot.svelte
-- **`frontend/src/lib/utils.ts` does NOT exist** — shadcn-svelte `components.json` references `$lib/utils` for the `cn()` utility but the file is missing. Blocker for adding new shadcn components or using existing ones that import `cn()`. Create it with `clsx` + `tailwind-merge` (standard shadcn pattern)
+- ~~`frontend/src/lib/utils.ts` does NOT exist~~ **FIXED:** `$lib/utils.ts` created with standard `cn()` utility (`clsx` + `tailwind-merge`). shadcn-svelte components can now import `cn()` correctly
 - ~~`dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content~~ **FIXED:** cache key now uses match IDs as fingerprint
 - `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (`0.525`). Fixing P1l will break this test — update expected value to `0.50` alongside the fix
 - `requirements.txt` is missing `langchain-community` (needed by `modern_oracle.py`) and `bcrypt` (needed by `auth.py` passlib backend)

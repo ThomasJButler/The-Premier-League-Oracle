@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2a-fix, P2j, P2k — Shared Utilities and ELO Auto-Update (19 March 2026)
+- **`$lib/utils.ts` created (P2a-fix):** shadcn-svelte `cn()` utility (`clsx` + `tailwind-merge`) now exists — unblocks all shadcn components that import from `$lib/utils`
+- **`VALUE_ODDS_MARGIN` constant extracted (P2j):** Created `lib/constants.ts` with `VALUE_ODDS_MARGIN = 1.05`. Replaced duplicated inline values in `advancedPredictions.ts`, `optimizedPredictions.ts`, and `backtest.ts` — single source of truth for the bookmaker margin
+- **ELO auto-update wired (P2k):** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings automatically update as match results load, fulfilling Spec 01 requirement for dynamic ratings
+
 ### P1j — ChatBot XSS Fix (19 March 2026)
 - **DOMPurify installed:** `{@html renderMarkdown()}` in ChatBot.svelte now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist — prevents XSS from crafted OpenAI responses or prompt injection
 

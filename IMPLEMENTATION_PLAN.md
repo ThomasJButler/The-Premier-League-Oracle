@@ -163,12 +163,12 @@ All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 37
 
 5 components installed, `components.json` created. Component wiring deferred (CSS class system has diverged from shadcn styles).
 
-### P2a-fix. shadcn-svelte `$lib/utils.ts` Missing — NEW (18 March 2026, fifth audit)
+### P2a-fix. shadcn-svelte `$lib/utils.ts` Missing — DONE (18 March 2026)
 
-`components.json` sets `aliases.utils: "$lib/utils"` but `frontend/src/lib/utils.ts` does not exist. This is a hidden blocker: any new shadcn-svelte component using `cn()` (the clsx + tailwind-merge utility) will fail to import at build time. The 5 installed components (Button, Card, Badge, Separator, Skeleton) may already reference it.
+`components.json` sets `aliases.utils: "$lib/utils"` but `frontend/src/lib/utils.ts` did not exist. Created the standard shadcn `cn()` utility with `clsx` + `tailwind-merge`. Both deps already in package.json.
 
-- [ ] Create `frontend/src/lib/utils.ts` with `cn()` utility (standard shadcn pattern: `import { clsx } from 'clsx'; import { twMerge } from 'tailwind-merge'; export function cn(...inputs) { return twMerge(clsx(inputs)); }`)
-- [ ] Verify `clsx` and `tailwind-merge` are in `frontend/package.json` — install if missing
+- [x] Create `frontend/src/lib/utils.ts` with `cn()` utility
+- [x] Verify `clsx` and `tailwind-merge` are in `frontend/package.json`
 
 ### P2b. Backend Service (frontend bridge)
 
@@ -223,14 +223,14 @@ Discovered in audit — the backtest runner had two methodological issues, plus 
 - [x] Sort matches chronologically before iteration (prevent data leakage from future matches into ELO state) — fixed P1g
 - [x] Snapshot and restore `sharedEloSystem` before/after backtest run (ensure reproducibility across multiple runs in same session) — fixed P1g; ELO restore now also resets teams created during the run (CodeRabbit fix, commit `c3d2f36`)
 - [x] Guard division by zero in `extractProbabilities` when `valueOdds` fields are 0 — fixed CodeRabbit batch
-- [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to a shared constant in `lib/constants.ts` (currently duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`)
+- [x] Extract `VALUE_ODDS_MARGIN = 1.05` to a shared constant in `lib/constants.ts` (was duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`)
 
-### P2k. ELO Auto-Update Integration — NEW (18 March 2026)
+### P2k. ELO Auto-Update Integration — DONE (18 March 2026)
 
-Spec 01 requires ELO ratings to auto-update from completed match results. Currently:
+Spec 01 requires ELO ratings to auto-update from completed match results. Wired `sharedEloSystem.processCompletedMatches()` into `dataService.reconcilePredictions()` — ELO ratings now update automatically whenever match results are reconciled.
 
-- [ ] `processCompletedMatches()` exists on `EloRatingSystem` but is not wired into `dataService` — ELO ratings never update automatically when match results load
-- [ ] Wire into `dataService.reconcilePredictions()` or a new lifecycle hook after fetching finished matches
+- [x] Wire `processCompletedMatches()` into `dataService.reconcilePredictions()` — call after prediction/bet resolution
+- [x] Add `sharedEloSystem` mock to `dataService.test.ts` and `dataService.cache.test.ts`
 
 ### P2l. Production Deployment — NEW (deep audit)
 
@@ -759,13 +759,13 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~60% — ELO dynamic + persistence, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); ELO auto-update not wired to dataService (P2k), no AI analysis (P3g), confidence calibration rudimentary |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~65% — ELO dynamic + persistence + auto-update wired (P2k DONE), Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); no AI analysis (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~70% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); bet storage pipeline wired (P1i — KellyCalculator + ValueBets → betHistoryService → BettingHistory); betHistoryService resolution bugs fixed (P1g) |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created but `$lib/utils.ts` missing (P2a-fix blocker), 0/5 ARIA requirements met |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~20% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created, `$lib/utils.ts` created (P2a-fix DONE), 0/5 ARIA requirements met |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: 0%** — spec written, implementation not started. Pro-tier (P3a–P3g) deferred |
 
 ---
