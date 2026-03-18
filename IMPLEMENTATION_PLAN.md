@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P2a shadcn-svelte completion)
+Last updated: 18 March 2026 (baseHomeGoals/baseAwayGoals stub fix)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -535,7 +535,7 @@ All feature specifications in `specs/`:
 | Location | Problem | Priority |
 |----------|---------|----------|
 | `advancedPredictions.ts` | `avgPenalties: 0.2` — no penalty data from free API tier | Low |
-| `advancedPredictions.ts` | `baseHomeGoals: 1.5, baseAwayGoals: 1.2` — hardcoded in 3 files, should derive from `computeLeagueAverages` | P1e |
+| ~~`advancedPredictions.ts`~~ | ~~`baseHomeGoals: 1.5, baseAwayGoals: 1.2` — hardcoded in 3 files~~ **FIXED** — `advancedPredictions.ts` and `predictions.ts` now derive league averages from completed match data (fallback to 1.5/1.2 when no data); `optimizedPredictions.ts` already correct via `computeLeagueAverages` | ~~P1e~~ |
 | `advancedPredictions.ts` | `SEED_RATINGS` — 25 teams with manually assigned ELO, not backcalculated | Low |
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
 | `advancedPredictions.ts` | `ExpectedGoalsCalculator.calculateMatchXG` — always returns `{homeXG: 0, awayXG: 0}` (no shots data from free tier) | Low |

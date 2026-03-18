@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Stub Fix — Derive league average goals from match data (18 March 2026)
+- **`advancedPredictions.ts`** — `baseHomeGoals`/`baseAwayGoals` now computed from completed match data instead of hardcoded 1.5/1.2
+- **`predictions.ts`** — `leagueAvgHome`/`leagueAvgAway` similarly derived from completed matches via `dataService.getMatches()`
+- Both files fall back to 1.5/1.2 when no completed matches are available (e.g., start of season)
+- `optimizedPredictions.ts` already correct — its `computeLeagueAverages()` has always derived from match data
+- All three prediction models now use consistent, data-driven league averages
+
 ### P2a shadcn-svelte Completion — Done (18 March 2026)
 - **Created `components.json`** — enables `npx shadcn-svelte@latest add` for future component installation
 - CSS variable mapping already complete: `:root` + `.dark` blocks have all shadcn tokens plus custom `success`/`warning`
