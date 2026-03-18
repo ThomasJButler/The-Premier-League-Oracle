@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2d Component Unit Tests — Partial (18 March 2026)
+- **Test count 275 → 297**: 22 new tests across 3 new test files (16 total test files now)
+- **`LiveMatches.test.ts`** (7 tests): header render, loading spinner, tab display after load, auto-switch to upcoming, error state with Try Again, recent match display with auto-switch, service call verification
+- **`Settings.test.ts`** (8 tests): header, API input + Connect button, not connected default, connected flow via button click, favourite team dropdown, data management section, cache/sync buttons, disabled Connect when empty
+- **`KellyCalculator.test.ts`** (7 tests): container render, header, input fields, auto-calculate with defaults, result labels, value bet indicator, edge percentage
+- **`LiveMatches.svelte`**: exported `loadMatches()` for testability (matches `Dashboard.svelte` `refresh()` pattern)
+- **Key finding**: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x + Svelte 4 — call exported methods directly via `(component as any).method()`
+- **297/297 tests passing, 0 type errors**
+
 ### P1c E2E Test Maintenance — Complete (18 March 2026)
 - **Test count 27 → 123**: Expanded from 27 tests (2 skipped) to 41 unique tests × 3 viewports = 123 total (0 skipped)
 - **New `oracle-chat.spec.ts`**: 8 tests covering ChatBot component — container renders, API key setup, welcome message, input/send disabled states, key save/reject flows, clear chat, character counter

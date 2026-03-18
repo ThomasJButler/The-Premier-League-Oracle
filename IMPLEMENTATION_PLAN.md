@@ -147,15 +147,19 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 - [ ] `oracle_api_token` input field
 - [ ] Fix fake cache size calculation (`localStorage.length * 0.005 MB` → real estimate)
 
-### P2d. Missing Component Tests
+### P2d. Missing Component Tests — PARTIAL (18 March 2026)
 
-275 Vitest tests exist across 13 files. Only Dashboard and BettingHistory have component tests. No tests for:
+297 Vitest tests across 16 files (was 275/13). Three new test files added:
 
+- [x] `LiveMatches.test.ts` — 7 tests: header, spinner, tabs, auto-switch, error state, recent matches, service calls
+- [x] `KellyCalculator.test.ts` — 7 tests: renders, header, inputs, auto-calculate, result labels, value indicator, edge %
+- [x] `Settings.test.ts` — 8 tests: header, API input, not connected, connected flow, favourite team, data management, buttons, disabled state
+
+Key discovery: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x + Svelte 4. Workaround: `export` the init function and call via `(component as any).method()` (same pattern as Dashboard.test.ts).
+
+Still missing:
 - [ ] `Predictions.svelte` — generate, gameweek nav, Kelly stake display
-- [ ] `LiveMatches.svelte` — polling state, no live matches, score display
-- [ ] `KellyCalculator.svelte` — input validation, stake output
 - [ ] `ChatBot.svelte` — API key setup, message send/receive, context building
-- [ ] `Settings.svelte` — toggle persistence, cache clear
 - [ ] IndexedDB cache layer — completely untested
 
 ### P2e. Type System Gaps — DONE (18 March 2026)
@@ -201,7 +205,49 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 
 ---
 
-## P3 — Backend ML (write `specs/08-backend-training.md` first)
+## P3 — Backend ML
+
+Two-tier approach: **P3-Free** builds a lean XGBoost model trained on ~73 features available from the Football-Data.org free API — this is the active development track and the model used for all testing and deployment. **P3a–P3g** remain in place for the future Pro API integration, which unlocks the full 150-feature pipeline (xG, shots, possession, cards, corners, betting odds, player data). `specs/08-backend-training.md` is the single source of truth for training requirements — written 18 March 2026.
+
+### P3-Free. Free-Tier ML Model (separate entry point)
+
+Standalone XGBoost model trained on ~73 features available from the free API tier. Completely separate from the full 150-feature pipeline (P3a-P3c), which is kept for future Pro API use. This is the model used for all testing and initial deployment.
+
+**Architecture:** `FreeTierFeatureEngineer` wraps `AdvancedFeatureEngineer` via composition (not subclassing) and cherry-picks only the ~73 methods that return real computed data — no stubs, no flags polluting the existing class. The two tiers are fully decoupled.
+
+**Features used (~73):** Basic stats (12), Form & momentum (20), H2H (15), Contextual (12), Time series (9), Derived (5) — all computable from match results, standings, and dates available on the free API.
+
+**Files:**
+
+- [ ] `backend/app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class (~73 features via composition over `AdvancedFeatureEngineer`)
+- [ ] `backend/tests/test_free_tier_features.py` — feature unit tests (no stubs leak through, no data leakage, team name normalisation)
+- [ ] `backend/train_free_tier.py` — training script (CSVs → `FreeTierFeatureEngineer` → `XGBoostPredictor` → `xgboost_free_tier.joblib`)
+- [ ] `backend/tests/test_train_free_tier.py` — training integration tests (chronological split, model save/load with metadata)
+- [ ] `backend/app/api/main.py` — add `POST /predict/free` + `GET /models/free-tier/info` endpoints
+- [ ] `backend/tests/test_predict_free_tier.py` — API endpoint tests (response shape, validation, rate limiting)
+
+**Security (scoped to this feature):**
+
+- [ ] `.gitignore` — add `backend/.env` (currently only `/.env` root and `frontend/.env` listed)
+- [ ] Team name normalisation dict (CSV short names ↔ API canonical names)
+- [ ] Input validation on `/predict/free` — team name allowlist (current PL + recent promoted/relegated)
+- [ ] Rate limiting on `/predict/free` (60 req/min per IP, in-memory)
+- [ ] Error response sanitisation — new endpoints return generic messages, not raw `str(exc)`
+- [ ] Model integrity — validate metadata keys when loading joblib at startup
+
+**Verification:**
+
+```bash
+cd backend
+python -m pytest tests/test_free_tier_features.py -v   # Feature tests
+python train_free_tier.py                                # Train model
+python -m pytest tests/test_train_free_tier.py -v        # Training tests
+uvicorn app.api.main:app --reload --port 8000            # Start server
+curl -X POST http://localhost:8000/predict/free \
+  -H "Content-Type: application/json" \
+  -d '{"home_team": "Arsenal", "away_team": "Chelsea"}'  # Test endpoint
+python -m pytest tests/ -v                               # All tests
+```
 
 ### P3a. Real Feature Engineering
 
@@ -370,8 +416,7 @@ All feature specifications in `specs/`:
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~15% — components exist, polling logic exists, but `liveService.ts` missing and no WebSocket |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~90% — substantially complete |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~20% — dark mode fixed (shared store), 5 components installed (1 wired), 0/5 ARIA |
-
-Write `specs/08-backend-training.md` before starting P3.
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **P3-Free: 0%** — spec written, implementation not started. Pro-tier (P3a–P3g) deferred |
 
 ---
 
@@ -500,5 +545,7 @@ Write `specs/08-backend-training.md` before starting P3.
 | `frontend/src/services/liveService.ts` | WebSocket live data | P3f |
 | `frontend/src/services/aiAnalysis.ts` | AI match analysis | P3g |
 | `frontend/src/lib/backtest.ts` | Backtest runner | P2f |
-| `backend/train.py` | ML training pipeline | P3c |
-| `specs/08-backend-training.md` | Backend training spec | P3 (prerequisite) |
+| `backend/app/features/free_tier_features.py` | Free-tier feature engineer (~73 features) | P3-Free |
+| `backend/train_free_tier.py` | Free-tier training pipeline | P3-Free |
+| `backend/tests/test_free_tier_*.py` | Free-tier tests (features, training, API) | P3-Free |
+| ~~`specs/08-backend-training.md`~~ | ~~Backend training spec~~ | ~~DONE~~ |

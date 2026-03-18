@@ -73,7 +73,7 @@
     }, 1000);
   }
 
-  async function loadMatches() {
+  export async function loadMatches() {
     try {
       loading = liveMatches.length === 0 && recentMatches.length === 0;
       error = '';
