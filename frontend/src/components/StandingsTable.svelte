@@ -5,20 +5,12 @@
   import type { Standing } from '../types';
   import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
-  
+  import { getSeasonLabel } from '../lib/utils';
+
   let standings: Standing[] = [];
   let loading = true;
   let error = '';
   let showFullTable = false;
-
-  // Derive current season label from date (July onwards = new season)
-  function getSeasonLabel(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
-    return `${year - 1}/${year.toString().slice(-2)}`;
-  }
   
   onMount(async () => {
     await loadStandings();
@@ -191,12 +183,9 @@
                     <span class="text-sm font-bold {getPositionBadge(team.position)} px-2 py-1 rounded">
                       {team.position}
                     </span>
-                    {#if i < 5}
-                      {@const movement = getMovementIcon(team)}
-                      <span title="Based on recent form, not actual position change">
-                        <svelte:component this={movement.icon} class="w-3 h-3 {movement.color}" />
-                      </span>
-                    {/if}
+                    <span title="Based on recent form, not actual position change">
+                      <svelte:component this={getMovementIcon(team).icon} class="w-3 h-3 {getMovementIcon(team).color}" />
+                    </span>
                   </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">

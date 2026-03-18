@@ -511,7 +511,7 @@ export class OptimizedPredictor {
     const homeFormScore = calculateFormScore(homeForm, true);
     const awayFormScore = calculateFormScore(awayForm, false);
     
-    const formString = (form: any[], team: string) => {
+    const formString = (form: any[]) => {
       if (!form || form.length === 0) {
         return '?????'; // No form data available
       }
@@ -537,8 +537,8 @@ export class OptimizedPredictor {
     return {
       homeFormScore,
       awayFormScore,
-      homeFormString: formString(homeForm, homeTeam),
-      awayFormString: formString(awayForm, awayTeam),
+      homeFormString: formString(homeForm),
+      awayFormString: formString(awayForm),
       probabilities: {
         homeWin: homeWinProb / total,
         draw: drawProb / total,

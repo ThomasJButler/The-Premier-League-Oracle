@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4c/P4f Batch — Data Accuracy + Dead Code Cleanup (20 March 2026)
+- **MatchList season selector:** Added `<select>` dropdown in header so fetched seasons are rendered and usable. Previously `loadSeasons()` populated data but nothing in the template displayed it — pure dead code path. Triggers `loadMatches()` on change
+- **MatchList sort buttons:** Added `aria-pressed` attribute to Date and Team sort buttons (P4b item)
+- **StandingsTable movement icons:** Extended form-based movement arrows from top 5 to all 20 positions, removing visual inconsistency in the table
+- **Shared `getSeasonLabel()` utility:** Extracted duplicated function from StandingsTable and TopScorers into `lib/utils.ts`. Both components now import from the shared location
+- **`formString` dead parameter:** Removed unused `team` parameter from `optimizedPredictions.ts:formString()` function and its two call sites
+- **Dead code audit corrections:** `getCurrentSeasonMatches()` (used by Predictions + SeasonStats), `refreshApiConfiguration()` (used by App.svelte) — both marked as NOT DEAD after grepping all imports. Plan entries corrected
+- **Predictions Kelly estimation:** Investigated `estimatedBookmakerOdds = (1 / topProb) * 1.05` — NOT circular. The model probability and the estimated bookmaker odds are different values (one plus 5% margin). Simplistic but intentional
+
 ### P4c — Component Data Accuracy Fixes (20 March 2026)
 - **LiveTicker live dot heuristic:** Replaced fragile `startsWith('⚽')` string check with `hasLiveMatches` boolean flag set directly from the data during `buildTicker()` — live dot now reliably appears regardless of ticker content ordering
 - **MatchList season fallback:** Replaced hardcoded `'2024-2025'` with date-computed fallback using `getMonth() >= 6` boundary (same pattern as StandingsTable). API still overrides this when available, but the fallback no longer goes stale each season

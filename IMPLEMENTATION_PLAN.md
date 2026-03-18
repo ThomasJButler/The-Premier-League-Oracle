@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P4b — accessibility first pass: 15 items fixed across 10 files, test count 350/21)
+Last updated: 20 March 2026 (P4c/P4f batch — season selector, movement icons, shared utils, dead code audit corrections. Test count 350/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -610,7 +610,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler, `tabindex`, or keyboard support — misleading to keyboard/AT users
 - [ ] `LiveTicker.svelte` has no `role="marquee"` or `aria-live` — screen readers treat as static text; no pause control fails WCAG 2.2.2
 - [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
-- [ ] `MatchList.svelte` sort buttons have no `aria-pressed` to indicate active sort
+- [x] `MatchList.svelte` sort buttons — added `aria-pressed` on Date and Team sort buttons
 - [ ] Predictions flip-card "Tap for Analysis" buttons lack `aria-label` with match context
 
 ### P4c. Component Data Accuracy Cleanup
@@ -628,8 +628,8 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `Help.svelte:295`: accuracy claims — ALREADY FIXED in P1f: removed specific percentages, replaced with "check the Predictions accuracy panel"
 - [x] ~~`ApiSetupWizard.svelte:284`: "AI-powered predictions" listed as a Football-Data.org feature~~ **FIXED:** changed to "Statistical match predictions"; intro text updated to "data-driven" with correct model names
 - [x] `ApiSetupWizard.svelte`: Step 3 "Choose Provider" — REMOVED entirely in P4a (5→4 steps)
-- [ ] `StandingsTable.svelte`: `getMovementIcon` only renders arrows for top 5 positions — rest of the table shows no movement indicator, creating visual inconsistency
-- [ ] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` creates circular Kelly recommendation — model is both the predictor and the bookmaker; Kelly stake will almost always be near zero
+- [x] `StandingsTable.svelte`: `getMovementIcon` — extended from top 5 to all positions. Every row now shows a form-based movement indicator
+- [x] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` — **NOT CIRCULAR** on investigation. The model probability is `topProb`, the estimated bookmaker odds invert this and add a 5% margin. Kelly then detects whether the model edge exceeds the margin. Simplistic but intentional, not a bug
 - [x] `ApiSetupWizard.svelte:430`: `⏳` spinner — REMOVED in P4a (replaced with plain "Validating..." text)
 - [x] ~~`LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)`~~ **FIXED:** replaced with `addDays(now, 7)`
 - [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
@@ -676,11 +676,11 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`ApiSetupWizard.svelte`: remove dead import `Sparkles`~~ **DONE**; clean up stale test comments
 - [x] ~~`MatchList.svelte`: remove dead imports `Check`, `Calendar`~~ **DONE**
 - [x] ~~`BettingHistory.svelte`: remove dead `<style global>` block (6 unreferenced CSS classes)~~ **DONE**
-- [ ] Extract `getSeasonLabel()` to shared utility — duplicated in StandingsTable, TopScorers, SeasonStats
+- [x] Extract `getSeasonLabel()` to shared utility — moved to `lib/utils.ts`, imported by StandingsTable and TopScorers (SeasonStats doesn't use it)
 - [x] `footballData.ts`: `getTeamSquad()`, `getPlayer()`, `getTeam()`, `getRecentResults()`, `getHeadToHead()` removed (dead code)
 - [x] `footballData.ts`: dead type exports `FDSquadMember`, `FDPlayer`, `FootballDataConfig` removed
 - [x] `dataService.ts`: `getStatus()`, `getDataSourceStatus()`, `getPredictionAccuracy()`, `getTeamRecentMatches()`, `setCacheTimeout()`, `disableCache()`, `enableCache()` removed
-- [ ] `dataService.ts`: `refreshApiConfiguration` is a stub alias for `checkDataSources` — should call `refreshDataSources` instead
+- [x] `dataService.ts`: `refreshApiConfiguration` — **NOT DEAD**. Called by `App.svelte` after API setup wizard. Implementation is identical to `refreshDataSources` (both reassign `readyPromise`). The alias is intentional backward compatibility
 - [x] `predictions.ts`: dead module removed — zero imports from any component, 11 misleading tests removed
 - [x] `kelly.ts`: dead exports `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` removed
 - [ ] `kelly.ts`: `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
@@ -695,8 +695,8 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Remove from dead code list
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` is never called anywhere in the codebase — dead code
 - [ ] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` not called by production code — only `calculateRestDays` is used by `OptimizedPredictor`
-- [ ] `optimizedPredictions.ts`: `formString` function has unused `team` parameter — declared but never read inside the function body
-- [ ] `dataService.ts`: `getCurrentSeasonMatches()` is an alias for `getMatches()` — never called by any component. `getTeamRecentMatches()` also never called
+- [x] `optimizedPredictions.ts`: `formString` function — removed unused `team` parameter and updated call sites
+- [x] `dataService.ts`: `getCurrentSeasonMatches()` — **NOT DEAD**. Called by Predictions.svelte and SeasonStats.svelte. The alias is a semantic convenience over `getMatches()`
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
 - [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
 - [x] ~~`Help.svelte`: dead import `fly` from `svelte/transition`~~ **DONE**
@@ -707,7 +707,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore(form, isHome)` has unused `isHome` parameter — vestigial
 - [ ] `optimizedPredictions.ts`: `getTopOutcome()` duplicates `determinePrediction()` logic — one is redundant
 - [ ] `footballData.ts`: `getTeamByName()` — still present, never imported outside this file
-- [ ] `MatchList.svelte`: season selector UI is fetched (`loadSeasons()`) but has no `<select>` in the template — dead code path
+- [x] `MatchList.svelte`: season selector — added `<select>` dropdown in the header so fetched seasons are actually usable. Triggers `loadMatches()` on change
 - [x] `value.ts`: `calculateSharpeRatio()` — removed (dead function, see P4f)
 - [x] `value.ts`: `calculatePerformanceMetrics()` — removed (dead function, see P4f)
 - [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
@@ -812,12 +812,12 @@ All feature specifications in `specs/`:
 | `value.ts` | `calculateCLV` returns `betId: ''` (stub) | Low |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
 | `kelly.ts` | `Math.random()` in `simulate()` — non-deterministic Monte Carlo | Low |
-| `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
+| ~~`StandingsTable.svelte`~~ | ~~Position movement only top 5~~ — FIXED: extended to all positions | ~~P4c~~ |
 | `Settings.svelte` | `plTeams` array hardcoded for 2024-25 season | P4c |
 | `predictions.ts` | `WEIGHTS` object uses different model architecture from production — entire file is dead code at runtime | P4f |
 | `Predictions.svelte` | `was_correct: false` hardcoded when storing predictions — never reflects actual outcome | P1k |
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
-| `MatchList.svelte` | `selectedSeason = '2024-2025'` hardcoded fallback — stale each season | P4c |
+| ~~`MatchList.svelte`~~ | ~~`selectedSeason = '2024-2025'` hardcoded~~ — FIXED: date-computed + season `<select>` added | ~~P4c~~ |
 | ~~`betHistoryService.ts`~~ | ~~`storeBet()` never called~~ — FIXED: wired into KellyCalculator + ValueBets via "Track Bet" buttons | ~~P1i~~ |
 | ~~`betBuilder.ts`~~ | ~~Corner/card probabilities can exceed 1.0~~ — FIXED: clamped to [0, 0.99] | ~~P1l~~ |
 | ~~`KellyCalculator.svelte`~~ | ~~`prob = 1.05 / odds` inflates probability~~ — FIXED: uses model confidence as ourProbability | ~~P1l~~ |

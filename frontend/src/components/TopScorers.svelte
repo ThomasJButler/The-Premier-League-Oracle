@@ -3,7 +3,8 @@
   import { Trophy, Flag } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import { fade, fly } from 'svelte/transition';
-  
+  import { getSeasonLabel } from '../lib/utils';
+
   interface Scorer {
     position?: number;
     player: {
@@ -26,15 +27,6 @@
   let scorers: Scorer[] = [];
   let loading = true;
   let error = '';
-
-  // Derive current season label from date (July onwards = new season)
-  function getSeasonLabel(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
-    return `${year - 1}/${year.toString().slice(-2)}`;
-  }
 
   function handleImageError(e: Event) {
     const target = e.currentTarget;

@@ -123,13 +123,32 @@
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <h2 class="text-2xl font-bold font-display text-foreground">Match Schedule</h2>
-    
-    <!-- Match count -->
-    {#if !loading && filteredMatches.length > 0}
-      <span class="text-sm text-muted-foreground">
-        Showing {filteredMatches.length} of {matches.length} matches
-      </span>
-    {/if}
+
+    <div class="flex items-center gap-4">
+      <!-- Season selector -->
+      {#if seasons.length > 1}
+        <div class="flex items-center gap-2">
+          <label for="season-select" class="text-sm text-muted-foreground">Season</label>
+          <select
+            id="season-select"
+            bind:value={selectedSeason}
+            on:change={() => loadMatches()}
+            class="px-3 py-1.5 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            {#each seasons as season}
+              <option value={season.name}>{season.name}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
+
+      <!-- Match count -->
+      {#if !loading && filteredMatches.length > 0}
+        <span class="text-sm text-muted-foreground">
+          Showing {filteredMatches.length} of {matches.length} matches
+        </span>
+      {/if}
+    </div>
   </div>
   
   <!-- Filters and Sorting Controls -->
@@ -182,16 +201,18 @@
           <div class="flex gap-2">
             <button
               on:click={() => handleSort('date')}
-              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'date' 
-                ? 'bg-primary text-white' 
+              aria-pressed={sortBy === 'date'}
+              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'date'
+                ? 'bg-primary text-white'
                 : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Date {sortBy === 'date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
             </button>
             <button
               on:click={() => handleSort('team')}
-              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'team' 
-                ? 'bg-primary text-white' 
+              aria-pressed={sortBy === 'team'}
+              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'team'
+                ? 'bg-primary text-white'
                 : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Team {sortBy === 'team' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
