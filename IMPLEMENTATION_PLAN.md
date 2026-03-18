@@ -1,7 +1,7 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (deep planning audit — 28 new findings across frontend, backend, deployment, and testing)
-Active branch: `v3.0-BackendMLTraining`
+Last updated: 19 March 2026 (second planning audit — 12 new findings; bet storage pipeline broken, ChatBot XSS, no CI/CD, test quality gaps)
+Active branch: `v3.0-Frontend`
 
 ---
 
@@ -83,6 +83,24 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 - [ ] `optimizedPredictions.ts`: H2H probability shrinkage (lines 552-554) sums to 1.1 not 1.0 — `(ratio * 0.8 + 0.1)` applied to all three outcomes yields `0.8 + 0.3 = 1.1`. Absorbed by `combineModels` normalisation but means H2H sub-model contributes ~10% more weight than its intended 10% share.
 - [ ] `advancedPredictions.ts`: `ratingDiff > 200` threshold in `AdvancedMatchPredictor.predictMatch` (line 521) can never be reached — `ratingDiff` is already divided by 100 at that point, so the "significant ELO gap" insight string never fires. Dead logic in dead code (`AdvancedMatchPredictor` is never called at runtime).
 - [ ] `optimizedPredictions.ts`: error fallback (lines 377-389) silently swallows all prediction errors with no logging — user gets a static `confidence: 0.33, goals: 1-1` prediction with no indication anything went wrong. Add `console.warn` at minimum.
+
+### P1i. Bet Storage Pipeline Broken — NEW (19 March 2026)
+
+**Critical functional gap:** `betHistoryService.storeBet()` is never called from any component. The entire bet history feature writes nothing — `BettingHistory.svelte` will always show the empty state, ROI calculations return zero, monthly P/L chart is empty.
+
+- [ ] Wire `storeBet()` into `KellyCalculator.svelte` via a "Place Bet" action when user accepts a suggested bet
+- [ ] Alternatively, add a "Track Bet" button to `ValueBets.svelte` scan results
+- [ ] Verify `BettingHistory.svelte` displays stored bets correctly once pipeline is connected
+- [ ] `betHistoryService.getBetsByMonth()` and `clearHistory()` are also never called from any component — wire or remove
+
+### P1j. ChatBot XSS Risk — NEW (19 March 2026)
+
+- [ ] `ChatBot.svelte:420` — `{@html renderMarkdown(msg.content)}` renders unsanitised HTML from OpenAI responses. The `renderMarkdown()` function uses regex-based string replacements that produce raw HTML without sanitisation. Potential XSS via prompt injection (low probability since source is OpenAI, but non-zero). Fix: use a proper markdown renderer with sanitisation (e.g., `marked` + `DOMPurify`), or sanitise the output before rendering.
+
+### P1k. Prediction Storage Bug — NEW (19 March 2026)
+
+- [ ] `Predictions.svelte:215` — `was_correct: false` is hardcoded when storing predictions via `predictionTracker.storePrediction()`. The field is never updated to reflect actual outcomes from the storage call. `predictionTracker.updateWithResult()` does correctly update stored predictions later via reconciliation, but the initial `was_correct: false` is misleading metadata. Consider removing the field from the initial storage call or deriving it only from `updateWithResult()`.
+- [ ] `Predictions.svelte:47` — `totalGameweeks = 38` is hardcoded and never updated from API season data despite the comment claiming it will be.
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
@@ -187,6 +205,30 @@ Several hardcoded league statistics should be computed from actual match data:
 
 - [ ] `optimizedPredictions.ts`: `LEAGUE_AVG_HOME_WIN_RATE = 0.46` — should be derived from completed matches via `dataService.getMatches()`, similar to how `computeLeagueAverages()` already derives goal averages
 - [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — derive from actual match/referee data when available
+
+### P2n. CI/CD Pipeline — NEW (19 March 2026)
+
+No `.github/workflows/` directory exists. Zero automated testing on push or PR. Everything is manual.
+
+- [ ] Create minimum viable GitHub Actions workflow: `cd frontend && npm run check && npm run test:run` on push/PR to `main` and `v3.0-*` branches
+- [ ] Add build step (`npm run build`) to verify production builds don't break
+- [ ] Consider Playwright E2E in CI (heavier, but valuable — run on PR only)
+
+### P2o. Docker Cleanup — NEW (19 March 2026)
+
+`backend/docker-compose.yml` references files and directories that don't exist. Running `docker-compose up` fails immediately.
+
+- [ ] `config.yml` — referenced by `Dockerfile COPY` but doesn't exist. Create a minimal config or remove the COPY
+- [ ] `nginx.conf` — referenced as a volume mount but doesn't exist. Create or remove from compose
+- [ ] `notebooks/` — mounted as a volume but directory doesn't exist. Create or remove from compose
+- [ ] `POSTGRES_PASSWORD` required by compose but no `.env.example` template documents it
+
+### P2p. Supabase Cleanup Completion — NEW (19 March 2026)
+
+`specs/02-data-pipeline.md` has a 7-item Supabase removal checklist. All items are done in code but still marked incomplete in the spec.
+
+- [ ] Update `specs/02-data-pipeline.md` — check off all 7 Supabase removal items (confirmed absent from codebase)
+- [ ] Delete or update root `.env.example` — still references `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
 
 ---
 
@@ -400,6 +442,11 @@ Priority features to implement with real data:
 - [ ] `StandingsTable.svelte` table has no `<caption>` or `aria-label`; column headers use abbreviations without `<abbr>` or `title`
 - [ ] `BettingHistory.svelte` table has no `<caption>`; filter `<select>` has no `<label>`
 - [ ] `Help.svelte` nav sections have no `aria-current` or `aria-selected`; mobile menu button lacks `aria-expanded`
+- [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
+- [ ] `Predictions.svelte:658` card close `×` button has no `aria-label` — screen readers will read "times" or nothing
+- [ ] `SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler, `tabindex`, or keyboard support — misleading to keyboard/AT users
+- [ ] `KellyCalculator.svelte` results panel has no `aria-live` — won't be announced when calculation updates
+- [ ] `ValueBets.svelte` scan results have no `aria-live` region
 
 ### P4c. Component Data Accuracy Cleanup
 
@@ -408,7 +455,8 @@ Priority features to implement with real data:
 - [ ] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — significantly underestimates actual storage use
 - [ ] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — needs updating each season
 - [ ] `SeasonStats.svelte`: "Did you know? These statistics are updated in real-time" — not true; fetches once on mount
-- [ ] `SeasonStats.svelte`: no error state in template — if fetch fails, shows empty grid forever (loading stops but nothing renders)
+- [ ] `SeasonStats.svelte`: no error state in template — if fetch fails, shows empty grid forever (loading stops but nothing renders). The `catch` block at line 29 swallows errors silently with no user feedback
+- [ ] `MatchList.svelte:12`: `selectedSeason = '2024-2025'` hardcoded fallback — will go stale each season
 - [x] `Settings.svelte`: "Connected" status without real API ping — FIXED (now calls `testConnection()` on mount)
 
 ### P4d. betBuilder Improvements
@@ -464,6 +512,35 @@ Priority features to implement with real data:
 - [ ] `dataService.ts`: `getCurrentSeasonMatches()` is an alias for `getMatches()` — never called by any component. `getTeamRecentMatches()` also never called
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
 - [ ] `BettingHistory.svelte`: `loadBettingHistory()` called twice on startup — once at module scope (line 169) and once inside `onMount` (line 173). Both synchronous, so harmless but redundant
+- [ ] `Help.svelte`: dead import `fly` from `svelte/transition` — never used in template
+- [ ] `value.ts`: `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` — 4 static methods never called from any component
+- [ ] `dataService.ts`: additional dead public methods beyond already-listed: `getPredictionAccuracy()`, `setCacheTimeout()`, `disableCache()`, `enableCache()`, `refreshDataSources()` — none called from any component
+- [ ] `footballData.ts:383`: `|| null` on odds fields instead of `?? null` — semantically wrong for `0` values (harmless in practice since odds can't be 0)
+- [ ] `ApiSetupWizard.svelte`: commented-out debug notes at lines 33, 44, 52–53 — stale test comments to clean up
+
+### P4h. Test Quality Improvements — NEW (19 March 2026)
+
+Test suite has 378 passing tests but several are structurally unable to catch regressions:
+
+**Conditional assertions that silently pass without asserting:**
+
+- [ ] `value.test.ts` — 6 assertion blocks wrapped in `if (homeBet)` / `if (awayBet)` / `if (result.length > 0)` guards. If the engine returns no results (broken), assertions are skipped and the test passes green
+- [ ] `kelly.test.ts:240` — arbitrage stakes assertions guarded by `if (result.isArbitrage)`. If detection is broken, test trivially passes
+
+**Tautological tests that cannot fail:**
+
+- [ ] `types.test.ts` — 16 tests assert `expect(x.field).toBe(value)` where `value` is what was just assigned. These are circular checks the TypeScript compiler already guarantees. Consider replacing with runtime validation tests or removing entirely
+- [ ] `footballData.test.ts` — "Data Transformation" describe block re-implements result-determination and team-name-normalisation logic inline instead of testing the actual `FootballDataAPI` functions. Would pass even if `transformMatch` were deleted
+
+**Tests that can never fail:**
+
+- [ ] `dataService.test.ts:190-200` — error test wraps assertion in `try/catch` that accepts both `[]` return and thrown error — passes regardless of implementation behaviour
+
+**Other quality issues:**
+
+- [ ] `predictions.test.ts` — 11 tests exercise the entirely dead `predictions.ts` module. Gives false confidence that a model is tested which is never used in production
+- [ ] `backtest.test.ts` — ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught
+- [ ] Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed; does not verify the component lifecycle actually triggers data loads
 
 ### P4g. Documentation Cleanup — NEW (18 March 2026)
 
@@ -489,7 +566,7 @@ All feature specifications in `specs/`:
 | `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~45% — ELO dynamic, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created; ELO auto-update not wired to dataService, no AI analysis, confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~65% — Kelly + auto-suggestions done, CLV corrected, betBuilder fixed, ValueBets UI created; betHistoryService has resolution bugs (P1g) |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~50% — Kelly + auto-suggestions done, CLV corrected, betBuilder fixed, ValueBets UI created; **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g) |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed, 5 components installed (1 wired), components.json created, 0/5 ARIA requirements met |
@@ -532,6 +609,10 @@ All feature specifications in `specs/`:
 | `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
 | `Settings.svelte` | `plTeams` array hardcoded for 2024-25 season | P4c |
 | `predictions.ts` | `WEIGHTS` object uses different model architecture from production — entire file is dead code at runtime | P4f |
+| `Predictions.svelte` | `was_correct: false` hardcoded when storing predictions — never reflects actual outcome | P1k |
+| `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
+| `MatchList.svelte` | `selectedSeason = '2024-2025'` hardcoded fallback — stale each season | P4c |
+| `betHistoryService.ts` | `storeBet()` never called from any component — bet history pipeline non-functional | P1i |
 
 ### Backend
 
@@ -630,6 +711,11 @@ All feature specifications in `specs/`:
 - `backtest.test.ts`: ELO snapshot/restore logic is entirely mocked out — a real rollback bug would not be caught by any test
 - `betBuilder.test.ts`: rivalry tests pass because they use hardcoded team names, not API names — production rivalry detection may be dead code since the API returns different name formats
 - `ValueBets.test.ts`: the core user action (entering odds + clicking Scan) is acknowledged as too hard to test in jsdom and skipped entirely
+- `value.test.ts`: 6 conditional assertions wrapped in `if` guards that silently pass without asserting if the engine returns no results (see P4h)
+- `kelly.test.ts:240`: arbitrage assertions guarded by `if (result.isArbitrage)` — trivially passes if detection broken
+- `types.test.ts`: 16 tautological tests that assert `x.field === value` where `value` was just assigned — cannot fail
+- `dataService.test.ts:190-200`: error test uses try/catch that passes regardless of implementation behaviour
+- `footballData.test.ts`: "Data Transformation" block re-implements logic inline rather than testing actual functions
 
 **Untested components (10):** SeasonStats, StandingsTable, TopScorers, Help, App, ApiSetupWizard, MatchList, LiveTicker, MobileNav, Sidebar
 

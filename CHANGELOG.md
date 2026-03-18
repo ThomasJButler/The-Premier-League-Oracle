@@ -2,7 +2,22 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
-## [Unreleased] - v3.0-BackendMLTraining Branch
+## [Unreleased] - v3.0-Frontend Branch
+
+### Second Planning Audit — 12 New Findings (19 March 2026)
+- **8 parallel research agents** re-audited all 8 specs, 18 Svelte components, frontend libs/services, backend Python files, 21 test files + 6 E2E specs, and project configuration
+- **Critical: bet storage pipeline broken (P1i)** — `betHistoryService.storeBet()` is never called from any component. The entire bet history feature writes nothing — `BettingHistory.svelte` always shows empty state, ROI/P&L calculations return zero
+- **ChatBot XSS risk (P1j)** — `ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML from OpenAI responses without DOMPurify or equivalent sanitisation
+- **Prediction storage bug (P1k)** — `Predictions.svelte:215` hardcodes `was_correct: false` when storing predictions; `totalGameweeks = 38` never updated from API data
+- **No CI/CD (P2n)** — no `.github/workflows/` directory exists; all testing is manual
+- **Docker cleanup needed (P2o)** — `docker-compose.yml` references `config.yml`, `nginx.conf`, `notebooks/` which don't exist
+- **Supabase cleanup incomplete (P2p)** — `specs/02-data-pipeline.md` has 7 done items still marked incomplete; root `.env.example` still references Supabase
+- **5 new accessibility items** — focus trapping missing on mobile nav overlays, close button missing `aria-label`, SeasonStats stat cards misleading cursor, missing `aria-live` regions on KellyCalculator and ValueBets results
+- **8 new test quality issues (P4h)** — 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `footballData.test.ts` re-implements logic inline, `dataService.test.ts` error test can never fail
+- **6 new dead code items** — `Help.svelte` dead `fly` import, `value.ts` 4 dead static methods, `dataService.ts` 5 additional dead public methods, `ApiSetupWizard.svelte` stale comments, `MatchList.svelte` stale season fallback
+- **CLAUDE.md updated** — added bet storage pipeline gap, ChatBot XSS, no CI/CD, Docker issues, test quality notes, ELO auto-update gap
+- **Spec 04 status downgraded** from ~65% to ~50% due to non-functional bet storage pipeline
+- **IMPLEMENTATION_PLAN.md expanded** — added P1i, P1j, P1k, P2n, P2o, P2p, P4h, 6 new P4b items, 2 new P4c items, 6 new P4f items, 4 new Active Stubs
 
 ### Deep Planning Audit — 28 New Findings (18 March 2026)
 - **8 parallel research agents** studied all 8 specs, 18 Svelte components, all frontend libs/services, all backend Python files, all 21 test files + 6 E2E specs, CSV training data, and project configuration

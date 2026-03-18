@@ -126,6 +126,13 @@ These specs are the single source of truth for requirements.
 - CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` — 2,191 matches across 5.75 seasons with shots, corners, cards, odds columns (richer than what the free API provides). These are the primary source for ML training
 - `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
 - Root `.env.example` still references Supabase variables (stale)
+- **`betHistoryService.storeBet()` is never called from any component** — the entire bet history persistence pipeline is non-functional. BettingHistory.svelte shows empty state, ROI/P&L calculations return zero. Wire `storeBet()` into KellyCalculator or ValueBets via a "Place Bet" / "Track Bet" action
+- `ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML from OpenAI — potential XSS via prompt injection. Needs `DOMPurify` or a safe markdown renderer
+- `Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions. `predictionTracker.updateWithResult()` corrects this later but the initial value is misleading
+- No CI/CD — no `.github/workflows/` directory. All testing is manual
+- `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
+- Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
+- `EloRatingSystem.processCompletedMatches()` exists but is never called — ELO ratings never auto-update from match results
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
