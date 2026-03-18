@@ -600,15 +600,15 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 
 **Still to do (complex items deferred):**
 
-- [ ] Charts (Dashboard Line, BettingHistory Bar) have no `role="img"` or `aria-label` fallback
+- [x] ~~Charts have no `role="img"` or `aria-label`~~ **FIXED:** Dashboard line chart and BettingHistory bar chart containers now have `role="img"` and descriptive `aria-label` attributes
 - [ ] `LiveTicker.svelte` has no way to pause scrolling animation (WCAG 2.2.2)
 - [ ] Prediction flip cards have no `aria-label` or focus indicator — keyboard users can't tell when selected; screen readers read both sides simultaneously (no `aria-hidden` on non-visible face)
 - [ ] Win/loss indicators use colour only (green/red) — add icons for colourblind users (WCAG 1.4.1)
-- [ ] `LiveMatches.svelte` tab buttons lack `role="tab"` / `role="tabpanel"` / `aria-selected` pattern
+- [x] ~~`LiveMatches.svelte` tab buttons lack ARIA tab pattern~~ **FIXED:** added `role="tablist"` on container, `role="tab"` + `aria-selected` + `aria-controls` on each button. Panel `role="tabpanel"` deferred — content is branches of a single `{#if}` chain, not separate DOM elements
 - [ ] `Help.svelte` nav sections have no `aria-current` or `aria-selected`; mobile menu button lacks `aria-expanded`
 - [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
 - [x] ~~`SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler~~ **FIXED:** removed `cursor-pointer` from both `.stat-card` and `.stat-card-small` classes — cards are display-only with no interactive behaviour
-- [ ] `LiveTicker.svelte` has no `role="marquee"` or `aria-live` — screen readers treat as static text; no pause control fails WCAG 2.2.2
+- [x] ~~`LiveTicker.svelte` has no marquee semantics~~ **FIXED:** added `role="marquee"` + `aria-live="off"` + `aria-label` on container, `aria-hidden="true"` on scrolling content, and a `.sr-only` static summary for screen readers. Pause control for WCAG 2.2.2 still deferred (requires interactive UI)
 - [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
 - [x] `MatchList.svelte` sort buttons — added `aria-pressed` on Date and Team sort buttons
 - [ ] Predictions flip-card "Tap for Analysis" buttons lack `aria-label` with match context

@@ -425,7 +425,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
-      <div class="h-48 sm:h-56">
+      <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
     </div>

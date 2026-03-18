@@ -260,7 +260,7 @@
   <div class="rounded-xl border border-border bg-card p-5" style="animation-delay: 300ms">
     <h3 class="text-lg font-semibold font-display text-foreground mb-3">Monthly Profit/Loss</h3>
     {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
-      <div class="h-64">
+      <div class="h-64" role="img" aria-label="Bar chart showing monthly profit and loss from resolved bets">
         <Bar data={monthlyPerformance} options={chartOptions} />
       </div>
     {:else}

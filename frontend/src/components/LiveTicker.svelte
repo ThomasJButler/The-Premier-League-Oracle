@@ -94,14 +94,16 @@
   }
 </script>
 
-<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border">
+<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" role="marquee" aria-live="off" aria-label="Live match updates ticker">
   {#if hasLiveMatches}
     <!-- Pulsing indicator when live matches are showing -->
-    <span class="live-dot"></span>
+    <span class="live-dot" aria-hidden="true"></span>
   {/if}
-  <div class="ticker-content text-sm font-medium text-foreground">
+  <div class="ticker-content text-sm font-medium text-foreground" aria-hidden="true">
     {tickerContent}
   </div>
+  <!-- Screen reader gets a static summary instead of scrolling text -->
+  <span class="sr-only">{hasLiveMatches ? 'Live match updates are scrolling. ' : ''}{tickerContent.split(' • ').slice(0, 5).join('. ')}</span>
 </div>
 
 <style>
