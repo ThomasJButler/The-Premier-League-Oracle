@@ -4,6 +4,18 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4b — Accessibility First Pass (20 March 2026)
+- **15 accessibility fixes across 10 files** addressing the most impactful WCAG gaps: dialog semantics, form labels, progress bars, aria-live regions, table semantics, and reduced motion support
+- **Predictions.svelte:** `role="meter"` with `aria-valuenow/min/max` on 6 probability bars (outcome accuracy + confidence bands), `role="progressbar"` on both backtest and batch prediction progress bars, `aria-label="Close analysis"` on flip card close button
+- **ApiSetupWizard.svelte:** `role="dialog"`, `aria-modal="true"`, `aria-label="API Setup Wizard"` on the modal container
+- **ChatBot.svelte:** `aria-live="polite"` on message list for screen reader announcements, sr-only `<label>` on input, `aria-label="Send message"` on icon-only send button
+- **Settings.svelte:** `for`/`id` pairs on API key and API token label+input, `aria-label` on favourite team select — eliminated 2 svelte-check a11y warnings
+- **StandingsTable.svelte:** `aria-label="Premier League standings"` on table, `<abbr title="...">` on all abbreviated column headers (Pos, P, W, D, L, GF, GA, GD, Pts)
+- **BettingHistory.svelte:** `aria-label="Betting history"` on table, sr-only `<label>` on filter select
+- **KellyCalculator.svelte + ValueBets.svelte:** `aria-live="polite"` on results panels so screen readers announce calculation updates
+- **App.svelte:** `aria-label` on `<main>` landmark
+- **app.css:** `prefers-reduced-motion` media query disables all animations/transitions for users who prefer reduced motion (WCAG 2.2.2). Added `.sr-only` utility class for visually hidden labels
+
 ### P4a — UI Dead Code Cleanup (20 March 2026)
 - **ApiSetupWizard simplified from 5 steps to 4:** Removed the pointless "Choose Provider" step — Football-Data.org was the only option. The wizard now goes Welcome → Privacy → API Setup → Ready
 - **Removed double `window.location.reload()`:** The old wizard had an artificial 5-second delay timer that auto-reloaded, plus the "Start Using App" button also reloaded — a race condition waiting to happen. Now there's a single explicit reload when the user clicks "Start Using App"

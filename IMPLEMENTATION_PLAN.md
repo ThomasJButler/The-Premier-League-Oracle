@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P3e — ML backend integrated into prediction ensemble, test count now 350/21)
+Last updated: 20 March 2026 (P4b — accessibility first pass: 15 items fixed across 10 files, test count 350/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -577,36 +577,41 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] Fix `ApiSetupWizard.svelte` — no way to dismiss/close the wizard — added X close button with `aria-label="Skip setup wizard"`. Dispatches `complete` event with empty API key so parent can handle gracefully
 - [x] `StandingsTable.svelte` movement arrows tooltip — wrapped in `<span title="Based on recent form, not actual position change">` to clarify arrows are momentum proxies, not actual table movement
 
-### P4b. Accessibility (spec 07: 0 of 5 ARIA requirements met)
+### P4b. Accessibility — PARTIAL (20 March 2026)
 
-- [ ] `role="meter"`, `aria-valuenow/min/max` on prediction probability bars
-- [ ] Proper `<label>` elements on Kelly calculator inputs
-- [ ] `aria-current="page"` on active nav items (already done in MobileNav/Sidebar — verify all)
-- [ ] `aria-label` on theme toggle and confidence indicators
-- [ ] Add `prefers-reduced-motion` media query to `app.css` (also needed for `LiveTicker.svelte` animation)
-- [ ] `ApiSetupWizard.svelte` missing `role="dialog"`, `aria-modal="true"`, focus trap
+**Done (first pass — 15 items across 10 files):**
+
+- [x] `role="meter"`, `aria-valuenow/min/max` on prediction probability bars (outcome accuracy + confidence band bars)
+- [x] Proper `<label>` elements on Kelly calculator inputs — already correct (all 4 have `for`/`id` pairs)
+- [x] `aria-current="page"` on active nav items — already done in MobileNav/Sidebar (verified)
+- [x] `aria-label` on theme toggle and confidence indicators — already present in Header.svelte
+- [x] Add `prefers-reduced-motion` media query to `app.css` — disables all animations/transitions for users who prefer reduced motion (WCAG 2.2.2)
+- [x] `ApiSetupWizard.svelte` — added `role="dialog"`, `aria-modal="true"`, `aria-label="API Setup Wizard"`
+- [x] `Predictions.svelte` progress bars — added `role="progressbar"` with `aria-valuenow/min/max` on both backtest and batch prediction bars
+- [x] `ChatBot.svelte` — added `aria-live="polite"` on message list, `<label for="chatbot-input">` (sr-only), `aria-label="Send message"` on send button
+- [x] `Settings.svelte` — fixed `for`/`id` on API key label+input, added `aria-label` on favourite team select, fixed API token label+input
+- [x] `StandingsTable.svelte` — added `aria-label="Premier League standings"` on table, `<abbr title="...">` on all abbreviated column headers
+- [x] `BettingHistory.svelte` — added `aria-label="Betting history"` on table, sr-only `<label>` on filter select
+- [x] `Predictions.svelte:658` card close button — added `aria-label="Close analysis"`
+- [x] `KellyCalculator.svelte` results panel — added `aria-live="polite"`
+- [x] `ValueBets.svelte` scan results — added `aria-live="polite"`
+- [x] `App.svelte` `<main>` — added `aria-label="Premier League Oracle content"`
+- [x] Added `.sr-only` utility class to `app.css` for visually hidden labels
+
+**Still to do (complex items deferred):**
+
 - [ ] Charts (Dashboard Line, BettingHistory Bar) have no `role="img"` or `aria-label` fallback
 - [ ] `LiveTicker.svelte` has no way to pause scrolling animation (WCAG 2.2.2)
-- [ ] `Predictions.svelte` progress bar has no `role="progressbar"` or `aria-valuenow`
-- [ ] `ChatBot.svelte` message list has no `aria-live="polite"` for new responses; input has no `<label>`; send button has no `aria-label`
 - [ ] Prediction flip cards have no `aria-label` or focus indicator — keyboard users can't tell when selected; screen readers read both sides simultaneously (no `aria-hidden` on non-visible face)
 - [ ] Win/loss indicators use colour only (green/red) — add icons for colourblind users (WCAG 1.4.1)
 - [ ] `LiveMatches.svelte` tab buttons lack `role="tab"` / `role="tabpanel"` / `aria-selected` pattern
-- [ ] `Settings.svelte` API key input has `placeholder` but `<label>` lacks `for` attribute; favourite team `<select>` has no `<label>`
-- [ ] `StandingsTable.svelte` table has no `<caption>` or `aria-label`; column headers use abbreviations without `<abbr>` or `title`
-- [ ] `BettingHistory.svelte` table has no `<caption>`; filter `<select>` has no `<label>`
 - [ ] `Help.svelte` nav sections have no `aria-current` or `aria-selected`; mobile menu button lacks `aria-expanded`
 - [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
-- [ ] `Predictions.svelte:658` card close `×` button has no `aria-label` — screen readers will read "times" or nothing
 - [ ] `SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler, `tabindex`, or keyboard support — misleading to keyboard/AT users
-- [ ] `KellyCalculator.svelte` results panel has no `aria-live` — won't be announced when calculation updates
-- [ ] `ValueBets.svelte` scan results have no `aria-live` region
 - [ ] `LiveTicker.svelte` has no `role="marquee"` or `aria-live` — screen readers treat as static text; no pause control fails WCAG 2.2.2
 - [ ] `TopScorers.svelte` uses `<div class="grid">` instead of semantic `<table>` — no `aria-sort` or column headers
 - [ ] `MatchList.svelte` sort buttons have no `aria-pressed` to indicate active sort
-- [ ] `Predictions.svelte` flip-card "Tap for Analysis" buttons lack `aria-label` with match context
-- [ ] `App.svelte` `<main>` element has no `aria-label` for landmark name
-- [ ] `BettingHistory.svelte` filter `<select>` has no `<label>` element
+- [ ] Predictions flip-card "Tap for Analysis" buttons lack `aria-label` with match context
 
 ### P4c. Component Data Accuracy Cleanup
 

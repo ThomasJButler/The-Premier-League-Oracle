@@ -81,8 +81,8 @@
   }
 </script>
 
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="presentation">
+  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-label="API Setup Wizard">
     <div class="flex-shrink-0">
     <!-- Header -->
     <div class="p-8 pb-0">

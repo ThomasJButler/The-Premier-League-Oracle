@@ -422,6 +422,8 @@ Current data:\n`;
     <div
       bind:this={messagesContainer}
       class="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+      aria-live="polite"
+      aria-label="Chat messages"
     >
       {#each messages as message}
         <div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
@@ -460,7 +462,9 @@ Current data:\n`;
         </p>
       {/if}
       <div class="flex gap-2">
+        <label for="chatbot-input" class="sr-only">Chat message</label>
         <input
+          id="chatbot-input"
           type="text"
           bind:value={inputText}
           placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your OpenAI key to start chatting'}
@@ -475,6 +479,7 @@ Current data:\n`;
           disabled={!hasApiKey || isLoading || !inputText.trim()}
           class="btn btn-primary px-3 disabled:opacity-50"
           data-testid="chatbot-send"
+          aria-label="Send message"
         >
           <Send class="w-4 h-4" />
         </button>

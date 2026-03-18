@@ -276,11 +276,12 @@
         
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium text-foreground mb-1">
+            <label for="football-data-key" class="block text-sm font-medium text-foreground mb-1">
               API Key
             </label>
             <div class="flex space-x-2">
               <input
+                id="football-data-key"
                 type="password"
                 bind:value={footballDataKey}
                 placeholder="Enter your Football-Data.org key"
@@ -383,6 +384,8 @@
         ></div>
       {/if}
       <select
+        id="favourite-team"
+        aria-label="Favourite team"
         bind:value={favouriteTeam}
         on:change={() => setFavouriteTeam(favouriteTeam)}
         class="flex-1 max-w-xs px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
@@ -462,11 +465,12 @@
 
       <!-- API Token -->
       <div class="p-3 bg-muted rounded-lg" transition:fade>
-        <label class="block text-sm font-medium text-foreground mb-1">
+        <label for="oracle-api-token" class="block text-sm font-medium text-foreground mb-1">
           API Token <span class="text-xs text-muted-foreground font-normal">(optional)</span>
         </label>
         <div class="flex space-x-2">
           <input
+            id="oracle-api-token"
             type="password"
             bind:value={oracleApiToken}
             placeholder="Bearer token for authenticated endpoints"

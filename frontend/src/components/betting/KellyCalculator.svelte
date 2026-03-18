@@ -397,7 +397,7 @@
 
     <!-- Results -->
     {#if calculation}
-      <div class="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 p-5" data-testid="kelly-results" transition:fade>
+      <div class="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 p-5" data-testid="kelly-results" transition:fade aria-live="polite" aria-label="Kelly calculation results">
         <!-- Primary result -->
         <div class="text-center mb-4 pb-4 border-b border-border/30">
           <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Stake Amount</p>

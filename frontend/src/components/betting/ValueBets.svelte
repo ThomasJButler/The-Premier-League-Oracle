@@ -316,7 +316,7 @@
         {/if}
 
         {#if valueBets.length > 0}
-          <div class="mt-4 space-y-3">
+          <div class="mt-4 space-y-3" aria-live="polite" aria-label="Value bet results">
             {#each valueBets as bet (bet.market)}
               <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4" transition:fade>
                 <div class="flex items-center justify-between mb-2">

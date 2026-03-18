@@ -280,7 +280,9 @@
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold font-display text-foreground">Detailed History</h3>
       <div class="flex space-x-2">
+        <label for="bet-filter" class="sr-only">Filter bets by result</label>
         <select
+          id="bet-filter"
           bind:value={filterResult}
           class="text-sm rounded-lg border border-border bg-card text-foreground px-3 py-1.5 focus:ring-2 focus:ring-primary"
         >
@@ -311,7 +313,7 @@
       </div>
     {:else}
       <div class="overflow-x-auto flex-grow">
-        <table class="table w-full">
+        <table class="table w-full" aria-label="Betting history">
           <thead>
             <tr>
               <th>Date</th>

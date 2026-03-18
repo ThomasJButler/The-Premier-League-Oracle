@@ -164,19 +164,19 @@
       
       <!-- Table -->
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full" aria-label="Premier League standings">
           <thead class="bg-muted border-b border-border">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Pos</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Position">Pos</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">P</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">W</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">D</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">L</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GF</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GA</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">GD</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Pts</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Played">P</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Won">W</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Drawn">D</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Lost">L</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals for">GF</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals against">GA</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Goal difference">GD</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Points">Pts</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Form</th>
             </tr>
           </thead>
