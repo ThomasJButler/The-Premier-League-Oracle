@@ -4,6 +4,20 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### Fourth Planning Audit — ~15 New Findings (18 March 2026)
+- **8 parallel research agents** (Sonnet) audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure — comprehensive cross-referencing against existing plan
+- **Backend API serialisation bug (P1o):** `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. `get_standings()` in `football_data_collector.py` returns a DataFrame that must be converted before being sent as a JSON response
+- **API error misidentification (P1n):** `footballData.ts:189` treats HTTP 403 as "invalid API key" but the free tier also returns 403 for rate-limit exceeded — misleading error message when users hit rate limits
+- **Backtest performance gap (P2v):** `BacktestRunner.run()` makes ~1,140+ sequential API calls for a full PL season (each match triggers 3 service calls). Free-tier rate limit of 10 req/min means a full-season backtest would take over 100 minutes. Needs pre-fetched data approach
+- **dataService wiring bug (P2w):** `refreshApiConfiguration()` doesn't update `readyPromise` — concurrent `ensureReady()` calls resolve against stale state
+- **ID collision risk (P2x):** both `predictionTracker` and `betHistoryService` use `Date.now() + idCounter` for IDs where `idCounter` resets to 0 on page load — multi-tab collision theoretically possible
+- **Font config gap:** `tailwind.config.js` declares `Figtree` and `Outfit` fonts but no Google Fonts import or self-hosted assets exist — silently falls back to `system-ui`
+- **`passlib` Python 3.13 incompatibility:** `passlib==1.7.4` uses `crypt` module removed from Python 3.13 stdlib — will crash at import (low runtime risk since `auth.py` is unused)
+- **6 new dead code items:** `Dashboard.svelte` unused `predictionAccuracy` array, `KellyCalculator.svelte` unused `showSuggestions` state, `Settings.svelte` dead `Key` import, `BettingHistory.svelte` 5 unused global CSS classes, `calculateFixtureDifficulty` creates redundant EloRatingSystem instance
+- **Documentation gaps:** `package.json` version stuck at `0.0.0` (should be v3.0), no `.dockerignore` (test files and CSVs in build context), `README.md` clone URL still uses `yourusername` placeholder
+- **Plan confirmed accurate:** all previously documented P0-P1 completion statuses verified correct by cross-referencing actual source code against plan claims. No false "DONE" markers found
+- **IMPLEMENTATION_PLAN.md expanded:** added P1n, P1o, P2v, P2w, P2x, 2 new P4e items, 6 new P4f items, 4 new backend stubs, 2 new P4g items
+
 ### Third Planning Audit — ~80 New Findings (18 March 2026)
 - **6 parallel research agents** audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure
 - **Live probability bugs (P1l):** betBuilder corner/card probabilities can exceed 1.0 (no clamp on linear formula); KellyCalculator inflates probability by 5% (`1.05/odds` instead of `1/odds`); footballData halfTimeResult bug treats 0-0 scores as null (`!0 === true`)

@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (third planning audit — ~80 new findings across 6 parallel agents; live probability bugs, cache TTL lies, config debt, accessibility gaps)
+Last updated: 18 March 2026 (fourth planning audit — ~15 new findings across 8 parallel agents; backend API serialisation bug, backtest performance, font config gaps, error messaging)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -136,6 +136,14 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 **footballData double-cache architecture:** The `FootballDataAPI` class maintains its own in-memory `Map` cache with its own TTL, independently of the IndexedDB cache in `dataService.ts`. After `setApiKey()`, the in-memory cache is cleared but IndexedDB is not, so they can serve different data for the same endpoint.
 
 - [ ] Consider consolidating to a single cache layer, or at minimum documenting the dual-cache behaviour
+
+### P1n. footballData API Error Misidentification — NEW (18 March 2026, fourth audit)
+
+- [ ] `footballData.ts:189-191`: HTTP 403 is treated as "API authentication failed" but the Football-Data.org free tier also returns 403 for rate-limit exceeded. Users see "invalid API key" when they've simply hit the rate limit. Differentiate by checking response body or using 429 vs 403 distinction
+
+### P1o. Backend `/standings` Endpoint Crashes at Runtime — NEW (18 March 2026, fourth audit)
+
+- [ ] `main.py` `/standings` endpoint calls `oracle.data_collector.get_standings()` which returns a `pd.DataFrame`. FastAPI attempts to serialise this to JSON, raising `TypeError` because `pd.DataFrame` is not JSON-serialisable. Fix: convert to `.to_dict(orient='records')` before returning
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
@@ -286,6 +294,7 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 
 - [ ] Add `engines` field to `frontend/package.json` or create `.nvmrc` to pin Node.js version
 - [ ] Fix Python version mismatch: `requirements.txt` says 3.13, `Dockerfile` uses 3.11, `environment.yml` uses 3.11 — align all to one version
+- [ ] `passlib==1.7.4` is incompatible with Python 3.13 — the `crypt` module was removed from stdlib in 3.13. If the target is truly 3.13, this will crash at import. (Only used by dead `auth.py` module, so low runtime risk)
 
 **`.gitignore` gaps:**
 
@@ -326,6 +335,22 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 ### P2u. betHistoryService Market Format Mismatch — NEW (18 March 2026, third audit)
 
 - [ ] `StoredBet.market` uses `'over_2_5'` (underscores) while `ValueBet.market` from `value.ts` uses `'over2.5'` (no separator). If code ever stores a `ValueBet` market into a `StoredBet`, the enum mismatch breaks `didBetWin()` resolution silently (falls to `default: return null`). Align market string formats between the two modules.
+
+### P2v. Backtest Performance — NEW (18 March 2026, fourth audit)
+
+Each match in `BacktestRunner.run()` calls `OptimizedPredictor.predictMatch()` which in turn calls `dataService.getMatches()`, `dataService.getStandings()`, and `dataService.getTeamForm()` — all potentially triggering API calls. For a full PL season (380 matches), this is ~1,140+ sequential async requests with no batching or rate limiting built into the backtest loop. The API's 10-requests-per-minute free-tier limit means a full-season backtest would take over 100 minutes.
+
+- [ ] Pre-fetch all required match, standings, and form data before the backtest loop starts
+- [ ] Pass pre-fetched data into `OptimizedPredictor.predictMatch()` to avoid per-match API calls
+- [ ] Add a progress estimate based on pre-fetched data availability
+
+### P2w. dataService `refreshApiConfiguration` Wiring Bug — NEW (18 March 2026, fourth audit)
+
+- [ ] `dataService.ts`: `refreshApiConfiguration()` is a stub alias for `checkDataSources()` but does NOT update `readyPromise`. A caller using `refreshApiConfiguration()` instead of `refreshDataSources()` will leave `ensureReady()` resolving against stale state. Either remove the alias or make it call `refreshDataSources()`
+
+### P2x. ID Collision Risk in Singletons — NEW (18 March 2026, fourth audit)
+
+- [ ] `predictionTracker.ts` and `betHistoryService.ts` both use `${matchId}_${Date.now()}_${idCounter}` for IDs, where `idCounter` is a static class property that resets to 0 on every page load. If two browser tabs simultaneously store a prediction/bet for the same match in the same millisecond, IDs can collide. Consider using `crypto.randomUUID()` instead
 
 ---
 
@@ -614,6 +639,8 @@ Priority features to implement with real data:
 - [ ] `Predictions.svelte` progress bar uses hardcoded hex `from-[#00cc6a] to-[#00ff87]`
 - [ ] `LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`
 - [ ] `Dashboard.svelte` hero section is always dark regardless of theme (intentional? or should adapt)
+- [ ] `tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist — silently falls back to `system-ui`
+- [ ] `tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in an ESM `export default` context — inconsistent module style
 
 ### P4f. Dead Imports & Code Duplication
 
@@ -659,6 +686,11 @@ Priority features to implement with real data:
 - [ ] `value.ts`: `calculateSharpeRatio()` divides by zero silently for empty arrays — returns `NaN`
 - [ ] `value.ts`: `calculatePerformanceMetrics()` divides by `totalBets`/`totalStaked` with no guard for empty input — returns `NaN` across all fields
 - [ ] `predictions.ts`: `TeamStats` and `TeamForm` interfaces shadow same-named types in `types/index.ts` with incompatible field names — naming collision (harmless since module is dead)
+- [ ] `Dashboard.svelte:37`: `predictionAccuracy: number[]` declared but never assigned or used in template — dead variable
+- [ ] `KellyCalculator.svelte:38`: `showSuggestions = true` declared but never toggled or read in template — dead state
+- [ ] `Settings.svelte`: dead imports `Sparkles` and `Key` from lucide-svelte — neither used in template
+- [ ] `advancedPredictions.ts`: `calculateFixtureDifficulty` creates a second `EloRatingSystem` instance when no `eloSystem` is passed — diverges from singleton pattern, reads localStorage independently
+- [ ] `BettingHistory.svelte`: `<style global>` defines 5 CSS classes (`.shadow-glow-success-sm`, `.shadow-glow-success-md`, `.shadow-glow-error-sm`, `.shadow-glow-error-md`, `.th`, `.td`) never referenced in template
 
 ### P4h. Test Quality Improvements — NEW (19 March 2026)
 
@@ -696,6 +728,10 @@ Stale documentation and broken links discovered in the 8-agent audit:
 - [ ] `specs/07-ui-ux.md`: says shadcn not initialised (it is — `components.json` exists); dark mode fix described as needed (done in P1b)
 - [ ] `specs/02-data-pipeline.md`: Supabase removal checklist items all done but still unchecked
 - [x] `.gitignore`: `backend/.env` — DONE (confirmed present on line 14)
+- [ ] `frontend/package.json`: version is `0.0.0` — should reflect project version (git tags at `v0.0.7`, project is v3.0)
+- [ ] No `backend/.dockerignore` — test files, docs, spreadsheets (~100MB+ CSVs), and `chroma_db/` all included in Docker build context unnecessarily
+- [ ] `README.md`: clone URL uses `yourusername` placeholder instead of `ThomasJButler`
+- [ ] `README.md`: "Recent Updates (v2.0)" section describes already-implemented features; "Future Enhancements" lists dark mode and Kelly calculator as future (both done)
 
 ---
 
@@ -812,6 +848,10 @@ All feature specifications in `specs/`:
 | `advanced_engineering.py` | `_compute_league_positions()` cumulative all-time, not per-season — wrong for multi-season | P3a |
 | `validators.py` | `html.escape()` corrupts `Brighton & Hove Albion` to `Brighton &amp; Hove Albion` | P3d |
 | `requirements.txt` | `boto3`, `hvac`, `azure-*`, `sqlalchemy` — heavy dead deps for unused security modules | P2r |
+| `main.py` | `/standings` endpoint returns `pd.DataFrame` — not JSON-serialisable, will `TypeError` at runtime | P1o |
+| `requirements.txt` | `passlib==1.7.4` incompatible with Python 3.13 (`crypt` module removed from stdlib) | P2r |
+| `main.py` | `total_features` in `/features/importance` hardcoded to `150`, not dynamically counted | Low |
+| `football_data_collector.py` | `get_standings()` returns `pd.DataFrame` — must be converted before JSON response | P1o |
 
 ---
 

@@ -143,6 +143,12 @@ These specs are the single source of truth for requirements.
 - `.gitignore` gaps: only one `__pycache__` path covered, missing `backend/cache/`, `backend/logs/`, `backend/mlruns/`
 - `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — enum mismatch breaks cross-module bet resolution
+- Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. Needs `.to_dict(orient='records')` conversion
+- `footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded — misleading error message
+- `BacktestRunner` makes ~1,140+ sequential API calls for a full season — each match triggers 3 service calls with no batching. Needs pre-fetched data approach
+- `tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist — silently falls back to system-ui
+- `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
+- `DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed as a dependency
 - MIT licensed for open-source collaboration
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
