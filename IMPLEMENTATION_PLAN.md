@@ -683,7 +683,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `dataService.ts`: `refreshApiConfiguration` — **NOT DEAD**. Called by `App.svelte` after API setup wizard. Implementation is identical to `refreshDataSources` (both reassign `readyPromise`). The alias is intentional backward compatibility
 - [x] `predictions.ts`: dead module removed — zero imports from any component, 11 misleading tests removed
 - [x] `kelly.ts`: dead exports `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` removed
-- [ ] `kelly.ts`: `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
+- [x] `kelly.ts`: `getRiskLevel` — removed unused `kellyFraction` parameter (only `edge` and `probability` used)
 - [x] `value.ts`: `OddsProvider` interface, `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` removed
 - [ ] `value.ts`: `calculateCLV` returns `betId: ''` (stub) — any remaining CLV usage needs proper bet tracking
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
@@ -691,10 +691,10 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with slightly different signatures — maintenance risk
 - [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant — duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`
 - [ ] Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant — duplicated in `optimizedPredictions.ts` and `advancedPredictions.ts`
-- [ ] `predictionTracker.ts`: `resultAccuracy` is identical to `accuracy` in `getAccuracyStats` — redundant field
+- [x] `predictionTracker.ts`: `resultAccuracy` — removed redundant field identical to `accuracy` (both computed from `predictedResult === actualResult`). Updated test mocks
 - [ ] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Remove from dead code list
-- [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` is never called anywhere in the codebase — dead code
-- [ ] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` not called by production code — only `calculateRestDays` is used by `OptimizedPredictor`
+- [x] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` — removed (dead code, only called by tests). 4 tests removed
+- [x] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` — removed (dead code, only called by tests). 2 tests removed
 - [x] `optimizedPredictions.ts`: `formString` function — removed unused `team` parameter and updated call sites
 - [x] `dataService.ts`: `getCurrentSeasonMatches()` — **NOT DEAD**. Called by Predictions.svelte and SeasonStats.svelte. The alias is a semantic convenience over `getMatches()`
 - [ ] `predictionTracker.ts`: `exportPredictions()` and `importPredictions()` have no UI surface — dead functionality from a user perspective (tests-only)
@@ -907,7 +907,7 @@ All feature specifications in `specs/`:
 |------|-------|--------|
 | `betBuilder.test.ts` | 40 | Passing |
 | `value.test.ts` | 17 | Passing |
-| `advancedPredictions.test.ts` | 28 | Passing |
+| `advancedPredictions.test.ts` | 22 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
 | `footballData.test.ts` | 23 | Passing |
 | `kelly.test.ts` | 13 | Passing |
@@ -923,9 +923,9 @@ All feature specifications in `specs/`:
 | `ValueBets.test.ts` | 12 | Passing |
 | `dataService.cache.test.ts` | 8 | Passing |
 | `dataService.test.ts` | 8 | Passing |
-| `Settings.test.ts` | 8 | Passing |
+| `Settings.test.ts` | 16 | Passing |
 | `LiveMatches.test.ts` | 7 | Passing |
-| **Total** | **317** | **All passing** |
+| **Total** | **344** | **All passing** |
 
 **Known test quality issues:**
 - `types.test.ts`: reduced from 18 to 4 tests — tautological assertions removed (P4h DONE)

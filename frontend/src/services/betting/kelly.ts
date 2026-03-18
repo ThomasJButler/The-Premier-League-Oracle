@@ -99,7 +99,7 @@ export class KellyCalculator {
     const confidence = this.getConfidenceLevel(ourProbability, edge, clampedConfidence);
     
     // Assess risk level
-    const risk = this.getRiskLevel(fullKelly, edge, ourProbability);
+    const risk = this.getRiskLevel(edge, ourProbability);
     
     return {
       fullKelly: Math.round(fullKelly * 10000) / 10000,
@@ -204,7 +204,6 @@ export class KellyCalculator {
    * Assess risk level
    */
   private static getRiskLevel(
-    kellyFraction: number,
     edge: number,
     probability: number
   ): 'high' | 'medium' | 'low' {

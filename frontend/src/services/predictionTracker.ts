@@ -29,7 +29,6 @@ export interface AccuracyStats {
   totalPredictions: number;
   correctPredictions: number;
   accuracy: number;
-  resultAccuracy: number; // W/D/L accuracy
   scoreAccuracy: number; // Exact score accuracy
   highConfidenceAccuracy: number; // Accuracy when confidence > 70%
   mediumConfidenceAccuracy: number; // Accuracy when confidence 50-70%
@@ -154,10 +153,6 @@ class PredictionTracker {
     const totalPredictions = relevantPredictions.length;
     const accuracy = (correctPredictions / totalPredictions) * 100;
 
-    // Calculate result accuracy (W/D/L)
-    const resultCorrect = relevantPredictions.filter(p => p.predictedResult === p.actualResult).length;
-    const resultAccuracy = (resultCorrect / totalPredictions) * 100;
-
     // Calculate exact score accuracy
     const scoreCorrect = relevantPredictions.filter(p => 
       p.predictedHomeGoals === p.actualHomeGoals && 
@@ -199,7 +194,6 @@ class PredictionTracker {
       totalPredictions,
       correctPredictions,
       accuracy,
-      resultAccuracy,
       scoreAccuracy,
       highConfidenceAccuracy,
       mediumConfidenceAccuracy,
@@ -311,7 +305,6 @@ class PredictionTracker {
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
-      resultAccuracy: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,

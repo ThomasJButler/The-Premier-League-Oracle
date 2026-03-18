@@ -8,7 +8,6 @@ vi.mock('./predictionTracker', () => ({
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
-      resultAccuracy: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,

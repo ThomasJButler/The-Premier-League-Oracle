@@ -319,41 +319,6 @@ export class EloRatingSystem {
 
 // Expected Goals (xG) Calculator
 export class ExpectedGoalsCalculator {
-  static calculateShotValue(
-    shotType: 'open-play' | 'corner' | 'free-kick' | 'penalty',
-    distance: number,
-    angle: number,
-    bodyPart: 'foot' | 'head' | 'other'
-  ): number {
-    let baseXG = 0;
-
-    // Base xG values by shot type
-    switch (shotType) {
-      case 'penalty':
-        return 0.76; // Penalties have ~76% conversion rate
-      case 'open-play':
-        baseXG = 0.4;
-        break;
-      case 'corner':
-        baseXG = 0.03;
-        break;
-      case 'free-kick':
-        baseXG = 0.06;
-        break;
-    }
-
-    // Adjust for distance (closer = higher xG)
-    const distanceFactor = Math.exp(-0.05 * distance);
-    
-    // Adjust for angle (more central = higher xG)
-    const angleFactor = 1 - (Math.abs(angle) / 90) * 0.7;
-    
-    // Adjust for body part
-    const bodyPartMultiplier = bodyPart === 'foot' ? 1 : bodyPart === 'head' ? 0.7 : 0.3;
-
-    return Math.min(baseXG * distanceFactor * angleFactor * bodyPartMultiplier, 0.95);
-  }
-
   static async calculateMatchXG(matchId: string): Promise<{ homeXG: number; awayXG: number }> {
     // This would fetch shot data from the database
     // For now, we'll estimate based on shots and shots on target
@@ -393,37 +358,6 @@ export class FatigueAnalyzer {
     } catch (error) {
       // Error calculating rest days
       return 7;
-    }
-  }
-
-  static async calculateFixtureDifficulty(
-    teamName: string,
-    startDate: Date,
-    endDate: Date,
-    eloSystem?: EloRatingSystem
-  ): Promise<number> {
-    try {
-      // Calculate average opponent ELO in date range
-      const matches = await dataService.getMatches();
-      const teamMatches = matches.filter(match =>
-        (match.home_team === teamName || match.away_team === teamName) &&
-        new Date(match.date) >= startDate &&
-        new Date(match.date) <= endDate
-      );
-
-      if (teamMatches.length === 0) return 0;
-
-      const elo = eloSystem ?? new EloRatingSystem();
-      let totalDifficulty = 0;
-      for (const match of teamMatches) {
-        const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-        totalDifficulty += elo.getTeamRating(opponent);
-      }
-
-      return totalDifficulty / teamMatches.length;
-    } catch (error) {
-      // Error calculating fixture difficulty
-      return 0;
     }
   }
 

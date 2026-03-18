@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4f — Dead Code Removal (20 March 2026)
+- **`calculateShotValue` removed:** Dead function on `ExpectedGoalsCalculator` — never called by any production code (only tested in isolation). 4 tests removed
+- **`calculateFixtureDifficulty` removed:** Dead function on `FatigueAnalyzer` — never called by production code (only `calculateRestDays` and `getFatigueMultiplier` are used). 2 tests removed
+- **`resultAccuracy` removed:** Redundant field on `AccuracyStats` — identical to `accuracy` (both derived from `predictedResult === actualResult` via `isCorrect`). Removed field, computation, and test mock references
+- **`getRiskLevel` cleaned up:** Removed unused `kellyFraction` parameter — only `edge` and `probability` were used in the function body
+- Test count: 350 → 344 (6 tests for dead functions removed)
+
 ### P4c/P4f Batch — Data Accuracy + Dead Code Cleanup (20 March 2026)
 - **MatchList season selector:** Added `<select>` dropdown in header so fetched seasons are rendered and usable. Previously `loadSeasons()` populated data but nothing in the template displayed it — pure dead code path. Triggers `loadMatches()` on change
 - **MatchList sort buttons:** Added `aria-pressed` attribute to Date and Team sort buttons (P4b item)
