@@ -122,7 +122,7 @@ These specs are the single source of truth for requirements.
 - `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
 - `.gitignore` has `backend/.env` (fixed 18 March 2026) — API keys protected
 - `backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files
-- **No `vercel.json` exists** — the Vite dev proxy (`/api/football-data`) only works locally. Production Vercel deploys cannot reach Football-Data.org API. A serverless proxy or Vercel rewrites needed for production deployment
+- ~~No `vercel.json` exists~~ **FIXED:** `vercel.json` created with build command, output directory, and SPA catch-all rewrite. Football-Data.org sends `Access-Control-Allow-Origin: *` so direct browser calls work in production
 - CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` — 2,191 matches across 5.75 seasons with shots, corners, cards, odds columns (richer than what the free API provides). These are the primary source for ML training
 - `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
 - ~~Root `.env.example` still references Supabase variables~~ **FIXED:** Supabase references removed, replaced with Football-Data.org API comment

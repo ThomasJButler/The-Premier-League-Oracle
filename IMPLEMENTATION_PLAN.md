@@ -232,14 +232,14 @@ Spec 01 requires ELO ratings to auto-update from completed match results. Wired 
 - [x] Wire `processCompletedMatches()` into `dataService.reconcilePredictions()` — call after prediction/bet resolution
 - [x] Add `sharedEloSystem` mock to `dataService.test.ts` and `dataService.cache.test.ts`
 
-### P2l. Production Deployment — NEW (deep audit)
+### P2l. Production Deployment — DONE (19 March 2026)
 
-The Vite dev proxy (`/api/football-data` → `https://api.football-data.org/v4`) only works locally. **No `vercel.json` exists** in the repo, so production deploys to Vercel cannot reach the Football-Data.org API — all `/api/football-data/*` requests will 404. The deployed app cannot fetch any match data.
+Created `vercel.json` with build command, output directory, and SPA catch-all rewrite. The Vite dev proxy is only needed locally; in production, the frontend calls Football-Data.org directly (they send `Access-Control-Allow-Origin: *`). The user's API key is stored in localStorage and sent via `X-Auth-Token` header from the browser.
 
-- [ ] Create `vercel.json` with rewrites or a Vercel serverless function at `api/football-data.js` to proxy requests (avoids CORS and hides API key from client)
-- [ ] Verify Football-Data.org CORS policy for browser-direct calls — if blocked, a serverless proxy is mandatory
-- [ ] Root `.env.example` still references Supabase (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) — update or remove
-- [ ] No `backend/.env.example` exists — create a template for required backend environment variables (FOOTBALL_DATA_API_KEY, OPENAI_API_KEY, SECRET_KEY)
+- [x] Create `vercel.json` with `buildCommand`, `outputDirectory`, and SPA rewrite `/(.*) → /index.html`
+- [x] Football-Data.org CORS verified — sends `Access-Control-Allow-Origin: *`, direct browser calls work
+- [x] Root `.env.example` updated (P2p) — Supabase references removed
+- [ ] No `backend/.env.example` exists — create a template for required backend environment variables (deferred — backend not deployed to Vercel)
 
 ### P2m. Derive Hardcoded League Stats from Data — NEW (deep audit)
 
