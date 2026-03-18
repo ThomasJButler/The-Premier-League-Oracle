@@ -75,7 +75,7 @@
   }
 
   // --- API Key Management ---
-  function saveApiKey() {
+  export function saveApiKey() {
     const trimmed = apiKey.trim();
     if (!trimmed || trimmed.length < 10) {
       error = 'Please enter a valid OpenAI API key.';
@@ -87,7 +87,7 @@
     error = null;
   }
 
-  function clearApiKey() {
+  export function clearApiKey() {
     localStorage.removeItem(STORAGE_KEY_API_KEY);
     apiKey = '';
     hasApiKey = false;
@@ -175,7 +175,7 @@ Current data:\n`;
   }
 
   // --- Send Message ---
-  async function sendMessage() {
+  export async function sendMessage() {
     const text = inputText.trim();
     if (!text || isLoading) return;
 
@@ -282,7 +282,7 @@ Current data:\n`;
     }
   }
 
-  function clearChat() {
+  export function clearChat() {
     messages = [{
       role: 'system',
       content: 'Chat cleared. Ask me anything about Premier League predictions!',

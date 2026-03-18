@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P2f-UI Backtest Runner UI)
+Last updated: 18 March 2026 (P2d ChatBot tests)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -160,7 +160,7 @@ User-facing problems where the UI actively misleads users or blocks feature disc
 
 - [x] Confidence badge now has tooltip: "High confidence — all models agree strongly" / "Moderate" / "Low — models disagree"
 - [x] Flip cards already have "Tap for Analysis" button (no change needed)
-- [ ] Mobile features section: removed "Push notifications" and "Swipe navigation" claims; replaced with accurate features
+- [x] Mobile features section: removed "Push notifications" and "Swipe navigation" claims; replaced with "Bottom navigation bar" and "Responsive layouts"
 
 ---
 
@@ -206,8 +206,8 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 Key discovery: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x + Svelte 4. Workaround: `export` the init function and call via `(component as any).method()` (same pattern as Dashboard.test.ts).
 
 Still missing:
-- [x] `Predictions.svelte` — 14 tests: header, gameweek selector, predict button, 38 options, loading spinner, match loading, API error, completed gameweek message, gameweek filtering, accuracy panel show/hide, team logos, predictor call, prediction storage
-- [ ] `ChatBot.svelte` — API key setup, message send/receive, context building
+- [x] `Predictions.svelte` — 14 tests + 3 backtest: header, gameweek selector, predict button, 38 options, loading spinner, match loading, API error, completed gameweek message, gameweek filtering, accuracy panel show/hide, team logos, predictor call, prediction storage, backtest button, backtest results, backtest error
+- [x] `ChatBot.svelte` — 18 tests: container render, header, API key setup form, OpenAI platform link, disabled input/button without key, short key validation, save key + enable chat, security warning banner, "Change key" button, clear API key, clear chat, character counter, send message + display response, API 401 error, rate limit 429, empty message guard, message persistence to localStorage
 - [ ] IndexedDB cache layer — completely untested
 
 ### P2e. Type System Gaps — DONE (18 March 2026)

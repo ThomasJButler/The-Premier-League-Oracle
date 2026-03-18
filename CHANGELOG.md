@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2d ChatBot Component Tests — Complete (18 March 2026)
+- **New `ChatBot.test.ts`** — 18 tests covering the full Oracle Chat component
+- Tests: container render, header, API key setup form, OpenAI link, disabled state without key, short key validation, save valid key, security warning banner, "Change key" visibility, clear API key, clear chat, character counter, send message + API response display, 401/429 error handling, empty message guard, localStorage persistence
+- Added `export` to `saveApiKey()`, `clearApiKey()`, `sendMessage()`, `clearChat()` for testability
+- Uses `fireEvent.input()` to drive `bind:value` on password and chat inputs (DOM interaction pattern)
+- Verifies `localStorage.setItem`/`removeItem` calls via the global mock from `setup.ts`
+- Mocks `globalThis.fetch` for OpenAI API response testing (success, 401, 429)
+- **Test count 349 → 367**: 20 test files, 367/367 passing, 0 type errors
+
 ### P2f-UI Backtest Runner UI — Complete (18 March 2026)
 - **Backtest button** in Predictions accuracy panel — "Run Backtest" with `FlaskConical` icon triggers retrospective simulation on all completed matches
 - **Progress feedback** — progress bar with match count updates during execution via `BacktestRunner` progress callback
