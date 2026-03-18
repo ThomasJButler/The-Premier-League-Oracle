@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P4b/P4c/P4f batch — dead loading spinner, cursor-pointer fix, refreshDataSources removal, stale comments. Test count 344/21)
+Last updated: 20 March 2026 (P4d/P4e/P4f/P4g batch — market correlation, data-derived league averages, hero theme fix, dead code removal. Test count 335/21)
 Active branch: `v3.0-Frontend`
 
 ---

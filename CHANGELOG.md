@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### Betting Intelligence & Theme (20 March 2026)
+- **Data-derived league averages:** betBuilder now computes corners, cards, and first-half goals probability from historical match data via `computeLeagueAverages()`. Falls back to previous defaults when API data is unavailable (corners/cards on free tier), but first-half goals probability is now genuinely data-driven
+- **Market correlation:** Combo bet confidence now accounts for correlated markets — BTTS + Over 2.5 goals boosted +15% (positively correlated), clean sheet + high-scoring markets penalised -15% (negatively correlated). Applied to Value Builder and Goals Galore combos
+- **Dashboard hero theme fix:** Hero section was permanently dark-themed. Now adapts to light/dark mode with proper base classes (slate-100/white gradient in light, slate-950 in dark)
+- **Dead code removed:** `ExpectedGoalsCalculator` class (permanently returned zeros on free tier, 3 tests removed), `predictionTracker.exportPredictions()` and `importPredictions()` (no UI surface, 2 tests removed)
+- **FOR_BEGINNERS.md:** Broken tutorial links replaced with actual code paths; misleading "68-72% accuracy" claim removed
+
 ### Performance & Data Accuracy (18 March 2026)
 - **Fetch optimisation:** `advancedPredictions.ts` and `optimizedPredictions.ts` now fetch `dataService.getMatches()` once per prediction instead of 3 times. `calculateFatigueFactor` async method removed entirely from optimizedPredictions — both live and backtest paths use `calculateFatigueFromMatches`
 - **`window.location.reload()` eliminated:** Settings API key test and ApiSetupWizard "Start Using App" both replaced with targeted `dataService.clearCache()` + `refreshApiConfiguration()` + event dispatch. No more full page reload losing app state
