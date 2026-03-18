@@ -102,28 +102,15 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 - [ ] `Predictions.svelte:215` — `was_correct: false` is hardcoded when storing predictions via `predictionTracker.storePrediction()`. The field is never updated to reflect actual outcomes from the storage call. `predictionTracker.updateWithResult()` does correctly update stored predictions later via reconciliation, but the initial `was_correct: false` is misleading metadata. Consider removing the field from the initial storage call or deriving it only from `updateWithResult()`.
 - [ ] `Predictions.svelte:47` — `totalGameweeks = 38` is hardcoded and never updated from API season data despite the comment claiming it will be.
 
-### P1l. Live Probability Bugs — NEW (18 March 2026, third audit)
+### P1l. Live Probability Bugs — DONE (18 March 2026)
 
-**betBuilder probability overflow:** Corner and card probability values can exceed 1.0 — there is no clamp on the linear formula. For a team with `expectedCorners = 15`, `totalOver85.probability = 0.55 + (15 - 8.5) * 0.1 = 1.2`. Same issue in `calculateCards()`: at `expectedCards = 10`, probability = 1.35. These feed directly into `suggestedCombos` confidence calculations, producing nonsensical results.
+All 5 probability and UX bugs fixed. 378/378 tests passing, 0 type errors.
 
-- [ ] `betBuilder.ts`: clamp all probability outputs to `[0, 1]` in `calculateCorners()` and `calculateCards()`
-- [ ] `betBuilder.ts`: audit all other probability calculations for the same overflow pattern
-
-**KellyCalculator probability inflation:** `prob = 1.05 / oddsForOutcome` inflates the derived probability by 5%. The correct formula is `1 / odds`. With odds of 2.00, this gives `0.525` instead of `0.50`, making every bet appear to have an edge when there may be none. Generates false-positive value bets.
-
-- [ ] `KellyCalculator.svelte:92`: change `1.05 / oddsForOutcome` to `1 / oddsForOutcome`
-
-**footballData halfTimeResult bug for 0-0 scores:** `!0` evaluates to `true` in JavaScript, so a 0-0 scoreline at half-time is treated as `null` (no half-time result recorded). Only half-time scores where both values are ≥ 1 are correctly classified. Affects `SeasonStats` late-drama calculations and any feature using `half_time_result`.
-
-- [ ] `footballData.ts:366`: change `!fdMatch.score.halfTime.home || !fdMatch.score.halfTime.away` to `fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.away === null`
-
-**Dashboard auto-retry with no backoff:** `loadDashboardData()` retries every 5s on error with no maximum retry count or exponential backoff. If the API key is missing or invalid, this spams the Football-Data.org API indefinitely, burning rate-limit quota.
-
-- [ ] `Dashboard.svelte`: add maximum retry count (e.g. 3) and exponential backoff on error
-
-**Settings untrimmed API key:** `saveFootballDataKey()` stores the raw value without `.trim()`, while `ApiSetupWizard` does trim. A user pasting a key with trailing whitespace gets a corrupted key stored in localStorage.
-
-- [ ] `Settings.svelte:108`: add `.trim()` before `localStorage.setItem`
+- [x] `betBuilder.ts`: corner and card probability outputs clamped to `[0, 0.99]` in `calculateCorners()` and `calculateCards()` — prevents nonsensical >1.0 probabilities in `suggestedCombos`
+- [x] `KellyCalculator.svelte`: fixed circular Kelly calculation — was using `1.05 / odds` as `ourProbability` (always gave fake 5% edge against model's own odds). Now correctly uses `prediction.confidence` as `ourProbability` and `valueOdds` as `bookmakerOdds`, so edge only appears when model confidence exceeds the odds-implied probability
+- [x] `footballData.ts:366`: replaced `!fdMatch.score.halfTime.home` falsy check with explicit `=== null || === undefined` — 0-0 half-time scores now correctly classified as `'D'` instead of `null`
+- [x] `Dashboard.svelte`: replaced unbounded 5s retry interval with exponential backoff (5s, 10s, 20s) capped at 3 retries — prevents indefinite API spam when key is missing/invalid
+- [x] `Settings.svelte`: `saveFootballDataKey()` now trims whitespace and delegates to `setApiKey()` only (removed redundant duplicate `localStorage.setItem` call)
 
 ### P1m. Data Layer Cache Bugs — NEW (18 March 2026, third audit)
 
@@ -743,7 +730,7 @@ Test suite has 378 passing tests but several are structurally unable to catch re
 
 **Tests encoding known bugs as correct (fifth audit):**
 
-- [ ] `backtest.test.ts:156-174` — test expects `0.525` (1.05/2.0) as the correct probability, encoding the known `KellyCalculator` 1.05 inflation bug as a correct expected value. When the P1l Kelly bug is fixed (changing `1.05 / odds` to `1 / odds`), this test will **incorrectly fail**. Update expected value to `0.50` when the fix lands
+- [x] ~~`backtest.test.ts:156-174` — encodes Kelly 1.05 inflation bug~~ — **No longer applicable.** The P1l Kelly fix changed `KellyCalculator.loadSuggestions()` to use `prediction.confidence` as `ourProbability` (not derive it from odds). `backtest.ts:extractProbabilities()` is a separate codepath that correctly reverses the `VALUE_ODDS_MARGIN = 1.05` to recover the model's true probability. The test at 0.525 remains correct for backtesting purposes
 - [ ] `advancedPredictions.test.ts:544-549` — value bet assertion wrapped in `if (prediction.valueBets.length > 0)` guard. If value bet detection breaks to return empty arrays, the test passes silently with zero assertions
 
 ### P4g. Documentation Cleanup — NEW (18 March 2026)
@@ -774,7 +761,7 @@ All feature specifications in `specs/`:
 | `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~60% — ELO dynamic + persistence, Poisson Dixon-Coles, fatigue wired, referee adjustments, backtest runner created (P2f DONE); ELO auto-update not wired to dataService (P2k), no AI analysis (P3g), confidence calibration rudimentary |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~55% — DataService + 3-tier cache work; getLiveMatches/getHistoricalMatches/getTeamRecentMatches all implemented; missing progressive 5-season bulk loader with rate limiting |
 | `specs/03-backend-integration.md` | Python ML backend connection | **0%** — 0 of 8 acceptance criteria met |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~55% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed, ValueBets UI created (P2i); **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g); Kelly probability inflation bug live (P1l) |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~60% — Kelly + auto-suggestions done (P2g), CLV corrected, betBuilder fixed (probability overflow clamped P1l), ValueBets UI created (P2i); Kelly circular probability bug fixed (P1l); **`storeBet()` never called from any component — bet history pipeline non-functional (P1i)**; betHistoryService resolution bugs fixed (P1g) |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~65% — smart polling + LiveMatches working; no liveService.ts, no WebSocket, no shared store |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | ~95% — substantially complete |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~15% — dark mode fixed (P1b), 5 components installed (1 wired), components.json created but `$lib/utils.ts` missing (P2a-fix blocker), 0/5 ARIA requirements met |
@@ -821,9 +808,9 @@ All feature specifications in `specs/`:
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | P1k |
 | `MatchList.svelte` | `selectedSeason = '2024-2025'` hardcoded fallback — stale each season | P4c |
 | `betHistoryService.ts` | `storeBet()` never called from any component — bet history pipeline non-functional | P1i |
-| `betBuilder.ts` | Corner/card probabilities can exceed 1.0 — no clamp on linear formula | P1l |
-| `KellyCalculator.svelte` | `prob = 1.05 / odds` inflates probability by 5% — false-positive value bets | P1l |
-| `footballData.ts` | `halfTimeResult` bug: `!0 === true` treats 0-0 half-time as null | P1l |
+| ~~`betBuilder.ts`~~ | ~~Corner/card probabilities can exceed 1.0~~ — FIXED: clamped to [0, 0.99] | ~~P1l~~ |
+| ~~`KellyCalculator.svelte`~~ | ~~`prob = 1.05 / odds` inflates probability~~ — FIXED: uses model confidence as ourProbability | ~~P1l~~ |
+| ~~`footballData.ts`~~ | ~~`halfTimeResult` bug: `!0 === true`~~ — FIXED: explicit null/undefined check | ~~P1l~~ |
 | `advancedPredictions.ts` | `SEED_RATINGS` includes relegated teams (Leicester, Leeds, Luton, Burnley, Sheff Utd) and Sunderland (not in PL) | Low |
 | `advancedPredictions.ts` | Two parallel fatigue models with different thresholds (AdvancedMatchPredictor vs OptimizedPredictor) | P2q |
 | `dataService.ts` | Cache TTL comments lie about actual TTL (claim 24h/30m, deliver 5m) | P1m |

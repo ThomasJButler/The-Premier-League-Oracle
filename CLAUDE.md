@@ -134,9 +134,9 @@ These specs are the single source of truth for requirements.
 - Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
 - `EloRatingSystem.processCompletedMatches()` exists but is never called — ELO ratings never auto-update from match results
 - **`AdvancedMatchPredictor` is NOT dead code** — called by `value.ts:72` for value bet scanning. Previously mislabelled as dead in the plan (corrected third audit)
-- `betBuilder.ts`: corner/card probability values can exceed 1.0 — no clamp on linear formula. Live bug affecting `suggestedCombos` confidence calculations
-- `KellyCalculator.svelte:92`: `prob = 1.05 / odds` inflates probability by 5% — generates false-positive value bets
-- `footballData.ts:366`: halfTimeResult bug — `!0 === true` means 0-0 half-time scores treated as null
+- ~~`betBuilder.ts`: corner/card probability overflow~~ — FIXED: clamped to [0, 0.99]
+- ~~`KellyCalculator.svelte`: circular Kelly calculation~~ — FIXED: now uses model confidence as ourProbability, valueOdds as bookmakerOdds
+- ~~`footballData.ts`: halfTimeResult 0-0 bug~~ — FIXED: explicit null/undefined check replaces falsy check
 - `dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)
 - Two parallel fatigue models exist: `FatigueAnalyzer.getFatigueMultiplier()` (used by `AdvancedMatchPredictor` via `value.ts`) and `OptimizedPredictor.calculateFatigueFactor()` — different thresholds, inconsistent results
 - Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom` — installed but never imported

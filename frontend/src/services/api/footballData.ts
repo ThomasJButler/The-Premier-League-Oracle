@@ -363,7 +363,8 @@ class FootballDataAPI {
                   fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
                   fdMatch.score.winner === 'DRAW' ? 'D' : null;
     
-    const halfTimeResult = !fdMatch.score.halfTime.home || !fdMatch.score.halfTime.away ? null :
+    const halfTimeResult = fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.home === undefined ||
+                           fdMatch.score.halfTime.away === null || fdMatch.score.halfTime.away === undefined ? null :
                            fdMatch.score.halfTime.home > fdMatch.score.halfTime.away ? 'H' :
                            fdMatch.score.halfTime.home < fdMatch.score.halfTime.away ? 'A' : 'D';
     

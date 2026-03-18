@@ -216,17 +216,17 @@ export class BetBuilderPredictor {
     const expectedCorners = avgCorners * ((homeAttackingFactor + awayAttackingFactor) / 2);
     
     return {
-      totalOver85: { 
-        prediction: expectedCorners > 8.5, 
-        probability: expectedCorners > 8.5 ? 0.55 + (expectedCorners - 8.5) * 0.1 : 0.45 
+      totalOver85: {
+        prediction: expectedCorners > 8.5,
+        probability: Math.min(0.99, expectedCorners > 8.5 ? 0.55 + (expectedCorners - 8.5) * 0.1 : 0.45)
       },
-      totalOver95: { 
-        prediction: expectedCorners > 9.5, 
-        probability: expectedCorners > 9.5 ? 0.50 + (expectedCorners - 9.5) * 0.1 : 0.40 
+      totalOver95: {
+        prediction: expectedCorners > 9.5,
+        probability: Math.min(0.99, expectedCorners > 9.5 ? 0.50 + (expectedCorners - 9.5) * 0.1 : 0.40)
       },
-      totalOver105: { 
-        prediction: expectedCorners > 10.5, 
-        probability: expectedCorners > 10.5 ? 0.45 + (expectedCorners - 10.5) * 0.1 : 0.35 
+      totalOver105: {
+        prediction: expectedCorners > 10.5,
+        probability: Math.min(0.99, expectedCorners > 10.5 ? 0.45 + (expectedCorners - 10.5) * 0.1 : 0.35)
       }
     };
   }
@@ -250,17 +250,17 @@ export class BetBuilderPredictor {
     }
     
     return {
-      totalOver25: { 
-        prediction: expectedCards > 2.5, 
-        probability: expectedCards > 2.5 ? 0.60 + (expectedCards - 2.5) * 0.1 : 0.40 
+      totalOver25: {
+        prediction: expectedCards > 2.5,
+        probability: Math.min(0.99, expectedCards > 2.5 ? 0.60 + (expectedCards - 2.5) * 0.1 : 0.40)
       },
-      totalOver35: { 
-        prediction: expectedCards > 3.5, 
-        probability: expectedCards > 3.5 ? 0.45 + (expectedCards - 3.5) * 0.1 : 0.35 
+      totalOver35: {
+        prediction: expectedCards > 3.5,
+        probability: Math.min(0.99, expectedCards > 3.5 ? 0.45 + (expectedCards - 3.5) * 0.1 : 0.35)
       },
-      totalOver45: { 
-        prediction: expectedCards > 4.5, 
-        probability: expectedCards > 4.5 ? 0.30 + (expectedCards - 4.5) * 0.1 : 0.25 
+      totalOver45: {
+        prediction: expectedCards > 4.5,
+        probability: Math.min(0.99, expectedCards > 4.5 ? 0.30 + (expectedCards - 4.5) * 0.1 : 0.25)
       }
     };
   }

@@ -77,23 +77,19 @@
         // Filter: confidence must meet threshold
         if (confidencePercent < confidenceThreshold) continue;
 
-        // Use the probability for the predicted outcome
-        // Extract from valueOdds (margin = 1.05) or fall back to confidence
-        let prob: number;
+        // Kelly compares OUR model's probability against the bookmaker's odds.
+        // ourProbability = model confidence; bookmakerOdds = valueOdds for the outcome.
+        // Edge exists when confidence > implied probability (1/odds).
+        const prob = prediction.confidence;
         let odds: number;
 
         if (prediction.valueOdds) {
-          const oddsForOutcome =
-            prediction.predictedResult === 'H' ? prediction.valueOdds.home
-              : prediction.predictedResult === 'A' ? prediction.valueOdds.away
-                : prediction.valueOdds.draw;
-
-          // Reverse the margin: probability = margin / odds
-          prob = 1.05 / oddsForOutcome;
-          odds = oddsForOutcome;
+          odds = prediction.predictedResult === 'H' ? prediction.valueOdds.home
+            : prediction.predictedResult === 'A' ? prediction.valueOdds.away
+              : prediction.valueOdds.draw;
         } else {
-          prob = prediction.confidence;
-          odds = (1 / prob) * 1.05; // Estimate fair odds with 5% margin
+          // No external odds available — no edge can be detected
+          odds = 1 / prob;
         }
 
         // Compute Kelly

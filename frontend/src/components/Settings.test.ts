@@ -89,9 +89,8 @@ describe('Settings Component', () => {
     await fireEvent.click(button);
     await act();
 
-    // saveFootballDataKey calls setApiKey and stores the key
+    // saveFootballDataKey trims and passes key to setApiKey (which handles localStorage internally)
     expect(footballDataAPI.setApiKey).toHaveBeenCalledWith('test-key-123');
-    expect(localStorage.setItem).toHaveBeenCalledWith('football_data_api_key', 'test-key-123');
 
     // After successful testConnection, apiConnected = true → "Connected" renders
     await waitFor(() => {

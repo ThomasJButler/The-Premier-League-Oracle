@@ -300,27 +300,38 @@
   }
 
   onMount(() => {
-    loadDashboardData().then(() => {
-      // Initialise profit chart after data is loaded
-      initProfitChart();
-    });
-
     // Initialise date/time
     updateDateTime();
-
-    // Update time every second
     const timeInterval = setInterval(updateDateTime, 1000);
 
-    // Auto-retry if there's an error
-    const retryInterval = setInterval(() => {
-      if (error && !loading) {
-        loadDashboardData();
-      }
-    }, 5000);
+    // Auto-retry with exponential backoff (max 3 attempts)
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function scheduleRetry() {
+      if (retryCount >= MAX_RETRIES || !error || loading) return;
+      const delay = 5000 * Math.pow(2, retryCount); // 5s, 10s, 20s
+      retryTimeout = setTimeout(() => {
+        if (error && !loading) {
+          retryCount++;
+          loadDashboardData().then(() => {
+            initProfitChart();
+            if (error) scheduleRetry();
+          });
+        }
+      }, delay);
+    }
+
+    // Initial load
+    loadDashboardData().then(() => {
+      initProfitChart();
+      if (error) scheduleRetry();
+    });
 
     return () => {
       clearInterval(timeInterval);
-      clearInterval(retryInterval);
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (profitChartInstance) {
         profitChartInstance.destroy();
         profitChartInstance = null;

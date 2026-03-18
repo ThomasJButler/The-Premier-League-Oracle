@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1l Live Probability Bugs — All Fixed (18 March 2026)
+- **betBuilder probability overflow:** Corner and card probability outputs clamped to [0, 0.99] in `calculateCorners()` and `calculateCards()` — previously could exceed 1.0 for high expected values, producing nonsensical combo confidence scores
+- **KellyCalculator circular Kelly fixed:** Was using `1.05 / odds` as `ourProbability`, creating a fake 5% edge against the model's own odds. Now correctly uses `prediction.confidence` as `ourProbability` and `valueOdds` as `bookmakerOdds` — edge only appears when model confidence genuinely exceeds the odds-implied probability
+- **footballData halfTimeResult 0-0 bug:** Replaced `!score` falsy check with explicit `=== null || === undefined` — JavaScript's `!0 === true` was incorrectly treating 0-0 half-time scores as null, affecting SeasonStats late-drama calculations
+- **Dashboard auto-retry bounded:** Replaced unbounded 5-second polling with exponential backoff (5s, 10s, 20s) capped at 3 retries — prevents indefinite API spam when key is missing/invalid
+- **Settings API key trimmed:** `saveFootballDataKey()` now trims whitespace before passing to `setApiKey()`. Also removed redundant duplicate `localStorage.setItem` call (already handled by `setApiKey` internally)
+- Updated Settings test to remove redundant `localStorage.setItem` assertion (no longer needed since `setApiKey` handles storage)
+
 ### Fifth Planning Audit — ~11 New Findings (18 March 2026)
 - **8 parallel research agents** (Sonnet) audited all 8 specs, all Svelte components, all frontend libs/services, all backend Python files, all test files, and all project configuration/infrastructure — comprehensive cross-referencing against existing plan
 - **shadcn-svelte `$lib/utils.ts` missing (P2a-fix):** `components.json` references `$lib/utils` for `cn()` utility but the file doesn't exist — hidden blocker for UI migration. Any new shadcn component import will fail at build time

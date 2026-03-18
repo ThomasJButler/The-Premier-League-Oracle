@@ -103,9 +103,9 @@
   }
   
   function saveFootballDataKey() {
-    if (footballDataKey.trim()) {
-      footballDataAPI.setApiKey(footballDataKey);
-      localStorage.setItem('football_data_api_key', footballDataKey);
+    const trimmedKey = footballDataKey.trim();
+    if (trimmedKey) {
+      footballDataAPI.setApiKey(trimmedKey);
       testConnection();
     }
   }
