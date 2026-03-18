@@ -139,6 +139,8 @@ These specs are the single source of truth for requirements.
 - ~~`footballData.ts`: halfTimeResult 0-0 bug~~ — FIXED: explicit null/undefined check replaces falsy check
 - ~~`dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)~~ **FIXED:** TTL values now passed correctly (24h for historical, 30min for team recent)
 - ~~Two parallel fatigue models exist~~ **FIXED:** `OptimizedPredictor.calculateFatigueFactor()` now delegates to `FatigueAnalyzer.getFatigueMultiplier()` — single source of truth for fatigue calculations
+- `FatigueAnalyzer.getFatigueMultiplier()` floors restDays at 0.5 to prevent zero-multiplier causing NaN in Poisson calculations
+- `LEAGUE_AVG_HOME_WIN_RATE` is no longer hardcoded — computed from actual completed matches via `computeLeagueAverages().homeWinRate` (fallback 0.46)
 - ~~Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom`~~ **FIXED:** all three uninstalled
 - ~~`.gitignore` gaps: only one `__pycache__` path covered~~ **FIXED:** `**/__pycache__/` glob added, plus `backend/cache/`, `backend/logs/`, `backend/mlruns/`
 - `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training

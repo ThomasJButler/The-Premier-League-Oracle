@@ -429,9 +429,10 @@ export class FatigueAnalyzer {
 
   static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
     // Less rest = more fatigue = worse performance
-    const restFactor = Math.min(restDays / 7, 1); // Optimal rest is 7+ days
+    // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
+    const restFactor = Math.min(Math.max(restDays, 0.5) / 7, 1); // Optimal rest is 7+ days
     const fixtureFactor = Math.max(1 - (recentFixtures - 1) * 0.1, 0.6); // Each extra fixture reduces performance
-    
+
     return restFactor * fixtureFactor;
   }
 }

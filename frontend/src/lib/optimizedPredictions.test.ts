@@ -12,13 +12,16 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
+// Default match date in the past to avoid timing-sensitive filtering in FatigueAnalyzer
+const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString();
+
 /** Creates a full Match object with sensible defaults. Override any field as needed. */
 function createMockMatch(
   overrides: Partial<Match> & { id: string; home_team: string; away_team: string }
 ): Match {
   return {
     season_id: '2025-26',
-    date: new Date().toISOString(),
+    date: YESTERDAY,
     home_goals: null,
     away_goals: null,
     result: null,

@@ -241,12 +241,13 @@ Created `vercel.json` with build command, output directory, and SPA catch-all re
 - [x] Root `.env.example` updated (P2p) — Supabase references removed
 - [ ] No `backend/.env.example` exists — create a template for required backend environment variables (deferred — backend not deployed to Vercel)
 
-### P2m. Derive Hardcoded League Stats from Data — NEW (deep audit)
+### P2m. Derive Hardcoded League Stats from Data — DONE (19 March 2026)
 
-Several hardcoded league statistics should be computed from actual match data:
-
-- [ ] `optimizedPredictions.ts`: `LEAGUE_AVG_HOME_WIN_RATE = 0.46` — should be derived from completed matches via `dataService.getMatches()`, similar to how `computeLeagueAverages()` already derives goal averages
-- [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — derive from actual match/referee data when available
+- [x] `optimizedPredictions.ts`: `LEAGUE_AVG_HOME_WIN_RATE = 0.46` replaced with `leagueAvgs.homeWinRate` computed from completed matches in `computeLeagueAverages()`
+- [x] Added `homeWinRate` field to `LeagueAverages` interface with 0.46 fallback for zero-data case
+- [x] Fixed `FatigueAnalyzer.getFatigueMultiplier()` zero-multiplier bug — floored `restDays` at 0.5 to prevent division-by-zero in Poisson lambda calculation
+- [x] Fixed test timing race in `optimizedPredictions.test.ts` — mock match dates now use "yesterday" instead of `new Date()` to avoid flaky `calculateRestDays` filtering
+- [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — these are fallback values when no referee data is available; kept as-is since `RefereeAnalyzer` doesn't have access to league-wide stats context
 
 ### P2n. CI/CD Pipeline — DONE (19 March 2026)
 

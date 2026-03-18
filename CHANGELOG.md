@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2m — Data-Driven League Stats and Fatigue Zero-Multiplier Fix (19 March 2026)
+- **Home win rate derived from data (P2m):** `LEAGUE_AVG_HOME_WIN_RATE = 0.46` replaced with `leagueAvgs.homeWinRate` computed from completed matches in `computeLeagueAverages()`. The referee bias adjustment now compares against the actual league home win rate rather than a hardcoded constant
+- **Fatigue zero-multiplier bug fixed:** `FatigueAnalyzer.getFatigueMultiplier()` could return 0 when `restDays = 0`, causing `0/0 = NaN` in Poisson lambda calculations. Floored `restDays` at 0.5 (12 hours) so the minimum multiplier is ~0.071 instead of 0
+- **Test timing race fixed:** `optimizedPredictions.test.ts` mock matches now use "yesterday" dates instead of `new Date()`, eliminating a flaky `calculateRestDays` filter that depended on sub-millisecond timing
+
 ### P2l — Production Deployment Configuration (19 March 2026)
 - **`vercel.json` created (P2l):** Configures Vercel deployment with `buildCommand: "cd frontend && npm run build"`, `outputDirectory: "frontend/dist"`, and SPA catch-all rewrite. Football-Data.org sends `Access-Control-Allow-Origin: *` so direct browser-to-API calls work without a server-side proxy
 

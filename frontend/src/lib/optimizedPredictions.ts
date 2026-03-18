@@ -37,6 +37,7 @@ interface TeamStrengths {
 interface LeagueAverages {
   avgHomeGoals: number; // Average goals scored by home teams per match
   avgAwayGoals: number; // Average goals scored by away teams per match
+  homeWinRate: number;  // Proportion of completed matches won by the home side
   teamStrengths: Map<string, TeamStrengths>;
 }
 
@@ -65,7 +66,7 @@ export class OptimizedPredictor {
     const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
 
     if (completed.length === 0) {
-      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, teamStrengths: new Map() };
+      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: 0.46, teamStrengths: new Map() };
     }
 
     // League totals
@@ -99,6 +100,7 @@ export class OptimizedPredictor {
 
     const avgHomeGoals = totalHomeGoals / completed.length;
     const avgAwayGoals = totalAwayGoals / completed.length;
+    const homeWinRate = completed.filter(m => m.result === 'H').length / completed.length;
 
     // Compute per-team strengths relative to league average
     const teamStrengths = new Map<string, TeamStrengths>();
@@ -124,7 +126,7 @@ export class OptimizedPredictor {
       });
     }
 
-    return { avgHomeGoals, avgAwayGoals, teamStrengths };
+    return { avgHomeGoals, avgAwayGoals, homeWinRate, teamStrengths };
   }
 
   /**
@@ -271,13 +273,14 @@ export class OptimizedPredictor {
       });
 
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
-      const LEAGUE_AVG_HOME_WIN_RATE = 0.46;
+      // Home win rate derived from actual completed matches (fallback 0.46 if no data)
+      const leagueHomeWinRate = leagueAvgs.homeWinRate;
       let adjustedProbabilities = { ...combinedProbabilities };
 
       if (referee) {
         try {
           const refereeStats = await RefereeAnalyzer.getRefereeStats(referee);
-          const homeWinBias = refereeStats.homeWinRate - LEAGUE_AVG_HOME_WIN_RATE;
+          const homeWinBias = refereeStats.homeWinRate - leagueHomeWinRate;
           // Clamp adjustment to ±3%
           const adjustment = Math.max(-0.03, Math.min(0.03, homeWinBias));
 
@@ -292,7 +295,7 @@ export class OptimizedPredictor {
             adjustedProbabilities.awayWin /= total;
 
             const direction = adjustment > 0 ? 'favours home' : 'favours away';
-            insights.push(`Referee ${referee} ${direction} (${(refereeStats.homeWinRate * 100).toFixed(0)}% home win rate vs ${(LEAGUE_AVG_HOME_WIN_RATE * 100).toFixed(0)}% avg)`);
+            insights.push(`Referee ${referee} ${direction} (${(refereeStats.homeWinRate * 100).toFixed(0)}% home win rate vs ${(leagueHomeWinRate * 100).toFixed(0)}% avg)`);
           }
         } catch {
           // Referee data unavailable — skip adjustment
