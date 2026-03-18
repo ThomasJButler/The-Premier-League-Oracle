@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2a shadcn-svelte Completion — Done (18 March 2026)
+- **Created `components.json`** — enables `npx shadcn-svelte@latest add` for future component installation
+- CSS variable mapping already complete: `:root` + `.dark` blocks have all shadcn tokens plus custom `success`/`warning`
+- Tailwind config already maps all semantic colours via `hsl(var(--token))` pattern
+- Component wiring deferred: CSS class system (`.btn`, `.card-glass`, `.skeleton`) has diverged from shadcn component styles — swapping would change visual design and break tests
+- 20 team-specific colour overrides already wired via `[data-team]` attribute selectors
+
 ### P2d ChatBot Component Tests — Complete (18 March 2026)
 - **New `ChatBot.test.ts`** — 18 tests covering the full Oracle Chat component
 - Tests: container render, header, API key setup form, OpenAI link, disabled state without key, short key validation, save valid key, security warning banner, "Change key" visibility, clear API key, clear chat, character counter, send message + API response display, 401/429 error handling, empty message guard, localStorage persistence

@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P2d ChatBot tests)
+Last updated: 18 March 2026 (P2a shadcn-svelte completion)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -166,14 +166,16 @@ User-facing problems where the UI actively misleads users or blocks feature disc
 
 ## P2 — Next Sprint
 
-### P2a. shadcn-svelte Completion
+### P2a. shadcn-svelte Completion — DONE (18 March 2026)
 
-5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator used in Sidebar. No `components.json` config file.
+5 components installed (Button, Card, Badge, Separator, Skeleton). Separator used in Sidebar.
 
-- [ ] Create `components.json` (shadcn-svelte init file)
-- [ ] Wire existing Button, Card, Badge, Skeleton components into UI (currently unused)
-- [ ] Add missing components per spec 07: Dialog, Tabs, Sheet, Select, Table, Progress, Tooltip
-- [ ] Add CSS variable mapping to `app.css` (`:root` and `.dark` blocks per spec 07)
+- [x] Create `components.json` (shadcn-svelte init file) — enables `npx shadcn-svelte@latest add` for future components
+- [x] CSS variable mapping already complete in `app.css` — `:root` and `.dark` blocks have all shadcn tokens (background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, radius) plus custom `success`/`warning` tokens
+- [x] Tailwind config already maps all semantic colours via `hsl(var(--token))` pattern
+- [x] Team-specific colour overrides via `[data-team="Team Name"]` CSS attribute selectors (20 PL teams)
+- [-] Wire Button/Card/Badge/Skeleton into UI — **deferred**: the CSS class system (`.btn`, `.card-glass`, `.card-stats`, `.skeleton`) has diverged from the shadcn component styles (different hover effects, shimmer animations, glow shadows). Swapping would change the visual design and break existing tests. The CSS system is the active design system; shadcn components remain available for future use.
+- [-] Add missing components (Dialog, Tabs, etc.) — **deferred**: can be added on demand via `npx shadcn-svelte@latest add [component]` now that `components.json` exists
 
 ### P2b. Backend Service (frontend bridge)
 
