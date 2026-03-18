@@ -383,6 +383,33 @@ export class BetBuilderPredictor {
     };
   }
   
+  /**
+   * Adjust naive independent-multiplication confidence for known market
+   * correlations. BTTS and Over 2.5 are positively correlated (both require
+   * goals), so their joint probability is higher than P(A)×P(B). Clean sheet
+   * and high-scoring markets are negatively correlated.
+   */
+  private static correlationAdjustment(selections: string[]): number {
+    let adjustment = 1.0;
+    const lower = selections.map(s => s.toLowerCase());
+
+    const hasBTTS = lower.some(s => s.includes('both teams to score'));
+    const hasOver25 = lower.some(s => s.includes('over 2.5 goals'));
+    const hasOver15FH = lower.some(s => s.includes('first half'));
+    const hasCleanSheet = lower.some(s => s.includes('clean sheet'));
+
+    // BTTS + Over 2.5: strongly positively correlated
+    if (hasBTTS && hasOver25) adjustment *= 1.15;
+
+    // BTTS + first-half goals: moderately positively correlated
+    if (hasBTTS && hasOver15FH) adjustment *= 1.10;
+
+    // Clean sheet + high-scoring markets: negatively correlated
+    if (hasCleanSheet && (hasOver25 || hasBTTS)) adjustment *= 0.85;
+
+    return adjustment;
+  }
+
   private static generateSuggestedCombos(
     matchResult: BetBuilderPrediction['matchResult'],
     btts: BetBuilderPrediction['bothTeamsToScore'],
@@ -417,21 +444,23 @@ export class BetBuilderPredictor {
     
     // Value combo - balanced risk/reward
     if (btts.yesProb > 0.45 && totalGoals.over25.probability > 0.5) {
-      const valueOdds = (1 / matchResult.confidence) * 
-                        (1 / btts.yesProb) * 
-                        (1 / totalGoals.over25.probability) * 
+      const valueSelections = [
+        `${matchResult.prediction === 'H' ? homeTeam : matchResult.prediction === 'A' ? awayTeam : 'Draw'} to win`,
+        'Both teams to score',
+        'Over 2.5 goals',
+        'Over 2.5 cards'
+      ];
+      const valueOdds = (1 / matchResult.confidence) *
+                        (1 / btts.yesProb) *
+                        (1 / totalGoals.over25.probability) *
                         (1 / cards.totalOver25.probability) * 1.15;
-      
+      const valueCorr = this.correlationAdjustment(valueSelections);
+
       combos.push({
         name: 'Value Builder',
-        selections: [
-          `${matchResult.prediction === 'H' ? homeTeam : matchResult.prediction === 'A' ? awayTeam : 'Draw'} to win`,
-          'Both teams to score',
-          'Over 2.5 goals',
-          'Over 2.5 cards'
-        ],
+        selections: valueSelections,
         combinedOdds: Math.round(valueOdds * 100) / 100,
-        confidence: Math.round(matchResult.confidence * btts.yesProb * totalGoals.over25.probability * cards.totalOver25.probability * 100) / 100,
+        confidence: Math.round(matchResult.confidence * btts.yesProb * totalGoals.over25.probability * cards.totalOver25.probability * valueCorr * 100) / 100,
         reasoning: 'Good value with attacking teams likely to score'
       });
     }
@@ -469,21 +498,23 @@ export class BetBuilderPredictor {
     
     // Goals-focused combo
     if (totalGoals.over25.probability > 0.55 && btts.yesProb > 0.5) {
+      const goalsSelections = [
+        'Over 2.5 goals',
+        'Both teams to score',
+        'Over 1.5 first half goals',
+        'Over 9.5 corners'
+      ];
       const goalsOdds = (1 / totalGoals.over25.probability) *
                         (1 / btts.yesProb) *
                         (1 / over15FirstHalfProb) *
                         (1 / corners.totalOver95.probability) * 1.15;
+      const goalsCorr = this.correlationAdjustment(goalsSelections);
 
       combos.push({
         name: 'Goals Galore',
-        selections: [
-          'Over 2.5 goals',
-          'Both teams to score',
-          'Over 1.5 first half goals',
-          'Over 9.5 corners'
-        ],
+        selections: goalsSelections,
         combinedOdds: Math.round(goalsOdds * 100) / 100,
-        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * over15FirstHalfProb * corners.totalOver95.probability * 100) / 100,
+        confidence: Math.round(totalGoals.over25.probability * btts.yesProb * over15FirstHalfProb * corners.totalOver95.probability * goalsCorr * 100) / 100,
         reasoning: 'High-scoring game expected with open play'
       });
     }

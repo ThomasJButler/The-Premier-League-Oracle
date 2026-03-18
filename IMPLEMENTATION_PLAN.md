@@ -752,11 +752,11 @@ Stale documentation and broken links discovered in the 8-agent audit:
 
 - [x] `README.md`: rewritten — version v3.0, correct clone URL (ThomasJButler), proper install instructions (cd frontend), current features, dead docs/ links removed, stale v2.0 section removed
 - [x] `backend/README.md`: broken links to JUPYTER_GUIDE.md, TRAINING_GUIDE.md, and docs/FOR_BEGINNERS.md removed; test count updated
-- [ ] `backend/docs/FOR_BEGINNERS.md`: broken links to `tutorials/01_first_prediction.py` etc. (directory doesn't exist); claims "68-72% accuracy" for untrained models
+- [x] `backend/docs/FOR_BEGINNERS.md`: broken links to `tutorials/01_first_prediction.py` etc. replaced with actual backend/frontend paths; "68-72% accuracy" claim removed (models are untrained)
 - [x] `specs/01-prediction-engine.md`: marked ELO auto-update and backtest runner as DONE
 - [x] `specs/03-backend-integration.md`: updated backend startup note
 - [x] `specs/07-ui-ux.md`: marked shadcn-svelte as initialised
-- [ ] `specs/02-data-pipeline.md`: Supabase removal checklist items all done but still unchecked
+- [x] ~~`specs/02-data-pipeline.md`: Supabase removal checklist items all done but still unchecked~~ **ALREADY DONE:** checklist was updated 19 March 2026, all items checked off
 - [x] `.gitignore`: `backend/.env` — DONE (confirmed present on line 14)
 - [x] `frontend/package.json`: version `0.0.0` → `3.0.0`
 - [ ] No `backend/.dockerignore` — test files, docs, spreadsheets (~100MB+ CSVs), and `chroma_db/` all included in Docker build context unnecessarily
