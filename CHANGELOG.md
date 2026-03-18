@@ -4,6 +4,11 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2r — Production Readiness: Meta Tags, Dead CSS Removal, Node Version Pin (19 March 2026)
+- **SEO meta tags added:** `index.html` now has `<meta name="description">` and Open Graph tags for social sharing
+- **Dead `.gradient-text` CSS removed:** Class and its `@keyframes gradientShift` animation deleted — never used by any component, gradient colours were imperceptibly similar dark slates
+- **`.nvmrc` created:** Pins Node.js to v20, matching the CI pipeline
+
 ### P2m — Data-Driven League Stats and Fatigue Zero-Multiplier Fix (19 March 2026)
 - **Home win rate derived from data (P2m):** `LEAGUE_AVG_HOME_WIN_RATE = 0.46` replaced with `leagueAvgs.homeWinRate` computed from completed matches in `computeLeagueAverages()`. The referee bias adjustment now compares against the actual league home win rate rather than a hardcoded constant
 - **Fatigue zero-multiplier bug fixed:** `FatigueAnalyzer.getFatigueMultiplier()` could return 0 when `restDays = 0`, causing `0/0 = NaN` in Poisson lambda calculations. Floored `restDays` at 0.5 (12 hours) so the minimum multiplier is ~0.071 instead of 0

@@ -288,7 +288,7 @@ Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor
 
 **Version pinning:**
 
-- [ ] Add `engines` field to `frontend/package.json` or create `.nvmrc` to pin Node.js version
+- [x] Created `.nvmrc` at project root with `20` — matches CI Node.js version
 - [ ] Fix Python version mismatch: `requirements.txt` says 3.13, `Dockerfile` uses 3.11, `environment.yml` uses 3.11 — align all to one version
 - [ ] `passlib==1.7.4` is incompatible with Python 3.13 — the `crypt` module was removed from stdlib in 3.13. If the target is truly 3.13, this will crash at import. (Only used by dead `auth.py` module, so low runtime risk)
 
@@ -307,8 +307,8 @@ Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor
 
 **Production readiness:**
 
-- [ ] `index.html`: replace default Vite favicon with project branding; add `<meta name="description">` and Open Graph tags
-- [ ] `app.css`: `.gradient-text` animation is imperceptible — both gradient stops are near-identical dark colours; dead CPU cycles
+- [x] `index.html`: added `<meta name="description">` and Open Graph tags (`og:title`, `og:description`, `og:type`). Favicon remains Vite default (project branding asset not yet available)
+- [x] `app.css`: removed dead `.gradient-text` class and `@keyframes gradientShift` — class was never used by any component, and the gradient colours were imperceptibly similar
 
 **Backend dead dependencies in `requirements.txt`:**
 

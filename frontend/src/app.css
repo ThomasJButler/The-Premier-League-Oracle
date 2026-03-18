@@ -401,19 +401,6 @@
     box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
   }
 
-  .gradient-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-size: 200% auto;
-    animation: gradientShift 3s ease-in-out infinite;
-  }
-
-  @keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
 }
 
 /* ─── ANIMATIONS & EFFECTS ─── */
