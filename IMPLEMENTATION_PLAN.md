@@ -1,7 +1,26 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P4d/P4e/P4f/P4g batch — market correlation, data-derived league averages, hero theme fix, dead code removal. Test count 335/21)
-Active branch: `v3.0-Frontend`
+Last updated: 21 March 2026 (CodeRabbit 11-bug fix batch. Test count 335/21. Priority shifted to P3-Free backend ML.)
+Active branch: `v3.0-BackendMLTraining`
+
+---
+
+## 🎯 Active Priority — P3-Free: Free-Tier ML Model
+
+**The frontend is in a stable, production-ready state. All P0–P2 work is complete. The active sprint is now the backend ML training pipeline.**
+
+Goal: get a real XGBoost model trained on the CSV data and serving predictions via the `/predict/free` endpoint. The user will retrain continuously as the model and data improve.
+
+**Immediate next steps (in order):**
+
+1. `backend/app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class (~83 features)
+2. `backend/train_free_tier.py` — training script (CSVs → features → XGBoost → `xgboost_free_tier.joblib`)
+3. `backend/app/api/main.py` — add `POST /predict/free` endpoint
+4. `backend/tests/` — feature tests + training integration tests
+
+The CSV training data lives in `backend/spreadsheets/KnowledgeFilesCSV/` (gitignored — do not commit). Team name normalisation between CSV short names and API canonical names is a known gap that must be solved in `FreeTierFeatureEngineer`.
+
+**Secondary backend items (P3a–P3d) remain in place** but are lower priority than getting the free-tier pipeline working end-to-end. The full 150-feature Pro-tier pipeline (P3a–P3c) is deferred until the free-tier model is stable.
 
 ---
 
