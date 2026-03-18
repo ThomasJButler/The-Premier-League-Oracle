@@ -175,7 +175,8 @@ class DataService {
     await this.ensureReady();
     const cacheKey = 'current_season';
     
-    // Try cache first
+    // Season data stored in 'teamStats' IndexedDB store (no dedicated season store
+    // exists — adding one would require an IDB schema migration for minimal benefit)
     const cached = await this.getCachedData<Season>('teamStats', cacheKey);
     if (cached) return cached;
     
@@ -392,7 +393,12 @@ class DataService {
   
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[]> {
     await this.ensureReady();
-    const cacheKey = `team_form_${teamName}_${matches?.length || 5}`;
+    // Cache key must reflect actual match content, not just array length —
+    // two different 5-match arrays for the same team would otherwise collide
+    const matchFingerprint = matches
+      ? matches.slice(0, 10).map(m => m.id).join(',')
+      : 'default';
+    const cacheKey = `team_form_${teamName}_${matchFingerprint}`;
     
     // Try cache first
     const cached = await this.getCachedData<TeamForm[]>('teamStats', cacheKey);
@@ -525,8 +531,9 @@ class DataService {
     await this.ensureReady();
     const cacheKey = `historical_matches_${season}`;
 
-    // Historical data rarely changes — use 24h cache
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    // Historical data rarely changes — 24h cache
+    const HISTORICAL_TTL = 24 * 60 * 60 * 1000;
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey, HISTORICAL_TTL);
     if (cached) return cached;
 
     if (this.apiSource.available) {
@@ -550,8 +557,9 @@ class DataService {
   public async getTeamRecentMatches(teamId: number, limit: number = 5): Promise<Match[]> {
     await this.ensureReady();
     const cacheKey = `team_recent_${teamId}_${limit}`;
+    const TEAM_RECENT_TTL = 30 * 60 * 1000;
 
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey, TEAM_RECENT_TTL);
     if (cached) return cached;
 
     if (this.apiSource.available) {

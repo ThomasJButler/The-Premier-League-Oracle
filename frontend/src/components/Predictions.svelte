@@ -44,7 +44,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  let totalGameweeks = 38; // Updated from API season data if available
+  let totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;
@@ -212,7 +212,6 @@
             confidence_score: prediction.confidence,
             predicted_home_goals: prediction.predictedHomeGoals,
             predicted_away_goals: prediction.predictedAwayGoals,
-            was_correct: false,
             prediction_date: new Date().toISOString(),
             created_at: new Date().toISOString(),
             id: `pred_${match.id}`,
@@ -278,9 +277,8 @@
       if (season?.currentMatchday) {
         selectedGameweek = season.currentMatchday;
       }
-      // PL always has 38 gameweeks; totalGameweeks defaults to 38 above
     } catch {
-      // Fall back to week 1 / 38 gameweeks if API unavailable
+      // Fall back to week 1 if API unavailable
     }
     loadGameweekMatches(selectedGameweek);
   });

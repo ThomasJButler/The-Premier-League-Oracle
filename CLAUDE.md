@@ -128,7 +128,7 @@ These specs are the single source of truth for requirements.
 - Root `.env.example` still references Supabase variables (stale)
 - ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
 - `ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML from OpenAI — potential XSS via prompt injection. Needs `DOMPurify` or a safe markdown renderer
-- `Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions. `predictionTracker.updateWithResult()` corrects this later but the initial value is misleading
+- ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
 - No CI/CD — no `.github/workflows/` directory. All testing is manual
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
 - Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
@@ -137,20 +137,20 @@ These specs are the single source of truth for requirements.
 - ~~`betBuilder.ts`: corner/card probability overflow~~ — FIXED: clamped to [0, 0.99]
 - ~~`KellyCalculator.svelte`: circular Kelly calculation~~ — FIXED: now uses model confidence as ourProbability, valueOdds as bookmakerOdds
 - ~~`footballData.ts`: halfTimeResult 0-0 bug~~ — FIXED: explicit null/undefined check replaces falsy check
-- `dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)
+- ~~`dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)~~ **FIXED:** TTL values now passed correctly (24h for historical, 30min for team recent)
 - Two parallel fatigue models exist: `FatigueAnalyzer.getFatigueMultiplier()` (used by `AdvancedMatchPredictor` via `value.ts`) and `OptimizedPredictor.calculateFatigueFactor()` — different thresholds, inconsistent results
 - Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom` — installed but never imported
 - `.gitignore` gaps: only one `__pycache__` path covered, missing `backend/cache/`, `backend/logs/`, `backend/mlruns/`
 - `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — enum mismatch breaks cross-module bet resolution
 - Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. Needs `.to_dict(orient='records')` conversion
-- `footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded — misleading error message
+- ~~`footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded~~ **FIXED:** now parses response body to distinguish rate-limit from auth failure
 - `BacktestRunner` makes ~1,140+ sequential API calls for a full season — each match triggers 3 service calls with no batching. Needs pre-fetched data approach
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
 - `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
 - `DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed as a dependency
 - **`frontend/src/lib/utils.ts` does NOT exist** — shadcn-svelte `components.json` references `$lib/utils` for the `cn()` utility but the file is missing. Blocker for adding new shadcn components or using existing ones that import `cn()`. Create it with `clsx` + `tailwind-merge` (standard shadcn pattern)
-- `dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content — different match arrays of the same length serve stale cached data
+- ~~`dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content~~ **FIXED:** cache key now uses match IDs as fingerprint
 - `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (`0.525`). Fixing P1l will break this test — update expected value to `0.50` alongside the fix
 - `requirements.txt` is missing `langchain-community` (needed by `modern_oracle.py`) and `bcrypt` (needed by `auth.py` passlib backend)
 - `main.py:511-515`: `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch is unavailable

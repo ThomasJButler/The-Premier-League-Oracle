@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1k, P1m, P1n, P1p — Data Layer and Storage Fixes (19 March 2026)
+- **Prediction storage `was_correct` removed:** `Predictions.svelte` no longer sets `was_correct: false` when creating the view-level prediction object — correctness is only determined later by `predictionTracker.updateWithResult()`. Made `was_correct` optional on the `Prediction` type
+- **Cache TTL mismatches fixed:** `dataService.ts` `getHistoricalMatches` now passes 24h TTL (was using 5-minute default despite "24h cache" comment). `getTeamRecentMatches` now passes 30min TTL (was using 5-minute default despite "30min cache" comment)
+- **API 403 error differentiation:** `footballData.ts` now parses the response body on HTTP 403 to distinguish rate-limit exceeded from invalid API key — users no longer see "API authentication failed" when they've simply hit the free tier rate limit. Also handles HTTP 429 explicitly
+- **Cache key collision fixed:** `dataService.ts` `getTeamForm` cache key now uses match IDs as a fingerprint instead of array length — prevents stale data when different match sets of the same length are requested for the same team
+- **`totalGameweeks` comment corrected:** Misleading "Updated from API season data" comment replaced with factual "Premier League: 20 teams × 2 = 38 matchdays (always)"
+
 ### P1h Prediction Model Bugs — Partial Fix (18 March 2026)
 - **H2H probability shrinkage fixed:** `optimizedPredictions.ts` shrinkage formula `ratio * 0.8 + 0.1` didn't sum to 1.0 (got 1.03). Changed to `ratio * 0.7 + 0.1` which sums exactly to 1.0 — fixes inflated H2H probabilities
 - **ELO ratingDiff threshold fixed:** `advancedPredictions.ts` checked `ratingDiff > 200` but ratingDiff is already divided by 100 at line 475, so the condition was unreachable. Changed to `> 2` (equivalent to 200 raw rating points)

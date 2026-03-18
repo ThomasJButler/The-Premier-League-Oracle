@@ -99,7 +99,7 @@ export interface Prediction {
   confidence_score: number;
   predicted_home_goals: number;
   predicted_away_goals: number;
-  was_correct: boolean;
+  was_correct?: boolean;
   prediction_date: string;
   created_at: string;
 }

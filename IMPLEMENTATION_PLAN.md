@@ -97,10 +97,10 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 
 - [ ] `ChatBot.svelte:420` — `{@html renderMarkdown(msg.content)}` renders unsanitised HTML from OpenAI responses. The `renderMarkdown()` function uses regex-based string replacements that produce raw HTML without sanitisation. Potential XSS via prompt injection (low probability since source is OpenAI, but non-zero). Fix: use a proper markdown renderer with sanitisation (e.g., `marked` + `DOMPurify`), or sanitise the output before rendering.
 
-### P1k. Prediction Storage Bug — NEW (19 March 2026)
+### P1k. Prediction Storage Bug — DONE (19 March 2026)
 
-- [ ] `Predictions.svelte:215` — `was_correct: false` is hardcoded when storing predictions via `predictionTracker.storePrediction()`. The field is never updated to reflect actual outcomes from the storage call. `predictionTracker.updateWithResult()` does correctly update stored predictions later via reconciliation, but the initial `was_correct: false` is misleading metadata. Consider removing the field from the initial storage call or deriving it only from `updateWithResult()`.
-- [ ] `Predictions.svelte:47` — `totalGameweeks = 38` is hardcoded and never updated from API season data despite the comment claiming it will be.
+- [x] `Predictions.svelte:215` — removed `was_correct: false` from the view-level prediction object. Made `was_correct` optional on the `Prediction` type in `types/index.ts` since correctness is only determined later by `predictionTracker.updateWithResult()`
+- [x] `Predictions.svelte:47` — updated misleading comment "Updated from API season data if available" to "Premier League: 20 teams × 2 = 38 matchdays (always)". Also removed stale comment about totalGameweeks in onMount
 
 ### P1l. Live Probability Bugs — DONE (18 March 2026)
 
@@ -112,29 +112,29 @@ All 5 probability and UX bugs fixed. 378/378 tests passing, 0 type errors.
 - [x] `Dashboard.svelte`: replaced unbounded 5s retry interval with exponential backoff (5s, 10s, 20s) capped at 3 retries — prevents indefinite API spam when key is missing/invalid
 - [x] `Settings.svelte`: `saveFootballDataKey()` now trims whitespace and delegates to `setApiKey()` only (removed redundant duplicate `localStorage.setItem` call)
 
-### P1m. Data Layer Cache Bugs — NEW (18 March 2026, third audit)
+### P1m. Data Layer Cache Bugs — PARTIAL (19 March 2026)
 
-**dataService cache TTL mismatches:** Comments claim specific TTLs but the actual implementation uses the default 5-minute timeout:
+**dataService cache TTL mismatches — DONE:**
 
-- [ ] `dataService.ts:528`: comment says "Historical data rarely changes — use 24h cache" but no `ttlMs` is passed to `getCachedData`, so it uses 5 minutes
-- [ ] `dataService.ts:549`: comment says "30min cache" for `getTeamRecentMatches` but again gets 5 minutes
-- [ ] `dataService.ts:179`: `getCurrentSeason()` caches season data in the `teamStats` IndexedDB store — semantic mismatch, clearing team stats silently clears the season too
+- [x] `dataService.ts:528`: `getHistoricalMatches` now passes `24 * 60 * 60 * 1000` (24h) TTL to `getCachedData` — matches the comment's intent
+- [x] `dataService.ts:549`: `getTeamRecentMatches` now passes `30 * 60 * 1000` (30min) TTL to `getCachedData` — matches the comment's intent
+- [x] `dataService.ts:179`: `getCurrentSeason()` caching in `teamStats` store documented with inline comment explaining the trade-off (no dedicated season store; IDB schema migration not worth it)
 
-**footballData double-cache architecture:** The `FootballDataAPI` class maintains its own in-memory `Map` cache with its own TTL, independently of the IndexedDB cache in `dataService.ts`. After `setApiKey()`, the in-memory cache is cleared but IndexedDB is not, so they can serve different data for the same endpoint.
+**footballData double-cache architecture — deferred (P3):**
 
-- [ ] Consider consolidating to a single cache layer, or at minimum documenting the dual-cache behaviour
+- [ ] The `FootballDataAPI` in-memory `Map` cache and `dataService` IndexedDB cache operate independently with separate TTLs. After `setApiKey()`, only the in-memory cache clears but IndexedDB retains stale entries. Consider consolidating or adding IndexedDB invalidation on key change
 
-### P1n. footballData API Error Misidentification — NEW (18 March 2026, fourth audit)
+### P1n. footballData API Error Misidentification — DONE (19 March 2026)
 
-- [ ] `footballData.ts:189-191`: HTTP 403 is treated as "API authentication failed" but the Football-Data.org free tier also returns 403 for rate-limit exceeded. Users see "invalid API key" when they've simply hit the rate limit. Differentiate by checking response body or using 429 vs 403 distinction
+- [x] `footballData.ts:189`: HTTP 403 now parses the response body and checks for rate-limit keywords (`rate`, `limit`, `quota`, `too many`). Rate-limit 403s show "Rate limit exceeded — please wait and try again" instead of "API authentication failed". Also added explicit HTTP 429 handling as a separate branch
 
 ### P1o. Backend `/standings` Endpoint Crashes at Runtime — NEW (18 March 2026, fourth audit)
 
 - [ ] `main.py` `/standings` endpoint calls `oracle.data_collector.get_standings()` which returns a `pd.DataFrame`. FastAPI attempts to serialise this to JSON, raising `TypeError` because `pd.DataFrame` is not JSON-serialisable. Fix: convert to `.to_dict(orient='records')` before returning
 
-### P1p. dataService `getTeamForm` Cache Key Bug — NEW (18 March 2026, fifth audit)
+### P1p. dataService `getTeamForm` Cache Key Bug — DONE (19 March 2026)
 
-- [ ] `dataService.ts:395`: cache key is `team_form_${teamName}_${matches?.length || 5}` — uses array length, not content. Two different match arrays of the same length for the same team will return stale cached data from whichever was fetched first. Cache key should incorporate match IDs or a date range, not just count
+- [x] `dataService.ts:395`: cache key now uses `matches.slice(0, 10).map(m => m.id).join(',')` as a fingerprint instead of `matches?.length || 5`. Different match arrays for the same team now correctly produce different cache keys
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 

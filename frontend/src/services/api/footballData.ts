@@ -187,8 +187,25 @@ class FootballDataAPI {
       
       if (!response.ok) {
         if (response.status === 403) {
-          console.error('Invalid API key or rate limit exceeded');
+          // Football-Data.org returns 403 for both invalid API keys AND rate-limit
+          // exceeded on the free tier. Try to distinguish via response body.
+          let detail = '';
+          try {
+            const body = await response.json();
+            detail = body?.message || '';
+          } catch { /* ignore parse errors */ }
+
+          const isRateLimit = /rate|limit|quota|too many/i.test(detail);
+          if (isRateLimit) {
+            console.warn('Rate limit exceeded (403):', detail);
+            throw new Error('Rate limit exceeded. The free tier allows 10 requests per minute — please wait and try again.');
+          }
+          console.error('API authentication failed (403):', detail);
           throw new Error('API authentication failed. Please check your API key.');
+        }
+        if (response.status === 429) {
+          console.warn('Rate limit exceeded (429)');
+          throw new Error('Rate limit exceeded. The free tier allows 10 requests per minute — please wait and try again.');
         }
         throw new Error(`API request failed: ${response.status}`);
       }
