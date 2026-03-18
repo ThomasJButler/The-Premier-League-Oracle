@@ -1,10 +1,23 @@
 <script lang="ts">
   import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { focusTrap } from '$lib/utils';
 
   export let currentView: string;
   export let isOpen: boolean;
+
+  // Focus trap only on mobile (< lg breakpoint) when sidebar is open over backdrop
+  let isMobile = false;
+  function checkMobile() { isMobile = window.innerWidth < 1024; }
+  if (typeof window !== 'undefined') {
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+  }
+  onDestroy(() => {
+    if (typeof window !== 'undefined') window.removeEventListener('resize', checkMobile);
+  });
+  $: trapActive = isOpen && isMobile;
 
   const dispatch = createEventDispatcher();
 
@@ -40,9 +53,15 @@
       closeSidebar();
     }
   }
+
+  function handleKeydown(e: any) {
+    if (e.key === 'Escape' && isOpen && isMobile) closeSidebar();
+  }
 </script>
 
-<aside class="sidebar-container {isOpen ? 'translate-x-0' : '-translate-x-full'}">
+<svelte:window on:keydown={handleKeydown} />
+
+<aside class="sidebar-container {isOpen ? 'translate-x-0' : '-translate-x-full'}" use:focusTrap={trapActive}>
   <nav class="flex flex-col h-full">
     <!-- Sidebar Header -->
     <div class="px-4 py-5" style="border-bottom: 1px solid hsl(var(--border) / 0.3);">
