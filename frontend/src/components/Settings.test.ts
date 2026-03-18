@@ -17,6 +17,13 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
+vi.mock('../services/backendService', () => ({
+  backendService: {
+    isAvailable: vi.fn(() => Promise.resolve(false)),
+    invalidateCache: vi.fn()
+  }
+}));
+
 // Mock lucide-svelte icons
 vi.mock('lucide-svelte', () => {
   const stub = class {
@@ -38,7 +45,7 @@ vi.mock('lucide-svelte', () => {
   return {
     Settings: stub, Key: stub, Database: stub, RefreshCw: stub,
     CheckCircle: stub, AlertCircle: stub, Wifi: stub, Trophy: stub,
-    Sparkles: stub, Heart: stub
+    Sparkles: stub, Heart: stub, Cpu: stub
   };
 });
 
@@ -127,5 +134,129 @@ describe('Settings Component', () => {
 
     const button = screen.getByText('Connect');
     expect(button).toBeDisabled();
+  });
+
+  describe('ML Backend Section', () => {
+    it('should render ML Backend heading and toggle', () => {
+      render(Settings);
+
+      expect(screen.getByText('ML Backend')).toBeInTheDocument();
+      expect(screen.getByText('Use ML Backend')).toBeInTheDocument();
+      expect(screen.getByRole('switch')).toBeInTheDocument();
+    });
+
+    it('should toggle useBackend and persist to localStorage', async () => {
+      render(Settings);
+
+      const toggle = screen.getByRole('switch');
+      expect(toggle.getAttribute('aria-checked')).toBe('false');
+
+      await fireEvent.click(toggle);
+      await act();
+
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
+      expect(localStorage.setItem).toHaveBeenCalledWith('use_backend', 'true');
+    });
+
+    it('should show backend status and token field when enabled', async () => {
+      render(Settings);
+
+      const toggle = screen.getByRole('switch');
+      await fireEvent.click(toggle);
+      await act();
+
+      expect(screen.getByText('Backend Status')).toBeInTheDocument();
+      expect(screen.getByText('API Token')).toBeInTheDocument();
+      expect(screen.getByText('Test')).toBeInTheDocument();
+      expect(screen.getByText('Save')).toBeInTheDocument();
+    });
+
+    it('should hide backend status and token field when disabled', () => {
+      render(Settings);
+
+      // Backend is off by default
+      expect(screen.queryByText('Backend Status')).not.toBeInTheDocument();
+      expect(screen.queryByText('API Token')).not.toBeInTheDocument();
+    });
+
+    it('should show green dot when backend is available', async () => {
+      const { backendService } = await import('../services/backendService');
+      vi.mocked(backendService.isAvailable).mockResolvedValue(true);
+
+      render(Settings);
+
+      const toggle = screen.getByRole('switch');
+      await fireEvent.click(toggle);
+      await act();
+
+      await waitFor(() => {
+        expect(screen.getByText('Connected and healthy')).toBeInTheDocument();
+      });
+
+      // Verify the green dot is rendered
+      const greenDot = document.querySelector('.bg-green-500');
+      expect(greenDot).toBeInTheDocument();
+    });
+
+    it('should show red dot when backend is unreachable', async () => {
+      const { backendService } = await import('../services/backendService');
+      vi.mocked(backendService.isAvailable).mockResolvedValue(false);
+
+      render(Settings);
+
+      const toggle = screen.getByRole('switch');
+      await fireEvent.click(toggle);
+      await act();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Unreachable/)).toBeInTheDocument();
+      });
+
+      const redDot = document.querySelector('.bg-red-500');
+      expect(redDot).toBeInTheDocument();
+    });
+
+    it('should check backend status when Test button is clicked', async () => {
+      const { backendService } = await import('../services/backendService');
+      vi.mocked(backendService.isAvailable).mockResolvedValue(true);
+
+      render(Settings);
+
+      // Enable backend
+      const toggle = screen.getByRole('switch');
+      await fireEvent.click(toggle);
+      await act();
+
+      // Clear previous calls from the toggle
+      vi.mocked(backendService.isAvailable).mockClear();
+      vi.mocked(backendService.invalidateCache).mockClear();
+
+      // Click Test button
+      const testButton = screen.getByText('Test');
+      await fireEvent.click(testButton);
+      await act();
+
+      expect(backendService.invalidateCache).toHaveBeenCalled();
+      expect(backendService.isAvailable).toHaveBeenCalled();
+    });
+
+    it('should save oracle_api_token to localStorage when Save is clicked', async () => {
+      render(Settings);
+
+      // Enable backend first
+      const toggle = screen.getByRole('switch');
+      await fireEvent.click(toggle);
+      await act();
+
+      const tokenInput = document.querySelector('input[placeholder*="Bearer"]') as HTMLInputElement;
+      await fireEvent.input(tokenInput, { target: { value: 'my-secret-token' } });
+      await act();
+
+      const saveButton = screen.getByText('Save');
+      await fireEvent.click(saveButton);
+      await act();
+
+      expect(localStorage.setItem).toHaveBeenCalledWith('oracle_api_token', 'my-secret-token');
+    });
   });
 });

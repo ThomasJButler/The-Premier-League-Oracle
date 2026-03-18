@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
+  import { backendService } from '../services/backendService';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
-  
+
   const dispatch = createEventDispatcher();
-  
+
   // API Key
   let footballDataKey = '';
   
@@ -47,6 +48,48 @@
     } else {
       localStorage.removeItem('favourite_team');
       delete document.documentElement.dataset.team;
+    }
+  }
+
+  // ML Backend
+  let useBackend = false;
+  let backendAvailable: boolean | null = null; // null = not checked yet
+  let checkingBackend = false;
+  let oracleApiToken = '';
+
+  function toggleBackend() {
+    useBackend = !useBackend;
+    localStorage.setItem('use_backend', useBackend ? 'true' : 'false');
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
+    } else {
+      backendAvailable = null;
+    }
+  }
+
+  async function checkBackendStatus() {
+    checkingBackend = true;
+    backendService.invalidateCache();
+    try {
+      backendAvailable = await backendService.isAvailable();
+    } catch {
+      backendAvailable = false;
+    } finally {
+      checkingBackend = false;
+    }
+  }
+
+  function saveOracleToken() {
+    const trimmed = oracleApiToken.trim();
+    if (trimmed) {
+      localStorage.setItem('oracle_api_token', trimmed);
+    } else {
+      localStorage.removeItem('oracle_api_token');
+    }
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
     }
   }
 
@@ -168,6 +211,16 @@
     const savedTeam = localStorage.getItem('favourite_team');
     if (savedTeam) {
       favouriteTeam = savedTeam;
+    }
+
+    // Load ML backend settings
+    useBackend = localStorage.getItem('use_backend') === 'true';
+    const savedToken = localStorage.getItem('oracle_api_token');
+    if (savedToken) {
+      oracleApiToken = savedToken;
+    }
+    if (useBackend) {
+      checkBackendStatus();
     }
 
     // Estimate real localStorage usage by summing key + value byte lengths
@@ -340,6 +393,97 @@
         {/each}
       </select>
     </div>
+  </div>
+
+  <!-- ML Backend -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Cpu class="w-5 h-5 text-primary" />
+      <span>ML Backend</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Connect to the Python ML backend for enhanced predictions using XGBoost, LSTM, and Transformer models. When disabled, predictions use the built-in TypeScript ensemble.
+    </p>
+
+    <!-- Toggle -->
+    <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Use ML Backend</p>
+        <p class="text-xs text-muted-foreground">Route predictions through the Python backend when available</p>
+      </div>
+      <button
+        on:click={toggleBackend}
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {useBackend ? 'bg-primary' : 'bg-muted-foreground/30'}"
+        role="switch"
+        aria-checked={useBackend}
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {useBackend ? 'translate-x-6' : 'translate-x-1'}"
+        ></span>
+      </button>
+    </div>
+
+    {#if useBackend}
+      <!-- Connection Status -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">Backend Status</p>
+          <p class="text-xs text-muted-foreground">
+            {#if checkingBackend}
+              Checking connection…
+            {:else if backendAvailable === true}
+              Connected and healthy
+            {:else if backendAvailable === false}
+              Unreachable — predictions will use TypeScript ensemble
+            {:else}
+              Not checked yet
+            {/if}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if checkingBackend}
+            <RefreshCw class="w-4 h-4 animate-spin text-amber-500" />
+          {:else if backendAvailable === true}
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          {:else if backendAvailable === false}
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          {:else}
+            <span class="w-3 h-3 rounded-full bg-muted-foreground/30"></span>
+          {/if}
+          <button
+            on:click={checkBackendStatus}
+            disabled={checkingBackend}
+            class="btn btn-sm btn-secondary disabled:opacity-50"
+          >
+            Test
+          </button>
+        </div>
+      </div>
+
+      <!-- API Token -->
+      <div class="p-3 bg-muted rounded-lg" transition:fade>
+        <label class="block text-sm font-medium text-foreground mb-1">
+          API Token <span class="text-xs text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <div class="flex space-x-2">
+          <input
+            type="password"
+            bind:value={oracleApiToken}
+            placeholder="Bearer token for authenticated endpoints"
+            class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
+          />
+          <button
+            on:click={saveOracleToken}
+            class="btn btn-sm btn-secondary"
+          >
+            Save
+          </button>
+        </div>
+        <p class="text-xs text-muted-foreground mt-1">
+          Only needed if your backend requires authentication.
+        </p>
+      </div>
+    {/if}
   </div>
 
   <!-- Cache Management -->

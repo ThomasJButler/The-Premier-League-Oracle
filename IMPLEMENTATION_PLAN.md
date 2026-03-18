@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P2b — backend service bridge with 19 tests, test count now 336/21)
+Last updated: 20 March 2026 (P2c — backend feature flag in Settings, test count now 344/21)
 Active branch: `v3.0-Frontend`
 
 ---
@@ -183,11 +183,13 @@ Frontend can now communicate with the Python ML backend. Created `backendService
 - [x] Add `MLPrediction`, `MLBatchResponse`, `MLHealthResponse` interfaces to `types/index.ts`
 - [x] 19 tests in `backendService.test.ts` (health caching, error paths, URL encoding, batch mixed results)
 
-### P2c. Backend Feature Flag in Settings
+### P2c. Backend Feature Flag in Settings — DONE (20 March 2026)
 
-- [ ] `useBackend` toggle (persisted as `use_backend` in localStorage)
-- [ ] Backend connection status indicator (green/red dot) — real ping, not fake "Connected"
-- [ ] `oracle_api_token` input field
+New "ML Backend" section in Settings with toggle, real-time health check, and token management. 8 new tests (16 total for Settings).
+
+- [x] `useBackend` toggle (persisted as `use_backend` in localStorage) with accessible switch role
+- [x] Backend connection status indicator (green/red dot) — real ping via `backendService.isAvailable()`, not fake "Connected"
+- [x] `oracle_api_token` input field with Save button (persisted to localStorage)
 - [x] Fix fake cache size calculation — now sums actual key+value byte lengths across all localStorage entries (UTF-16, 2 bytes per char)
 
 ### P2d. Missing Component Tests — DONE (18 March 2026)

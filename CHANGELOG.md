@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2c — Backend Feature Flag in Settings (20 March 2026)
+- **ML Backend section in Settings:** New card with toggle switch, connection status indicator, and API token input — all conditional on the toggle being enabled
+- **`useBackend` toggle:** Persisted to `localStorage` as `use_backend`. Uses accessible `role="switch"` with `aria-checked`. When toggled on, immediately pings the backend
+- **Real connection status:** Green dot when `backendService.isAvailable()` returns healthy, red dot when unreachable, spinner while checking. "Test" button forces a fresh check. No more fake "Connected" labels
+- **API token field:** Optional `oracle_api_token` stored in localStorage, used by `backendService.ts` for `Authorization: Bearer` header on authenticated endpoints
+- **8 new tests** covering toggle persistence, conditional rendering, status indicator colours, and token save
+- **Test count:** 336 → 344 tests across 21 files. All passing
+
 ### P2b — Backend Service Bridge (20 March 2026)
 - **`backendService.ts` created:** Singleton service class that bridges the frontend to the Python ML backend. Methods: `isAvailable()` (health check with 30s caching), `predictMatch()`, `predictBatch()`, `getTeamStats()`. All methods throw `BackendUnavailableError` on failure for graceful degradation
 - **ML types added to `types/index.ts`:** `MLPrediction`, `MLBatchResponse`, `MLHealthResponse` interfaces and `BackendUnavailableError` error class — matched to the actual backend API contract (not spec 03's assumed paths)
