@@ -4,6 +4,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2g Kelly Auto-Suggestions — Complete (18 March 2026)
+- **Suggested Bets panel** added above the manual Kelly Calculator — fetches upcoming matches (next 14 days), runs each through `OptimizedPredictor.predictMatch()`, computes Kelly stake, and displays value bets sorted by edge percentage
+- **Confidence threshold slider** (40–90%, default 65%) lets users tune aggressiveness — lower threshold shows more suggestions with weaker edges, higher shows fewer but stronger
+- **Reactive bankroll**: changing the bankroll input recalculates all suggestion stakes instantly via Svelte reactivity
+- **Probability extraction**: reverses `valueOdds` margin (1.05) to get true predicted probabilities for each outcome; falls back to confidence-based estimate when `valueOdds` absent
+- **Filters**: skips completed matches, predictions below confidence threshold, and negative EV bets
+- **`KellySuggestion` interface** exported from module context for type safety
+- **Test count 312 → 320**: KellyCalculator tests expanded from 7 to 15 — added suggestions empty state, API error, low-confidence filter, completed match skip, suggestion display, count text
+- **320/320 tests passing, 0 type errors**
+
 ### P2f Backtest Runner — Complete (18 March 2026)
 - **New file `backtest.ts`**: `BacktestRunner` class runs completed matches through the ensemble predictor retrospectively, comparing predicted vs actual results
 - **Metrics**: overall accuracy %, per-outcome accuracy (H/D/A), log loss (calibration), Brier score (probability quality)

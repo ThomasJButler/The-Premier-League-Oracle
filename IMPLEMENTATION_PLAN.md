@@ -216,12 +216,14 @@ Still missing:
 - [x] 15 unit tests covering metrics, probability extraction, progress callbacks, error handling
 - [ ] Accessible from Predictions view (button in accuracy panel) — UI integration deferred to P2f-UI
 
-### P2g. Kelly Auto-Suggestions
+### P2g. Kelly Auto-Suggestions — DONE (18 March 2026)
 
-- [ ] Load upcoming predictions from `OptimizedPredictor`
-- [ ] For confidence >= 65% + positive EV: generate Kelly suggestions
-- [ ] Display as "Suggested Bets" list above manual calculator
-- [ ] Add confidence threshold slider (currently hardcoded at 0.7)
+- [x] Load upcoming predictions from `OptimizedPredictor` (next 14 days)
+- [x] For confidence >= threshold + positive EV: generate Kelly suggestions
+- [x] Display as "Suggested Bets" list above manual calculator (sorted by edge)
+- [x] Add confidence threshold slider (40–90%, default 65%)
+- [x] Stakes recalculate reactively when bankroll changes
+- [x] 15 tests (was 7) covering manual calculator + suggestions: empty state, suggestions display, low-confidence filter, API error, completed match skip, suggestion count
 
 ### P2h. Oracle Chat Improvements
 
