@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P1g logic bugs fixed — all 13 silent bugs resolved)
+Last updated: 18 March 2026 (P1g + CodeRabbit review — 11 additional fixes committed, 8 unfixed issues tracked as P1h/P2/P3/P4)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -65,6 +65,18 @@ E2E coverage expanded from 27 tests (2 skipped) to 43 unique tests × 3 viewport
 - [ ] "Value Bets > Historical performance" — aspirational, feature doesn't exist
 - [ ] "Golden Rules" accuracy claims ("75-85%", "15% drop", "+15% manager bounce") — made-up figures not backed by any model measurement
 - [ ] "Bounce-Back Effect" — presented as model insight, but no such logic exists in the prediction engine
+
+### P1h. CodeRabbit Unfixed — High Priority (18 March 2026)
+
+Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit `c3d2f36`. The following require larger changes:
+
+**ChatBot API key exposure (security — active risk):**
+
+- [ ] `ChatBot.svelte` makes direct browser→OpenAI calls — API key visible in DevTools network tab. Route OpenAI calls through a backend proxy endpoint so the key is never sent to the client. Until then, users should be warned not to use their primary key. Architecture fix required — not a one-liner.
+
+**`importBets` stores unvalidated data (data integrity):**
+
+- [ ] `betHistoryService.ts`: `importBets()` only checks `bet.id && bet.matchId` before writing. Negative odds, missing `profit` on resolved bets, and invalid `market` strings are silently stored and corrupt `getROI()`, `getWinRate()`, and `getMonthlyPL()`. Add: `odds > 1`, `stake > 0`, `market` in allowlist, `profit` present on resolved bets.
 
 ### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
@@ -138,12 +150,13 @@ Security warning banner, markdown rendering, batched context calls, chat persist
 
 `ValueBets.svelte` created with match selector, user-entered odds inputs, scan for value. 12 tests.
 
-### P2j. Backtest Reliability Fixes — NEW (18 March 2026)
+### P2j. Backtest Reliability Fixes — DONE (18 March 2026)
 
-Discovered in audit — the backtest runner has two methodological issues:
+Discovered in audit — the backtest runner had two methodological issues, plus two remaining cleanup tasks:
 
-- [ ] Sort matches chronologically before iteration (prevent data leakage from future matches into ELO state)
-- [ ] Snapshot and restore `sharedEloSystem` before/after backtest run (ensure reproducibility across multiple runs in same session)
+- [x] Sort matches chronologically before iteration (prevent data leakage from future matches into ELO state) — fixed P1g
+- [x] Snapshot and restore `sharedEloSystem` before/after backtest run (ensure reproducibility across multiple runs in same session) — fixed P1g; ELO restore now also resets teams created during the run (CodeRabbit fix, commit `c3d2f36`)
+- [x] Guard division by zero in `extractProbabilities` when `valueOdds` fields are 0 — fixed CodeRabbit batch
 - [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to a shared constant in `lib/constants.ts` (currently duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`)
 
 ### P2k. ELO Auto-Update Integration — NEW (18 March 2026)
@@ -214,7 +227,7 @@ Standalone ML model trained on features available from the free API tier. Comple
 
 **Security (scoped to this feature):**
 
-- [ ] `.gitignore` — add `backend/.env` (currently only `/.env` root and `frontend/.env` listed)
+- [x] `.gitignore` — add `backend/.env` — DONE (line 14, confirmed present)
 - [ ] Team name normalisation dict (CSV short names ↔ API canonical names)
 - [ ] Input validation on `/predict/free` — team name allowlist (current PL + recent promoted/relegated)
 - [ ] Rate limiting on `/predict/free` (60 req/min per IP, in-memory)
@@ -272,6 +285,9 @@ Priority features to implement with real data:
 - [ ] Fix `transformer_model.py`: `val_accuracy` UnboundLocalError when no validation set
 - [ ] Fix `transformer_model.py`: `num_decoder_layers` param silently ignored (no decoder built)
 - [ ] Fix `lstm_predictor.py` + `transformer_model.py`: shallow `.copy()` on `state_dict()` — "best model" state can be mutated mid-training. Use `copy.deepcopy()` or tensor `.clone()`
+- [ ] **`train.py` column rename mismatch (CRITICAL — silent training on zeros):** `train.py` renames `FTHG` → `home_score` but `AdvancedFeatureEngineer` reads `home_goals`. Every feature method querying goal history returns `0.0`. Fix: rename to `home_goals` / `away_goals` to match what the feature engineer expects. Training completes but the model learns from near-zero features without this fix.
+- [ ] **`train.py` hardcoded CSV directory:** no fallback path — breaks environments that keep CSVs at a different location. Support `CSV_DIR` env override with legacy path fallback.
+- [ ] **Data leakage in `modern_oracle.py`:** `optimize_ensemble_weights()` samples a validation set from `training_data` but then passes the full `training_data` (including those validation samples) to `train()`. Models train on data they're validated against. Fix: exclude validation indices from the training split before calling `train()`.
 - [ ] Add pytest tests (currently 0% backend test coverage — `test_setup.py` only checks imports, no assertions)
 
 ### P3d. Security Layer Fixes
@@ -282,7 +298,8 @@ Priority features to implement with real data:
 - [ ] `auth.py`: Redis connection never established
 - [ ] **All 3 security files** (`auth.py`, `secrets.py`, `validators.py`) are **completely unused at runtime** — not imported by `main.py` or any model. Consider removing or properly wiring them
 - [ ] `main.py` bearer tokens on `/predict/natural` and `/admin/retrain` are **never verified** — any bearer string passes
-- [ ] `main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details to clients
+- [ ] `main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details to clients (confirmed by CodeRabbit review — spec 08 §4c)
+- [ ] **`main.py` WebSocket handler missing `oracle` null guard:** REST endpoints all check `if not oracle: raise HTTPException(503)` but the WebSocket handler calls `oracle.predict_match_ensemble()` without a guard. When deps are missing and `oracle` is `None`, the client gets a silent disconnect with no error message. Add null check at the top of the WebSocket handler matching the REST endpoint pattern.
 - [ ] `main.py`: `response.dict()` deprecated in Pydantic v2 — should be `.model_dump()`
 - [ ] `secrets.py`: Azure Key Vault imported but no provider class; hard imports `boto3`, `hvac`, `azure` with no guards — will crash on import without cloud SDKs
 - [ ] `secrets.py`: `SecureConfig.__init__` requires `DATABASE_URL` which doesn't exist in the project
@@ -403,6 +420,7 @@ Priority features to implement with real data:
 - [ ] `kelly.ts`: multiple dead exports — `decimalToFractional`, `requiredWinRate`, `calculateMultiple`, `calculateArbitrage`, `detectArbitrage`, `formatPercentage`, `breakEvenOdds` are never called. `getRiskLevel` ignores its `kellyFraction` and `edge` parameters
 - [ ] `value.ts`: `OddsProvider` interface defined but never implemented; `calculateCLV` always returns `betId: ''`
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
+- [ ] `advancedPredictions.ts`: `dataService.getMatches()` called 3× per prediction — once in `FatigueAnalyzer` and twice in `predictMatch`. Fetch once at the start of `predictMatch` and pass the array to helper methods.
 - [ ] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with slightly different signatures — maintenance risk
 - [ ] Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant — duplicated in `advancedPredictions.ts`, `optimizedPredictions.ts`, `backtest.ts`
 - [ ] Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant — duplicated in `optimizedPredictions.ts` and `advancedPredictions.ts`
@@ -419,7 +437,7 @@ Stale documentation and broken links discovered in the 8-agent audit:
 - [ ] `specs/03-backend-integration.md`: top note says backend won't start due to broken imports (P0a fixed this)
 - [ ] `specs/07-ui-ux.md`: says shadcn not initialised (it is — `components.json` exists); dark mode fix described as needed (done in P1b)
 - [ ] `specs/02-data-pipeline.md`: Supabase removal checklist items all done but still unchecked
-- [ ] `.gitignore`: `backend/.env` not excluded — API keys could be accidentally committed
+- [x] `.gitignore`: `backend/.env` — DONE (confirmed present on line 14)
 
 ---
 
