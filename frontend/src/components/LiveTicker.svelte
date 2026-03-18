@@ -125,7 +125,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ef4444;
+    background: hsl(var(--destructive));
     animation: pulse-dot 1.5s ease-in-out infinite;
     z-index: 1;
   }

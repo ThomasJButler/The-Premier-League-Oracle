@@ -518,7 +518,7 @@
         <!-- Progress Bar -->
         <div class="w-full bg-muted rounded-full h-2 overflow-hidden" role="progressbar" aria-valuenow={batchPredictionProgress} aria-valuemin={0} aria-valuemax={batchPredictionTotal} aria-label="Prediction progress">
           <div
-            class="h-full bg-gradient-to-r from-[#00cc6a] to-[#00ff87] rounded-full transition-all duration-300 ease-out"
+            class="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-300 ease-out"
             style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
           >
             <div class="h-full bg-white/30 animate-pulse"></div>

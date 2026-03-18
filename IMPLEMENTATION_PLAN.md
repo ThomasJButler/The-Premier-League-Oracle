@@ -657,11 +657,11 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 
 - [ ] Some raw hex values in `app.css` not using CSS design tokens
 - [ ] Team theme CSS variables exist (20 PL clubs) but integration unclear
-- [ ] `Dashboard.svelte` chart border colours hardcoded as hex (`'#4299e1'`, `'#10b981'`) — won't track dark/light theme
-- [ ] `BettingHistory.svelte` chart CSS variables passed to Chart.js at creation time, not reactively — won't update on theme change without chart re-creation
-- [ ] `Sidebar.svelte` has inline `style` with `rgba(0, 255, 135, 0.15)` rather than Tailwind/CSS variable
-- [ ] `Predictions.svelte` progress bar uses hardcoded hex `from-[#00cc6a] to-[#00ff87]`
-- [ ] `LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`
+- [ ] `Dashboard.svelte` chart border colours hardcoded as hex (`'#4299e1'`, `'#10b981'`) — Chart.js requires resolved colour values, not CSS variables. These are neutral mid-range colours that work in both themes. Proper fix requires reading CSS vars at chart creation time via `getComputedStyle` and re-creating charts on theme change — low priority
+- [ ] `BettingHistory.svelte` chart colours same limitation as Dashboard — Chart.js doesn't support CSS variables reactively
+- [x] ~~`Sidebar.svelte` has inline `style` with `rgba(0, 255, 135, 0.15)`~~ **FIXED:** replaced with `hsl(var(--primary) / 0.15)` so the logo border tracks the theme's primary colour
+- [x] ~~`Predictions.svelte` progress bar uses hardcoded hex~~ **FIXED:** replaced `from-[#00cc6a] to-[#00ff87]` with `from-primary/80 to-primary` to track theme colour
+- [x] ~~`LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`~~ **FIXED:** replaced with `hsl(var(--destructive))` so the live indicator tracks the theme
 - [ ] `Dashboard.svelte` hero section is always dark regardless of theme (intentional? or should adapt)
 - [x] ~~`tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist~~ **CORRECTED (fifth audit):** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load pattern + `<noscript>` fallback. Fonts are working correctly
 - [ ] `tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in an ESM `export default` context — inconsistent module style
