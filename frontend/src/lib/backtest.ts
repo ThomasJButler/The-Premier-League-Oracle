@@ -1,5 +1,6 @@
 import type { Match } from '../types';
 import { OptimizedPredictor, type EnhancedPredictionModel } from './optimizedPredictions';
+import { sharedEloSystem } from './advancedPredictions';
 
 export interface BacktestResult {
   totalMatches: number;
@@ -84,27 +85,32 @@ export class BacktestRunner {
   private matches: Match[];
 
   constructor(matches: Match[]) {
-    // Only keep matches with a definitive result
-    this.matches = matches.filter(
-      m => m.result === 'H' || m.result === 'D' || m.result === 'A'
-    );
+    // Only keep matches with a definitive result, sorted chronologically
+    // to prevent data leakage from future matches into ELO state.
+    this.matches = matches
+      .filter(m => m.result === 'H' || m.result === 'D' || m.result === 'A')
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   /**
    * Run the backtest across all completed matches.
    *
-   * For each match, calls OptimizedPredictor.predictMatch() with all other
-   * completed matches as historical context (excluding the match being tested).
+   * Matches are processed in chronological order. For each match, only
+   * earlier matches are passed as historical context to prevent data leakage.
+   * The shared ELO system is snapshot/restored to ensure reproducibility.
    */
   async run(onProgress?: BacktestProgressCallback): Promise<BacktestResult> {
+    // Snapshot the shared ELO state so backtesting doesn't corrupt live ratings
+    const eloSnapshot = sharedEloSystem.getAllRatings();
+
     const predictions: BacktestPrediction[] = [];
     const total = this.matches.length;
 
     for (let i = 0; i < total; i++) {
       const match = this.matches[i];
 
-      // Historical context: all matches except the one being predicted
-      const historicalMatches = this.matches.filter(m => m.id !== match.id);
+      // Historical context: only matches before this one (chronological order)
+      const historicalMatches = this.matches.slice(0, i);
 
       let prediction: EnhancedPredictionModel;
       try {
@@ -134,6 +140,11 @@ export class BacktestRunner {
       });
 
       onProgress?.(i + 1, total);
+    }
+
+    // Restore the shared ELO state to its pre-backtest snapshot
+    for (const [team, rating] of Object.entries(eloSnapshot)) {
+      sharedEloSystem.setTeamRating(team, rating);
     }
 
     return this.computeMetrics(predictions);

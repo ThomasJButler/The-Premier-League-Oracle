@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (8-agent comprehensive audit — corrected test counts, 12 new bugs, updated stubs)
+Last updated: 18 March 2026 (P1g logic bugs fixed — all 13 silent bugs resolved)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -66,23 +66,23 @@ E2E coverage expanded from 27 tests (2 skipped) to 43 unique tests × 3 viewport
 - [ ] "Golden Rules" accuracy claims ("75-85%", "15% drop", "+15% manager bounce") — made-up figures not backed by any model measurement
 - [ ] "Bounce-Back Effect" — presented as model insight, but no such logic exists in the prediction engine
 
-### P1g. Newly Discovered Logic Bugs — NEW (18 March 2026)
+### P1g. Newly Discovered Logic Bugs — DONE (18 March 2026)
 
-Silent logic bugs discovered during the 18 March 8-agent planning audit. These produce wrong data for users.
+All 13 silent logic bugs discovered during the 8-agent audit have been fixed. 378/378 tests passing, 0 type errors.
 
-- [ ] `betBuilder.ts`: `predictedHomeGoals || 1.3` treats 0 expected goals as falsy → falls back to 1.3 (same for `awayGoals || 1.1`). Should use `?? 1.3` nullish coalescing
-- [ ] `betHistoryService.ts`: `resolveSingleLeg` clean sheet check wrong — `homeGoals > 0 && totalGoals - homeGoals === 0` requires home to score AND away to concede 0, but a "home clean sheet" means away scored 0 regardless. Condition should be `totalGoals - homeGoals === 0` only
-- [ ] `betHistoryService.ts`: bare `'win to nil'` leg (without "home"/"away" prefix) matches neither branch in `resolveSingleLeg` → returns `null` (unresolved forever)
-- [ ] `betHistoryService.ts`: void bets counted in `getMonthlyPL` (has `resolvedAt`) but excluded from `getROI` (filters `result !== 'void'`) — inconsistent summary views
-- [ ] `TopScorers.svelte`: `s.assists || s.numberOfAssists || null` — `||` treats `0` assists as falsy → shows nothing instead of "0". Should use `??`
-- [ ] `TopScorers.svelte`: fallback `position: 'Forward'` when API returns null — displays incorrect data for midfielders/defenders
-- [ ] `BettingHistory.svelte`: Chart.js config uses `hsl(var(--text-muted))` and `hsla(var(--text-base) / 0.1)` — neither CSS variable exists in `app.css`. Should be `--muted-foreground` and `--foreground`
-- [ ] `dataService.ts`: `clearCache()` also calls `footballDataAPI.clearApiKey()` — cache flush removes the user's API key as a side-effect, forcing re-entry in Settings
-- [ ] `dataService.ts`: `getPredictionAccuracy(seasonId)` accepts but ignores the `seasonId` parameter — always returns global stats regardless of season argument
-- [ ] `optimizedPredictions.ts`: when form data is missing, `analyzeRecentForm` derives form score from ELO rating — ELO contributes to both the ELO model (25%) and form model (20%), silently exceeding its declared 25% weight
-- [ ] `backtest.ts`: matches not sorted chronologically before iteration — predictions may leak future match data into ELO state (data leakage)
-- [ ] `backtest.ts`: `sharedEloSystem` singleton is mutated during backtest runs and never reset — subsequent backtests in the same session start from different ELO states (non-reproducible)
-- [ ] `ValueBets.svelte`: `bttsNoOdds` variable declared in script but no `<input>` element bound to it in template — users cannot supply BTTS odds despite the engine supporting that market
+- [x] `betBuilder.ts`: `||` → `??` for `predictedHomeGoals`/`awayGoals` — 0 goals no longer treated as falsy
+- [x] `betHistoryService.ts`: clean sheet resolution fixed — home clean sheet = away scored 0 (was requiring home to score AND away concede 0)
+- [x] `betHistoryService.ts`: bare `'win to nil'` leg now has fallback (was silently unresolved forever)
+- [x] `betHistoryService.ts`: void bets excluded from `getMonthlyPL` (consistent with `getROI`)
+- [x] `TopScorers.svelte`: `||` → `??` for assists/penalties — 0 values now display correctly
+- [x] `TopScorers.svelte`: position fallback changed from `'Forward'` to `'Unknown'`
+- [x] `BettingHistory.svelte`: Chart.js CSS variables corrected (`--text-muted` → `--muted-foreground`, `--text-base` → `--foreground`)
+- [x] `dataService.ts`: `clearCache()` no longer removes the user's API key
+- [x] `dataService.ts`: `getPredictionAccuracy(seasonId)` now filters predictions by season date range
+- [x] `optimizedPredictions.ts`: form fallback returns neutral 0.5 instead of deriving from ELO (eliminates double-counting)
+- [x] `backtest.ts`: matches sorted chronologically before iteration (prevents data leakage)
+- [x] `backtest.ts`: ELO system snapshot/restored around backtest runs (reproducible results)
+- [x] `ValueBets.svelte`: BTTS odds inputs added to template (engine already supported the market)
 
 ---
 

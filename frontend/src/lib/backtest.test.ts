@@ -11,6 +11,14 @@ vi.mock('./optimizedPredictions', () => ({
   }
 }));
 
+// Mock the shared ELO system so backtest snapshot/restore doesn't hit localStorage
+vi.mock('./advancedPredictions', () => ({
+  sharedEloSystem: {
+    getAllRatings: vi.fn(() => ({ 'Arsenal': 1800, 'Liverpool': 1780 })),
+    setTeamRating: vi.fn()
+  }
+}));
+
 const mockPredictMatch = vi.mocked(OptimizedPredictor.predictMatch);
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -318,11 +326,11 @@ describe('BacktestRunner', () => {
     expect(result.totalMatches).toBe(2);
   });
 
-  it('should pass historical matches excluding the current match', async () => {
+  it('should pass only earlier matches as historical context (chronological order)', async () => {
     const matches = [
-      makeMatch({ id: '1', result: 'H' }),
-      makeMatch({ id: '2', result: 'D' }),
-      makeMatch({ id: '3', result: 'A' })
+      makeMatch({ id: '1', result: 'H', date: '2025-01-01T15:00:00Z' }),
+      makeMatch({ id: '2', result: 'D', date: '2025-01-08T15:00:00Z' }),
+      makeMatch({ id: '3', result: 'A', date: '2025-01-15T15:00:00Z' })
     ];
 
     mockPredictMatch.mockResolvedValue(makePrediction());
@@ -330,15 +338,15 @@ describe('BacktestRunner', () => {
     const runner = new BacktestRunner(matches);
     await runner.run();
 
-    // First call should have matches 2 and 3 as historical
+    // First call (earliest match): no historical context available
     const firstCallHistory = mockPredictMatch.mock.calls[0][2] as Match[];
-    expect(firstCallHistory.map(m => m.id)).toEqual(['2', '3']);
+    expect(firstCallHistory.map(m => m.id)).toEqual([]);
 
-    // Second call should have matches 1 and 3 as historical
+    // Second call: only the first match is available as history
     const secondCallHistory = mockPredictMatch.mock.calls[1][2] as Match[];
-    expect(secondCallHistory.map(m => m.id)).toEqual(['1', '3']);
+    expect(secondCallHistory.map(m => m.id)).toEqual(['1']);
 
-    // Third call should have matches 1 and 2 as historical
+    // Third call: first two matches available as history
     const thirdCallHistory = mockPredictMatch.mock.calls[2][2] as Match[];
     expect(thirdCallHistory.map(m => m.id)).toEqual(['1', '2']);
   });

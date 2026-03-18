@@ -133,7 +133,7 @@ describe('BetBuilderPredictor', () => {
       expect(result.matchId).toBe('Arsenal-Chelsea');
     });
 
-    it('should fall back to default expected goals when prediction has falsy values', async () => {
+    it('should use 0 expected goals when prediction returns 0 (not treat as falsy)', async () => {
       vi.mocked(OptimizedPredictor.predictMatch).mockResolvedValue(
         mockPrediction({ predictedHomeGoals: 0, predictedAwayGoals: 0 })
       );
@@ -144,8 +144,8 @@ describe('BetBuilderPredictor', () => {
 
       await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
 
-      // Fallback values: 1.3 home, 1.1 away, max score 7
-      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(1.3, 1.1, 7);
+      // 0 is a valid value — ?? only falls back on null/undefined
+      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(0, 0, 7);
     });
 
     it('should use real expected goals when prediction provides them', async () => {

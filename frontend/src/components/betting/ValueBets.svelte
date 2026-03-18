@@ -211,6 +211,23 @@
             </div>
           </div>
 
+          <!-- BTTS Market (optional) -->
+          <div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Both Teams to Score <span class="text-muted-foreground/60">(optional)</span></p>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label for="btts-yes-odds" class="block text-xs text-muted-foreground mb-1">BTTS Yes</label>
+                <input id="btts-yes-odds" type="number" bind:value={bttsOdds} min="1.01" step="0.01" placeholder="e.g. 1.70"
+                  class="w-full px-2 py-2 rounded-lg border border-border bg-muted text-foreground text-sm text-center" />
+              </div>
+              <div>
+                <label for="btts-no-odds" class="block text-xs text-muted-foreground mb-1">BTTS No</label>
+                <input id="btts-no-odds" type="number" bind:value={bttsNoOdds} min="1.01" step="0.01" placeholder="e.g. 2.10"
+                  class="w-full px-2 py-2 rounded-lg border border-border bg-muted text-foreground text-sm text-center" />
+              </div>
+            </div>
+          </div>
+
           <!-- Bankroll -->
           <div>
             <label for="value-bankroll" class="block text-sm font-medium text-foreground mb-1.5">Bankroll</label>

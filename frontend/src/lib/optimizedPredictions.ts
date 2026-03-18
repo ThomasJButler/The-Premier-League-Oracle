@@ -433,9 +433,10 @@ export class OptimizedPredictor {
 
     const calculateFormScore = (form: any[], isHome: boolean = false) => {
       if (!form || form.length === 0) {
-        // Use ELO rating as fallback when no form data available
-        const teamStrength = this.eloSystem.getTeamRating(isHome ? homeTeam : awayTeam);
-        return 0.3 + ((teamStrength - 1500) / 1000); // Convert to ~0.1 - 0.65 range
+        // Return neutral form score when no form data available.
+        // Previously this derived from ELO, which double-counted ELO's
+        // contribution (25% ELO weight + 20% form weight both from ELO).
+        return 0.5;
       }
       
       let score = 0;

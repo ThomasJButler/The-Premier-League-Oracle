@@ -67,7 +67,7 @@
           id: s.player?.id || 0,
           name: s.player?.name || 'Unknown',
           nationality: s.player?.nationality || 'Unknown',
-          position: s.player?.position || 'Forward',
+          position: s.player?.position || 'Unknown',
           dateOfBirth: s.player?.dateOfBirth
         },
         team: {
@@ -76,8 +76,8 @@
           crest: s.team?.crest
         },
         goals: s.goals || s.numberOfGoals || 0,
-        assists: s.assists || s.numberOfAssists || null,
-        penalties: s.penalties || s.penaltyGoals || null
+        assists: s.assists ?? s.numberOfAssists ?? null,
+        penalties: s.penalties ?? s.penaltyGoals ?? null
       }));
       
       if (scorers.length === 0) {

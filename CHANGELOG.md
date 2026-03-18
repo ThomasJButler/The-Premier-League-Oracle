@@ -4,6 +4,18 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P1g Logic Bug Sweep — 13 Silent Bugs Fixed (18 March 2026)
+- **`betBuilder.ts`** — `||` → `??` for `predictedHomeGoals`/`awayGoals`; 0 goals no longer treated as falsy and silently replaced with 1.3/1.1
+- **`betHistoryService.ts`** — three fixes: home clean sheet resolution inverted (was requiring home to score), bare 'win to nil' leg fell through unresolved, void bets included in monthly P/L
+- **`TopScorers.svelte`** — `||` → `??` for assists/penalties (0 now displays); position fallback `'Forward'` → `'Unknown'`
+- **`BettingHistory.svelte`** — Chart.js CSS variables corrected: `--text-muted` → `--muted-foreground`, `--text-base` → `--foreground`
+- **`dataService.ts`** — `clearCache()` no longer removes the user's API key; `getPredictionAccuracy(seasonId)` now filters by season date range instead of returning global stats
+- **`optimizedPredictions.ts`** — form fallback returns neutral 0.5 instead of deriving from ELO (was double-counting ELO at 45% effective weight)
+- **`backtest.ts`** — matches sorted chronologically (prevents data leakage), ELO system snapshot/restored for reproducibility
+- **`ValueBets.svelte`** — BTTS odds inputs added to template (variable existed but had no `<input>`)
+- **Tests updated**: `backtest.test.ts` (chronological context + ELO mock), `betBuilder.test.ts` (falsy-zero), `dataService.cache.test.ts` (API key preserved), `dataService.test.ts` (predictionTracker mock)
+- **378/378 tests passing, 0 type errors**
+
 ### 8-Agent Comprehensive Planning Audit (18 March 2026)
 - **8 parallel subagents** studied all 8 specs, 18 Svelte components, all frontend libs/services, all backend Python files, all 21 test files + 6 E2E specs, and all project documentation
 - **Test counts corrected**: 378 Vitest tests across 21 files (was documented as 275/13); 43 Playwright E2E tests across 6 files × 3 viewports = 123 executions (was 27/5, 2 skipped → now 0 skipped)

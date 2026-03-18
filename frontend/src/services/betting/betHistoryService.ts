@@ -228,8 +228,11 @@ class BetHistoryService {
     if (leg.includes('under 1.5') || leg === 'under 1.5 goals') return totalGoals < 1.5;
 
     // Clean sheet legs
+    // "home clean sheet" = away team scored 0 (i.e. awayGoals === 0)
+    // "away clean sheet" = home team scored 0 (i.e. homeGoals === 0)
     if (leg.includes('clean sheet')) {
-      if (leg.includes('home')) return homeGoals > 0 && totalGoals - homeGoals === 0;
+      if (leg.includes('home')) return totalGoals - homeGoals === 0;
+      if (leg.includes('away')) return homeGoals === 0;
       // Generic clean sheet — at least one team kept a clean sheet
       return homeGoals === 0 || (totalGoals - homeGoals) === 0;
     }
@@ -238,6 +241,9 @@ class BetHistoryService {
     if (leg.includes('win to nil')) {
       if (leg.includes('home')) return actualResult === 'H' && (totalGoals - homeGoals) === 0;
       if (leg.includes('away')) return actualResult === 'A' && homeGoals === 0;
+      // Bare "win to nil" — either team wins without conceding
+      return (actualResult === 'H' && (totalGoals - homeGoals) === 0) ||
+             (actualResult === 'A' && homeGoals === 0);
     }
 
     // Unrecognised leg — can't resolve
@@ -286,7 +292,7 @@ class BetHistoryService {
 
   /** Monthly profit/loss breakdown for charting. */
   public getMonthlyPL(): MonthlyPL[] {
-    const resolved = this.getAllBets().filter(b => b.resolvedAt);
+    const resolved = this.getAllBets().filter(b => b.resolvedAt && b.result !== 'void');
     const monthMap = new Map<string, { profit: number; bets: number }>();
 
     for (const bet of resolved) {

@@ -78,8 +78,8 @@ export class BetBuilderPredictor {
     ]);
     
     // Calculate average goals for Poisson distribution
-    const homeGoalsExpected = basePrediction.predictedHomeGoals || 1.3;
-    const awayGoalsExpected = basePrediction.predictedAwayGoals || 1.1;
+    const homeGoalsExpected = basePrediction.predictedHomeGoals ?? 1.3;
+    const awayGoalsExpected = basePrediction.predictedAwayGoals ?? 1.1;
     
     // Generate score probabilities
     const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(

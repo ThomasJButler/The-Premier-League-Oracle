@@ -286,10 +286,11 @@ describe('DataService IndexedDB Cache', () => {
     expect(mockApi.getTeamStats).toHaveBeenCalledTimes(2);
   });
 
-  it('clearCache also removes the API key from localStorage', async () => {
+  it('clearCache preserves the API key in localStorage', async () => {
     await dataService.clearCache();
 
-    expect(localStorage.removeItem).toHaveBeenCalledWith('football_data_api_key');
-    expect(mockApi.clearApiKey).toHaveBeenCalled();
+    // API key should NOT be removed when clearing cache — it's a user credential, not cached data
+    expect(localStorage.removeItem).not.toHaveBeenCalledWith('football_data_api_key');
+    expect(mockApi.clearApiKey).not.toHaveBeenCalled();
   });
 });
