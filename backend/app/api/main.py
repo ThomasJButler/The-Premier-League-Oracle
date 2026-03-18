@@ -28,6 +28,7 @@ import json
 import logging
 from pathlib import Path
 import os
+import numpy as np
 
 # Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)
@@ -59,6 +60,15 @@ except ImportError as e:
     AdvancedFeatureEngineer = None  # type: ignore
     FEATURE_ENGINEER_AVAILABLE = False
 
+# Free-tier feature engineer — lightweight, no heavy deps
+try:
+    from app.features.free_tier_features import FreeTierFeatureEngineer, CSV_TO_API, API_TO_CSV
+    FREE_TIER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
+    FreeTierFeatureEngineer = None  # type: ignore
+    FREE_TIER_AVAILABLE = False
+
 try:
     from app.data.football_data_collector import FootballDataCollector
     DATA_COLLECTOR_AVAILABLE = True
@@ -77,6 +87,16 @@ MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 oracle: Optional['ModernPremierLeagueOracle'] = None
 redis_client = None
 active_websockets: List[WebSocket] = []
+
+# Free-tier model state
+free_tier_model = None  # xgb.Booster loaded from joblib
+free_tier_metadata: Dict[str, Any] = {}  # Model metadata (version, features, etc.)
+free_tier_engineer: Optional[Any] = None  # FreeTierFeatureEngineer for live predictions
+
+# In-memory rate limiter for /predict/free
+_rate_limit_store: Dict[str, List[float]] = {}
+RATE_LIMIT_MAX = 60  # requests per minute per IP
+RATE_LIMIT_WINDOW = 60.0  # seconds
 
 # Security
 security = HTTPBearer()
@@ -195,8 +215,67 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Could not load pre-trained models: {e}")
 
+    # Load free-tier model if available
+    global free_tier_model, free_tier_metadata, free_tier_engineer
+    free_tier_model_path = Path("models") / "xgboost_free_tier.joblib"
+    if free_tier_model_path.exists() and FREE_TIER_AVAILABLE:
+        try:
+            import joblib
+            payload = joblib.load(str(free_tier_model_path))
+
+            # Validate metadata keys
+            required_keys = {'tier', 'feature_names', 'version', 'model'}
+            missing = required_keys - set(payload.keys())
+            if missing:
+                raise ValueError(f"Model file missing required keys: {missing}")
+
+            free_tier_model = payload['model']
+            free_tier_metadata = {
+                k: v for k, v in payload.items() if k != 'model'
+            }
+            logger.info(
+                "Free-tier model loaded: version %s, %d features",
+                payload.get('version', 'unknown'),
+                len(payload.get('feature_names', [])),
+            )
+
+            # Create a feature engineer with empty data for live predictions.
+            # For real predictions, we'd populate with current-season data
+            # from the API or CSVs.
+            import pandas as pd
+            empty_df = pd.DataFrame(columns=[
+                'date', 'home_team', 'away_team', 'home_goals', 'away_goals',
+                'result', 'half_time_home_goals', 'half_time_away_goals',
+                'half_time_result', 'home_shots', 'away_shots',
+                'home_shots_target', 'away_shots_target', 'home_corners',
+                'away_corners', 'home_yellows', 'away_yellows', 'home_reds',
+                'away_reds', 'home_fouls', 'away_fouls',
+            ])
+            empty_df['date'] = pd.to_datetime(empty_df['date'])
+            free_tier_engineer = FreeTierFeatureEngineer(empty_df)
+
+            # Try loading CSV data for richer predictions
+            csv_dir = Path("spreadsheets") / "KnowledgeFilesCSV"
+            if csv_dir.exists():
+                try:
+                    csv_data = FreeTierFeatureEngineer.load_csvs(str(csv_dir))
+                    free_tier_engineer = FreeTierFeatureEngineer(csv_data)
+                    logger.info("Free-tier engineer loaded with %d historical matches", len(csv_data))
+                except Exception as csv_err:
+                    logger.warning("Could not load CSV data for free-tier: %s", csv_err)
+
+        except Exception as e:
+            logger.warning(f"Could not load free-tier model: {e}")
+            free_tier_model = None
+            free_tier_metadata = {}
+    else:
+        if not free_tier_model_path.exists():
+            logger.info("No free-tier model found at %s — run train_free_tier.py first", free_tier_model_path)
+        if not FREE_TIER_AVAILABLE:
+            logger.info("FreeTierFeatureEngineer not available")
+
     logger.info("Oracle API startup complete")
-    
+
     yield
     
     # Shutdown
@@ -578,6 +657,183 @@ async def retrain_models(
         'status': 'retraining_started',
         'message': 'Models are being retrained in the background',
         'timestamp': datetime.now().isoformat()
+    }
+
+
+# ---------------------------------------------------------------------------
+# Free-tier prediction endpoints
+# ---------------------------------------------------------------------------
+
+# Current + recent PL teams (2 seasons) for validation
+VALID_FREE_TIER_TEAMS = set(CSV_TO_API.keys()) if FREE_TIER_AVAILABLE else set()
+
+
+class FreeTierPredictionRequest(BaseModel):
+    """Request for free-tier match prediction."""
+    home_team: str = Field(..., description="Home team name")
+    away_team: str = Field(..., description="Away team name")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "home_team": "Arsenal",
+                "away_team": "Chelsea",
+            }
+        }
+
+
+def _check_rate_limit(client_ip: str) -> bool:
+    """In-memory sliding-window rate limiter. Returns True if allowed."""
+    import time
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+
+    if client_ip not in _rate_limit_store:
+        _rate_limit_store[client_ip] = []
+
+    # Prune old entries
+    _rate_limit_store[client_ip] = [
+        t for t in _rate_limit_store[client_ip] if t > window_start
+    ]
+
+    if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX:
+        return False
+
+    _rate_limit_store[client_ip].append(now)
+    return True
+
+
+def _resolve_team_name(name: str) -> str:
+    """Resolve a team name to CSV format, raising 422 if unrecognised."""
+    if not FREE_TIER_AVAILABLE:
+        return name
+    csv_name = FreeTierFeatureEngineer.normalize_team_name(name, to='csv')
+    if csv_name in VALID_FREE_TIER_TEAMS:
+        return csv_name
+    raise HTTPException(
+        status_code=422,
+        detail={
+            "error": "Unknown team name",
+            "team": name,
+            "hint": f"Valid teams include: {', '.join(sorted(list(VALID_FREE_TIER_TEAMS)[:10]))}...",
+        },
+    )
+
+
+@app.post("/predict/free", tags=["Free-Tier Predictions"])
+async def predict_free_tier(request: FreeTierPredictionRequest,
+                            client_ip: str = "unknown"):
+    """
+    Predict match outcome using the free-tier XGBoost model.
+
+    Uses ~86 features derived from match results, form, H2H, and contextual data.
+    No paid API data required.
+    """
+    # Rate limiting
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded — maximum 60 requests per minute",
+        )
+
+    # Validate and normalise team names first (422 before 503)
+    home = _resolve_team_name(request.home_team)
+    away = _resolve_team_name(request.away_team)
+
+    if free_tier_model is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Free-tier model not loaded — run train_free_tier.py first",
+        )
+
+    if free_tier_engineer is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Free-tier feature engineer not available",
+        )
+
+    try:
+        # Compute features
+        features = free_tier_engineer.create_features(home, away)
+        feature_names = free_tier_metadata.get('feature_names', FreeTierFeatureEngineer.FEATURE_NAMES)
+        feature_vec = [features[name] for name in feature_names]
+
+        # Predict
+        import xgboost as xgb
+        dmatrix = xgb.DMatrix(
+            [feature_vec], feature_names=feature_names,
+        )
+        probs = free_tier_model.predict(dmatrix)[0]
+
+        home_prob = float(probs[0])
+        draw_prob = float(probs[1])
+        away_prob = float(probs[2])
+
+        # Determine predicted outcome
+        outcome_idx = int(np.argmax(probs))
+        outcomes = ['Home win', 'Draw', 'Away win']
+        predicted = outcomes[outcome_idx]
+
+        # Top feature importances for this prediction
+        importance = free_tier_metadata.get('feature_importance', {})
+        top_features = dict(
+            sorted(importance.items(), key=lambda x: x[1], reverse=True)[:10]
+        )
+
+        return {
+            "home_team": home,
+            "away_team": away,
+            "probabilities": {
+                "home_win": round(home_prob, 4),
+                "draw": round(draw_prob, 4),
+                "away_win": round(away_prob, 4),
+            },
+            "predicted_outcome": predicted,
+            "confidence": round(float(probs[outcome_idx]), 4),
+            "model_version": free_tier_metadata.get('version', 'unknown'),
+            "feature_importance": top_features,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Free-tier prediction failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Prediction failed — please try again",
+        )
+
+
+@app.get("/models/free-tier/info", tags=["Free-Tier Predictions"])
+async def free_tier_model_info():
+    """
+    Get information about the loaded free-tier model.
+
+    Returns model version, training date, feature count, validation accuracy,
+    and the complete feature list.
+    """
+    if free_tier_model is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Free-tier model not loaded",
+        )
+
+    return {
+        "version": free_tier_metadata.get('version', 'unknown'),
+        "tier": free_tier_metadata.get('tier', 'free'),
+        "training_date": free_tier_metadata.get('training_date', 'unknown'),
+        "training_samples": free_tier_metadata.get('training_samples', 0),
+        "validation_accuracy": free_tier_metadata.get('validation_accuracy', 0.0),
+        "validation_log_loss": free_tier_metadata.get('validation_log_loss', 0.0),
+        "feature_count": len(free_tier_metadata.get('feature_names', [])),
+        "feature_names": free_tier_metadata.get('feature_names', []),
+        "training_seasons": free_tier_metadata.get('training_seasons', []),
+        "top_features": dict(
+            sorted(
+                free_tier_metadata.get('feature_importance', {}).items(),
+                key=lambda x: x[1], reverse=True,
+            )[:20]
+        ),
     }
 
 
