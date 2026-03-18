@@ -253,14 +253,6 @@ class BetHistoryService {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  /** Bets for a specific calendar month. */
-  public getBetsByMonth(year: number, month: number): StoredBet[] {
-    return this.getAllBets().filter(bet => {
-      const d = new Date(bet.createdAt);
-      return d.getFullYear() === year && d.getMonth() + 1 === month;
-    });
-  }
-
   /** Pending (unresolved) bets. */
   public getPendingBets(): StoredBet[] {
     return this.getAllBets().filter(b => !b.result);
@@ -319,47 +311,11 @@ class BetHistoryService {
     return Math.round((wins / resolved.length) * 10000) / 100;
   }
 
-  /** Clear all bet history. */
-  public clearHistory(): void {
-    this.bets.clear();
-    this.saveBets();
-  }
-
   /** Export bets as JSON string. */
   public exportBets(): string {
     return JSON.stringify(this.getAllBets(), null, 2);
   }
 
-  /** Import bets from JSON string. Validates each bet before storing. Returns true on success. */
-  public importBets(jsonData: string): boolean {
-    const VALID_MARKETS = new Set(['match_result', 'btts', 'over_2_5', 'over_3_5', 'combo']);
-
-    try {
-      const data = JSON.parse(jsonData);
-      if (!Array.isArray(data)) return false;
-
-      let imported = 0;
-      for (const bet of data) {
-        // Required fields
-        if (!bet.id || !bet.matchId || !bet.homeTeam || !bet.awayTeam) continue;
-        // Odds and stake must be positive numbers
-        if (typeof bet.odds !== 'number' || bet.odds <= 1) continue;
-        if (typeof bet.stake !== 'number' || bet.stake <= 0) continue;
-        // Market must be in allowlist
-        if (!VALID_MARKETS.has(bet.market)) continue;
-        // Resolved bets must have a profit value
-        if (bet.result && typeof bet.profit !== 'number') continue;
-
-        this.bets.set(bet.id, bet);
-        imported++;
-      }
-
-      if (imported > 0) this.saveBets();
-      return imported > 0;
-    } catch {
-      return false;
-    }
-  }
 }
 
 // Singleton instance — shared across all components

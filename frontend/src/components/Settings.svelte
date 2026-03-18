@@ -21,13 +21,7 @@
   
   // Favourite team
   let favouriteTeam = '';
-  const plTeams = [
-    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
-    'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
-    'Leicester City', 'Liverpool', 'Manchester City', 'Manchester United',
-    'Newcastle United', 'Nottingham Forest', 'Southampton', 'Tottenham',
-    'West Ham United', 'Wolverhampton'
-  ];
+  let plTeams: string[] = [];
 
   const teamColors: Record<string, string> = {
     'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
@@ -175,7 +169,7 @@
     }
   }
   
-  onMount(() => {
+  onMount(async () => {
     // Load saved settings
     const savedFootballDataKey = localStorage.getItem('football_data_api_key');
     
@@ -226,6 +220,16 @@
     // Each JS character is 2 bytes in UTF-16 (localStorage encoding)
     const totalMB = (totalBytes * 2) / (1024 * 1024);
     cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+
+    // Load team list from current standings (no hardcoded season list)
+    try {
+      const standings = await dataService.getStandings();
+      if (standings.length > 0) {
+        plTeams = standings.map(s => s.team.name).sort();
+      }
+    } catch {
+      // API unavailable — leave empty (user can still type manually)
+    }
   });
 </script>
 

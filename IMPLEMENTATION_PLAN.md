@@ -92,7 +92,7 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 - [x] `KellyCalculator.svelte`: "Track Bet" button on each Kelly suggestion — stores match result bet with halfKelly fraction, model confidence, and calculated stake. Shows "Tracked" state after click
 - [x] `ValueBets.svelte`: "Track Bet" button on each value bet result — maps ValueBet market format (`'home'`, `'over2.5'`, `'btts'`) to StoredBet market format (`'match_result'`, `'over_2_5'`, `'btts'`). Shows "Tracked" state after click
 - [x] `BettingHistory.svelte` already reads from `betHistoryService.getAllBets()` — stored bets appear on next page load
-- [ ] `betHistoryService.getBetsByMonth()` and `clearHistory()` are still never called from any component — defer to P4f dead code cleanup
+- [x] `betHistoryService.getBetsByMonth()`, `clearHistory()`, and `importBets()` — **REMOVED:** all three methods were never called from any component. 4 tests removed alongside them
 
 ### P1j. ChatBot XSS Risk — DONE (19 March 2026)
 
@@ -618,7 +618,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `LiveMatches.svelte`: "Auto-refreshing every 30 seconds" label — FIXED (now shows actual interval)
 - [x] `LiveTicker.svelte`: live dot detection — replaced `startsWith('⚽')` heuristic with `hasLiveMatches` boolean flag set from `items.some(item => item.type === 'live')`
 - [ ] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — significantly underestimates actual storage use
-- [ ] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — needs updating each season
+- [x] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — **FIXED:** now dynamically loaded from `dataService.getStandings()` on mount. Falls back gracefully to empty list if API unavailable (user can still type manually). `teamColors` kept as static decorative lookup — missing teams simply omit the colour swatch
 - [x] ~~`SeasonStats.svelte`: "Did you know? These statistics are updated in real-time"~~ **FIXED:** changed to "refreshed each time you visit this page"
 - [x] ~~`SeasonStats.svelte`: no error state in template~~ **FIXED:** added `error` state variable, error message in catch block, and `{:else if error}` template block with AlertTriangle icon
 - [x] `MatchList.svelte:12`: `selectedSeason` fallback — now computed from current date (July = new season), same pattern as StandingsTable
