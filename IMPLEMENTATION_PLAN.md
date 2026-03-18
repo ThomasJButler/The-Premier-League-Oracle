@@ -686,13 +686,13 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `kelly.ts`: `getRiskLevel` — removed unused `kellyFraction` parameter (only `edge` and `probability` used)
 - [x] `value.ts`: `OddsProvider` interface, `calculateCLV`, `findArbitrage`, `calculateSharpeRatio`, `calculatePerformanceMetrics` removed
 - [x] ~~`value.ts`: `calculateCLV` dead code~~ **ALREADY REMOVED:** function was deleted in a prior P4f batch
-- [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
+- [x] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class removed — permanently returned `{homeXG: 0, awayXG: 0}` (no shots data on free tier), never called from production code. 3 tests removed
 - [x] `advancedPredictions.ts`: `dataService.getMatches()` called 3× per prediction — once in `FatigueAnalyzer` and twice in `predictMatch`. **FIXED:** `predictMatch` fetches once at the top, passes array to `FatigueAnalyzer.calculateRestDays(teamName, matchDate, allMatches)` via new optional parameter. Same fix applied to `optimizedPredictions.ts` — `calculateFatigueFactor` async method removed entirely, both live and backtest paths now use `calculateFatigueFromMatches`
 - [x] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with duplicated ELO math — **FIXED:** instance method now delegates to the static method for the calculation, then stores results. Single source of truth for the ELO update formula
 - [x] ~~Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant~~ **ALREADY DONE:** exists in `lib/constants.ts`, imported by all three files
 - [x] ~~Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant~~ **DONE:** added `DEFAULT_HOME_WIN_RATE` to `lib/constants.ts`, imported in `optimizedPredictions.ts` (fallback in `computeLeagueAverages`) and `advancedPredictions.ts` (RefereeAnalyzer fallbacks)
 - [x] `predictionTracker.ts`: `resultAccuracy` — removed redundant field identical to `accuracy` (both computed from `predictedResult === actualResult`). Updated test mocks
-- [ ] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Remove from dead code list
+- [x] ~~`advancedPredictions.ts`: `AdvancedMatchPredictor.predictMatch` is never called at runtime~~ **CORRECTED (third audit):** `AdvancedMatchPredictor.predictMatch` IS called at runtime by `value.ts:72` for value bet scanning. Not dead code. Removed from dead code list
 - [x] `advancedPredictions.ts`: `ExpectedGoalsCalculator.calculateShotValue` — removed (dead code, only called by tests). 4 tests removed
 - [x] `advancedPredictions.ts`: `FatigueAnalyzer.calculateFixtureDifficulty` — removed (dead code, only called by tests). 2 tests removed
 - [x] `optimizedPredictions.ts`: `formString` function — removed unused `team` parameter and updated call sites

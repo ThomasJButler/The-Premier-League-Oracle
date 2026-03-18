@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   PoissonPredictor,
   EloRatingSystem,
-  ExpectedGoalsCalculator,
   FatigueAnalyzer,
   RefereeAnalyzer,
   AdvancedMatchPredictor
@@ -195,67 +194,6 @@ describe('Advanced Predictions Module', () => {
 
         expect(away2 - 1200).toBeGreaterThan(25);
         expect(1800 - home2).toBeGreaterThan(25);
-      });
-    });
-  });
-
-  describe('ExpectedGoalsCalculator', () => {
-    describe('calculateMatchXG', () => {
-      it('should estimate xG from shots data', async () => {
-        const mockMatch: Match = createMockMatch({
-          id: 'match1',
-          season_id: '2025-26',
-          date: '2025-08-15',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 2,
-          away_goals: 1,
-          home_shots: 15,
-          away_shots: 10,
-          home_shots_target: 6,
-          away_shots_target: 4,
-          result: 'H',
-          created_at: '2025-08-15'
-        });
-
-        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match1');
-        
-        // 6 shots on target * 0.38 + 9 off target * 0.03
-        expect(xG.homeXG).toBeCloseTo(2.28 + 0.27, 2);
-        // 4 shots on target * 0.38 + 6 off target * 0.03
-        expect(xG.awayXG).toBeCloseTo(1.52 + 0.18, 2);
-      });
-
-      it('should handle missing match data', async () => {
-        vi.mocked(dataService.getMatches).mockResolvedValue([]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('nonexistent');
-        
-        expect(xG.homeXG).toBe(0);
-        expect(xG.awayXG).toBe(0);
-      });
-
-      it('should handle null shot values', async () => {
-        const mockMatch: Match = createMockMatch({
-          id: 'match2',
-          season_id: '2025-26',
-          date: '2025-08-15',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 1,
-          away_goals: 0,
-          result: 'H',
-          created_at: '2025-08-15'
-        });
-
-        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match2');
-        
-        expect(xG.homeXG).toBe(0);
-        expect(xG.awayXG).toBe(0);
       });
     });
   });
