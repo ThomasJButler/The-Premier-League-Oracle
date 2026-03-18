@@ -21,10 +21,15 @@
   let teams: string[] = [];
 
   async function loadSeasons() {
-    seasons = await dataService.getAllSeasons();
-    if (seasons.length > 0) {
-      const currentSeason = seasons.find(s => s.is_current) || seasons[0];
-      selectedSeason = currentSeason.name;
+    try {
+      seasons = await dataService.getAllSeasons();
+      if (seasons.length > 0) {
+        const currentSeason = seasons.find(s => s.is_current) || seasons[0];
+        selectedSeason = currentSeason.name;
+      }
+    } catch (err) {
+      console.warn('Failed to load seasons:', err);
+      error = 'Failed to load seasons. Please check your API key in Settings.';
     }
   }
 

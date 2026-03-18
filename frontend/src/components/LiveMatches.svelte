@@ -4,7 +4,7 @@
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
   import { scale } from 'svelte/transition';
-  import { format, subDays, isAfter, isBefore, formatDistanceToNow } from 'date-fns';
+  import { format, subDays, addDays, isAfter, isBefore, formatDistanceToNow } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
 
   let liveMatches: Match[] = [];
@@ -95,7 +95,7 @@
       const allMatches = await dataService.getMatches();
       const now = new Date();
       const threeDaysAgo = subDays(now, 3);
-      const sevenDaysFromNow = subDays(now, -7);
+      const sevenDaysFromNow = addDays(now, 7);
 
       liveMatches = fetchedLive;
 

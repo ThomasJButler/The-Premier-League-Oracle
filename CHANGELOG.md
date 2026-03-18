@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4c (partial) — Component Data Accuracy Fixes (19 March 2026)
+- **BettingHistory `DollarSign` → `PoundSterling`:** Replaced US dollar icon with pound sterling across all 3 stat cards and the empty state, consistent with UK-focused Premier League branding
+- **SeasonStats false "real-time" claim:** Changed "updated in real-time" to "refreshed each time you visit this page". Added proper error state — previously a fetch failure showed an empty grid forever with no feedback
+- **MatchList `loadSeasons` error handling:** Wrapped `dataService.getAllSeasons()` in try/catch — previously an API error would crash the component silently through `onMount`
+- **LiveMatches `subDays(now, -7)` clarity:** Replaced confusing double-negative with `addDays(now, 7)` — semantically identical, immediately readable
+- **BettingHistory redundant double load:** Removed `onMount` wrapper around synchronous `loadBettingHistory()` — module-scope call is sufficient for localStorage reads. Removed now-unused `onMount` import
+
 ### P4f (partial) — Dead Imports, Variables, and CSS Cleanup (19 March 2026)
 - **Dead lucide-svelte imports removed:** `TrendingUp`/`TrendingDown`/`fade` from StandingsTable, `Target`/`User` from TopScorers, `Sparkles`/`Key` from Settings, `Sparkles` from ApiSetupWizard, `Check`/`Calendar` from MatchList, `fly` from Help
 - **Dead variables removed:** `predictionAccuracy: number[]` from Dashboard (declared, never assigned), `showSuggestions = true` from KellyCalculator (declared, never toggled)

@@ -16,6 +16,7 @@ vi.mock('../services/dataService', () => ({
 vi.mock('date-fns', () => ({
   format: vi.fn(() => 'Mocked Date'),
   subDays: vi.fn((date: Date, days: number) => new Date(date.getTime() - days * 86400000)),
+  addDays: vi.fn((date: Date, days: number) => new Date(date.getTime() + days * 86400000)),
   isAfter: vi.fn((a: Date, b: Date) => a.getTime() > b.getTime()),
   isBefore: vi.fn((a: Date, b: Date) => a.getTime() < b.getTime()),
   formatDistanceToNow: vi.fn(() => 'in 2 hours')

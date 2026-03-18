@@ -284,7 +284,7 @@ Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor
 - [x] Remove `tailwind-variants` — uninstalled
 - [x] Remove `bits-ui` — uninstalled
 - [x] Remove `happy-dom` from devDependencies — uninstalled
-- [ ] Add `@types/node` to devDependencies — relied upon implicitly for `path` and `__dirname` in vite.config
+- [x] ~~Add `@types/node` to devDependencies~~ **DONE** — provides types for `path` and `__dirname` in vite.config
 
 **Version pinning:**
 
@@ -607,8 +607,8 @@ Priority features to implement with real data:
 - [ ] `LiveTicker.svelte`: live dot detection uses `startsWith('football emoji')` heuristic — use boolean flag
 - [ ] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — significantly underestimates actual storage use
 - [ ] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — needs updating each season
-- [ ] `SeasonStats.svelte`: "Did you know? These statistics are updated in real-time" — not true; fetches once on mount
-- [ ] `SeasonStats.svelte`: no error state in template — if fetch fails, shows empty grid forever (loading stops but nothing renders). The `catch` block at line 29 swallows errors silently with no user feedback
+- [x] ~~`SeasonStats.svelte`: "Did you know? These statistics are updated in real-time"~~ **FIXED:** changed to "refreshed each time you visit this page"
+- [x] ~~`SeasonStats.svelte`: no error state in template~~ **FIXED:** added `error` state variable, error message in catch block, and `{:else if error}` template block with AlertTriangle icon
 - [ ] `MatchList.svelte:12`: `selectedSeason = '2024-2025'` hardcoded fallback — will go stale each season
 - [x] `Settings.svelte`: "Connected" status without real API ping — FIXED (now calls `testConnection()` on mount)
 - [ ] `Help.svelte:101`: "📊 Live Standings" describes Dashboard — but Dashboard doesn't show standings (that's `StandingsTable.svelte`)
@@ -619,11 +619,12 @@ Priority features to implement with real data:
 - [ ] `StandingsTable.svelte`: `getMovementIcon` only renders arrows for top 5 positions — rest of the table shows no movement indicator, creating visual inconsistency
 - [ ] `Predictions.svelte:198`: `estimatedBookmakerOdds = (1 / topProb) * 1.05` creates circular Kelly recommendation — model is both the predictor and the bookmaker; Kelly stake will almost always be near zero
 - [ ] `ApiSetupWizard.svelte:430`: `⏳` emoji inside `animate-spin` span does not actually spin (emoji aren't CSS-transformable)
-- [ ] `LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)` — double-negative is confusing; use `addDays(now, 7)` from date-fns
+- [x] ~~`LiveMatches.svelte:98`: `sevenDaysFromNow = subDays(now, -7)`~~ **FIXED:** replaced with `addDays(now, 7)`
 - [ ] `Settings.svelte:84`: `window.location.reload()` after API connection — hard page reload discards all app state; a targeted refresh would be better
-- [ ] `BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values — inconsistent with UK-focused branding
+- [x] ~~`BettingHistory.svelte`: `DollarSign` icon used throughout for GBP values~~ **FIXED:** replaced with `PoundSterling` icon
+- [x] ~~`BettingHistory.svelte`: redundant double `loadBettingHistory()` call~~ **FIXED:** removed `onMount` wrapper — single module-scope call is sufficient for synchronous localStorage reads. Also removed now-unused `onMount` import
 - [ ] `BettingHistory.svelte`: loading spinner never renders — `loading = true` wraps synchronous localStorage code that completes before the DOM can repaint, so `{#if loading}` skeleton block is invisible (fifth audit)
-- [ ] `MatchList.svelte:23-29`: `loadSeasons()` has no try/catch — if `dataService.getAllSeasons()` throws, the error propagates uncaught through `onMount` and breaks the component silently (fifth audit)
+- [x] ~~`MatchList.svelte:23-29`: `loadSeasons()` has no try/catch~~ **FIXED:** wrapped in try/catch with console.warn and user-facing error message
 - [ ] `Settings.svelte:75-86` and `ApiSetupWizard.svelte:61-71`: artificial 5-second delay before `clearCache()` + `window.location.reload()`. The 5s wait serves no purpose — the cache clear is instant (fifth audit)
 
 ### P4d. betBuilder Improvements

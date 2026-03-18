@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { Bar } from 'svelte-chartjs';
   import {
     Chart as ChartJS,
@@ -13,7 +12,7 @@
   } from 'chart.js';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, TrendingDown, Download, DollarSign, Minus, Trophy, Percent } from 'lucide-svelte';
+  import { TrendingUp, TrendingDown, Download, PoundSterling, Minus, Trophy, Percent } from 'lucide-svelte';
   import { formatDistanceToNow } from 'date-fns';
   import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
 
@@ -165,13 +164,8 @@
     URL.revokeObjectURL(url);
   }
 
-  // Load immediately — all data sources are synchronous (localStorage)
+  // Load immediately — data sources are synchronous (localStorage)
   loadBettingHistory();
-
-  onMount(() => {
-    // Refresh on mount in case data changed since script initialisation
-    loadBettingHistory();
-  });
 
   const chartOptions = {
     responsive: true,
@@ -220,7 +214,7 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-blue-100 dark:bg-blue-900/30">
-        <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <PoundSterling class="w-5 h-5 text-blue-600 dark:text-blue-400" />
       </div>
       <div class="stat-label">Total Staked</div>
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
@@ -260,7 +254,7 @@
 
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
       <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
-        <DollarSign class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        <PoundSterling class="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
       <div class="stat-label">Total Bets</div>
       <div class="stat-value">{Math.round($totalBetsTweened)}</div>
@@ -307,7 +301,7 @@
       </div>
     {:else if bets.length === 0}
       <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-12">
-        <DollarSign class="w-12 h-12 mb-2 opacity-50" />
+        <PoundSterling class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>
         <p class="text-sm">Place some bets via the Kelly Calculator or Value Bets page to see them here.</p>
       </div>
