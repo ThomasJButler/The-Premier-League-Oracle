@@ -1,3 +1,5 @@
+import forms from '@tailwindcss/forms';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
@@ -69,7 +71,7 @@ export default {
         'glow-primary-lg': '0 0 25px 5px hsl(var(--primary) / 0.5)',
         'glow-accent-sm': '0 0 8px 0px hsl(var(--accent) / 0.3)',
         'glow-accent-md': '0 0 15px 2px hsl(var(--accent) / 0.4)',
-        'glow-green': '0 0 15px 2px rgba(0, 255, 135, 0.25)',
+        'glow-green': '0 0 15px 2px hsl(var(--primary) / 0.25)',
         'inner-glow': 'inset 0 1px 0 0 hsl(var(--border) / 0.1)',
       },
       animation: {
@@ -121,6 +123,6 @@ export default {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
+    forms,
   ],
 }

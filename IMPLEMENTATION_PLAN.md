@@ -655,7 +655,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 
 ### P4e. CSS & Theme Polish
 
-- [ ] Some raw hex values in `app.css` not using CSS design tokens
+- [ ] `app.css` hex values — **NOT ISSUES on inspection:** all are theme *definitions* (`--gradient-primary`, `--gradient-accent`, team brand colours) or standard CSS techniques (`#fff` mask). These establish the design tokens; they don't bypass them
 - [ ] Team theme CSS variables exist (20 PL clubs) but integration unclear
 - [ ] `Dashboard.svelte` chart border colours hardcoded as hex (`'#4299e1'`, `'#10b981'`) — Chart.js requires resolved colour values, not CSS variables. These are neutral mid-range colours that work in both themes. Proper fix requires reading CSS vars at chart creation time via `getComputedStyle` and re-creating charts on theme change — low priority
 - [ ] `BettingHistory.svelte` chart colours same limitation as Dashboard — Chart.js doesn't support CSS variables reactively
@@ -664,7 +664,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`~~ **FIXED:** replaced with `hsl(var(--destructive))` so the live indicator tracks the theme
 - [ ] `Dashboard.svelte` hero section is always dark regardless of theme (intentional? or should adapt)
 - [x] ~~`tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist~~ **CORRECTED (fifth audit):** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load pattern + `<noscript>` fallback. Fonts are working correctly
-- [ ] `tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in an ESM `export default` context — inconsistent module style
+- [x] ~~`tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in ESM context~~ **FIXED:** replaced with ESM `import forms from '@tailwindcss/forms'`. Also replaced `glow-green` box-shadow `rgba(0, 255, 135, 0.25)` with `hsl(var(--primary) / 0.25)`
 
 ### P4f. Dead Imports & Code Duplication
 
