@@ -94,9 +94,9 @@ Identified by CodeRabbit review. 11 of 19 actionable issues were fixed in commit
 - [x] `BettingHistory.svelte` already reads from `betHistoryService.getAllBets()` — stored bets appear on next page load
 - [ ] `betHistoryService.getBetsByMonth()` and `clearHistory()` are still never called from any component — defer to P4f dead code cleanup
 
-### P1j. ChatBot XSS Risk — NEW (19 March 2026)
+### P1j. ChatBot XSS Risk — DONE (19 March 2026)
 
-- [ ] `ChatBot.svelte:420` — `{@html renderMarkdown(msg.content)}` renders unsanitised HTML from OpenAI responses. The `renderMarkdown()` function uses regex-based string replacements that produce raw HTML without sanitisation. Potential XSS via prompt injection (low probability since source is OpenAI, but non-zero). Fix: use a proper markdown renderer with sanitisation (e.g., `marked` + `DOMPurify`), or sanitise the output before rendering.
+- [x] `ChatBot.svelte:420` — `{@html renderMarkdown(msg.content)}` now sanitised via `DOMPurify.sanitize()` with an explicit allowlist of safe tags (`pre`, `code`, `strong`, `em`, `li`, `ul`, `ol`, `br`, `p`, `div`, `span`) and only `class` attribute permitted. DOMPurify installed as a production dependency. Test mock added to `ChatBot.test.ts`
 
 ### P1k. Prediction Storage Bug — DONE (19 March 2026)
 

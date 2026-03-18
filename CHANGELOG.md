@@ -4,6 +4,9 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1j — ChatBot XSS Fix (19 March 2026)
+- **DOMPurify installed:** `{@html renderMarkdown()}` in ChatBot.svelte now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist — prevents XSS from crafted OpenAI responses or prompt injection
+
 ### P1f, P1o — Help.svelte Inaccuracies and Backend Fix (19 March 2026)
 - **Help.svelte text corrections:** Removed made-up accuracy figures ("75-85%", "15% drop", "+15% manager bounce"), replaced "Bounce-Back Effect" and "New Manager Bounce" with practical advice ("Fixture Difficulty", "Use the Backtest"). Fixed "Offline data caching" → "Local data caching", "CSV export" → "JSON export", "Historical performance" → "Track placed bets", clarified FAQ offline answer
 - **Backend /standings crash fixed:** `main.py` `/standings` endpoint now converts `pd.DataFrame` to `list[dict]` via `.to_dict(orient='records')` before FastAPI JSON serialisation

@@ -127,7 +127,7 @@ These specs are the single source of truth for requirements.
 - `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
 - Root `.env.example` still references Supabase variables (stale)
 - ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
-- `ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML from OpenAI — potential XSS via prompt injection. Needs `DOMPurify` or a safe markdown renderer
+- ~~`ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML~~ **FIXED:** `renderMarkdown()` output now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist
 - ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
 - No CI/CD — no `.github/workflows/` directory. All testing is manual
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
@@ -148,7 +148,7 @@ These specs are the single source of truth for requirements.
 - `BacktestRunner` makes ~1,140+ sequential API calls for a full season — each match triggers 3 service calls with no batching. Needs pre-fetched data approach
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
 - `package.json` version is `0.0.0` — never updated to reflect project version (v3.0)
-- `DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed as a dependency
+- ~~`DOMPurify` is referenced in CLAUDE.md as needed for ChatBot XSS fix but is NOT installed~~ **FIXED:** `dompurify` and `@types/dompurify` now installed and used in ChatBot.svelte
 - **`frontend/src/lib/utils.ts` does NOT exist** — shadcn-svelte `components.json` references `$lib/utils` for the `cn()` utility but the file is missing. Blocker for adding new shadcn components or using existing ones that import `cn()`. Create it with `clsx` + `tailwind-merge` (standard shadcn pattern)
 - ~~`dataService.ts:395`: `getTeamForm` cache key uses `matches.length` not content~~ **FIXED:** cache key now uses match IDs as fingerprint
 - `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (`0.525`). Fixing P1l will break this test — update expected value to `0.50` alongside the fix

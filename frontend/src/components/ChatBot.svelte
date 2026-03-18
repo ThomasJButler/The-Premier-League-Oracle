@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MessageCircle, Send, Key, Loader2, AlertTriangle, Trash2, ShieldAlert } from 'lucide-svelte';
   import { onMount, tick } from 'svelte';
+  import DOMPurify from 'dompurify';
   import { dataService } from '../services/dataService';
   import type { Standing, Match } from '../types';
 
@@ -153,9 +154,9 @@ Current data:\n`;
     return context;
   }
 
-  // --- Simple Markdown Rendering ---
+  // --- Simple Markdown Rendering (sanitised) ---
   function renderMarkdown(text: string): string {
-    return text
+    const html = text
       // Code blocks (triple backtick)
       .replace(/```([\s\S]*?)```/g, '<pre class="bg-background/50 rounded p-2 my-1 text-xs font-mono overflow-x-auto">$1</pre>')
       // Inline code
@@ -172,6 +173,12 @@ Current data:\n`;
       .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
       // Line breaks
       .replace(/\n/g, '<br/>');
+
+    // Sanitise to prevent XSS from injected content in OpenAI responses
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['pre', 'code', 'strong', 'em', 'li', 'ul', 'ol', 'br', 'p', 'div', 'span'],
+      ALLOWED_ATTR: ['class'],
+    });
   }
 
   // --- Send Message ---

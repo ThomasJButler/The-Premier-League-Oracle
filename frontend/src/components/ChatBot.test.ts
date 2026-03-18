@@ -2,6 +2,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ChatBot from './ChatBot.svelte';
 
+// Mock DOMPurify
+vi.mock('dompurify', () => ({
+  default: {
+    sanitize: (html: string) => html
+  }
+}));
+
 // Mock the dataService
 vi.mock('../services/dataService', () => ({
   dataService: {
