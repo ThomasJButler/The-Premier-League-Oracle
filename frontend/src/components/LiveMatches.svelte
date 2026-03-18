@@ -24,6 +24,7 @@
   const MATCHDAY_POLL_MS = 5 * 60_000; // 5min on match days with no live games
   const IDLE_POLL_MS = 30 * 60_000;    // 30min otherwise
   let consecutiveEmptyPolls = 0;
+  let currentPollLabel = 'every 30 seconds';
 
   onMount(async () => {
     await loadMatches();
@@ -56,6 +57,10 @@
     } else {
       interval = IDLE_POLL_MS;
     }
+
+    currentPollLabel = interval === LIVE_POLL_MS ? 'every 30 seconds'
+      : interval === MATCHDAY_POLL_MS ? 'every 5 minutes'
+      : 'every 30 minutes';
 
     refreshInterval = setInterval(async () => {
       await loadMatches();
@@ -312,7 +317,7 @@
     <!-- Auto-refresh indicator -->
     <div class="mt-6 text-center">
       <p class="text-sm text-muted-foreground">
-        Auto-refreshing every 30 seconds
+        Auto-refreshing {currentPollLabel}
       </p>
     </div>
   {:else if showSection === 'recent'}

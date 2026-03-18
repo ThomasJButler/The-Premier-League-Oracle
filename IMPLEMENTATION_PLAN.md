@@ -555,7 +555,7 @@ All feature specifications in `specs/`:
 | `Settings.svelte` | ~~Fake cache size: `localStorage.length * 0.005 MB`~~ **FIXED** — now sums real byte lengths | P2c |
 | `Settings.svelte` | "Connected" status without real API ping | P4c |
 | `StandingsTable.svelte` | Position movement from form wins (fake proxy) | P4c |
-| `LiveMatches.svelte` | "Auto-refreshing every 30 seconds" hardcoded label | P4c |
+| ~~`LiveMatches.svelte`~~ | ~~"Auto-refreshing every 30 seconds" hardcoded label~~ **FIXED** — now shows actual poll interval (30s/5min/30min) | ~~P4c~~ |
 | ~~`ChatBot.svelte`~~ | ~~OpenAI API key exposed in browser network tab~~ | ~~P2h~~ MITIGATED — security warning banner added |
 | `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated | Low |
