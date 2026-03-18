@@ -617,7 +617,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 
 - [x] `LiveMatches.svelte`: "Auto-refreshing every 30 seconds" label — FIXED (now shows actual interval)
 - [x] `LiveTicker.svelte`: live dot detection — replaced `startsWith('⚽')` heuristic with `hasLiveMatches` boolean flag set from `items.some(item => item.type === 'live')`
-- [ ] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — significantly underestimates actual storage use
+- [x] `Settings.svelte`: `cacheSize` computation measures `localStorage` only, not IndexedDB — **FIXED:** now uses `navigator.storage.estimate()` which reports total origin storage (IndexedDB + localStorage + Cache API). Falls back to localStorage-only measurement on older browsers
 - [x] `Settings.svelte`: `plTeams` array hardcoded for 2024-25 season — **FIXED:** now dynamically loaded from `dataService.getStandings()` on mount. Falls back gracefully to empty list if API unavailable (user can still type manually). `teamColors` kept as static decorative lookup — missing teams simply omit the colour swatch
 - [x] ~~`SeasonStats.svelte`: "Did you know? These statistics are updated in real-time"~~ **FIXED:** changed to "refreshed each time you visit this page"
 - [x] ~~`SeasonStats.svelte`: no error state in template~~ **FIXED:** added `error` state variable, error message in catch block, and `{:else if error}` template block with AlertTriangle icon
@@ -688,7 +688,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`value.ts`: `calculateCLV` dead code~~ **ALREADY REMOVED:** function was deleted in a prior P4f batch
 - [ ] `advancedPredictions.ts`: `ExpectedGoalsCalculator` class permanently returns `{homeXG: 0, awayXG: 0}` (no shots data on free tier). `AdvancedMatchPredictor.predictMatch` is never called at runtime (only tested)
 - [x] `advancedPredictions.ts`: `dataService.getMatches()` called 3× per prediction — once in `FatigueAnalyzer` and twice in `predictMatch`. **FIXED:** `predictMatch` fetches once at the top, passes array to `FatigueAnalyzer.calculateRestDays(teamName, matchDate, allMatches)` via new optional parameter. Same fix applied to `optimizedPredictions.ts` — `calculateFatigueFactor` async method removed entirely, both live and backtest paths now use `calculateFatigueFromMatches`
-- [ ] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with slightly different signatures — maintenance risk
+- [x] `advancedPredictions.ts`: two `updateRatings` methods (instance + static) with duplicated ELO math — **FIXED:** instance method now delegates to the static method for the calculation, then stores results. Single source of truth for the ELO update formula
 - [x] ~~Extract `VALUE_ODDS_MARGIN = 1.05` to shared constant~~ **ALREADY DONE:** exists in `lib/constants.ts`, imported by all three files
 - [x] ~~Extract `LEAGUE_AVG_HOME_WIN_RATE = 0.46` to shared constant~~ **DONE:** added `DEFAULT_HOME_WIN_RATE` to `lib/constants.ts`, imported in `optimizedPredictions.ts` (fallback in `computeLeagueAverages`) and `advancedPredictions.ts` (RefereeAnalyzer fallbacks)
 - [x] `predictionTracker.ts`: `resultAccuracy` — removed redundant field identical to `accuracy` (both computed from `predictedResult === actualResult`). Updated test mocks

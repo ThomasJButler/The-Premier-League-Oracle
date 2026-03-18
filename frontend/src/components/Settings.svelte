@@ -209,17 +209,27 @@
       checkBackendStatus();
     }
 
-    // Estimate real localStorage usage by summing key + value byte lengths
-    let totalBytes = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
-        totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
+    // Estimate total storage usage (IndexedDB + localStorage + Cache API)
+    if (navigator.storage?.estimate) {
+      try {
+        const { usage } = await navigator.storage.estimate();
+        if (usage) {
+          const totalMB = usage / (1024 * 1024);
+          cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+        }
+      } catch {
+        cacheSize = 'Unknown';
       }
+    } else {
+      // Fallback: measure localStorage only (older browsers)
+      let totalBytes = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
+      }
+      const totalMB = (totalBytes * 2) / (1024 * 1024);
+      cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
     }
-    // Each JS character is 2 bytes in UTF-16 (localStorage encoding)
-    const totalMB = (totalBytes * 2) / (1024 * 1024);
-    cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
 
     // Load team list from current standings (no hardcoded season list)
     try {

@@ -245,22 +245,8 @@ export class EloRatingSystem {
     const homeRating = this.getTeamRating(homeResolved);
     const awayRating = this.getTeamRating(awayResolved);
 
-    // Add home advantage
-    const adjustedHomeRating = homeRating + EloRatingSystem.HOME_ADVANTAGE;
+    const { newHomeRating, newAwayRating } = EloRatingSystem.updateRatings(homeRating, awayRating, actualResult);
 
-    // Calculate expected scores
-    const expectedHome = EloRatingSystem.calculateExpectedScore(adjustedHomeRating, awayRating);
-    const expectedAway = 1 - expectedHome;
-
-    // Actual scores
-    const actualHome = actualResult === 'H' ? 1 : actualResult === 'D' ? 0.5 : 0;
-    const actualAway = actualResult === 'A' ? 1 : actualResult === 'D' ? 0.5 : 0;
-
-    // Update ratings
-    const newHomeRating = homeRating + EloRatingSystem.K_FACTOR * (actualHome - expectedHome);
-    const newAwayRating = awayRating + EloRatingSystem.K_FACTOR * (actualAway - expectedAway);
-
-    // Store updated ratings under canonical names
     this.teamRatings.set(homeResolved, newHomeRating);
     this.teamRatings.set(awayResolved, newAwayRating);
 
