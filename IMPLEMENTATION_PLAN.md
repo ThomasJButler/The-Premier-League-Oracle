@@ -605,7 +605,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] Prediction flip cards have no `aria-label` or focus indicator — keyboard users can't tell when selected; screen readers read both sides simultaneously (no `aria-hidden` on non-visible face)
 - [ ] Win/loss indicators use colour only (green/red) — add icons for colourblind users (WCAG 1.4.1)
 - [x] ~~`LiveMatches.svelte` tab buttons lack ARIA tab pattern~~ **FIXED:** added `role="tablist"` on container, `role="tab"` + `aria-selected` + `aria-controls` on each button. Panel `role="tabpanel"` deferred — content is branches of a single `{#if}` chain, not separate DOM elements
-- [ ] `Help.svelte` nav sections have no `aria-current` or `aria-selected`; mobile menu button lacks `aria-expanded`
+- [x] ~~`Help.svelte` nav sections lack ARIA states~~ **FIXED:** added `aria-current="page"` on the active section button, `aria-expanded` and `aria-label` on mobile menu toggle button
 - [ ] `Sidebar.svelte` and `MobileNav.svelte` lack focus trapping when open on mobile — focus can escape behind the backdrop
 - [x] ~~`SeasonStats.svelte` stat cards have `cursor-pointer` styling with no click handler~~ **FIXED:** removed `cursor-pointer` from both `.stat-card` and `.stat-card-small` classes — cards are display-only with no interactive behaviour
 - [x] ~~`LiveTicker.svelte` has no marquee semantics~~ **FIXED:** added `role="marquee"` + `aria-live="off"` + `aria-label` on container, `aria-hidden="true"` on scrolling content, and a `.sr-only` static summary for screen readers. Pause control for WCAG 2.2.2 still deferred (requires interactive UI)

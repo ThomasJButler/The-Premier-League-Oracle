@@ -24,6 +24,8 @@
         <button
           class="sm:hidden p-2 rounded-lg hover:bg-muted"
           on:click={() => showMobileMenu = !showMobileMenu}
+          aria-expanded={showMobileMenu}
+          aria-label="Toggle documentation menu"
         >
           <ChevronRight class="w-5 h-5 transition-transform {showMobileMenu ? 'rotate-90' : ''}" />
         </button>
@@ -44,9 +46,10 @@
               <li>
                 <button
                   class="w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-all
-                    {selectedSection === section.id 
-                      ? 'bg-primary/10 text-primary font-medium' 
+                    {selectedSection === section.id
+                      ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted'}"
+                  aria-current={selectedSection === section.id ? 'page' : undefined}
                   on:click={() => {
                     selectedSection = section.id;
                     showMobileMenu = false;
