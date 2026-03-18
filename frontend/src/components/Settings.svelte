@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
+  import { aiAnalysisService } from '../services/aiAnalysis';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
@@ -43,6 +44,23 @@
       localStorage.removeItem('favourite_team');
       delete document.documentElement.dataset.team;
     }
+  }
+
+  // AI Analysis
+  let aiAnalysisEnabled = false;
+  let aiKeyAvailable: boolean | null = null;
+
+  function toggleAiAnalysis() {
+    aiAnalysisEnabled = !aiAnalysisEnabled;
+    aiAnalysisService.setEnabled(aiAnalysisEnabled);
+  }
+
+  function clearAiCache() {
+    aiAnalysisService.clearCache();
+    testResult = {
+      success: true,
+      message: 'AI analysis cache cleared'
+    };
   }
 
   // ML Backend
@@ -198,6 +216,14 @@
     if (savedTeam) {
       favouriteTeam = savedTeam;
     }
+
+    // Load AI analysis settings
+    aiAnalysisEnabled = aiAnalysisService.isEnabled();
+    aiAnalysisService.hasApiKey().then(available => {
+      aiKeyAvailable = available;
+    }).catch(() => {
+      aiKeyAvailable = false;
+    });
 
     // Load ML backend settings
     useBackend = localStorage.getItem('use_backend') === 'true';
@@ -494,6 +520,77 @@
         <p class="text-xs text-muted-foreground mt-1">
           Only needed if your backend requires authentication.
         </p>
+      </div>
+    {/if}
+  </div>
+
+  <!-- AI Match Analysis -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Sparkles class="w-5 h-5 text-primary" />
+      <span>AI Match Analysis</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Add AI-powered qualitative analysis to match predictions. Uses the same OpenAI key as Oracle Chat. Analyses are cached for 24 hours per match.
+    </p>
+
+    <!-- Toggle -->
+    <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Enable AI Analysis</p>
+        <p class="text-xs text-muted-foreground">Show AI-generated match narratives on prediction cards</p>
+      </div>
+      <button
+        on:click={toggleAiAnalysis}
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {aiAnalysisEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+        role="switch"
+        aria-checked={aiAnalysisEnabled}
+        aria-label="Enable AI match analysis"
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {aiAnalysisEnabled ? 'translate-x-6' : 'translate-x-1'}"
+        ></span>
+      </button>
+    </div>
+
+    {#if aiAnalysisEnabled}
+      <!-- API Key Status -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">API Key Status</p>
+          <p class="text-xs text-muted-foreground">
+            {#if aiKeyAvailable === null}
+              Checking…
+            {:else if aiKeyAvailable}
+              Ready — using {localStorage.getItem('openai_api_key') ? 'your OpenAI key' : 'server-side key'}
+            {:else}
+              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY
+            {/if}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if aiKeyAvailable === null}
+            <RefreshCw class="w-4 h-4 animate-spin text-amber-500" />
+          {:else if aiKeyAvailable}
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          {:else}
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Clear AI Cache -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">Analysis Cache</p>
+          <p class="text-xs text-muted-foreground">Clear cached analyses to fetch fresh ones</p>
+        </div>
+        <button
+          on:click={clearAiCache}
+          class="btn btn-sm btn-secondary"
+        >
+          Clear
+        </button>
       </div>
     {/if}
   </div>

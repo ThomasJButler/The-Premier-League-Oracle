@@ -3,6 +3,7 @@
   import { onMount, tick } from 'svelte';
   import DOMPurify from 'dompurify';
   import { dataService } from '../services/dataService';
+  import { aiAnalysisService } from '../services/aiAnalysis';
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -177,6 +178,15 @@ Current data:\n`;
       }
     } else {
       context += '\nRecent results: unavailable\n';
+    }
+
+    // Recent AI analyses (from Predictions view)
+    const recentAnalyses = aiAnalysisService.getRecentAnalyses(3);
+    if (recentAnalyses.length > 0) {
+      context += '\nRecent AI match analyses:\n';
+      recentAnalyses.forEach(a => {
+        context += `- Match ${a.matchId}: ${a.analysis.slice(0, 200)}...\n`;
+      });
     }
 
     return context;

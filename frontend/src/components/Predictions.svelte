@@ -12,8 +12,10 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2 } from 'lucide-svelte';
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
+  import { aiAnalysisService } from '../services/aiAnalysis';
+  import type { AnalysisInput } from '../services/aiAnalysis';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -52,6 +54,53 @@
   let backtestProgress = 0;
   let backtestTotal = 0;
   let backtestError: string | null = null;
+
+  // AI analysis state — keyed by matchId
+  let aiAnalyses: Map<string, string> = new Map();
+  let aiAnalysisLoading: Set<string> = new Set();
+  let aiAnalysisErrors: Map<string, string> = new Map();
+
+  /** Fetch AI analysis for a match when the user flips the card */
+  async function fetchAiAnalysis(matchData: typeof predictions[0]) {
+    if (!aiAnalysisService.isEnabled()) return;
+    if (aiAnalyses.has(matchData.id)) return; // Already loaded
+    if (aiAnalysisLoading.has(matchData.id)) return; // Already fetching
+
+    const pred = matchData.prediction;
+    const detail = matchData.detailedAnalysis;
+    if (!pred || !detail) return;
+
+    aiAnalysisLoading.add(matchData.id);
+    aiAnalysisLoading = new Set(aiAnalysisLoading); // trigger reactivity
+
+    const input: AnalysisInput = {
+      homeTeam: matchData.home_team,
+      awayTeam: matchData.away_team,
+      matchId: matchData.id,
+      matchDate: format(new Date(matchData.date), 'EEEE d MMMM yyyy, HH:mm'),
+      predictedResult: pred.predicted_result,
+      confidence: pred.confidence_score,
+      predictedHomeGoals: pred.predicted_home_goals,
+      predictedAwayGoals: pred.predicted_away_goals,
+      homeForm: detail.homeForm,
+      awayForm: detail.awayForm,
+      insights: detail.keyFactors,
+    };
+
+    try {
+      const analysis = await aiAnalysisService.getAnalysis(input);
+      if (analysis) {
+        aiAnalyses.set(matchData.id, analysis);
+        aiAnalyses = new Map(aiAnalyses);
+      }
+    } catch (err) {
+      aiAnalysisErrors.set(matchData.id, err instanceof Error ? err.message : 'Analysis failed');
+      aiAnalysisErrors = new Map(aiAnalysisErrors);
+    } finally {
+      aiAnalysisLoading.delete(matchData.id);
+      aiAnalysisLoading = new Set(aiAnalysisLoading);
+    }
+  }
 
   export async function runBacktest() {
     if (isBacktesting) return;
@@ -267,6 +316,11 @@
       flippedCards.delete(matchId);
     } else {
       flippedCards.add(matchId);
+      // Lazy-load AI analysis when card is flipped to back
+      const matchData = predictions.find(p => p.id === matchId);
+      if (matchData) {
+        fetchAiAnalysis(matchData);
+      }
     }
     flippedCards = new Set(flippedCards);
   }
@@ -786,6 +840,30 @@
                             </div>
                           {/each}
                         </div>
+                      {/if}
+                    </div>
+                  {/if}
+
+                  <!-- AI Analysis Section -->
+                  {#if aiAnalysisService.isEnabled()}
+                    <div class="mt-4 p-3 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg border border-violet-200 dark:border-violet-700">
+                      <div class="flex items-center gap-2 mb-2">
+                        <Sparkles class="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        <span class="font-semibold text-violet-800 dark:text-violet-200">AI Analysis</span>
+                      </div>
+                      {#if aiAnalyses.has(prediction.id)}
+                        <div class="text-sm text-muted-foreground prose-chat whitespace-pre-line">
+                          {aiAnalyses.get(prediction.id)}
+                        </div>
+                      {:else if aiAnalysisLoading.has(prediction.id)}
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 class="w-4 h-4 animate-spin" />
+                          <span>Generating analysis…</span>
+                        </div>
+                      {:else if aiAnalysisErrors.has(prediction.id)}
+                        <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                      {:else}
+                        <p class="text-xs text-muted-foreground">Flip the card to load AI analysis</p>
                       {/if}
                     </div>
                   {/if}

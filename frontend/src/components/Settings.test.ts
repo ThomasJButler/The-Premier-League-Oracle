@@ -142,13 +142,13 @@ describe('Settings Component', () => {
 
       expect(screen.getByText('ML Backend')).toBeInTheDocument();
       expect(screen.getByText('Use ML Backend')).toBeInTheDocument();
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+      expect(screen.getByRole('switch', { name: 'Use ML backend' })).toBeInTheDocument();
     });
 
     it('should toggle useBackend and persist to localStorage', async () => {
       render(Settings);
 
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       expect(toggle.getAttribute('aria-checked')).toBe('false');
 
       await fireEvent.click(toggle);
@@ -161,7 +161,7 @@ describe('Settings Component', () => {
     it('should show backend status and token field when enabled', async () => {
       render(Settings);
 
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       await fireEvent.click(toggle);
       await act();
 
@@ -185,7 +185,7 @@ describe('Settings Component', () => {
 
       render(Settings);
 
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       await fireEvent.click(toggle);
       await act();
 
@@ -204,7 +204,7 @@ describe('Settings Component', () => {
 
       render(Settings);
 
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       await fireEvent.click(toggle);
       await act();
 
@@ -223,7 +223,7 @@ describe('Settings Component', () => {
       render(Settings);
 
       // Enable backend
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       await fireEvent.click(toggle);
       await act();
 
@@ -244,7 +244,7 @@ describe('Settings Component', () => {
       render(Settings);
 
       // Enable backend first
-      const toggle = screen.getByRole('switch');
+      const toggle = screen.getByRole('switch', { name: 'Use ML backend' });
       await fireEvent.click(toggle);
       await act();
 
