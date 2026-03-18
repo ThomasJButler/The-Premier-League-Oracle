@@ -20,7 +20,9 @@
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  let currentView = 'Dashboard'; // Default view
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+
+  let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
   let isTransitioning = false;
   let showApiSetup = false;
@@ -28,11 +30,12 @@
   let dashboardComponent: Dashboard;
   
   function navigate(event: CustomEvent<{ view: string }>) {
-    if (event.detail.view === currentView) return;
-    
+    const view = event.detail.view as ViewName;
+    if (view === currentView) return;
+
     isTransitioning = true;
     setTimeout(() => {
-      currentView = event.detail.view;
+      currentView = view;
       setTimeout(() => {
         isTransitioning = false;
       }, 50);
@@ -80,10 +83,9 @@
     const { dataService } = await import('./services/dataService');
     const { footballDataAPI } = await import('./services/api/footballData');
     
-    // Set the API key in the Football Data API
+    // Set the API key and clear any stale cached data
     footballDataAPI.setApiKey(event.detail.apiKey);
-    
-    // Refresh data source availability
+    await dataService.clearCache();
     await dataService.refreshApiConfiguration();
     
     // API key setup completed successfully
@@ -105,7 +107,7 @@
     <Header toggleSidebar={toggleSidebar} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative">
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative" aria-label="Premier League Oracle content">
       <!-- Page transition overlay -->
       {#if isTransitioning}
         <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>

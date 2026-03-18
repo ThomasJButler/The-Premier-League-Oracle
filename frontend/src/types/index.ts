@@ -99,7 +99,7 @@ export interface Prediction {
   confidence_score: number;
   predicted_home_goals: number;
   predicted_away_goals: number;
-  was_correct: boolean;
+  was_correct?: boolean;
   prediction_date: string;
   created_at: string;
 }
@@ -130,4 +130,45 @@ export interface Standing {
   goalsFor: number;
   goalsAgainst: number;
   goalDifference: number;
+}
+
+// --- Backend ML Integration Types (spec 03) ---
+
+/** Response from the Python ML backend's POST /predict endpoint */
+export interface MLPrediction {
+  match: string;
+  prediction: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  confidence: number;
+  recommendation: string;
+  betting_value?: Record<string, unknown>;
+  individual_models?: Record<string, { home: number; draw: number; away: number }>;
+  similar_matches?: Record<string, unknown>[];
+  timestamp: string;
+}
+
+/** Response from the Python ML backend's POST /predict/batch endpoint */
+export interface MLBatchResponse {
+  predictions: Array<MLPrediction | { match: string; error: string }>;
+  total: number;
+  timestamp: string;
+}
+
+/** Response from the Python ML backend's GET /health endpoint */
+export interface MLHealthResponse {
+  status: string;
+  timestamp: string;
+  models_loaded: boolean;
+  redis_connected: boolean;
+}
+
+/** Thrown when the backend is unavailable or returns an error */
+export class BackendUnavailableError extends Error {
+  constructor(message = 'Backend ML service is unavailable') {
+    super(message);
+    this.name = 'BackendUnavailableError';
+  }
 }

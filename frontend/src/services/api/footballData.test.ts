@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { FootballDataAPI } from './footballData';
-import type { FootballDataConfig } from './footballData';
 
 // Mock fetch globally
 vi.stubGlobal('fetch', vi.fn());
@@ -230,28 +229,6 @@ describe('FootballDataAPI', () => {
     });
   });
 
-  describe('getRecentResults', () => {
-    it('should fetch recent results with date filter', async () => {
-      api.setApiKey(mockApiKey);
-      
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ matches: [] })
-      } as unknown as Response);
-
-      await api.getRecentResults(7);
-      
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateFrom='),
-        expect.any(Object)
-      );
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateTo='),
-        expect.any(Object)
-      );
-    });
-  });
-
   describe('getStandings', () => {
     const mockStandingsResponse = {
       standings: [
@@ -423,49 +400,6 @@ describe('FootballDataAPI', () => {
       const matches = await api.getMatches();
       
       expect(matches).toEqual([]);
-    });
-  });
-
-  describe('Data Transformation', () => {
-    it('should correctly determine match results', () => {
-      const testCases = [
-        { home: 2, away: 1, expected: 'H' },
-        { home: 1, away: 2, expected: 'A' },
-        { home: 1, away: 1, expected: 'D' },
-        { home: null, away: null, expected: null }
-      ];
-
-      testCases.forEach(({ home, away, expected }) => {
-        const match = {
-          score: {
-            fullTime: { home, away }
-          }
-        };
-
-        const result = home !== null && away !== null
-          ? home > away ? 'H' : away > home ? 'A' : 'D'
-          : null;
-
-        expect(result).toBe(expected);
-      });
-    });
-
-    it('should handle team name normalization', () => {
-      const teamNames = [
-        { input: 'Arsenal FC', expected: 'Arsenal' },
-        { input: 'Liverpool FC', expected: 'Liverpool' },
-        { input: 'Manchester United FC', expected: 'Manchester United' },
-        { input: 'Tottenham Hotspur FC', expected: 'Tottenham' }
-      ];
-
-      teamNames.forEach(({ input, expected }) => {
-        const normalized = input
-          .replace(' FC', '')
-          .replace(' AFC', '')
-          .replace(' Hotspur', '');
-        
-        expect(normalized).toContain(expected.split(' ')[0]);
-      });
     });
   });
 

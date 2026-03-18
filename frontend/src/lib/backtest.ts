@@ -29,8 +29,7 @@ export interface BacktestPrediction {
 
 export type BacktestProgressCallback = (completed: number, total: number) => void;
 
-// Margin used by OptimizedPredictor.calculateValueOdds — probability = margin / odds
-const VALUE_ODDS_MARGIN = 1.05;
+import { VALUE_ODDS_MARGIN } from './constants';
 
 /**
  * Extract outcome probabilities from the prediction model.
@@ -121,7 +120,8 @@ export class BacktestRunner {
           match.home_team,
           match.away_team,
           historicalMatches,
-          match.referee
+          match.referee,
+          match.date
         );
       } catch {
         // If prediction fails, skip this match

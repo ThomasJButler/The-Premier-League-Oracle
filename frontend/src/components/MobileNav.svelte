@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
+  import { focusTrap } from '$lib/utils';
 
   export let currentView: string;
 
@@ -32,9 +33,15 @@
     isMoreOpen = false;
   }
 
+  function handleKeydown(e: any) {
+    if (e.key === 'Escape' && isMoreOpen) isMoreOpen = false;
+  }
+
   // Check if current view is in the "more" menu
   $: isMoreActive = moreItems.some(item => item.view === currentView);
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <!-- More menu overlay -->
 {#if isMoreOpen}
@@ -44,7 +51,7 @@
     aria-label="Close menu"
     tabindex="-1"
   ></button>
-  <div class="fixed bottom-16 left-0 right-0 z-50 px-4 pb-2 animate-slide-in-up">
+  <div class="fixed bottom-16 left-0 right-0 z-50 px-4 pb-2 animate-slide-in-up" use:focusTrap>
     <div class="bg-card border border-border rounded-xl shadow-xl p-3">
       <div class="flex items-center justify-between mb-2 px-1">
         <span class="text-sm font-display font-semibold text-foreground">More</span>

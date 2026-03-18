@@ -2,6 +2,7 @@ import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
+import { sharedEloSystem } from '../lib/advancedPredictions';
 
 interface DataSource {
   type: 'api';
@@ -112,22 +113,6 @@ class DataService {
   
 
 
-  // Public API for checking data source status
-  public getDataSourceStatus() {
-    return {
-      api: this.apiSource.available,
-      usingAPI: this.apiSource.available
-    };
-  }
-
-  // Get overall service status
-  public getStatus() {
-    return {
-      primarySource: this.apiSource,
-      fallbackSource: { type: 'none', available: false }
-    };
-  }
-  
   // Cache management
   private async getCachedData<T>(storeName: string, key: string, ttlMs?: number): Promise<T | null> {
     if (!this.useCache || !this.cacheDb) return null;
@@ -175,7 +160,8 @@ class DataService {
     await this.ensureReady();
     const cacheKey = 'current_season';
     
-    // Try cache first
+    // Season data stored in 'teamStats' IndexedDB store (no dedicated season store
+    // exists — adding one would require an IDB schema migration for minimal benefit)
     const cached = await this.getCachedData<Season>('teamStats', cacheKey);
     if (cached) return cached;
     
@@ -392,7 +378,12 @@ class DataService {
   
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[]> {
     await this.ensureReady();
-    const cacheKey = `team_form_${teamName}_${matches?.length || 5}`;
+    // Cache key must reflect actual match content, not just array length —
+    // two different 5-match arrays for the same team would otherwise collide
+    const matchFingerprint = matches
+      ? matches.slice(0, 10).map(m => m.id).join(',')
+      : 'default';
+    const cacheKey = `team_form_${teamName}_${matchFingerprint}`;
     
     // Try cache first
     const cached = await this.getCachedData<TeamForm[]>('teamStats', cacheKey);
@@ -453,45 +444,9 @@ class DataService {
   }
 
   // Refresh data source availability (useful after API key is set)
-  public async refreshDataSources(): Promise<void> {
+  public async refreshApiConfiguration(): Promise<void> {
     this.readyPromise = this.checkDataSources();
     await this.readyPromise;
-  }
-  
-  // Alias for refreshDataSources for backward compatibility
-  public async refreshApiConfiguration(): Promise<void> {
-    await this.checkDataSources();
-  }
-
-  // Get prediction accuracy for a season
-  // seasonId is "2024-2025" or "2024/25" — extracts start year, filters predictions
-  // whose matchDate falls within that season (Aug startYear to Jul startYear+1)
-  public async getPredictionAccuracy(seasonId: string): Promise<{ total: number; correct: number; accuracy: number; }> {
-    // Extract start year from seasonId (e.g. "2025" from "2025-2026" or "2025/26")
-    const yearMatch = seasonId.match(/^(\d{4})/);
-    const allPredictions = predictionTracker.getRecentPredictions(10000);
-    const resolved = allPredictions.filter(p => p.actualResult !== undefined);
-
-    let filtered = resolved;
-    if (yearMatch) {
-      const startYear = parseInt(yearMatch[1], 10);
-      // PL season: August of startYear to July of startYear+1
-      const seasonStart = new Date(startYear, 7, 1); // 1 Aug
-      const seasonEnd = new Date(startYear + 1, 7, 1); // 1 Aug next year (exclusive)
-
-      filtered = resolved.filter(p => {
-        const d = new Date(p.matchDate);
-        return d >= seasonStart && d < seasonEnd;
-      });
-    }
-
-    const total = filtered.length;
-    const correct = filtered.filter(p => p.isCorrect).length;
-    return {
-      total,
-      correct,
-      accuracy: total > 0 ? correct / total : 0
-    };
   }
 
   // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
@@ -525,8 +480,9 @@ class DataService {
     await this.ensureReady();
     const cacheKey = `historical_matches_${season}`;
 
-    // Historical data rarely changes — use 24h cache
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
+    // Historical data rarely changes — 24h cache
+    const HISTORICAL_TTL = 24 * 60 * 60 * 1000;
+    const cached = await this.getCachedData<Match[]>('matches', cacheKey, HISTORICAL_TTL);
     if (cached) return cached;
 
     if (this.apiSource.available) {
@@ -540,29 +496,6 @@ class DataService {
         return matches;
       } catch (error) {
         // Error fetching historical matches
-      }
-    }
-
-    return [];
-  }
-
-  // Get a team's recent finished matches — 30min cache
-  public async getTeamRecentMatches(teamId: number, limit: number = 5): Promise<Match[]> {
-    await this.ensureReady();
-    const cacheKey = `team_recent_${teamId}_${limit}`;
-
-    const cached = await this.getCachedData<Match[]>('matches', cacheKey);
-    if (cached) return cached;
-
-    if (this.apiSource.available) {
-      try {
-        const matches = await this.getActiveApi().getTeamMatches(teamId, limit);
-        if (matches.length > 0) {
-          await this.setCachedData('matches', cacheKey, matches);
-        }
-        return matches;
-      } catch (error) {
-        // Error fetching team recent matches
       }
     }
 
@@ -607,6 +540,11 @@ class DataService {
       );
     }
 
+    // Update ELO ratings from completed matches so the ensemble
+    // model has current ratings for future predictions.
+    // processCompletedMatches is idempotent — it skips already-processed matches.
+    sharedEloSystem.processCompletedMatches(completedMatches);
+
     return reconciled;
   }
 
@@ -629,17 +567,6 @@ class DataService {
     // doesn't have to re-enter it after a simple cache flush.
   }
   
-  public setCacheTimeout(minutes: number): void {
-    this.cacheTimeout = minutes * 60 * 1000;
-  }
-  
-  public disableCache(): void {
-    this.useCache = false;
-  }
-  
-  public enableCache(): void {
-    this.useCache = true;
-  }
 }
 
 // Export singleton instance

@@ -4,7 +4,7 @@
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
   import { scale } from 'svelte/transition';
-  import { format, subDays, isAfter, isBefore, formatDistanceToNow } from 'date-fns';
+  import { format, subDays, addDays, isAfter, isBefore, formatDistanceToNow } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
 
   let liveMatches: Match[] = [];
@@ -95,7 +95,7 @@
       const allMatches = await dataService.getMatches();
       const now = new Date();
       const threeDaysAgo = subDays(now, 3);
-      const sevenDaysFromNow = subDays(now, -7);
+      const sevenDaysFromNow = addDays(now, 7);
 
       liveMatches = fetchedLive;
 
@@ -196,8 +196,11 @@
   <!-- Tab Navigation -->
   {#if !loading}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-2 mb-6">
-      <div class="grid grid-cols-3 gap-2">
+      <div class="grid grid-cols-3 gap-2" role="tablist" aria-label="Match categories">
         <button
+          role="tab"
+          aria-selected={showSection === 'live'}
+          aria-controls="panel-live"
           on:click={() => showSection = 'live'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'live'
             ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold shadow-lg'
@@ -210,6 +213,9 @@
         </button>
 
         <button
+          role="tab"
+          aria-selected={showSection === 'recent'}
+          aria-controls="panel-recent"
           on:click={() => showSection = 'recent'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'recent'
             ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold shadow-lg'
@@ -222,6 +228,9 @@
         </button>
 
         <button
+          role="tab"
+          aria-selected={showSection === 'upcoming'}
+          aria-controls="panel-upcoming"
           on:click={() => showSection = 'upcoming'}
           class="px-4 py-3 rounded-lg transition-all {showSection === 'upcoming'
             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold shadow-lg'

@@ -13,6 +13,7 @@
   }
 
   let loading = true;
+  let error: string | null = null;
   let matches: Match[] = [];
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
@@ -20,14 +21,16 @@
   async function loadSeasonStats() {
     try {
       loading = true;
+      error = null;
       matches = await dataService.getCurrentSeasonMatches();
-      
+
       if (matches.length > 0) {
         stats = calculateInterestingStats(matches);
         additionalStats = calculateAdditionalStats(matches);
       }
-    } catch (error) {
-      // Error loading season stats
+    } catch (err) {
+      console.warn('Failed to load season stats:', err);
+      error = 'Unable to load season statistics. Please check your API key in Settings.';
     } finally {
       loading = false;
     }
@@ -407,6 +410,11 @@
         </div>
       {/each}
     </div>
+  {:else if error}
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 p-8 text-center">
+      <AlertTriangle class="w-12 h-12 mx-auto mb-3 text-destructive" />
+      <p class="text-destructive font-medium">{error}</p>
+    </div>
   {:else}
     <!-- Primary Stats -->
     <div class="mb-12">
@@ -414,7 +422,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each stats as stat, i}
           <div 
-            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300 cursor-pointer"
+            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300"
             style="animation-delay: {i * 100}ms"
           >
             <div class="flex items-start justify-between mb-4">
@@ -446,7 +454,7 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {#each additionalStats as stat, i}
             <div 
-              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300 cursor-pointer"
+              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300"
               style="animation-delay: {(stats.length + i) * 50}ms"
             >
               <div class="flex items-center gap-3 mb-2">
@@ -474,7 +482,7 @@
 
   <div class="mt-8 p-6 rounded-xl border border-border bg-card text-card-foreground shadow-sm text-center">
     <p class="text-sm text-muted-foreground">
-      <span class="font-semibold">Did you know?</span> These statistics are updated in real-time as matches are played.
+      <span class="font-semibold">Did you know?</span> These statistics are refreshed each time you visit this page.
       Check back regularly for the latest insights!
     </p>
   </div>

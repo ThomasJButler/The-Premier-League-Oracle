@@ -1,5 +1,6 @@
 import { dataService } from '../services/dataService';
 import type { Match } from '../types';
+import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
 // Advanced team rating system using ELO
 export interface TeamRating {
@@ -244,22 +245,8 @@ export class EloRatingSystem {
     const homeRating = this.getTeamRating(homeResolved);
     const awayRating = this.getTeamRating(awayResolved);
 
-    // Add home advantage
-    const adjustedHomeRating = homeRating + EloRatingSystem.HOME_ADVANTAGE;
+    const { newHomeRating, newAwayRating } = EloRatingSystem.updateRatings(homeRating, awayRating, actualResult);
 
-    // Calculate expected scores
-    const expectedHome = EloRatingSystem.calculateExpectedScore(adjustedHomeRating, awayRating);
-    const expectedAway = 1 - expectedHome;
-
-    // Actual scores
-    const actualHome = actualResult === 'H' ? 1 : actualResult === 'D' ? 0.5 : 0;
-    const actualAway = actualResult === 'A' ? 1 : actualResult === 'D' ? 0.5 : 0;
-
-    // Update ratings
-    const newHomeRating = homeRating + EloRatingSystem.K_FACTOR * (actualHome - expectedHome);
-    const newAwayRating = awayRating + EloRatingSystem.K_FACTOR * (actualAway - expectedAway);
-
-    // Store updated ratings under canonical names
     this.teamRatings.set(homeResolved, newHomeRating);
     this.teamRatings.set(awayResolved, newAwayRating);
 
@@ -316,76 +303,16 @@ export class EloRatingSystem {
   }
 }
 
-// Expected Goals (xG) Calculator
-export class ExpectedGoalsCalculator {
-  static calculateShotValue(
-    shotType: 'open-play' | 'corner' | 'free-kick' | 'penalty',
-    distance: number,
-    angle: number,
-    bodyPart: 'foot' | 'head' | 'other'
-  ): number {
-    let baseXG = 0;
-
-    // Base xG values by shot type
-    switch (shotType) {
-      case 'penalty':
-        return 0.76; // Penalties have ~76% conversion rate
-      case 'open-play':
-        baseXG = 0.4;
-        break;
-      case 'corner':
-        baseXG = 0.03;
-        break;
-      case 'free-kick':
-        baseXG = 0.06;
-        break;
-    }
-
-    // Adjust for distance (closer = higher xG)
-    const distanceFactor = Math.exp(-0.05 * distance);
-    
-    // Adjust for angle (more central = higher xG)
-    const angleFactor = 1 - (Math.abs(angle) / 90) * 0.7;
-    
-    // Adjust for body part
-    const bodyPartMultiplier = bodyPart === 'foot' ? 1 : bodyPart === 'head' ? 0.7 : 0.3;
-
-    return Math.min(baseXG * distanceFactor * angleFactor * bodyPartMultiplier, 0.95);
-  }
-
-  static async calculateMatchXG(matchId: string): Promise<{ homeXG: number; awayXG: number }> {
-    // This would fetch shot data from the database
-    // For now, we'll estimate based on shots and shots on target
-    try {
-      const matches = await dataService.getMatches();
-      const match = matches.find(m => m.id === matchId);
-
-      if (!match) return { homeXG: 0, awayXG: 0 };
-
-      // Simplified xG calculation based on available data
-      const homeXG = (match.home_shots_target || 0) * 0.38 + 
-                     ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
-      const awayXG = (match.away_shots_target || 0) * 0.38 + 
-                     ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
-
-      return { homeXG, awayXG };
-    } catch (error) {
-      // Error calculating match xG
-      return { homeXG: 0, awayXG: 0 };
-    }
-  }
-}
-
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
-  static async calculateRestDays(teamName: string, matchDate: Date): Promise<number> {
+  static async calculateRestDays(teamName: string, matchDate: Date, allMatches?: Match[]): Promise<number> {
     try {
-      const matches = await dataService.getMatches();
-      const teamMatches = matches.filter(match => 
+      const matches = allMatches ?? await dataService.getMatches();
+      const teamMatches = matches.filter(match =>
         (match.home_team === teamName || match.away_team === teamName) &&
         new Date(match.date) < matchDate
       ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+
       if (teamMatches.length === 0) return 7; // Default rest days
       const lastMatch = new Date(teamMatches[0].date);
       return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
@@ -395,42 +322,12 @@ export class FatigueAnalyzer {
     }
   }
 
-  static async calculateFixtureDifficulty(
-    teamName: string,
-    startDate: Date,
-    endDate: Date,
-    eloSystem?: EloRatingSystem
-  ): Promise<number> {
-    try {
-      // Calculate average opponent ELO in date range
-      const matches = await dataService.getMatches();
-      const teamMatches = matches.filter(match =>
-        (match.home_team === teamName || match.away_team === teamName) &&
-        new Date(match.date) >= startDate &&
-        new Date(match.date) <= endDate
-      );
-
-      if (teamMatches.length === 0) return 0;
-
-      const elo = eloSystem ?? new EloRatingSystem();
-      let totalDifficulty = 0;
-      for (const match of teamMatches) {
-        const opponent = match.home_team === teamName ? match.away_team : match.home_team;
-        totalDifficulty += elo.getTeamRating(opponent);
-      }
-
-      return totalDifficulty / teamMatches.length;
-    } catch (error) {
-      // Error calculating fixture difficulty
-      return 0;
-    }
-  }
-
   static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
     // Less rest = more fatigue = worse performance
-    const restFactor = Math.min(restDays / 7, 1); // Optimal rest is 7+ days
+    // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
+    const restFactor = Math.min(Math.max(restDays, 0.5) / 7, 1); // Optimal rest is 7+ days
     const fixtureFactor = Math.max(1 - (recentFixtures - 1) * 0.1, 0.6); // Each extra fixture reduces performance
-    
+
     return restFactor * fixtureFactor;
   }
 }
@@ -454,14 +351,17 @@ export class AdvancedMatchPredictor {
     valueBets: Array<{ outcome: string; odds: number; expectedValue: number }>;
     insights: string[];
   }> {
+    // Fetch all matches once — used for fatigue, league averages, and insights
+    const allMatches = await dataService.getMatches();
+
     // 1. Get team ratings from the shared ELO system
     const homeRating = sharedEloSystem.getTeamRating(homeTeam);
     const awayRating = sharedEloSystem.getTeamRating(awayTeam);
 
-    // 2. Calculate rest days and fatigue
+    // 2. Calculate rest days and fatigue (pass matches to avoid redundant fetches)
     const [homeRestDays, awayRestDays] = await Promise.all([
-      FatigueAnalyzer.calculateRestDays(homeTeam, matchDate),
-      FatigueAnalyzer.calculateRestDays(awayTeam, matchDate)
+      FatigueAnalyzer.calculateRestDays(homeTeam, matchDate, allMatches),
+      FatigueAnalyzer.calculateRestDays(awayTeam, matchDate, allMatches)
     ]);
 
     const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1);
@@ -475,7 +375,6 @@ export class AdvancedMatchPredictor {
     const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
 
     // Derive league average goals from completed matches (fallback: 1.5 / 1.2)
-    const allMatches = await dataService.getMatches();
     const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
     let baseHomeGoals = 1.5;
     let baseAwayGoals = 1.2;
@@ -500,11 +399,10 @@ export class AdvancedMatchPredictor {
     const confidence = (ratingReliability + fatigueCertainty) / 2;
 
     // 7. Value betting — derive fair odds from model probabilities (no hardcoded bookmaker odds)
-    const margin = 1.05;
     const fairOdds = {
-      home: outcomes.homeWin > 0 ? (1 / outcomes.homeWin) * margin : 10.0,
-      draw: outcomes.draw > 0 ? (1 / outcomes.draw) * margin : 4.0,
-      away: outcomes.awayWin > 0 ? (1 / outcomes.awayWin) * margin : 10.0,
+      home: outcomes.homeWin > 0 ? (1 / outcomes.homeWin) * VALUE_ODDS_MARGIN : 10.0,
+      draw: outcomes.draw > 0 ? (1 / outcomes.draw) * VALUE_ODDS_MARGIN : 4.0,
+      away: outcomes.awayWin > 0 ? (1 / outcomes.awayWin) * VALUE_ODDS_MARGIN : 10.0,
     };
     // Without real bookmaker odds, value bets are empty — model odds ≈ fair odds by definition
     const valueBets: Array<{ outcome: string; odds: number; expectedValue: number }> = [];
@@ -518,7 +416,7 @@ export class AdvancedMatchPredictor {
     if (awayRestDays < 3) {
       insights.push(`${awayTeam} has only ${awayRestDays} days rest - fatigue could be a factor`);
     }
-    if (ratingDiff > 200) {
+    if (ratingDiff > 2) {
       insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(ratingDiff * 100).toFixed(0)} points higher`);
     }
     // Fair odds derived from model — shown for reference
@@ -550,7 +448,7 @@ export class RefereeAnalyzer {
       const refereeMatches = matches.filter(match => match.referee === refereeName);
 
       if (refereeMatches.length === 0) {
-        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
       }
 
       const totalMatches = refereeMatches.length;
@@ -566,7 +464,7 @@ export class RefereeAnalyzer {
       };
     } catch (error) {
       // Error getting referee stats
-      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: 0.46 };
+      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }
   }
 }

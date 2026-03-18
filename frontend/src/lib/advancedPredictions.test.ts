@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   PoissonPredictor,
   EloRatingSystem,
-  ExpectedGoalsCalculator,
   FatigueAnalyzer,
   RefereeAnalyzer,
   AdvancedMatchPredictor
@@ -199,105 +198,6 @@ describe('Advanced Predictions Module', () => {
     });
   });
 
-  describe('ExpectedGoalsCalculator', () => {
-    describe('calculateShotValue', () => {
-      it('should calculate penalty xG correctly', () => {
-        const penaltyXG = ExpectedGoalsCalculator.calculateShotValue('penalty', 12, 0, 'foot');
-        expect(penaltyXG).toBe(0.76);
-      });
-
-      it('should calculate open play shot xG', () => {
-        // Close range, central, with foot
-        const closeShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 8, 0, 'foot');
-        expect(closeShot).toBeGreaterThan(0.2);
-        expect(closeShot).toBeLessThan(0.5);
-
-        // Long range, angled, with foot
-        const longShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 25, 30, 'foot');
-        expect(longShot).toBeLessThan(0.1);
-
-        // Header from close range
-        const header = ExpectedGoalsCalculator.calculateShotValue('open-play', 6, 0, 'head');
-        expect(header).toBeGreaterThan(0.1);
-        expect(header).toBeLessThan(closeShot * 0.8);
-      });
-
-      it('should calculate corner and free kick xG', () => {
-        const corner = ExpectedGoalsCalculator.calculateShotValue('corner', 6, 10, 'head');
-        expect(corner).toBeGreaterThan(0.01);
-        expect(corner).toBeLessThan(0.1);
-
-        const freeKick = ExpectedGoalsCalculator.calculateShotValue('free-kick', 20, 0, 'foot');
-        expect(freeKick).toBeGreaterThan(0.02);
-        expect(freeKick).toBeLessThan(0.15);
-      });
-
-      it('should cap xG at 0.95', () => {
-        const impossibleShot = ExpectedGoalsCalculator.calculateShotValue('open-play', 0.5, 0, 'foot');
-        expect(impossibleShot).toBeLessThanOrEqual(0.95);
-      });
-    });
-
-    describe('calculateMatchXG', () => {
-      it('should estimate xG from shots data', async () => {
-        const mockMatch: Match = createMockMatch({
-          id: 'match1',
-          season_id: '2025-26',
-          date: '2025-08-15',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 2,
-          away_goals: 1,
-          home_shots: 15,
-          away_shots: 10,
-          home_shots_target: 6,
-          away_shots_target: 4,
-          result: 'H',
-          created_at: '2025-08-15'
-        });
-
-        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match1');
-        
-        // 6 shots on target * 0.38 + 9 off target * 0.03
-        expect(xG.homeXG).toBeCloseTo(2.28 + 0.27, 2);
-        // 4 shots on target * 0.38 + 6 off target * 0.03
-        expect(xG.awayXG).toBeCloseTo(1.52 + 0.18, 2);
-      });
-
-      it('should handle missing match data', async () => {
-        vi.mocked(dataService.getMatches).mockResolvedValue([]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('nonexistent');
-        
-        expect(xG.homeXG).toBe(0);
-        expect(xG.awayXG).toBe(0);
-      });
-
-      it('should handle null shot values', async () => {
-        const mockMatch: Match = createMockMatch({
-          id: 'match2',
-          season_id: '2025-26',
-          date: '2025-08-15',
-          home_team: 'Arsenal',
-          away_team: 'Chelsea',
-          home_goals: 1,
-          away_goals: 0,
-          result: 'H',
-          created_at: '2025-08-15'
-        });
-
-        vi.mocked(dataService.getMatches).mockResolvedValue([mockMatch]);
-
-        const xG = await ExpectedGoalsCalculator.calculateMatchXG('match2');
-        
-        expect(xG.homeXG).toBe(0);
-        expect(xG.awayXG).toBe(0);
-      });
-    });
-  });
-
   describe('FatigueAnalyzer', () => {
     describe('calculateRestDays', () => {
       it('should calculate rest days between matches', async () => {
@@ -340,58 +240,6 @@ describe('Advanced Predictions Module', () => {
         const restDays = await FatigueAnalyzer.calculateRestDays('NewTeam', new Date());
         
         expect(restDays).toBe(7);
-      });
-    });
-
-    describe('calculateFixtureDifficulty', () => {
-      it('should calculate average opponent ELO rating', async () => {
-        const mockMatches: Match[] = [
-          createMockMatch({
-            id: '1',
-            season_id: '2025-26',
-            date: '2025-08-10',
-            home_team: 'Arsenal FC',
-            away_team: 'Manchester City FC',
-            created_at: '2025-08-10'
-          }),
-          createMockMatch({
-            id: '2',
-            season_id: '2025-26',
-            date: '2025-08-15',
-            home_team: 'Liverpool FC',
-            away_team: 'Arsenal FC',
-            created_at: '2025-08-15'
-          })
-        ];
-
-        vi.mocked(dataService.getMatches).mockResolvedValue(mockMatches);
-
-        // Create an ELO system with known ratings for the test
-        const elo = new EloRatingSystem();
-        const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
-          'Arsenal FC',
-          new Date('2025-08-01'),
-          new Date('2025-08-31'),
-          elo
-        );
-
-        // Opponents are Man City (1850) and Liverpool (1780) → average ~1815
-        const manCityRating = elo.getTeamRating('Manchester City FC');
-        const liverpoolRating = elo.getTeamRating('Liverpool FC');
-        const expectedAvg = (manCityRating + liverpoolRating) / 2;
-        expect(difficulty).toBeCloseTo(expectedAvg, 0);
-      });
-
-      it('should return 0 for no fixtures', async () => {
-        vi.mocked(dataService.getMatches).mockResolvedValue([]);
-
-        const difficulty = await FatigueAnalyzer.calculateFixtureDifficulty(
-          'Arsenal FC',
-          new Date('2025-08-01'),
-          new Date('2025-08-31')
-        );
-
-        expect(difficulty).toBe(0);
       });
     });
 
@@ -540,13 +388,13 @@ describe('Advanced Predictions Module', () => {
           new Date('2025-08-25')
         );
 
-        // Should identify value in some markets
-        if (prediction.valueBets.length > 0) {
-          prediction.valueBets.forEach(bet => {
-            expect(bet.expectedValue).toBeGreaterThan(0);
-            expect(bet.odds).toBeGreaterThan(1);
-            expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
-          });
+        // valueBets should always be a valid array
+        expect(Array.isArray(prediction.valueBets)).toBe(true);
+        // When value bets are found, each must have valid structure
+        for (const bet of prediction.valueBets) {
+          expect(bet.expectedValue).toBeGreaterThan(0);
+          expect(bet.odds).toBeGreaterThan(1);
+          expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
         }
       });
 

@@ -99,7 +99,7 @@ export class KellyCalculator {
     const confidence = this.getConfidenceLevel(ourProbability, edge, clampedConfidence);
     
     // Assess risk level
-    const risk = this.getRiskLevel(fullKelly, edge, ourProbability);
+    const risk = this.getRiskLevel(edge, ourProbability);
     
     return {
       fullKelly: Math.round(fullKelly * 10000) / 10000,
@@ -112,67 +112,6 @@ export class KellyCalculator {
       isValueBet,
       confidence,
       risk
-    };
-  }
-  
-  /**
-   * Calculate Kelly for multiple simultaneous bets
-   */
-  public static calculateMultiple(
-    opportunities: BettingOpportunity[],
-    kellyFraction: number = 0.25
-  ): Array<{
-    totalStake: number;
-    allocations: Array<{
-      outcome: string;
-      stake: number;
-      kelly: number;
-      expectedValue: number;
-    }>;
-  }> {
-    const allocations = opportunities.map(opp => {
-      const calc = this.calculate(opp);
-      return {
-        outcome: opp.outcome,
-        stake: calc.recommendedStake,
-        kelly: calc.fullKelly * kellyFraction,
-        expectedValue: calc.expectedValue
-      };
-    }).filter(a => a.expectedValue > 0);
-    
-    const totalStake = allocations.reduce((sum, a) => sum + a.stake, 0);
-    
-    return [{
-      totalStake,
-      allocations
-    }];
-  }
-  
-  /**
-   * Calculate optimal stake for arbitrage opportunity
-   */
-  public static calculateArbitrage(
-    odds: number[],
-    bankroll: number
-  ): { stakes: number[]; profit: number; returnPercentage: number } | null {
-    // Check if arbitrage exists
-    const impliedProbSum = odds.reduce((sum, odd) => sum + 1/odd, 0);
-    
-    if (impliedProbSum >= 1) {
-      return null; // No arbitrage opportunity
-    }
-    
-    // Calculate stakes to guarantee profit
-    const stakes = odds.map(odd => (bankroll / impliedProbSum) / odd);
-    const totalStake = stakes.reduce((sum, stake) => sum + stake, 0);
-    const returns = stakes.map((stake, i) => stake * odds[i]);
-    const profit = returns[0] - totalStake; // All returns should be equal
-    const returnPercentage = (profit / totalStake) * 100;
-    
-    return {
-      stakes: stakes.map(s => Math.round(s * 100) / 100),
-      profit: Math.round(profit * 100) / 100,
-      returnPercentage: Math.round(returnPercentage * 100) / 100
     };
   }
   
@@ -247,65 +186,6 @@ export class KellyCalculator {
   }
   
   /**
-   * Detect arbitrage opportunity
-   */
-  public static detectArbitrage(
-    odds: number[],
-    bankroll: number = 1000
-  ): {
-    isArbitrage: boolean;
-    guaranteedProfit: number;
-    stakes: number[];
-    returnPercentage?: number;
-  } {
-    // Calculate sum of implied probabilities
-    const impliedProbSum = odds.reduce((sum, odd) => sum + 1/odd, 0);
-    
-    if (impliedProbSum >= 1) {
-      return {
-        isArbitrage: false,
-        guaranteedProfit: 0,
-        stakes: []
-      };
-    }
-    
-    // Calculate stakes for arbitrage
-    const stakes = odds.map(odd => (bankroll / impliedProbSum) / odd);
-    const totalStake = stakes.reduce((sum, stake) => sum + stake, 0);
-    const guaranteedReturn = bankroll / impliedProbSum;
-    const guaranteedProfit = guaranteedReturn - totalStake;
-    const returnPercentage = (guaranteedProfit / totalStake) * 100;
-    
-    return {
-      isArbitrage: true,
-      guaranteedProfit: Math.round(guaranteedProfit * 100) / 100,
-      stakes: stakes.map(s => Math.round(s * 100) / 100),
-      returnPercentage: Math.round(returnPercentage * 100) / 100
-    };
-  }
-  
-  /**
-   * Calculate required win rate for profitability at given odds
-   */
-  public static calculateRequiredWinRate(odds: number): number {
-    return 1 / odds;
-  }
-  
-  /**
-   * Calculate required win rate for profitability at given odds (alias)
-   */
-  public static requiredWinRate(odds: number): number {
-    return this.calculateRequiredWinRate(odds);
-  }
-  
-  /**
-   * Calculate break-even odds for given probability
-   */
-  public static breakEvenOdds(probability: number): number {
-    return 1 / probability;
-  }
-  
-  /**
    * Determine confidence level
    */
   private static getConfidenceLevel(
@@ -324,34 +204,12 @@ export class KellyCalculator {
    * Assess risk level
    */
   private static getRiskLevel(
-    kellyFraction: number,
     edge: number,
     probability: number
   ): 'high' | 'medium' | 'low' {
     if (probability < 0.6) return 'high';
     if (probability >= 0.7 && edge > 0.05) return 'low';
     return 'medium';
-  }
-  
-  /**
-   * Format percentage for display
-   */
-  public static formatPercentage(value: number): string {
-    return `${(value * 100).toFixed(2)}%`;
-  }
-  
-  /**
-   * Format odds (decimal to fractional)
-   */
-  public static decimalToFractional(decimal: number): string {
-    const numerator = decimal - 1;
-    const denominator = 1;
-    const gcd = this.getGCD(numerator * 100, 100);
-    return `${(numerator * 100) / gcd}/${100 / gcd}`;
-  }
-  
-  private static getGCD(a: number, b: number): number {
-    return b === 0 ? a : this.getGCD(b, a % b);
   }
 }
 

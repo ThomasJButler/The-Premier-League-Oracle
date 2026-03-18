@@ -99,12 +99,6 @@ interface FDScorer {
   penalties: number | null;
 }
 
-interface FDSquadMember extends FDPlayer {
-  position: string;
-  dateOfBirth: string;
-  nationality: string;
-}
-
 class FootballDataAPI {
   private config: FootballDataConfig;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
@@ -187,8 +181,25 @@ class FootballDataAPI {
       
       if (!response.ok) {
         if (response.status === 403) {
-          console.error('Invalid API key or rate limit exceeded');
+          // Football-Data.org returns 403 for both invalid API keys AND rate-limit
+          // exceeded on the free tier. Try to distinguish via response body.
+          let detail = '';
+          try {
+            const body = await response.json();
+            detail = body?.message || '';
+          } catch { /* ignore parse errors */ }
+
+          const isRateLimit = /rate|limit|quota|too many/i.test(detail);
+          if (isRateLimit) {
+            console.warn('Rate limit exceeded (403):', detail);
+            throw new Error('Rate limit exceeded. The free tier allows 10 requests per minute — please wait and try again.');
+          }
+          console.error('API authentication failed (403):', detail);
           throw new Error('API authentication failed. Please check your API key.');
+        }
+        if (response.status === 429) {
+          console.warn('Rate limit exceeded (429)');
+          throw new Error('Rate limit exceeded. The free tier allows 10 requests per minute — please wait and try again.');
         }
         throw new Error(`API request failed: ${response.status}`);
       }
@@ -259,19 +270,6 @@ class FootballDataAPI {
     return data.matches.map(this.transformMatch);
   }
   
-  // Get recent results
-  public async getRecentResults(days: number = 7): Promise<Match[]> {
-    const dateFrom = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const dateTo = new Date().toISOString().split('T')[0];
-    
-    const endpoint = `/competitions/${this.config.competitionId}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}&status=FINISHED`;
-    const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
-    
-    if (!data) return [];
-    
-    return data.matches.map(this.transformMatch);
-  }
-
   // Get recent matches (both past and upcoming)
   public async getRecentMatches(days: number = 7): Promise<Match[]> {
     const dateFrom = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -332,38 +330,14 @@ class FootballDataAPI {
     return data.standings[0].table;
   }
   
-  // Get head to head
-  public async getHeadToHead(match: number): Promise<{
-    aggregates: {
-      homeTeam: { wins: number; draws: number; losses: number };
-      awayTeam: { wins: number; draws: number; losses: number };
-    };
-    matches: Match[];
-  } | null> {
-    const endpoint = `/matches/${match}/head2head?limit=10`;
-    const data = await this.fetchWithCache<{
-      aggregates: {
-        homeTeam: { wins: number; draws: number; losses: number };
-        awayTeam: { wins: number; draws: number; losses: number };
-      };
-      matches: FDMatch[];
-    }>(endpoint);
-    
-    if (!data) return null;
-    
-    return {
-      aggregates: data.aggregates,
-      matches: data.matches.map(this.transformMatch)
-    };
-  }
-  
   // Transform Football-Data match to our Match type
   private transformMatch(fdMatch: FDMatch): Match {
     const result = fdMatch.score.winner === 'HOME_TEAM' ? 'H' :
                   fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
                   fdMatch.score.winner === 'DRAW' ? 'D' : null;
     
-    const halfTimeResult = !fdMatch.score.halfTime.home || !fdMatch.score.halfTime.away ? null :
+    const halfTimeResult = fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.home === undefined ||
+                           fdMatch.score.halfTime.away === null || fdMatch.score.halfTime.away === undefined ? null :
                            fdMatch.score.halfTime.home > fdMatch.score.halfTime.away ? 'H' :
                            fdMatch.score.halfTime.home < fdMatch.score.halfTime.away ? 'A' : 'D';
     
@@ -380,9 +354,9 @@ class FootballDataAPI {
       home_goals: fdMatch.score.fullTime.home,
       away_goals: fdMatch.score.fullTime.away,
       result: result as 'H' | 'A' | 'D' | null,
-      home_odds: fdMatch.odds?.homeWin || null,
-      draw_odds: fdMatch.odds?.draw || null,
-      away_odds: fdMatch.odds?.awayWin || null,
+      home_odds: fdMatch.odds?.homeWin ?? null,
+      draw_odds: fdMatch.odds?.draw ?? null,
+      away_odds: fdMatch.odds?.awayWin ?? null,
       first_half_home_goals: fdMatch.score.halfTime.home,
       first_half_away_goals: fdMatch.score.halfTime.away,
       full_time_result: result as 'H' | 'A' | 'D' | null,
@@ -500,29 +474,6 @@ class FootballDataAPI {
     return data.scorers;
   }
   
-  // Get player details
-  public async getPlayer(playerId: number): Promise<FDPlayer | null> {
-    const endpoint = `/players/${playerId}`;
-    const data = await this.fetchWithCache<FDPlayer>(endpoint);
-    
-    return data;
-  }
-  
-  // Get team squad
-  public async getTeamSquad(teamId: number): Promise<FDSquadMember[]> {
-    const endpoint = `/teams/${teamId}`;
-    const data = await this.fetchWithCache<{ 
-      squad: FDSquadMember[];
-      id: number;
-      name: string;
-      crest: string;
-    }>(endpoint);
-    
-    if (!data || !data.squad) return [];
-    
-    return data.squad;
-  }
-  
   // Get live matches (in play) — uses 60s cache for freshness
   public async getLiveMatches(): Promise<Match[]> {
     const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
@@ -531,14 +482,6 @@ class FootballDataAPI {
     if (!data) return [];
 
     return data.matches.map(this.transformMatch);
-  }
-  
-  // Get team details with crest
-  public async getTeam(teamId: number): Promise<FDTeam & { crest: string } | null> {
-    const endpoint = `/teams/${teamId}`;
-    const data = await this.fetchWithCache<FDTeam & { crest: string }>(endpoint);
-    
-    return data;
   }
   
   // Check if API is configured and working
@@ -565,13 +508,10 @@ export const footballDataAPI = new FootballDataAPI();
 export { FootballDataAPI };
 
 // Export types
-export type { 
-  FDMatch, 
-  FDTeam, 
-  FDStanding, 
-  FDCompetition, 
-  FDPlayer,
-  FDScorer,
-  FDSquadMember,
-  FootballDataConfig 
+export type {
+  FDMatch,
+  FDTeam,
+  FDStanding,
+  FDCompetition,
+  FDScorer
 };

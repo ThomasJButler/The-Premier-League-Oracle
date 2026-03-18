@@ -34,8 +34,7 @@
   );
 
   let recentMatches: Match[] = [];
-  let predictionAccuracy: number[] = [];
-  let topPredictions: any[] = [];
+  let topPredictions: Array<{ match: string; confidence: number; prediction: string; wasCorrect: boolean | null }> = [];
   let loading = true;
   let error: string | null = null;
   let overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });
@@ -300,27 +299,38 @@
   }
 
   onMount(() => {
-    loadDashboardData().then(() => {
-      // Initialise profit chart after data is loaded
-      initProfitChart();
-    });
-
     // Initialise date/time
     updateDateTime();
-
-    // Update time every second
     const timeInterval = setInterval(updateDateTime, 1000);
 
-    // Auto-retry if there's an error
-    const retryInterval = setInterval(() => {
-      if (error && !loading) {
-        loadDashboardData();
-      }
-    }, 5000);
+    // Auto-retry with exponential backoff (max 3 attempts)
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function scheduleRetry() {
+      if (retryCount >= MAX_RETRIES || !error || loading) return;
+      const delay = 5000 * Math.pow(2, retryCount); // 5s, 10s, 20s
+      retryTimeout = setTimeout(() => {
+        if (error && !loading) {
+          retryCount++;
+          loadDashboardData().then(() => {
+            initProfitChart();
+            if (error) scheduleRetry();
+          });
+        }
+      }, delay);
+    }
+
+    // Initial load
+    loadDashboardData().then(() => {
+      initProfitChart();
+      if (error) scheduleRetry();
+    });
 
     return () => {
       clearInterval(timeInterval);
-      clearInterval(retryInterval);
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (profitChartInstance) {
         profitChartInstance.destroy();
         profitChartInstance = null;
@@ -331,24 +341,24 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-white to-blue-50 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-slate-900 dark:text-white animate-slide-in-up">
     <!-- Decorative elements -->
-    <div class="absolute inset-0 dot-pattern opacity-[0.03]"></div>
-    <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/10 rounded-full blur-3xl"></div>
-    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-slate-800/40 rounded-full blur-3xl"></div>
+    <div class="absolute inset-0 dot-pattern opacity-[0.03] dark:opacity-[0.03]"></div>
+    <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/5 dark:bg-emerald-400/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-blue-200/30 dark:bg-slate-800/40 rounded-full blur-3xl"></div>
 
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full live-pulse"></div>
-        <span class="text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
-        <span class="text-white/50 text-xs ml-auto hidden sm:inline">
+        <div class="w-2.5 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full live-pulse"></div>
+        <span class="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
+        <span class="text-slate-400 dark:text-white/50 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
       <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2 tracking-tight">
         Premier League Oracle
       </h1>
-      <p class="text-white/60 text-sm sm:text-base mb-6 max-w-xl">
+      <p class="text-slate-500 dark:text-white/60 text-sm sm:text-base mb-6 max-w-xl">
         Statistical predictions using a five-component ensemble: ELO, Poisson, Form, H2H, and Standings
       </p>
 
@@ -360,9 +370,9 @@
           { value: upcomingPredictions, label: 'Upcoming' },
           { value: recentMatches.length, label: 'Matches' },
         ] as stat, i}
-          <div class="text-center p-3 bg-white/[0.07] rounded-lg border border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
+          <div class="text-center p-3 bg-slate-900/[0.04] dark:bg-white/[0.07] rounded-lg border border-slate-200 dark:border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
             <div class="text-xl sm:text-2xl font-display font-bold">{stat.value}</div>
-            <div class="text-xs text-white/40 mt-0.5">{stat.label}</div>
+            <div class="text-xs text-slate-400 dark:text-white/40 mt-0.5">{stat.label}</div>
           </div>
         {/each}
       </div>
@@ -415,7 +425,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
-      <div class="h-48 sm:h-56">
+      <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
         <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
       </div>
     </div>

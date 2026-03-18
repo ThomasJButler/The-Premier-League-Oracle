@@ -29,7 +29,6 @@ export interface AccuracyStats {
   totalPredictions: number;
   correctPredictions: number;
   accuracy: number;
-  resultAccuracy: number; // W/D/L accuracy
   scoreAccuracy: number; // Exact score accuracy
   highConfidenceAccuracy: number; // Accuracy when confidence > 70%
   mediumConfidenceAccuracy: number; // Accuracy when confidence 50-70%
@@ -48,8 +47,6 @@ export interface AccuracyStats {
 class PredictionTracker {
   private readonly STORAGE_KEY = 'pl_oracle_predictions';
   private predictions: Map<string, StoredPrediction>;
-  private static idCounter = 0;
-
   constructor() {
     this.predictions = new Map();
     this.loadPredictions();
@@ -94,8 +91,7 @@ class PredictionTracker {
     matchDate: string,
     matchday?: number
   ): void {
-    PredictionTracker.idCounter++;
-    const id = `${matchId}_${Date.now()}_${PredictionTracker.idCounter}`;
+    const id = `${matchId}_${crypto.randomUUID()}`;
     const storedPrediction: StoredPrediction = {
       id,
       matchId,
@@ -157,10 +153,6 @@ class PredictionTracker {
     const totalPredictions = relevantPredictions.length;
     const accuracy = (correctPredictions / totalPredictions) * 100;
 
-    // Calculate result accuracy (W/D/L)
-    const resultCorrect = relevantPredictions.filter(p => p.predictedResult === p.actualResult).length;
-    const resultAccuracy = (resultCorrect / totalPredictions) * 100;
-
     // Calculate exact score accuracy
     const scoreCorrect = relevantPredictions.filter(p => 
       p.predictedHomeGoals === p.actualHomeGoals && 
@@ -202,7 +194,6 @@ class PredictionTracker {
       totalPredictions,
       correctPredictions,
       accuracy,
-      resultAccuracy,
       scoreAccuracy,
       highConfidenceAccuracy,
       mediumConfidenceAccuracy,
@@ -314,7 +305,6 @@ class PredictionTracker {
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
-      resultAccuracy: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,
@@ -327,30 +317,6 @@ class PredictionTracker {
     };
   }
 
-  // Export predictions for analysis
-  public exportPredictions(): string {
-    const data = Array.from(this.predictions.values());
-    return JSON.stringify(data, null, 2);
-  }
-
-  // Import predictions (for testing or migration)
-  public importPredictions(jsonData: string): boolean {
-    try {
-      const data = JSON.parse(jsonData);
-      if (Array.isArray(data)) {
-        data.forEach(pred => {
-          if (pred.id && pred.matchId) {
-            this.predictions.set(pred.id, pred);
-          }
-        });
-        this.savePredictions();
-        return true;
-      }
-    } catch (error) {
-      // Error importing predictions from JSON data
-    }
-    return false;
-  }
 }
 
 // Export singleton instance

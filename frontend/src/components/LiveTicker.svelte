@@ -10,6 +10,8 @@
   }
 
   let tickerContent = '';
+  let hasLiveMatches = false;
+  let paused = false;
   let pollInterval: ReturnType<typeof setInterval>;
 
   onMount(async () => {
@@ -68,9 +70,11 @@
 
       // Sort by priority
       items.sort((a, b) => a.priority - b.priority);
+      hasLiveMatches = items.some(item => item.type === 'live');
 
       if (items.length === 0) {
         tickerContent = 'Premier League Oracle — No matches scheduled in the next 48 hours';
+        hasLiveMatches = false;
         return;
       }
 
@@ -91,14 +95,22 @@
   }
 </script>
 
-<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border">
-  {#if tickerContent.includes('(') && tickerContent.startsWith('\u26BD')}
-    <!-- Pulsing indicator when live matches are showing -->
-    <span class="live-dot"></span>
+<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" role="marquee" aria-live="off" aria-label="Live match updates ticker">
+  {#if hasLiveMatches}
+    <span class="live-dot" aria-hidden="true"></span>
   {/if}
-  <div class="ticker-content text-sm font-medium text-foreground">
+  <div class="ticker-content text-sm font-medium text-foreground" class:paused aria-hidden="true">
     {tickerContent}
   </div>
+  <button
+    class="ticker-pause"
+    on:click={() => paused = !paused}
+    aria-label={paused ? 'Resume ticker' : 'Pause ticker'}
+    title={paused ? 'Resume' : 'Pause'}
+  >
+    {#if paused}▶{:else}⏸{/if}
+  </button>
+  <span class="sr-only">{hasLiveMatches ? 'Live match updates are scrolling. ' : ''}{tickerContent.split(' • ').slice(0, 5).join('. ')}</span>
 </div>
 
 <style>
@@ -114,6 +126,33 @@
     animation: ticker-scroll 60s linear infinite;
   }
 
+  .ticker-content.paused {
+    animation-play-state: paused;
+  }
+
+  .ticker-pause {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: hsl(var(--foreground));
+  }
+
+  .live-ticker:hover .ticker-pause,
+  .ticker-pause:focus-visible {
+    opacity: 1;
+  }
+
   .live-dot {
     position: absolute;
     left: 8px;
@@ -122,7 +161,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ef4444;
+    background: hsl(var(--destructive));
     animation: pulse-dot 1.5s ease-in-out infinite;
     z-index: 1;
   }

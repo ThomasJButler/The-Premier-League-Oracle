@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { Bar } from 'svelte-chartjs';
   import {
     Chart as ChartJS,
@@ -13,14 +12,13 @@
   } from 'chart.js';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, TrendingDown, Download, DollarSign, Minus, Trophy, Percent } from 'lucide-svelte';
+  import { TrendingUp, TrendingDown, Download, PoundSterling, Minus, Trophy, Percent } from 'lucide-svelte';
   import { formatDistanceToNow } from 'date-fns';
   import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
 
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
   let bets: StoredBet[] = [];
-  let loading = true;
   let filterResult: 'all' | 'win' | 'loss' | 'pending' = 'all';
 
   let totalWagered = tweened(0, { duration: 800, easing: cubicOut });
@@ -41,8 +39,6 @@
   };
 
   function loadBettingHistory() {
-    loading = true;
-
     bets = betHistoryService.getAllBets();
 
     const roiData = betHistoryService.getROI();
@@ -54,8 +50,6 @@
     winRateTweened.set(betHistoryService.getWinRate());
 
     buildMonthlyChart();
-
-    loading = false;
   }
 
   function buildMonthlyChart() {
@@ -165,13 +159,8 @@
     URL.revokeObjectURL(url);
   }
 
-  // Load immediately — all data sources are synchronous (localStorage)
+  // Load immediately — data sources are synchronous (localStorage)
   loadBettingHistory();
-
-  onMount(() => {
-    // Refresh on mount in case data changed since script initialisation
-    loadBettingHistory();
-  });
 
   const chartOptions = {
     responsive: true,
@@ -220,7 +209,7 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-blue-100 dark:bg-blue-900/30">
-        <DollarSign class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <PoundSterling class="w-5 h-5 text-blue-600 dark:text-blue-400" />
       </div>
       <div class="stat-label">Total Staked</div>
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
@@ -260,7 +249,7 @@
 
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
       <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
-        <DollarSign class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        <PoundSterling class="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
       <div class="stat-label">Total Bets</div>
       <div class="stat-value">{Math.round($totalBetsTweened)}</div>
@@ -271,7 +260,7 @@
   <div class="rounded-xl border border-border bg-card p-5" style="animation-delay: 300ms">
     <h3 class="text-lg font-semibold font-display text-foreground mb-3">Monthly Profit/Loss</h3>
     {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
-      <div class="h-64">
+      <div class="h-64" role="img" aria-label="Bar chart showing monthly profit and loss from resolved bets">
         <Bar data={monthlyPerformance} options={chartOptions} />
       </div>
     {:else}
@@ -286,7 +275,9 @@
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold font-display text-foreground">Detailed History</h3>
       <div class="flex space-x-2">
+        <label for="bet-filter" class="sr-only">Filter bets by result</label>
         <select
+          id="bet-filter"
           bind:value={filterResult}
           class="text-sm rounded-lg border border-border bg-card text-foreground px-3 py-1.5 focus:ring-2 focus:ring-primary"
         >
@@ -301,13 +292,9 @@
       </div>
     </div>
 
-    {#if loading}
-      <div class="flex-grow flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    {:else if bets.length === 0}
+    {#if bets.length === 0}
       <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-12">
-        <DollarSign class="w-12 h-12 mb-2 opacity-50" />
+        <PoundSterling class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>
         <p class="text-sm">Place some bets via the Kelly Calculator or Value Bets page to see them here.</p>
       </div>
@@ -317,7 +304,7 @@
       </div>
     {:else}
       <div class="overflow-x-auto flex-grow">
-        <table class="table w-full">
+        <table class="table w-full" aria-label="Betting history">
           <thead>
             <tr>
               <th>Date</th>
@@ -367,24 +354,3 @@
   </div>
 </div>
 
-<style global lang="postcss">
-  .shadow-glow-success-sm {
-    box-shadow: 0 0 8px hsla(var(--success-hsl) / 0.3), inset 0 0 10px hsla(var(--success-hsl) / 0.05);
-  }
-  .shadow-glow-success-md {
-    box-shadow: 0 0 15px hsla(var(--success-hsl) / 0.4), inset 0 0 15px hsla(var(--success-hsl) / 0.1);
-  }
-  .shadow-glow-error-sm {
-    box-shadow: 0 0 8px hsla(var(--error-hsl) / 0.3), inset 0 0 10px hsla(var(--error-hsl) / 0.05);
-  }
-  .shadow-glow-error-md {
-    box-shadow: 0 0 15px hsla(var(--error-hsl) / 0.4), inset 0 0 15px hsla(var(--error-hsl) / 0.1);
-  }
-
-  .th {
-    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
-  }
-  .td {
-    @apply px-4 py-3 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300;
-  }
-</style>

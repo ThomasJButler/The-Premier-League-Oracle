@@ -1,24 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Trophy, TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { Trophy, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import type { Standing } from '../types';
-  import { fade, fly } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
-  
+  import { getSeasonLabel } from '../lib/utils';
+
   let standings: Standing[] = [];
   let loading = true;
   let error = '';
   let showFullTable = false;
-
-  // Derive current season label from date (July onwards = new season)
-  function getSeasonLabel(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
-    return `${year - 1}/${year.toString().slice(-2)}`;
-  }
   
   onMount(async () => {
     await loadStandings();
@@ -164,19 +156,19 @@
       
       <!-- Table -->
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full" aria-label="Premier League standings">
           <thead class="bg-muted border-b border-border">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Pos</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Position">Pos</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">P</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">W</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">D</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">L</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GF</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GA</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">GD</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Pts</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Played">P</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Won">W</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Drawn">D</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Lost">L</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals for">GF</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals against">GA</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Goal difference">GD</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Points">Pts</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Form</th>
             </tr>
           </thead>
@@ -191,10 +183,9 @@
                     <span class="text-sm font-bold {getPositionBadge(team.position)} px-2 py-1 rounded">
                       {team.position}
                     </span>
-                    {#if i < 5}
-                      {@const movement = getMovementIcon(team)}
-                      <svelte:component this={movement.icon} class="w-3 h-3 {movement.color}" />
-                    {/if}
+                    <span title="Based on recent form, not actual position change">
+                      <svelte:component this={getMovementIcon(team).icon} class="w-3 h-3 {getMovementIcon(team).color}" />
+                    </span>
                   </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">

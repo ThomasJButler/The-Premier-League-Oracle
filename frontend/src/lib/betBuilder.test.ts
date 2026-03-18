@@ -16,7 +16,8 @@ vi.mock('./advancedPredictions', () => ({
 
 vi.mock('../services/dataService', () => ({
   dataService: {
-    getTeamStats: vi.fn()
+    getTeamStats: vi.fn(),
+    getMatches: vi.fn()
   }
 }));
 
@@ -86,6 +87,8 @@ function mockTeamStats(overrides: Record<string, any> = {}) {
 describe('BetBuilderPredictor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return empty match array (falls back to hardcoded league averages)
+    vi.mocked(dataService.getMatches).mockResolvedValue([]);
   });
 
   describe('generateBetBuilder', () => {
@@ -419,10 +422,10 @@ describe('BetBuilderPredictor', () => {
         ['Liverpool', 'Everton'],
         ['Chelsea', 'Arsenal'],
         ['Chelsea', 'Tottenham Hotspur'],
-        ['Wolverhampton Wanderers', 'West Bromwich Albion'],
         ['Nottingham Forest', 'Leicester City'],
-        ['Newcastle United', 'Sunderland'],
-        ['Aston Villa', 'Birmingham City']
+        ['Newcastle United', 'Everton'],
+        ['Aston Villa', 'Wolverhampton Wanderers'],
+        ['Crystal Palace', 'Brighton and Hove Albion']
       ];
 
       for (const [home, away] of rivalries) {

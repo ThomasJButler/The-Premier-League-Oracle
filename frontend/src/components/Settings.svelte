@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles, Heart } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
+  import { backendService } from '../services/backendService';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
-  
+
   const dispatch = createEventDispatcher();
-  
+
   // API Key
   let footballDataKey = '';
   
@@ -20,13 +21,7 @@
   
   // Favourite team
   let favouriteTeam = '';
-  const plTeams = [
-    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
-    'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
-    'Leicester City', 'Liverpool', 'Manchester City', 'Manchester United',
-    'Newcastle United', 'Nottingham Forest', 'Southampton', 'Tottenham',
-    'West Ham United', 'Wolverhampton'
-  ];
+  let plTeams: string[] = [];
 
   const teamColors: Record<string, string> = {
     'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
@@ -50,6 +45,48 @@
     }
   }
 
+  // ML Backend
+  let useBackend = false;
+  let backendAvailable: boolean | null = null; // null = not checked yet
+  let checkingBackend = false;
+  let oracleApiToken = '';
+
+  function toggleBackend() {
+    useBackend = !useBackend;
+    localStorage.setItem('use_backend', useBackend ? 'true' : 'false');
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
+    } else {
+      backendAvailable = null;
+    }
+  }
+
+  async function checkBackendStatus() {
+    checkingBackend = true;
+    backendService.invalidateCache();
+    try {
+      backendAvailable = await backendService.isAvailable();
+    } catch {
+      backendAvailable = false;
+    } finally {
+      checkingBackend = false;
+    }
+  }
+
+  function saveOracleToken() {
+    const trimmed = oracleApiToken.trim();
+    if (trimmed) {
+      localStorage.setItem('oracle_api_token', trimmed);
+    } else {
+      localStorage.removeItem('oracle_api_token');
+    }
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
+    }
+  }
+
   // Cache management
   let cacheSize = '0 MB';
   let lastSync = 'Never';
@@ -64,25 +101,17 @@
       if (isConnected) {
         testResult = {
           success: true,
-          message: `Successfully connected! Refreshing dashboard in 5 seconds...`
+          message: `Successfully connected! Refreshing data in 5 seconds...`
         };
         apiConnected = true;
         isRefreshing = true;
-        
-        // API is connected
-        
-        // Add 5-second delay before refresh
+
+        // Clear stale cache and refresh data services with the new key
         setTimeout(async () => {
-          // Clear cache to force fresh data
           await dataService.clearCache();
-          
-          // Trigger dashboard refresh
+          await dataService.refreshApiConfiguration();
           dispatch('apiConfigured');
-          
-          // Force page reload after a brief delay to ensure all components refresh
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
+          isRefreshing = false;
         }, 5000);
       } else {
         testResult = {
@@ -103,9 +132,9 @@
   }
   
   function saveFootballDataKey() {
-    if (footballDataKey.trim()) {
-      footballDataAPI.setApiKey(footballDataKey);
-      localStorage.setItem('football_data_api_key', footballDataKey);
+    const trimmedKey = footballDataKey.trim();
+    if (trimmedKey) {
+      footballDataAPI.setApiKey(trimmedKey);
       testConnection();
     }
   }
@@ -140,7 +169,7 @@
     }
   }
   
-  onMount(() => {
+  onMount(async () => {
     // Load saved settings
     const savedFootballDataKey = localStorage.getItem('football_data_api_key');
     
@@ -170,17 +199,48 @@
       favouriteTeam = savedTeam;
     }
 
-    // Estimate real localStorage usage by summing key + value byte lengths
-    let totalBytes = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
-        totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
-      }
+    // Load ML backend settings
+    useBackend = localStorage.getItem('use_backend') === 'true';
+    const savedToken = localStorage.getItem('oracle_api_token');
+    if (savedToken) {
+      oracleApiToken = savedToken;
     }
-    // Each JS character is 2 bytes in UTF-16 (localStorage encoding)
-    const totalMB = (totalBytes * 2) / (1024 * 1024);
-    cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+    if (useBackend) {
+      checkBackendStatus();
+    }
+
+    // Estimate total storage usage (IndexedDB + localStorage + Cache API)
+    if (navigator.storage?.estimate) {
+      try {
+        const { usage } = await navigator.storage.estimate();
+        if (usage) {
+          const totalMB = usage / (1024 * 1024);
+          cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+        }
+      } catch {
+        cacheSize = 'Unknown';
+      }
+    } else {
+      // Fallback: measure localStorage only (older browsers)
+      let totalBytes = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
+      }
+      const totalMB = (totalBytes * 2) / (1024 * 1024);
+      cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+    }
+
+    // Load team list from current standings (no hardcoded season list)
+    try {
+      const standings = await dataService.getStandings();
+      if (standings.length > 0) {
+        plTeams = standings.map(s => s.team.name).sort();
+      }
+    } catch {
+      // API unavailable — fall back to the static team list from the colour map
+      plTeams = Object.keys(teamColors).sort();
+    }
   });
 </script>
 
@@ -223,11 +283,12 @@
         
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium text-foreground mb-1">
+            <label for="football-data-key" class="block text-sm font-medium text-foreground mb-1">
               API Key
             </label>
             <div class="flex space-x-2">
               <input
+                id="football-data-key"
                 type="password"
                 bind:value={footballDataKey}
                 placeholder="Enter your Football-Data.org key"
@@ -330,6 +391,8 @@
         ></div>
       {/if}
       <select
+        id="favourite-team"
+        aria-label="Favourite team"
         bind:value={favouriteTeam}
         on:change={() => setFavouriteTeam(favouriteTeam)}
         class="flex-1 max-w-xs px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
@@ -340,6 +403,99 @@
         {/each}
       </select>
     </div>
+  </div>
+
+  <!-- ML Backend -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Cpu class="w-5 h-5 text-primary" />
+      <span>ML Backend</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Connect to the Python ML backend for enhanced predictions using XGBoost, LSTM, and Transformer models. When disabled, predictions use the built-in TypeScript ensemble.
+    </p>
+
+    <!-- Toggle -->
+    <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Use ML Backend</p>
+        <p class="text-xs text-muted-foreground">Route predictions through the Python backend when available</p>
+      </div>
+      <button
+        on:click={toggleBackend}
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {useBackend ? 'bg-primary' : 'bg-muted-foreground/30'}"
+        role="switch"
+        aria-checked={useBackend}
+        aria-label="Use ML backend"
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {useBackend ? 'translate-x-6' : 'translate-x-1'}"
+        ></span>
+      </button>
+    </div>
+
+    {#if useBackend}
+      <!-- Connection Status -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">Backend Status</p>
+          <p class="text-xs text-muted-foreground">
+            {#if checkingBackend}
+              Checking connection…
+            {:else if backendAvailable === true}
+              Connected and healthy
+            {:else if backendAvailable === false}
+              Unreachable — predictions will use TypeScript ensemble
+            {:else}
+              Not checked yet
+            {/if}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if checkingBackend}
+            <RefreshCw class="w-4 h-4 animate-spin text-amber-500" />
+          {:else if backendAvailable === true}
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          {:else if backendAvailable === false}
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          {:else}
+            <span class="w-3 h-3 rounded-full bg-muted-foreground/30"></span>
+          {/if}
+          <button
+            on:click={checkBackendStatus}
+            disabled={checkingBackend}
+            class="btn btn-sm btn-secondary disabled:opacity-50"
+          >
+            Test
+          </button>
+        </div>
+      </div>
+
+      <!-- API Token -->
+      <div class="p-3 bg-muted rounded-lg" transition:fade>
+        <label for="oracle-api-token" class="block text-sm font-medium text-foreground mb-1">
+          API Token <span class="text-xs text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <div class="flex space-x-2">
+          <input
+            id="oracle-api-token"
+            type="password"
+            bind:value={oracleApiToken}
+            placeholder="Bearer token for authenticated endpoints"
+            class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
+          />
+          <button
+            on:click={saveOracleToken}
+            class="btn btn-sm btn-secondary"
+          >
+            Save
+          </button>
+        </div>
+        <p class="text-xs text-muted-foreground mt-1">
+          Only needed if your backend requires authentication.
+        </p>
+      </div>
+    {/if}
   </div>
 
   <!-- Cache Management -->

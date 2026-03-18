@@ -44,7 +44,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  let totalGameweeks = 38; // Updated from API season data if available
+  let totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;
@@ -212,7 +212,6 @@
             confidence_score: prediction.confidence,
             predicted_home_goals: prediction.predictedHomeGoals,
             predicted_away_goals: prediction.predictedAwayGoals,
-            was_correct: false,
             prediction_date: new Date().toISOString(),
             created_at: new Date().toISOString(),
             id: `pred_${match.id}`,
@@ -278,9 +277,8 @@
       if (season?.currentMatchday) {
         selectedGameweek = season.currentMatchday;
       }
-      // PL always has 38 gameweeks; totalGameweeks defaults to 38 above
     } catch {
-      // Fall back to week 1 / 38 gameweeks if API unavailable
+      // Fall back to week 1 if API unavailable
     }
     loadGameweekMatches(selectedGameweek);
   });
@@ -366,7 +364,7 @@
                 <div class="text-center p-3 bg-muted rounded-lg">
                   <div class="text-xs text-muted-foreground mb-1">{outcome.label}</div>
                   <div class="text-lg font-bold text-foreground">{outcome.value.toFixed(0)}%</div>
-                  <div class="w-full bg-muted rounded-full h-1.5 mt-1">
+                  <div class="w-full bg-muted rounded-full h-1.5 mt-1" role="meter" aria-valuenow={outcome.value} aria-valuemin={0} aria-valuemax={100} aria-label="{outcome.label} accuracy">
                     <div class="{outcome.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(outcome.value, 100)}%"></div>
                   </div>
                 </div>
@@ -386,7 +384,7 @@
                 <div class="text-center p-3 bg-muted rounded-lg">
                   <div class="text-xs text-muted-foreground mb-1">{band.label}</div>
                   <div class="text-lg font-bold text-foreground">{band.value.toFixed(0)}%</div>
-                  <div class="w-full bg-muted rounded-full h-1.5 mt-1">
+                  <div class="w-full bg-muted rounded-full h-1.5 mt-1" role="meter" aria-valuenow={band.value} aria-valuemin={0} aria-valuemax={100} aria-label="{band.label} accuracy">
                     <div class="{band.colour} h-1.5 rounded-full transition-all" style="width: {Math.min(band.value, 100)}%"></div>
                   </div>
                 </div>
@@ -450,7 +448,7 @@
               <span>Processing matches...</span>
               <span>{backtestProgress} / {backtestTotal}</span>
             </div>
-            <div class="w-full bg-muted rounded-full h-1.5">
+            <div class="w-full bg-muted rounded-full h-1.5" role="progressbar" aria-valuenow={backtestProgress} aria-valuemin={0} aria-valuemax={backtestTotal} aria-label="Backtest progress">
               <div class="bg-teal-500 h-1.5 rounded-full transition-all duration-200" style="width: {(backtestProgress / backtestTotal) * 100}%"></div>
             </div>
           </div>
@@ -518,9 +516,9 @@
         </div>
         
         <!-- Progress Bar -->
-        <div class="w-full bg-muted rounded-full h-2 overflow-hidden">
-          <div 
-            class="h-full bg-gradient-to-r from-[#00cc6a] to-[#00ff87] rounded-full transition-all duration-300 ease-out"
+        <div class="w-full bg-muted rounded-full h-2 overflow-hidden" role="progressbar" aria-valuenow={batchPredictionProgress} aria-valuemin={0} aria-valuemax={batchPredictionTotal} aria-label="Prediction progress">
+          <div
+            class="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-300 ease-out"
             style="width: {(batchPredictionProgress / batchPredictionTotal) * 100}%"
           >
             <div class="h-full bg-white/30 animate-pulse"></div>
@@ -579,7 +577,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
+            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -633,9 +631,10 @@
               {/if}
 
               {#if prediction.prediction && prediction.detailedAnalysis}
-                <button 
+                <button
                   on:click={() => toggleCard(prediction.id)}
                   class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
+                  aria-label="View analysis for {prediction.home_team} vs {prediction.away_team}"
                 >
                   <Calculator class="w-4 h-4" />
                   Tap for Analysis
@@ -648,14 +647,15 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="flip-card-back rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+            <div class="flip-card-back rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6" aria-hidden={!flippedCards.has(prediction.id)}>
               {#if prediction.detailedAnalysis}
                 <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-foreground">Analysis</h3>
-                    <button 
+                    <button
                       on:click={() => toggleCard(prediction.id)}
-                      class="btn btn-ghost btn-sm">
+                      class="btn btn-ghost btn-sm"
+                      aria-label="Close analysis">
                       ×
                     </button>
                   </div>

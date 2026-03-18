@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MessageCircle, Send, Key, Loader2, AlertTriangle, Trash2, ShieldAlert } from 'lucide-svelte';
   import { onMount, tick } from 'svelte';
+  import DOMPurify from 'dompurify';
   import { dataService } from '../services/dataService';
   import type { Standing, Match } from '../types';
 
@@ -21,6 +22,7 @@
   // --- State ---
   let apiKey = '';
   let hasApiKey = false;
+  let useServerKey = false;
   let messages: ChatMessage[] = [];
   let inputText = '';
   let isLoading = false;
@@ -45,6 +47,7 @@
         if (Array.isArray(parsed) && parsed.length > 0) {
           messages = parsed;
           scrollToBottom();
+          checkServerKey();
           return;
         }
       } catch {
@@ -57,7 +60,33 @@
       content: 'Welcome to Oracle Chat! Ask me anything about Premier League predictions, team form, match analysis, or betting strategy.',
       timestamp: Date.now()
     }];
+
+    checkServerKey();
   });
+
+  /** Check whether the server-side chat proxy has an API key configured.
+   * Probes via POST with an empty messages array: if the server has a key the
+   * request reaches the messages-validation step and returns "Messages array required";
+   * if the server has no key it returns "No API key configured" first.
+   */
+  async function checkServerKey() {
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [] }),
+      });
+      if (res.status === 400) {
+        const data = await res.json();
+        if (data.error?.includes('Messages array required')) {
+          useServerKey = true;
+          hasApiKey = true;
+        }
+      }
+    } catch {
+      // Proxy not available — user must provide their own key
+    }
+  }
 
   // Persist messages whenever they change
   $: if (messages.length > 0) {
@@ -153,9 +182,9 @@ Current data:\n`;
     return context;
   }
 
-  // --- Simple Markdown Rendering ---
+  // --- Simple Markdown Rendering (sanitised) ---
   function renderMarkdown(text: string): string {
-    return text
+    const html = text
       // Code blocks (triple backtick)
       .replace(/```([\s\S]*?)```/g, '<pre class="bg-background/50 rounded p-2 my-1 text-xs font-mono overflow-x-auto">$1</pre>')
       // Inline code
@@ -172,6 +201,12 @@ Current data:\n`;
       .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
       // Line breaks
       .replace(/\n/g, '<br/>');
+
+    // Sanitise to prevent XSS from injected content in OpenAI responses
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['pre', 'code', 'strong', 'em', 'li', 'ul', 'ol', 'br', 'p', 'div', 'span'],
+      ALLOWED_ATTR: ['class'],
+    });
   }
 
   // --- Send Message ---
@@ -214,29 +249,18 @@ Current data:\n`;
           .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
       ];
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
           messages: apiMessages,
-          max_tokens: 800,
-          temperature: 0.7
+          ...(!useServerKey && apiKey ? { apiKey } : {})
         })
       });
 
       if (!response.ok) {
-        const status = response.status;
-        if (status === 401) {
-          throw new Error('Invalid API key. Please check your OpenAI key in the setup above.');
-        } else if (status === 429) {
-          throw new Error('Rate limited by OpenAI. Please wait a moment and try again.');
-        } else {
-          throw new Error(`OpenAI API error (${status}). Please try again.`);
-        }
+        const errData = await response.json().catch(() => ({ error: '' }));
+        throw new Error(errData.error || `Chat error (${response.status}). Please try again.`);
       }
 
       const data = await response.json();
@@ -271,9 +295,10 @@ Current data:\n`;
     }
   }
 
-  function handleKeydown(e: any) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  function handleKeydown(e: Event) {
+    const ke = e as KeyboardEvent;
+    if (ke.key === 'Enter' && !ke.shiftKey) {
+      ke.preventDefault();
       if (hasApiKey) {
         sendMessage();
       } else {
@@ -292,33 +317,32 @@ Current data:\n`;
 </script>
 
 <div class="max-w-2xl mx-auto space-y-4" data-testid="chatbot">
-  <!-- Security Warning Banner -->
-  {#if hasApiKey && !showSecurityWarning}
+  <!-- Security Notice Banner (only shown when using a user-provided key, not a server key) -->
+  {#if hasApiKey && !useServerKey && !showSecurityWarning}
     <button
       on:click={() => showSecurityWarning = true}
-      class="w-full flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left hover:bg-amber-500/15 transition-colors"
+      class="w-full flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-left hover:bg-blue-500/15 transition-colors"
     >
-      <ShieldAlert class="w-4 h-4 text-amber-500 flex-shrink-0" />
-      <p class="text-xs text-amber-400">
-        Your API key is sent directly to OpenAI from your browser. <span class="underline">Tap for details.</span>
+      <ShieldAlert class="w-4 h-4 text-blue-500 flex-shrink-0" />
+      <p class="text-xs text-blue-400">
+        Your API key is routed through our server proxy. <span class="underline">Tap for details.</span>
       </p>
     </button>
   {/if}
 
   {#if showSecurityWarning}
-    <div class="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+    <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
       <div class="flex items-start gap-2 mb-2">
-        <ShieldAlert class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <ShieldAlert class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
         <div>
-          <p class="text-sm font-medium text-amber-400">Security Notice</p>
+          <p class="text-sm font-medium text-blue-400">Security Notice</p>
           <p class="text-xs text-muted-foreground mt-1">
-            Oracle Chat sends your OpenAI API key directly from your browser to OpenAI's servers.
-            This means your key is visible in your browser's network inspector.
-            This is safe on your own device, but avoid using this on shared or public computers.
+            Oracle Chat routes requests through a server-side proxy.
+            Your API key is never sent directly to third-party services from your browser.
           </p>
           <ul class="text-xs text-muted-foreground mt-2 space-y-1">
             <li>• Your key is stored in localStorage (browser only)</li>
-            <li>• It is never sent to our servers</li>
+            <li>• Your key is sent to our server-side proxy, which forwards it to OpenAI — it is not sent directly from your browser to OpenAI</li>
             <li>• Use a key with spend limits set in your OpenAI dashboard</li>
             <li>• You can remove it anytime via "Change key"</li>
           </ul>
@@ -326,13 +350,13 @@ Current data:\n`;
       </div>
       <button
         on:click={() => showSecurityWarning = false}
-        class="text-xs text-amber-400 hover:underline mt-1"
+        class="text-xs text-blue-400 hover:underline mt-1"
       >Dismiss</button>
     </div>
   {/if}
 
-  <!-- API Key Setup -->
-  {#if !hasApiKey}
+  <!-- API Key Setup (hidden when the server has its own key) -->
+  {#if !hasApiKey && !useServerKey}
     <div class="card-glass p-4 sm:p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="p-2 rounded-lg bg-primary/10">
@@ -391,7 +415,7 @@ Current data:\n`;
         >
           <Trash2 class="w-3.5 h-3.5 text-muted-foreground" />
         </button>
-        {#if hasApiKey}
+        {#if hasApiKey && !useServerKey}
           <button
             on:click={clearApiKey}
             class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"
@@ -406,6 +430,8 @@ Current data:\n`;
     <div
       bind:this={messagesContainer}
       class="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+      aria-live="polite"
+      aria-label="Chat messages"
     >
       {#each messages as message}
         <div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
@@ -444,7 +470,9 @@ Current data:\n`;
         </p>
       {/if}
       <div class="flex gap-2">
+        <label for="chatbot-input" class="sr-only">Chat message</label>
         <input
+          id="chatbot-input"
           type="text"
           bind:value={inputText}
           placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your OpenAI key to start chatting'}
@@ -459,6 +487,7 @@ Current data:\n`;
           disabled={!hasApiKey || isLoading || !inputText.trim()}
           class="btn btn-primary px-3 disabled:opacity-50"
           data-testid="chatbot-send"
+          aria-label="Send message"
         >
           <Send class="w-4 h-4" />
         </button>

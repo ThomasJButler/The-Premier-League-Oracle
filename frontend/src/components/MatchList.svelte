@@ -4,12 +4,15 @@
   import type { Match, Season } from '../types';
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
-  import { ArrowUpDown, Filter, Calendar, Check, Users } from 'lucide-svelte';
+  import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
-  let selectedSeason = '2024-2025';
+  // Compute current season from date (July onwards = new season). Overwritten by API if available.
+  const now = new Date();
+  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  let selectedSeason = `${year}-${year + 1}`;
   let loading = true;
   let error: string | null = null;
   
@@ -21,10 +24,15 @@
   let teams: string[] = [];
 
   async function loadSeasons() {
-    seasons = await dataService.getAllSeasons();
-    if (seasons.length > 0) {
-      const currentSeason = seasons.find(s => s.is_current) || seasons[0];
-      selectedSeason = currentSeason.name;
+    try {
+      seasons = await dataService.getAllSeasons();
+      if (seasons.length > 0) {
+        const currentSeason = seasons.find(s => s.is_current) || seasons[0];
+        selectedSeason = currentSeason.name;
+      }
+    } catch (err) {
+      console.warn('Failed to load seasons:', err);
+      error = 'Failed to load seasons. Please check your API key in Settings.';
     }
   }
 
@@ -108,6 +116,7 @@
 
   onMount(async () => {
     await loadSeasons();
+    if (error) return;
     await loadMatches();
   });
 </script>
@@ -115,13 +124,32 @@
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <h2 class="text-2xl font-bold font-display text-foreground">Match Schedule</h2>
-    
-    <!-- Match count -->
-    {#if !loading && filteredMatches.length > 0}
-      <span class="text-sm text-muted-foreground">
-        Showing {filteredMatches.length} of {matches.length} matches
-      </span>
-    {/if}
+
+    <div class="flex items-center gap-4">
+      <!-- Season selector -->
+      {#if seasons.length > 1}
+        <div class="flex items-center gap-2">
+          <label for="season-select" class="text-sm text-muted-foreground">Season</label>
+          <select
+            id="season-select"
+            bind:value={selectedSeason}
+            on:change={() => loadMatches()}
+            class="px-3 py-1.5 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            {#each seasons as season}
+              <option value={season.name}>{season.name}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
+
+      <!-- Match count -->
+      {#if !loading && filteredMatches.length > 0}
+        <span class="text-sm text-muted-foreground">
+          Showing {filteredMatches.length} of {matches.length} matches
+        </span>
+      {/if}
+    </div>
   </div>
   
   <!-- Filters and Sorting Controls -->
@@ -174,16 +202,18 @@
           <div class="flex gap-2">
             <button
               on:click={() => handleSort('date')}
-              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'date' 
-                ? 'bg-primary text-white' 
+              aria-pressed={sortBy === 'date'}
+              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'date'
+                ? 'bg-primary text-white'
                 : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Date {sortBy === 'date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
             </button>
             <button
               on:click={() => handleSort('team')}
-              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'team' 
-                ? 'bg-primary text-white' 
+              aria-pressed={sortBy === 'team'}
+              class="flex-1 px-3 py-2 text-sm rounded-lg transition-colors {sortBy === 'team'
+                ? 'bg-primary text-white'
                 : 'bg-muted text-foreground hover:bg-muted/80'}"
             >
               Team {sortBy === 'team' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}

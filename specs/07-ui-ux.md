@@ -12,17 +12,14 @@ Keep the glassmorphism aesthetic. The dark/light theme system, the glow effects,
 
 ## ShadCN Setup
 
-shadcn-svelte is **not yet initialised** — run `npx shadcn-svelte@latest init` from `frontend/` to set it up. Components will live in `frontend/src/lib/components/ui/`.
+shadcn-svelte is **initialised**. `components.json` exists at `frontend/components.json`. Five components are installed in `frontend/src/lib/components/ui/`: Button, Card, Badge, Separator, Skeleton. The `$lib/utils.ts` file provides the standard `cn()` utility (clsx + tailwind-merge). Only the Separator component is currently wired into the UI — the remaining 4 are installed but unused.
+
+To add more components:
 
 ```bash
-npx shadcn-svelte@latest init
+cd frontend
+npx shadcn-svelte@latest add <component-name>
 ```
-
-When prompted:
-- Svelte version: Svelte 4
-- TypeScript: yes
-- Tailwind: yes
-- Components directory: `src/lib/components/ui`
 
 ---
 

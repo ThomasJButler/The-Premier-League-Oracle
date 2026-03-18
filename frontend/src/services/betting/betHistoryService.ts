@@ -40,8 +40,6 @@ export interface MonthlyPL {
 class BetHistoryService {
   private readonly STORAGE_KEY = 'pl_oracle_bets';
   private bets: Map<string, StoredBet>;
-  private static idCounter = 0;
-
   constructor() {
     this.bets = new Map();
     this.loadBets();
@@ -72,8 +70,7 @@ class BetHistoryService {
    * Store a new bet. Returns the created StoredBet with generated id and timestamp.
    */
   public storeBet(bet: Omit<StoredBet, 'id' | 'createdAt'>): StoredBet {
-    BetHistoryService.idCounter++;
-    const id = `bet_${bet.matchId}_${Date.now()}_${BetHistoryService.idCounter}`;
+    const id = `bet_${bet.matchId}_${crypto.randomUUID()}`;
 
     const storedBet: StoredBet = {
       ...bet,
@@ -256,14 +253,6 @@ class BetHistoryService {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  /** Bets for a specific calendar month. */
-  public getBetsByMonth(year: number, month: number): StoredBet[] {
-    return this.getAllBets().filter(bet => {
-      const d = new Date(bet.createdAt);
-      return d.getFullYear() === year && d.getMonth() + 1 === month;
-    });
-  }
-
   /** Pending (unresolved) bets. */
   public getPendingBets(): StoredBet[] {
     return this.getAllBets().filter(b => !b.result);
@@ -322,34 +311,11 @@ class BetHistoryService {
     return Math.round((wins / resolved.length) * 10000) / 100;
   }
 
-  /** Clear all bet history. */
-  public clearHistory(): void {
-    this.bets.clear();
-    this.saveBets();
-  }
-
   /** Export bets as JSON string. */
   public exportBets(): string {
     return JSON.stringify(this.getAllBets(), null, 2);
   }
 
-  /** Import bets from JSON string. Returns true on success. */
-  public importBets(jsonData: string): boolean {
-    try {
-      const data = JSON.parse(jsonData);
-      if (!Array.isArray(data)) return false;
-
-      for (const bet of data) {
-        if (bet.id && bet.matchId) {
-          this.bets.set(bet.id, bet);
-        }
-      }
-      this.saveBets();
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }
 
 // Singleton instance — shared across all components

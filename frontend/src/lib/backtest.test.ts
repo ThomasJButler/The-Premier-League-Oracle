@@ -365,7 +365,8 @@ describe('BacktestRunner', () => {
       'Arsenal',
       'Liverpool',
       expect.any(Array),
-      'Anthony Taylor'
+      'Anthony Taylor',
+      '2025-01-01T15:00:00Z'
     );
   });
 

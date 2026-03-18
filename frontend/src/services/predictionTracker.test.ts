@@ -397,60 +397,6 @@ describe('PredictionTracker Service', () => {
       expect(allPredictions[0].matchId).toBe('newmatch');
     });
 
-    it('should export and import predictions correctly', () => {
-      // Add some predictions
-      tracker.storePrediction(
-        'export1',
-        'Arsenal',
-        'Chelsea',
-        {
-          predictedResult: 'H',
-          predictedHomeGoals: 2,
-          predictedAwayGoals: 1,
-          confidence: 0.72
-        },
-        '2025-08-15'
-      );
-
-      tracker.storePrediction(
-        'export2',
-        'Liverpool',
-        'Man City',
-        {
-          predictedResult: 'D',
-          predictedHomeGoals: 2,
-          predictedAwayGoals: 2,
-          confidence: 0.55
-        },
-        '2025-08-20'
-      );
-
-      // Export
-      const exported = tracker.exportPredictions();
-      expect(exported).toBeDefined();
-      
-      // Create new tracker and import
-      const newTracker = new PredictionTracker();
-      const importSuccess = newTracker.importPredictions(exported);
-      
-      expect(importSuccess).toBe(true);
-      
-      const imported = newTracker.getRecentPredictions(10);
-      expect(imported).toHaveLength(2);
-      expect(imported.find(p => p.matchId === 'export1')).toBeDefined();
-      expect(imported.find(p => p.matchId === 'export2')).toBeDefined();
-    });
-
-    it('should handle invalid import data', () => {
-      const result1 = tracker.importPredictions('invalid json');
-      expect(result1).toBe(false);
-      
-      const result2 = tracker.importPredictions('{"not": "an array"}');
-      expect(result2).toBe(false);
-      
-      const result3 = tracker.importPredictions('null');
-      expect(result3).toBe(false);
-    });
   });
 
   describe('Edge Cases', () => {
