@@ -158,15 +158,15 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 
 ---
 
-## Supabase Removal Checklist
+## Supabase Removal Checklist — ALL DONE (19 March 2026)
 
-- [ ] Delete `frontend/src/services/predictionPersistence.ts`
-- [ ] Remove `@supabase/supabase-js` from `frontend/package.json` dependencies
-- [ ] Remove Supabase import from `frontend/src/components/Predictions.svelte` (already done)
-- [ ] Remove commented Supabase import from `frontend/src/components/BettingHistory.svelte`
-- [ ] Delete `supabase/` directory at project root
-- [ ] Delete `SUPABASE_SETUP_GUIDE.md` at project root
-- [ ] Remove `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `.env.example`
+- [x] Delete `frontend/src/services/predictionPersistence.ts` — file does not exist
+- [x] Remove `@supabase/supabase-js` from `frontend/package.json` dependencies — not present
+- [x] Remove Supabase import from `frontend/src/components/Predictions.svelte` — no imports remain
+- [x] Remove commented Supabase import from `frontend/src/components/BettingHistory.svelte` — no imports remain
+- [x] Delete `supabase/` directory at project root — directory does not exist
+- [x] Delete `SUPABASE_SETUP_GUIDE.md` at project root — file does not exist
+- [x] Remove `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `.env.example` — removed
 
 ---
 
@@ -177,6 +177,6 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 - [x] `getHistoricalMatches(season)` fetches and caches season data
 - [x] `getTeamRecentMatches()` implemented and delegates to `footballDataAPI.getTeamMatches()`
 - [ ] Progressive 5-season loader with rate limiting (method exists, bulk loader does not)
-- [ ] All Supabase code removed
+- [x] All Supabase code removed
 - [ ] Rate limiting respected (queue requests, 6s minimum spacing for batch fetches)
 - [ ] Backend proxy configured in `vite.config.ts`

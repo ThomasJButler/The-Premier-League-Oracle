@@ -4,6 +4,12 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2r, P2p — Config Cleanup and Supabase Removal (19 March 2026)
+- **Dead dependencies removed (P2r):** Uninstalled `tailwind-variants`, `bits-ui`, and `happy-dom` — none were imported anywhere in the codebase
+- **`.gitignore` fixed (P2r):** Replaced single `__pycache__` path with `**/__pycache__/` glob; added `backend/cache/`, `backend/logs/`, `backend/mlruns/`
+- **vite.config.ts cleaned up (P2r):** Removed `console.log` that fired on every proxied API call; removed unnecessary `secure: false` on proxy (Football-Data.org has a valid SSL cert)
+- **Supabase references removed (P2p):** Updated `specs/02-data-pipeline.md` — all 7 Supabase removal items checked off. `.env.example` updated to remove stale `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`
+
 ### P2t, P2w, P2x — Type Safety, API Config Bug, and ID Collisions (19 March 2026)
 - **Type safety improvements (P2t):** Replaced 11 `any`-typed parameters across `Dashboard.svelte`, `betBuilder.ts`, `ChatBot.svelte`, and `App.svelte` with proper types. `App.svelte` now has a `ViewName` union type preventing routing typos at compile time
 - **refreshApiConfiguration race condition fixed (P2w):** `dataService.ts` `refreshApiConfiguration()` now reassigns `readyPromise` before awaiting, preventing stale state when concurrent calls hit `ensureReady()`

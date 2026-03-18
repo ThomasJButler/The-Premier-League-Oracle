@@ -266,12 +266,10 @@ No `.github/workflows/` directory exists. Zero automated testing on push or PR. 
 - [ ] `POSTGRES_PASSWORD` required by compose but no `.env.example` template documents it
 - [ ] `setup.sh` creates `data/`, `logs/`, `notebooks/` directories that `docker-compose.yml` depends on as bind-mount sources — this dependency is undocumented. Running `docker-compose up` without first running `setup.sh` will fail (fifth audit)
 
-### P2p. Supabase Cleanup Completion — NEW (19 March 2026)
+### P2p. Supabase Cleanup Completion — DONE (19 March 2026)
 
-`specs/02-data-pipeline.md` has a 7-item Supabase removal checklist. All items are done in code but still marked incomplete in the spec.
-
-- [ ] Update `specs/02-data-pipeline.md` — check off all 7 Supabase removal items (confirmed absent from codebase)
-- [ ] Delete or update root `.env.example` — still references `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- [x] Updated `specs/02-data-pipeline.md` — all 7 Supabase removal items checked off (confirmed absent from codebase)
+- [x] `.env.example` updated — Supabase references removed, replaced with Football-Data.org API key comment
 
 ### P2q. Parallel Fatigue Models — NEW (18 March 2026, third audit)
 
@@ -281,13 +279,13 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 - [ ] `optimizedPredictions.ts`: `calculateFatigueFactor()` (lines 566–577) — inline step function used by `OptimizedPredictor` (production model)
 - [ ] Consolidate into a single fatigue model in `advancedPredictions.ts` and import from both callers
 
-### P2r. Config & Infrastructure Cleanup — NEW (18 March 2026, third audit)
+### P2r. Config & Infrastructure Cleanup — PARTIAL (19 March 2026)
 
-**Dead dependencies in `package.json`:**
+**Dead dependencies in `package.json` — DONE:**
 
-- [ ] Remove `tailwind-variants` — installed but never imported anywhere
-- [ ] Remove `bits-ui` — installed but never imported (even shadcn-svelte components don't use it)
-- [ ] Remove `happy-dom` from devDependencies — `jsdom` is configured in vitest, `happy-dom` is unused
+- [x] Remove `tailwind-variants` — uninstalled
+- [x] Remove `bits-ui` — uninstalled
+- [x] Remove `happy-dom` from devDependencies — uninstalled
 - [ ] Add `@types/node` to devDependencies — relied upon implicitly for `path` and `__dirname` in vite.config
 
 **Version pinning:**
@@ -296,16 +294,16 @@ Two different fatigue models exist in the codebase with different thresholds, pr
 - [ ] Fix Python version mismatch: `requirements.txt` says 3.13, `Dockerfile` uses 3.11, `environment.yml` uses 3.11 — align all to one version
 - [ ] `passlib==1.7.4` is incompatible with Python 3.13 — the `crypt` module was removed from stdlib in 3.13. If the target is truly 3.13, this will crash at import. (Only used by dead `auth.py` module, so low runtime risk)
 
-**`.gitignore` gaps:**
+**`.gitignore` gaps — DONE:**
 
-- [ ] Add `**/__pycache__/` globally — currently only `backend/app/api/__pycache__` is listed; 3 other `__pycache__` dirs are unprotected
-- [ ] Add `backend/cache/` — football data collector may write cached responses to disk
-- [ ] Add `backend/logs/` and `backend/mlruns/` — auto-created at runtime, would pollute repo
+- [x] Add `**/__pycache__/` globally — replaced single path with glob pattern
+- [x] Add `backend/cache/` — added
+- [x] Add `backend/logs/` and `backend/mlruns/` — added
 
-**Build configuration:**
+**Build configuration — PARTIAL:**
 
-- [ ] `vite.config.ts`: remove `console.log` from proxy handler (fires on every API call in dev)
-- [ ] `vite.config.ts`: remove unnecessary `secure: false` on proxy (Football-Data.org has a valid cert)
+- [x] `vite.config.ts`: removed `console.log` from proxy handler
+- [x] `vite.config.ts`: removed unnecessary `secure: false` on proxy
 - [ ] `vite.config.ts`: consider adding `build` block with chunk splitting and sourcemaps for production
 - [ ] `tsconfig.json`: consider enabling `strict: true` in the app tsconfig (currently only enabled in `tsconfig.node.json`)
 

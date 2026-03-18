@@ -36,7 +36,10 @@ frontend/test-results/
 /how-to-ralph-wiggum
 loop.sh
 .env
-/backend/app/api/__pycache__
+**/__pycache__/
+backend/cache/
+backend/logs/
+backend/mlruns/
 .claude/settings.json
 /spreadsheets
 *.pyc
