@@ -140,7 +140,7 @@ describe('DataService IndexedDB Cache', () => {
     // Clear the IndexedDB cache between tests so each test starts fresh
     await dataService.clearCache();
 
-    // clearCache removes the API key, so re-enable the API source
+    // clearCache preserves the API key but resets the data source availability check, so re-enable it
     mockApi.hasApiKey.mockReturnValue(true);
     await dataService.refreshDataSources();
 

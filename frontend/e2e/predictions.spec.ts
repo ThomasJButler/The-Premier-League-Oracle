@@ -109,11 +109,10 @@ test.describe('Predictions', () => {
     const analysisBtn = page.getByText('Tap for Analysis').first();
     await expect(analysisBtn).toBeVisible();
 
-    // Flip a card and verify Kelly stake info on the back
+    // Flip a card and verify analysis sections on the back
     await analysisBtn.click();
-    await page.waitForTimeout(700); // Wait for flip animation
 
-    // The back of the card should show analysis sections
+    // The back of the card should show analysis sections (wait for flip animation to complete)
     await expect(page.getByText('Predicted Score').first()).toBeVisible({ timeout: 3000 });
     await expect(page.getByText('Recent Form').first()).toBeVisible({ timeout: 3000 });
   });

@@ -46,6 +46,9 @@ export class KellyCalculator {
   public static calculate(opportunity: BettingOpportunity): KellyCalculation {
     const { ourProbability, bookmakerOdds, bankroll, maxStakePercentage = 0.05, confidenceLevel = 0.6 } = opportunity;
 
+    // Clamp confidenceLevel to [0, 1] — values outside this range produce oversized stakes
+    const clampedConfidence = Math.max(0, Math.min(1, confidenceLevel));
+
     // Validate inputs — return zero result for invalid values
     if (isNaN(ourProbability) || isNaN(bookmakerOdds) || isNaN(bankroll) ||
         bankroll <= 0 || bookmakerOdds < 1 || ourProbability < 0 || ourProbability > 1) {
@@ -87,13 +90,13 @@ export class KellyCalculator {
 
     // Recommended stake: half-Kelly adjusted by model confidence, capped at limit
     const maxAllowedKelly = Math.min(this.MAX_KELLY, maxStakePercentage);
-    const recommendedKelly = Math.min(halfKelly * confidenceLevel, maxAllowedKelly);
+    const recommendedKelly = Math.min(halfKelly * clampedConfidence, maxAllowedKelly);
     
     // Calculate actual stake amount
     const recommendedStake = recommendedKelly * bankroll;
     
     // Determine confidence level
-    const confidence = this.getConfidenceLevel(ourProbability, edge, confidenceLevel);
+    const confidence = this.getConfidenceLevel(ourProbability, edge, clampedConfidence);
     
     // Assess risk level
     const risk = this.getRiskLevel(fullKelly, edge, ourProbability);

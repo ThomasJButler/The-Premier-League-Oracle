@@ -149,7 +149,7 @@ describe('ChatBot Component', () => {
     });
   });
 
-  it('should clear API key when "Change key" clicked', async () => {
+  it('should clear API key when clearApiKey is called', async () => {
     const { component } = render(ChatBot);
 
     await connectApiKey();

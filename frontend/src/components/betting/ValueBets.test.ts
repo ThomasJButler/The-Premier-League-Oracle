@@ -161,7 +161,7 @@ describe('ValueBets Component', () => {
     expect(screen.getByLabelText('Under 2.5')).toBeInTheDocument();
   });
 
-  it('should call ValueBettingEngine when scanning with valid odds', async () => {
+  it('should not call ValueBettingEngine before user initiates scan', async () => {
     const match = makeUpcomingMatch({ id: 'm1', home_team: 'Arsenal', away_team: 'Liverpool' });
     vi.mocked(dataService.getMatches).mockResolvedValue([match]);
 

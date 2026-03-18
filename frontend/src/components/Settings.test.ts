@@ -54,10 +54,6 @@ describe('Settings Component', () => {
     vi.mocked(localStorage.getItem).mockReturnValue(null);
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should render the Settings header', () => {
     render(Settings);
     expect(screen.getByText('Settings')).toBeInTheDocument();
@@ -76,7 +72,7 @@ describe('Settings Component', () => {
     expect(screen.getByText('Not Connected')).toBeInTheDocument();
   });
 
-  it('should show "Connected" when API key exists in localStorage', async () => {
+  it('should show "Connected" after successfully connecting with an API key', async () => {
     // onMount doesn't fire in jsdom, so we simulate its effect by
     // importing the service mock and calling saveFootballDataKey via
     // the component's Connect button after typing a key.

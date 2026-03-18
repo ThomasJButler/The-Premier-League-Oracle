@@ -165,10 +165,11 @@ class DataService {
       });
 
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      // Cache writes are non-critical — resolve silently rather than propagating IDB errors
+      request.onerror = () => resolve();
     });
   }
-  
+
   // Main data fetching methods - API only
   public async getCurrentSeason(): Promise<Season | null> {
     await this.ensureReady();
@@ -476,11 +477,11 @@ class DataService {
       const startYear = parseInt(yearMatch[1], 10);
       // PL season: August of startYear to July of startYear+1
       const seasonStart = new Date(startYear, 7, 1); // 1 Aug
-      const seasonEnd = new Date(startYear + 1, 6, 31); // 31 Jul
+      const seasonEnd = new Date(startYear + 1, 7, 1); // 1 Aug next year (exclusive)
 
       filtered = resolved.filter(p => {
         const d = new Date(p.matchDate);
-        return d >= seasonStart && d <= seasonEnd;
+        return d >= seasonStart && d < seasonEnd;
       });
     }
 

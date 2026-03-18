@@ -13,6 +13,7 @@
   let matchesLoading = true;
   let error: string | null = null;
   let valueBets: ValueBet[] = [];
+  let hasScanned = false;
 
   // User-entered bookmaker odds
   let homeOdds: number = 0;
@@ -58,6 +59,7 @@
     if (!selectedMatch || !hasBasicOdds) return;
 
     loading = true;
+    hasScanned = true;
     valueBets = [];
     error = null;
 
@@ -263,7 +265,7 @@
           </div>
         {/if}
 
-        {#if !loading && valueBets.length === 0 && hasBasicOdds && !error}
+        {#if !loading && hasScanned && valueBets.length === 0 && !error}
           <div class="mt-4 text-center py-4">
             <p class="text-sm text-muted-foreground">No value found at these odds — the market looks efficient here</p>
           </div>

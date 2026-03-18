@@ -79,6 +79,7 @@
         backtestTotal = total;
       });
     } catch (err) {
+      console.error('Backtest failed:', err);
       backtestError = 'Backtest failed. Please try again.';
     } finally {
       isBacktesting = false;

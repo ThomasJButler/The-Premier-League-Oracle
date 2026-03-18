@@ -1,6 +1,6 @@
 import type { Match } from '../types';
 import { OptimizedPredictor, type EnhancedPredictionModel } from './optimizedPredictions';
-import { sharedEloSystem } from './advancedPredictions';
+import { sharedEloSystem, EloRatingSystem } from './advancedPredictions';
 
 export interface BacktestResult {
   totalMatches: number;
@@ -42,20 +42,23 @@ const VALUE_ODDS_MARGIN = 1.05;
  * renormalise to get a proper probability distribution.
  */
 function extractProbabilities(prediction: EnhancedPredictionModel): { home: number; draw: number; away: number } {
-  if (!prediction.valueOdds) {
-    // Fallback: use confidence for the predicted result, split remainder
-    const conf = prediction.confidence;
-    const remainder = (1 - conf) / 2;
-    return prediction.predictedResult === 'H'
-      ? { home: conf, draw: remainder, away: remainder }
-      : prediction.predictedResult === 'A'
-        ? { home: remainder, draw: remainder, away: conf }
-        : { home: remainder, draw: conf, away: remainder };
-  }
+  const conf = prediction.confidence;
+  const remainder = (1 - conf) / 2;
+  const confidenceFallback = prediction.predictedResult === 'H'
+    ? { home: conf, draw: remainder, away: remainder }
+    : prediction.predictedResult === 'A'
+      ? { home: remainder, draw: remainder, away: conf }
+      : { home: remainder, draw: conf, away: remainder };
 
-  const rawHome = VALUE_ODDS_MARGIN / prediction.valueOdds.home;
-  const rawDraw = VALUE_ODDS_MARGIN / prediction.valueOdds.draw;
-  const rawAway = VALUE_ODDS_MARGIN / prediction.valueOdds.away;
+  if (!prediction.valueOdds) return confidenceFallback;
+
+  // Guard against zero odds (division by zero → Infinity/NaN probabilities)
+  const { home: ho, draw: dr, away: aw } = prediction.valueOdds;
+  if (!ho || !dr || !aw) return confidenceFallback;
+
+  const rawHome = VALUE_ODDS_MARGIN / ho;
+  const rawDraw = VALUE_ODDS_MARGIN / dr;
+  const rawAway = VALUE_ODDS_MARGIN / aw;
   const total = rawHome + rawDraw + rawAway;
 
   return {
@@ -142,7 +145,15 @@ export class BacktestRunner {
       onProgress?.(i + 1, total);
     }
 
-    // Restore the shared ELO state to its pre-backtest snapshot
+    // Restore the shared ELO state to its pre-backtest snapshot.
+    // First reset any teams created during the backtest that weren't in the original snapshot
+    // (simply restoring known teams leaves stale entries for newly added teams).
+    const postBacktestRatings = sharedEloSystem.getAllRatings();
+    for (const team of Object.keys(postBacktestRatings)) {
+      if (!(team in eloSnapshot)) {
+        sharedEloSystem.setTeamRating(team, EloRatingSystem.DEFAULT_RATING);
+      }
+    }
     for (const [team, rating] of Object.entries(eloSnapshot)) {
       sharedEloSystem.setTeamRating(team, rating);
     }

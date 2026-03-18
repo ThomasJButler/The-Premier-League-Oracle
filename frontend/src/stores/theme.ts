@@ -16,9 +16,13 @@ function createThemeStore() {
   const getInitialTheme = (): boolean => {
     if (typeof window === 'undefined') return true;
 
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light') return false;
-    if (saved === 'dark') return true;
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light') return false;
+      if (saved === 'dark') return true;
+    } catch {
+      // localStorage unavailable (sandboxed iframe, privacy mode) — fall through to OS preference
+    }
 
     // No saved preference — respect OS setting, default dark
     if (window.matchMedia?.('(prefers-color-scheme: light)').matches) {
@@ -54,7 +58,11 @@ function applyTheme(dark: boolean) {
   } else {
     document.documentElement.classList.remove('dark');
   }
-  localStorage.setItem('theme', dark ? 'dark' : 'light');
+  try {
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  } catch {
+    // Persistence unavailable — theme still applied to DOM
+  }
 }
 
 export const isDarkMode = createThemeStore();
