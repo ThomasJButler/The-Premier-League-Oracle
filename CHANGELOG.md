@@ -4,6 +4,10 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P2n, P2q — CI/CD Pipeline and Fatigue Model Consolidation (19 March 2026)
+- **GitHub Actions CI pipeline (P2n):** Created `.github/workflows/ci.yml` running type check, unit tests, and production build on push/PR to `main` and `v3.0-*` branches. Uses Node.js 20, npm caching, and `npm ci`
+- **Fatigue model consolidation (P2q):** `OptimizedPredictor.calculateFatigueFactor()` now delegates to `FatigueAnalyzer.getFatigueMultiplier()` instead of its own discrete step function — both the production model and value bet scanner now use the same continuous fatigue formula
+
 ### P2r, P2p — Config Cleanup and Supabase Removal (19 March 2026)
 - **Dead dependencies removed (P2r):** Uninstalled `tailwind-variants`, `bits-ui`, and `happy-dom` — none were imported anywhere in the codebase
 - **`.gitignore` fixed (P2r):** Replaced single `__pycache__` path with `**/__pycache__/` glob; added `backend/cache/`, `backend/logs/`, `backend/mlruns/`

@@ -129,7 +129,7 @@ These specs are the single source of truth for requirements.
 - ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
 - ~~`ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML~~ **FIXED:** `renderMarkdown()` output now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist
 - ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
-- No CI/CD — no `.github/workflows/` directory. All testing is manual
+- ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests, and production build on push/PR to `main` and `v3.0-*` branches
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
 - Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass, `predictions.test.ts` tests a dead module. See P4h in IMPLEMENTATION_PLAN.md
 - ~~`EloRatingSystem.processCompletedMatches()` exists but is never called~~ **FIXED:** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings auto-update when match results load
@@ -138,7 +138,7 @@ These specs are the single source of truth for requirements.
 - ~~`KellyCalculator.svelte`: circular Kelly calculation~~ — FIXED: now uses model confidence as ourProbability, valueOdds as bookmakerOdds
 - ~~`footballData.ts`: halfTimeResult 0-0 bug~~ — FIXED: explicit null/undefined check replaces falsy check
 - ~~`dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)~~ **FIXED:** TTL values now passed correctly (24h for historical, 30min for team recent)
-- Two parallel fatigue models exist: `FatigueAnalyzer.getFatigueMultiplier()` (used by `AdvancedMatchPredictor` via `value.ts`) and `OptimizedPredictor.calculateFatigueFactor()` — different thresholds, inconsistent results
+- ~~Two parallel fatigue models exist~~ **FIXED:** `OptimizedPredictor.calculateFatigueFactor()` now delegates to `FatigueAnalyzer.getFatigueMultiplier()` — single source of truth for fatigue calculations
 - ~~Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom`~~ **FIXED:** all three uninstalled
 - ~~`.gitignore` gaps: only one `__pycache__` path covered~~ **FIXED:** `**/__pycache__/` glob added, plus `backend/cache/`, `backend/logs/`, `backend/mlruns/`
 - `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training

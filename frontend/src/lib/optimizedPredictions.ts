@@ -565,17 +565,12 @@ export class OptimizedPredictor {
       FatigueAnalyzer.calculateRestDays(awayTeam, now)
     ]);
 
-    // Less rest → more fatigue → lower multiplier (min 0.85 to avoid extreme swings)
-    const restToFatigue = (days: number) => {
-      if (days >= 6) return 1.0;   // Fully rested
-      if (days >= 4) return 0.97;  // Normal schedule
-      if (days >= 3) return 0.93;  // Tight turnaround
-      return 0.88;                 // Midweek congestion
-    };
-
+    // Delegate to FatigueAnalyzer for consistent fatigue calculation
+    // across both the production model and value bet scanning.
+    // recentFixtures=1 as a safe default (we only know rest days here).
     return {
-      homeFatigue: restToFatigue(homeRestDays),
-      awayFatigue: restToFatigue(awayRestDays)
+      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1),
+      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(awayRestDays, 1)
     };
   }
 

@@ -248,13 +248,11 @@ Several hardcoded league statistics should be computed from actual match data:
 - [ ] `optimizedPredictions.ts`: `LEAGUE_AVG_HOME_WIN_RATE = 0.46` — should be derived from completed matches via `dataService.getMatches()`, similar to how `computeLeagueAverages()` already derives goal averages
 - [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — derive from actual match/referee data when available
 
-### P2n. CI/CD Pipeline — NEW (19 March 2026)
+### P2n. CI/CD Pipeline — DONE (19 March 2026)
 
-No `.github/workflows/` directory exists. Zero automated testing on push or PR. Everything is manual.
-
-- [ ] Create minimum viable GitHub Actions workflow: `cd frontend && npm run check && npm run test:run` on push/PR to `main` and `v3.0-*` branches
-- [ ] Add build step (`npm run build`) to verify production builds don't break
-- [ ] Consider Playwright E2E in CI (heavier, but valuable — run on PR only)
+- [x] Created `.github/workflows/ci.yml` — runs `npm run check`, `npm run test:run`, and `npm run build` on push/PR to `main` and `v3.0-*` branches
+- [x] Uses Node.js 20, npm caching, and `npm ci` for deterministic installs
+- [ ] Consider Playwright E2E in CI (heavier, but valuable — deferred to later)
 
 ### P2o. Docker Cleanup — NEW (19 March 2026)
 
@@ -271,13 +269,12 @@ No `.github/workflows/` directory exists. Zero automated testing on push or PR. 
 - [x] Updated `specs/02-data-pipeline.md` — all 7 Supabase removal items checked off (confirmed absent from codebase)
 - [x] `.env.example` updated — Supabase references removed, replaced with Football-Data.org API key comment
 
-### P2q. Parallel Fatigue Models — NEW (18 March 2026, third audit)
+### P2q. Parallel Fatigue Models — DONE (19 March 2026)
 
-Two different fatigue models exist in the codebase with different thresholds, producing inconsistent results for the same rest-day inputs:
+Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor()` now delegates to `FatigueAnalyzer.getFatigueMultiplier()` instead of using its own discrete step function. Both callers now use the same continuous formula.
 
-- [ ] `advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` — only called by `AdvancedMatchPredictor` (used in value bet scanning)
-- [ ] `optimizedPredictions.ts`: `calculateFatigueFactor()` (lines 566–577) — inline step function used by `OptimizedPredictor` (production model)
-- [ ] Consolidate into a single fatigue model in `advancedPredictions.ts` and import from both callers
+- [x] `optimizedPredictions.ts`: replaced inline step function with `FatigueAnalyzer.getFatigueMultiplier(restDays, 1)` call
+- [x] `advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` is now the single source of truth for fatigue calculations
 
 ### P2r. Config & Infrastructure Cleanup — PARTIAL (19 March 2026)
 
