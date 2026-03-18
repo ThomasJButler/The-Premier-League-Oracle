@@ -12,7 +12,8 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical } from 'lucide-svelte';
+  import { BacktestRunner, type BacktestResult } from '../lib/backtest';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -44,6 +45,45 @@
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
   let totalGameweeks = 38; // Updated from API season data if available
+
+  // Backtest state
+  let backtestResult: BacktestResult | null = null;
+  let isBacktesting = false;
+  let backtestProgress = 0;
+  let backtestTotal = 0;
+  let backtestError: string | null = null;
+
+  export async function runBacktest() {
+    if (isBacktesting) return;
+
+    isBacktesting = true;
+    backtestResult = null;
+    backtestError = null;
+    backtestProgress = 0;
+    backtestTotal = 0;
+
+    try {
+      // Fetch completed matches from the current season
+      const allMatches = await dataService.getMatches({ recent: true, days: 365 });
+      const completedMatches = allMatches.filter(m => m.result);
+
+      if (completedMatches.length < 5) {
+        backtestError = 'Need at least 5 completed matches to run a backtest.';
+        isBacktesting = false;
+        return;
+      }
+
+      const runner = new BacktestRunner(completedMatches);
+      backtestResult = await runner.run((completed, total) => {
+        backtestProgress = completed;
+        backtestTotal = total;
+      });
+    } catch (err) {
+      backtestError = 'Backtest failed. Please try again.';
+    } finally {
+      isBacktesting = false;
+    }
+  }
 
   export async function loadGameweekMatches(gameweek: number) {
     loading = true;
@@ -374,8 +414,94 @@
               </div>
             </div>
           </div>
+
         </div>
       {/if}
+
+      <!-- Backtest Runner — always visible when accuracy panel exists -->
+      <div class="border-t border-border mt-4 pt-4 px-1">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <FlaskConical class="w-4 h-4 text-teal-500" />
+            <span class="text-sm font-semibold font-display text-foreground">Model Backtest</span>
+          </div>
+          <button
+            on:click={runBacktest}
+            disabled={isBacktesting}
+            data-testid="run-backtest"
+            class="text-xs px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+          >
+            {#if isBacktesting}
+              <div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Running...
+            {:else}
+              Run Backtest
+            {/if}
+          </button>
+        </div>
+        <p class="text-xs text-muted-foreground mb-3">
+          Runs completed matches through the prediction model retrospectively to measure true accuracy, log loss, and Brier score.
+        </p>
+
+        {#if isBacktesting && backtestTotal > 0}
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs text-muted-foreground">
+              <span>Processing matches...</span>
+              <span>{backtestProgress} / {backtestTotal}</span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-1.5">
+              <div class="bg-teal-500 h-1.5 rounded-full transition-all duration-200" style="width: {(backtestProgress / backtestTotal) * 100}%"></div>
+            </div>
+          </div>
+        {/if}
+
+        {#if backtestError}
+          <div class="text-xs text-destructive bg-destructive/10 rounded-lg p-3">
+            {backtestError}
+          </div>
+        {/if}
+
+        {#if backtestResult}
+          <div class="space-y-3" in:fade={{ duration: 200 }}>
+            <!-- Summary Row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5">Accuracy</div>
+                <div class="text-lg font-bold text-foreground">{backtestResult.overallAccuracy.toFixed(1)}%</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5">Matches</div>
+                <div class="text-lg font-bold text-foreground">{backtestResult.totalMatches}</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5"
+                  title="Log loss measures calibration — lower is better. Perfect = 0, random = 1.10">Log Loss</div>
+                <div class="text-lg font-bold {backtestResult.logLoss < 1.0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">{backtestResult.logLoss.toFixed(3)}</div>
+              </div>
+              <div class="text-center p-2.5 bg-muted rounded-lg">
+                <div class="text-xs text-muted-foreground mb-0.5"
+                  title="Brier score measures probability quality — lower is better. Perfect = 0, worst = 2.0">Brier Score</div>
+                <div class="text-lg font-bold {backtestResult.brierScore < 0.5 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">{backtestResult.brierScore.toFixed(3)}</div>
+              </div>
+            </div>
+
+            <!-- Per-Outcome Breakdown -->
+            <div class="grid grid-cols-3 gap-2">
+              {#each [
+                { label: 'Home', data: backtestResult.outcomeAccuracy.home, colour: 'bg-blue-500' },
+                { label: 'Draw', data: backtestResult.outcomeAccuracy.draw, colour: 'bg-amber-500' },
+                { label: 'Away', data: backtestResult.outcomeAccuracy.away, colour: 'bg-emerald-500' }
+              ] as outcome}
+                <div class="text-center p-2 bg-muted rounded-lg">
+                  <div class="text-xs text-muted-foreground mb-0.5">{outcome.label}</div>
+                  <div class="text-sm font-bold text-foreground">{outcome.data.accuracy.toFixed(0)}%</div>
+                  <div class="text-xs text-muted-foreground">{outcome.data.correct}/{outcome.data.total}</div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 

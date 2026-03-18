@@ -96,6 +96,25 @@ vi.mock('../lib/betBuilder', () => ({
   }
 }));
 
+// Mock BacktestRunner
+vi.mock('../lib/backtest', () => ({
+  BacktestRunner: vi.fn().mockImplementation(() => ({
+    run: vi.fn(() => Promise.resolve({
+      totalMatches: 50,
+      correctPredictions: 30,
+      overallAccuracy: 60.0,
+      outcomeAccuracy: {
+        home: { correct: 18, total: 25, accuracy: 72 },
+        draw: { correct: 5, total: 15, accuracy: 33.3 },
+        away: { correct: 7, total: 10, accuracy: 70 }
+      },
+      logLoss: 0.95,
+      brierScore: 0.42,
+      predictions: []
+    }))
+  }))
+}));
+
 // Mock Kelly
 vi.mock('../services/betting/kelly', () => ({
   calculateKelly: vi.fn(() => ({
@@ -128,7 +147,8 @@ vi.mock('lucide-svelte', () => {
   };
   return {
     TrendingUp: stub, Target: stub, Users: stub, BarChart3: stub,
-    Calculator: stub, Package: stub, ChevronDown: stub, ChevronUp: stub
+    Calculator: stub, Package: stub, ChevronDown: stub, ChevronUp: stub,
+    FlaskConical: stub
   };
 });
 
@@ -340,5 +360,87 @@ describe('Predictions Component', () => {
       predictedResult: 'H',
       confidence: 0.72
     }));
+  });
+
+  it('should show Run Backtest button when accuracy panel is visible', async () => {
+    vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
+      accuracy: 68,
+      totalPredictions: 25,
+      correctPredictions: 17,
+      incorrectPredictions: 8
+    } as any);
+
+    const match = makeMatch({ matchday: 20 });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    expect(screen.getByTestId('run-backtest')).toBeInTheDocument();
+    expect(screen.getByText('Run Backtest')).toBeInTheDocument();
+  });
+
+  it('should display backtest results after running', async () => {
+    vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
+      accuracy: 68,
+      totalPredictions: 25,
+      correctPredictions: 17,
+      incorrectPredictions: 8
+    } as any);
+
+    // Need completed matches for backtest
+    const completedMatches = Array.from({ length: 10 }, (_, i) =>
+      makeMatch({
+        id: `m${i}`,
+        matchday: 20,
+        result: 'H' as const,
+        home_goals: 2,
+        away_goals: 1,
+        date: new Date(Date.now() - 86400000 * (i + 1)).toISOString()
+      })
+    );
+    vi.mocked(dataService.getMatches).mockResolvedValue(completedMatches);
+
+    const match = makeMatch({ matchday: 20 });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    await (component as any).runBacktest();
+    await act();
+
+    // Check backtest results are displayed
+    expect(screen.getByText('60.0%')).toBeInTheDocument(); // overallAccuracy
+    expect(screen.getByText('50')).toBeInTheDocument(); // totalMatches
+  });
+
+  it('should show backtest error when insufficient matches', async () => {
+    vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
+      accuracy: 68,
+      totalPredictions: 25,
+      correctPredictions: 17,
+      incorrectPredictions: 8
+    } as any);
+
+    // Only 2 completed matches — below the threshold of 5
+    vi.mocked(dataService.getMatches).mockResolvedValue([
+      makeMatch({ id: 'm1', result: 'H' as const, home_goals: 1, away_goals: 0 }),
+      makeMatch({ id: 'm2', result: 'A' as const, home_goals: 0, away_goals: 2 })
+    ]);
+
+    const match = makeMatch({ matchday: 20 });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    await (component as any).runBacktest();
+    await act();
+
+    expect(screen.getByText(/Need at least 5 completed matches/)).toBeInTheDocument();
   });
 });

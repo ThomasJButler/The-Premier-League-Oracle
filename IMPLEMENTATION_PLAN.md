@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (P2h Oracle Chat improvements)
+Last updated: 18 March 2026 (P2f-UI Backtest Runner UI)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -223,7 +223,19 @@ Still missing:
 - [x] `BacktestRunner` class — takes completed match array, runs ensemble on each
 - [x] Reports: overall accuracy %, H/D/A accuracy, log loss, Brier score
 - [x] 15 unit tests covering metrics, probability extraction, progress callbacks, error handling
-- [ ] Accessible from Predictions view (button in accuracy panel) — UI integration deferred to P2f-UI
+- [x] Accessible from Predictions view (button in accuracy panel) — completed in P2f-UI
+
+### P2f-UI. Backtest Runner UI — DONE (18 March 2026)
+
+Wires the existing `BacktestRunner` class (15 tests) to a visible UI inside the Predictions accuracy panel.
+
+- [x] "Run Backtest" button with `FlaskConical` icon in accuracy panel
+- [x] Progress bar with match count during execution
+- [x] Error state for insufficient data (< 5 completed matches)
+- [x] Results grid: overall accuracy, total matches, log loss, Brier score
+- [x] Per-outcome breakdown: Home / Draw / Away accuracy with correct/total counts
+- [x] 3 new tests: button render, results display, error handling
+- [x] **Test count 346 → 349**: 19 test files, 349/349 passing, 0 type errors
 
 ### P2g. Kelly Auto-Suggestions — DONE (18 March 2026)
 

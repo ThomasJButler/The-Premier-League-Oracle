@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2f-UI Backtest Runner UI — Complete (18 March 2026)
+- **Backtest button** in Predictions accuracy panel — "Run Backtest" with `FlaskConical` icon triggers retrospective simulation on all completed matches
+- **Progress feedback** — progress bar with match count updates during execution via `BacktestRunner` progress callback
+- **Results grid** — displays overall accuracy %, total matches tested, log loss, and Brier score
+- **Per-outcome breakdown** — Home / Draw / Away accuracy with correct/total counts for granular model evaluation
+- **Error handling** — shows clear message when fewer than 5 completed matches available
+- **3 new Predictions tests** — button render, results display after run, error state for insufficient data
+- **Test count 346 → 349**: 19 test files, 349/349 passing, 0 type errors
+
 ### P2d Predictions Component Tests — Partial (18 March 2026)
 - **New `Predictions.test.ts`** — 14 tests covering the core prediction view
 - Tests: header render, gameweek selector with 38 options, Predict Gameweek button, loading spinner, match loading by gameweek, API error state, completed gameweek message, gameweek filtering (only shows selected week), accuracy panel visibility, team logos, OptimizedPredictor integration, predictionTracker storage
