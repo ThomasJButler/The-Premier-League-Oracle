@@ -282,10 +282,10 @@ export class BetBuilderPredictor {
       ['Liverpool', 'Everton'],
       ['Chelsea', 'Arsenal'],
       ['Chelsea', 'Tottenham Hotspur'],
-      ['Wolverhampton Wanderers', 'West Bromwich Albion'],
       ['Nottingham Forest', 'Leicester City'],
-      ['Newcastle United', 'Sunderland'],
-      ['Aston Villa', 'Birmingham City']
+      ['Newcastle United', 'Everton'],
+      ['Aston Villa', 'Wolverhampton Wanderers'],
+      ['Crystal Palace', 'Brighton and Hove Albion']
     ];
 
     const n1 = this.normaliseTeamName(team1);

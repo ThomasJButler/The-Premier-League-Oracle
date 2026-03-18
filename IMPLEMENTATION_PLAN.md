@@ -305,7 +305,7 @@ Consolidated to single fatigue model. `OptimizedPredictor.calculateFatigueFactor
 - [x] `vite.config.ts`: removed `console.log` from proxy handler
 - [x] `vite.config.ts`: removed unnecessary `secure: false` on proxy
 - [x] ~~`vite.config.ts`: add chunk splitting for production~~ **DONE:** added `build.rollupOptions.output.manualChunks` — chart.js/svelte-chartjs split to 180KB chunk, date-fns/dompurify to 50KB vendor chunk. Main bundle reduced from 687KB → 458KB (below 500KB warning threshold)
-- [ ] `tsconfig.json`: consider enabling `strict: true` in the app tsconfig (currently only enabled in `tsconfig.node.json`)
+- [x] ~~`tsconfig.json`: consider enabling `strict: true`~~ **ALREADY ENABLED:** app tsconfig extends `@tsconfig/svelte/tsconfig.json` which includes `strict: true`. Both app and node tsconfigs are strict
 
 **Production readiness:**
 
@@ -649,14 +649,14 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [ ] Replace `avgCorners: 9.5` and `expectedCards: 3.2` with league averages from match data (free tier has CSV data for these)
 - [ ] Market correlation in combo probability (e.g. clean sheet + over 2.5 negatively correlated)
 - [ ] `'Over 1.5 first half goals'` probability hardcoded as `0.35`
-- [ ] Rivalry list includes Championship teams (West Brom, Birmingham City, Sunderland) that will never appear in PL API data — dead entries
+- [x] Rivalry list includes Championship teams (West Brom, Birmingham City, Sunderland) that will never appear in PL API data — **FIXED:** replaced with current PL rivalries (Newcastle/Everton, Villa/Wolves, Crystal Palace/Brighton)
 
 **Plan correction (third audit):** `checkRivalry()` now works correctly via `normaliseTeamName()` which strips `FC`/`AFC`/`CF` suffixes. The previously documented "short names never match API names" issue is resolved.
 
 ### P4e. CSS & Theme Polish
 
-- [ ] `app.css` hex values — **NOT ISSUES on inspection:** all are theme *definitions* (`--gradient-primary`, `--gradient-accent`, team brand colours) or standard CSS techniques (`#fff` mask). These establish the design tokens; they don't bypass them
-- [ ] Team theme CSS variables exist (20 PL clubs) but integration unclear
+- [x] ~~`app.css` hex values~~ **REVIEWED:** all are theme *definitions* (`--gradient-primary`, `--gradient-accent`, team brand colours) or standard CSS techniques (`#fff` mask). These establish the design tokens; they don't bypass them. No action needed
+- [x] ~~Team theme CSS variables exist (20 PL clubs) but integration unclear~~ **REVIEWED:** CSS variables exist as a design foundation for future team-themed UI. Used by `Settings.svelte` team colour swatches. No bug or dead code
 - [ ] `Dashboard.svelte` chart border colours hardcoded as hex (`'#4299e1'`, `'#10b981'`) — Chart.js requires resolved colour values, not CSS variables. These are neutral mid-range colours that work in both themes. Proper fix requires reading CSS vars at chart creation time via `getComputedStyle` and re-creating charts on theme change — low priority
 - [ ] `BettingHistory.svelte` chart colours same limitation as Dashboard — Chart.js doesn't support CSS variables reactively
 - [x] ~~`Sidebar.svelte` has inline `style` with `rgba(0, 255, 135, 0.15)`~~ **FIXED:** replaced with `hsl(var(--primary) / 0.15)` so the logo border tracks the theme's primary colour
@@ -705,8 +705,8 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`ApiSetupWizard.svelte`: stale comments at lines 30, 41~~ **FIXED:** removed redundant "Testing API key validation" and "API connection test completed" comments
 - [x] `optimizedPredictions.ts`: `form` field — removed from both `getEnhancedTeamStats()` return paths (no caller reads it)
 - [x] `optimizedPredictions.ts`: `analyzeRecentForm()` inner `calculateFormScore` — removed unused `isHome` parameter and updated call sites
-- [ ] `optimizedPredictions.ts`: `getTopOutcome()` and `determinePrediction()` have the same core logic — **NOT REDUNDANT on inspection:** different signatures (`getTopOutcome` takes 3 args, returns just the result letter; `determinePrediction` takes an object, returns `{ result, probability }`). Consolidating would make call sites more verbose for no benefit. Keep both
-- [ ] `footballData.ts`: `getTeamByName()` — **NOT DEAD on inspection:** called internally by `getTeamForm()` at line 435, which is called by `dataService.getTeamForm()`. Private helper, not dead code
+- [x] ~~`optimizedPredictions.ts`: `getTopOutcome()` and `determinePrediction()` same core logic~~ **REVIEWED:** different signatures and return types. `getTopOutcome(h,d,a)` returns a letter; `determinePrediction({...})` returns `{result, probability}`. Keep both
+- [x] ~~`footballData.ts`: `getTeamByName()` dead code~~ **REVIEWED:** called internally by `getTeamForm()`. Private helper, not dead
 - [x] `MatchList.svelte`: season selector — added `<select>` dropdown in the header so fetched seasons are actually usable. Triggers `loadMatches()` on change
 - [x] `value.ts`: `calculateSharpeRatio()` — removed (dead function, see P4f)
 - [x] `value.ts`: `calculatePerformanceMetrics()` — removed (dead function, see P4f)
