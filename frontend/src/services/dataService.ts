@@ -1,5 +1,5 @@
 import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
-import { footballDataAPI } from './api/footballData';
+import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
 
@@ -275,12 +275,12 @@ class DataService {
     throw new Error('No data source available for standings');
   }
   
-  public async getTopScorers(limit: number = 20): Promise<any[]> {
+  public async getTopScorers(limit: number = 20): Promise<FDScorer[]> {
     await this.ensureReady();
     const cacheKey = `top_scorers_${limit}`;
-    
+
     // Try cache first
-    const cached = await this.getCachedData<any[]>('scorers', cacheKey);
+    const cached = await this.getCachedData<FDScorer[]>('scorers', cacheKey);
     if (cached) return cached;
     
     // Get from API

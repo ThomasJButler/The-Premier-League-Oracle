@@ -158,14 +158,11 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 - [ ] `Settings.svelte` — toggle persistence, cache clear
 - [ ] IndexedDB cache layer — completely untested
 
-### P2e. Type System Gaps
+### P2e. Type System Gaps — DONE (18 March 2026)
 
-`types/index.ts` has 6 types but 12+ more are scattered across service/lib files with no central export. The `Prediction` interface in `index.ts` is a dead legacy type that doesn't match `StoredPrediction` (the actual runtime type).
-
-- [ ] Remove or rename dead `Prediction` interface in `index.ts` (field names diverge from `StoredPrediction`)
-- [ ] Add missing interfaces: `EloRatings`, `Bet`/`BetRecord`, `KellyResult`, `ValueBet`, `MLPrediction`, `TopScorer`, `LiveMatch`, `ChatMessage`, `CacheEntry`
-- [ ] Fix `getTopScorers` return type in `dataService.ts` — currently returns `any[]`, should return `FDScorer[]`
-- [ ] Consider re-exporting core types from `types/index.ts` for cleaner imports
+- [x] `getTopScorers` return type fixed: `Promise<any[]>` → `Promise<FDScorer[]>` in `dataService.ts` (import added from `footballData.ts`)
+- [x] `Prediction` interface documented: not dead — used in `Predictions.svelte` as view-level type. Added JSDoc comment clarifying its role vs `StoredPrediction` (persistence type in `predictionTracker.ts`). Snake_case convention is intentional (matches original data model)
+- [ ] Remaining: add missing interfaces (`EloRatings`, `Bet`/`BetRecord`, `KellyResult`, `ValueBet`, `MLPrediction`, `LiveMatch`, `ChatMessage`, `CacheEntry`) — deferred as low priority, types are co-located with their implementations
 
 ### P2f. Backtest Runner
 

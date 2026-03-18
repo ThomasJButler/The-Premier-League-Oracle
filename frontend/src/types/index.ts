@@ -87,6 +87,11 @@ export interface TeamStats {
   updated_at: string;
 }
 
+/**
+ * View-level prediction used in Predictions.svelte card display.
+ * Uses snake_case to match original data model conventions.
+ * For persistent predictions (localStorage), see StoredPrediction in predictionTracker.ts.
+ */
 export interface Prediction {
   id: string;
   match_id: string;
