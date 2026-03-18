@@ -107,25 +107,17 @@
       if (isConnected) {
         testResult = {
           success: true,
-          message: `Successfully connected! Refreshing dashboard in 5 seconds...`
+          message: `Successfully connected! Refreshing data in 5 seconds...`
         };
         apiConnected = true;
         isRefreshing = true;
-        
-        // API is connected
-        
-        // Add 5-second delay before refresh
+
+        // Clear stale cache and refresh data services with the new key
         setTimeout(async () => {
-          // Clear cache to force fresh data
           await dataService.clearCache();
-          
-          // Trigger dashboard refresh
+          await dataService.refreshApiConfiguration();
           dispatch('apiConfigured');
-          
-          // Force page reload after a brief delay to ensure all components refresh
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
+          isRefreshing = false;
         }, 5000);
       } else {
         testResult = {

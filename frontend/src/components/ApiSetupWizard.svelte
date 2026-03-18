@@ -349,7 +349,6 @@
             <button
               on:click={() => {
                 dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
-                window.location.reload();
               }}
               class="btn btn-primary"
             >
