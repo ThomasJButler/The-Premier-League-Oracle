@@ -46,7 +46,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `lib/` - Core prediction libraries:
   - `advancedPredictions.ts` - Statistical models (ELO, Poisson, xG, Fatigue, Referee)
   - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
-  - `predictions.ts` - Original weighted prediction model
+  - ~~`predictions.ts` - Original weighted prediction model~~ **REMOVED** — production model is `optimizedPredictions.ts`
   - `betBuilder.ts` - Multi-market prediction generator
 - `services/` - Data and business logic:
   - `api/footballData.ts` - Football-Data.org API client with rate limiting
@@ -101,7 +101,7 @@ These specs are the single source of truth for requirements.
 
 ### Current Focus Areas
 - **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
-- **Free-tier ML model ready to train** — `cd backend && python train_free_tier.py` (86 features, 62 tests, API endpoints wired)
+- **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Improvement roadmap in IMPLEMENTATION_PLAN.md
 - **Remaining work:** P2 partial (Docker, backend deps, CI), P5 hardening (rate limiter, test quality, type safety), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
@@ -149,7 +149,7 @@ These specs are the single source of truth for requirements.
 - ~~`.gitignore` gaps: only one `__pycache__` path covered~~ **FIXED:** `**/__pycache__/` glob added, plus `backend/cache/`, `backend/logs/`, `backend/mlruns/`
 - `advanced_engineering.py`: `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — **MITIGATED:** `ValueBets.svelte` already has `mapMarket()` conversion; no code path bypasses it
-- Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime. Needs `.to_dict(orient='records')` conversion
+- ~~Backend `/standings` endpoint returns `pd.DataFrame` which is not JSON-serialisable — will `TypeError` at runtime~~ **FIXED:** now calls `.to_dict(orient='records')` before returning
 - ~~`footballData.ts:189`: HTTP 403 treated as "invalid API key" but free tier also returns 403 for rate-limit exceeded~~ **FIXED:** now parses response body to distinguish rate-limit from auth failure
 - ~~`BacktestRunner` makes ~1,140+ sequential API calls~~ **FIXED:** `predictMatch()` now uses `historicalMatches` directly when provided — 0 `dataService` calls per match in backtest mode (was 6 per match). Normal live predictions unchanged
 - ~~`tailwind.config.js` declares fonts `Figtree` and `Outfit` but no font import or assets exist`~~ **CORRECTED:** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load `media="print"` + `onload` pattern and `<noscript>` fallback. Fonts are working correctly
@@ -180,5 +180,22 @@ These specs are the single source of truth for requirements.
 - No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
 - Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
 - Spec 07 (UI/UX) at ~75% — 3/5 shadcn components wired (Button, Card, Badge); remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar), dead code removal, form string computation
+- **Poisson maxGoals inconsistency (P5n):** 4 different values across codebase — `advancedPredictions.ts` fixed to 7, but `optimizedPredictions.ts:278` uses 5, `Predictions.svelte` uses 6, `value.ts:234` uses 10. Spec says 7. All three unfixed sites directly affect prediction probabilities
+- Three separate Poisson implementations exist: `advancedPredictions.ts` (PoissonPredictor class), `value.ts` (private static methods), `betBuilder.ts` (separate implementation). Should consolidate to one
+- `optimizedPredictions.ts:644`: `getStandingsProbabilities` no-data fallback uses `homeWin: 0.40` — inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (P5o, different location from the P5k H2H fix)
+- `backtest.ts`: snapshots/restores ELO ratings but NOT `processedMatchIds` — matches processed during backtest remain marked as processed, potentially blocking future live ELO updates (P5p)
+- `dataService.ts`/`footballData.ts`: live match query uses `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included, matches in extra time disappear from live view (P5q)
+- `ApiSetupWizard.svelte`: no focus trap on open (WCAG 2.1 failure), no Escape key handler. Independent of Dialog shadcn migration (P5r)
+- `$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts` — shadcn components import the duplicate file. Both work but creates maintenance risk (P5s)
+- Dead exports confirmed: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()`, `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface — all exported but never imported anywhere (P5s)
+- `app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)
+- `footballData.ts`: no AbortController or timeout on fetch — hung API call blocks the rate-limit queue indefinitely (P5t)
+- `dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws (P5t)
+- `Predictions.svelte`: `catch (error)` variable shadows outer `let error` state variable (P5t)
+- `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
+- `betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded — not derived from the calculated `corners` predictions object
+- Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
+- `advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped
+- Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

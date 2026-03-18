@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 18 March 2026 (restructured — archived completed P0–P4 work to CHANGELOG.md)
+Last updated: 26 March 2026 (ninth planning audit — 22 new findings, Poisson consistency fix required)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,10 +17,10 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
-| P5 Hardening | ~7/13 (54%) | Rate limiter, CI, test quality, type safety |
+| P5 Hardening | ~7/22 (32%) | Rate limiter, CI, test quality, type safety, Poisson consistency, dead code |
 
 **Frontend:** Production-ready — 375 Vitest tests, 43 E2E tests, 0 type errors
-**Backend free-tier:** Pipeline complete, awaiting first training run
+**Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
@@ -246,6 +246,63 @@ Spec 01 Req 5 requires tracking accuracy by confidence band over time and adjust
 - [ ] Add `getCalibrationFactors()` to `predictionTracker.ts` — returns `{ highBand: factor, mediumBand: factor, lowBand: factor }` from stored predictions
 - [ ] Wire calibration factors into `OptimizedPredictor.calculateConfidence()` as a final multiplier
 
+### P5n. Poisson maxGoals Inconsistency — 4 Different Values
+
+The spec says cap Poisson at 7 goals. `advancedPredictions.ts` was fixed (P5l), but **three other call sites still use wrong values**, directly affecting prediction probabilities:
+
+- [ ] `optimizedPredictions.ts:278` — calls `predictScoreProbabilities(..., 5)` — should be 7
+- [ ] `Predictions.svelte` — calls `PoissonPredictor.predictScoreProbabilities(..., 6)` — should be 7
+- [ ] `value.ts:234` — has local `maxGoals = 10` with its own Poisson re-implementation — should be 7
+
+Additionally, `value.ts` and `betBuilder.ts` each have their own private Poisson implementations instead of using the shared `PoissonPredictor` from `advancedPredictions.ts`. Three separate Poisson codebases is a maintenance risk.
+
+- [ ] Consolidate to a single Poisson implementation in `advancedPredictions.ts` (or extract to `lib/poisson.ts`) and have `value.ts` and `betBuilder.ts` import it
+
+### P5o. getStandingsProbabilities Fallback Inconsistency
+
+`optimizedPredictions.ts:644` — the no-data fallback uses `homeWin: 0.40` but `DEFAULT_HOME_WIN_RATE` in `constants.ts` is `0.46`. This is a **different location** from the H2H fallback fixed in P5k.
+
+- [ ] Change `getStandingsProbabilities` no-data fallback from `0.40` to `DEFAULT_HOME_WIN_RATE` (0.46), with draw/away derived proportionally
+
+### P5p. Backtest ELO processedMatchIds Leak
+
+`backtest.ts` snapshots and restores the ELO ratings map before/after a backtest run, but does NOT snapshot/restore the `processedMatchIds` Set. Matches processed during backtesting remain marked as "processed" after restoration, potentially preventing future live ELO updates from reprocessing those matches.
+
+- [ ] Snapshot `sharedEloSystem.processedMatchIds` before backtest and restore it alongside the ratings map
+
+### P5q. Live Match Status Filter Incomplete
+
+`dataService.getLiveMatches()` queries for `IN_PLAY,PAUSED` statuses only. `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses are not included — matches in extra time or penalties disappear from the live view entirely. `liveService.ts` inherits this gap.
+
+- [ ] Add `EXTRA_TIME,PENALTY_SHOOTOUT` to the live matches status filter in `footballData.ts`
+
+### P5r. ApiSetupWizard Accessibility (WCAG 2.1)
+
+The `ApiSetupWizard.svelte` dialog has two WCAG failures independent of the shadcn Dialog migration (Spec 07):
+
+- [ ] Focus is not moved to the dialog on open — screen readers and keyboard users land on content behind the modal
+- [ ] No `Escape` key handler to dismiss the dialog — keyboard-only users cannot close it
+
+### P5s. Dead Code Cleanup
+
+Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth audit:
+
+- [ ] `$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts` — shadcn components import the duplicate. Consolidate: either re-export from `utils.ts` or update shadcn imports to use `$lib/utils`
+- [ ] `predictionTracker.ts`: `GameweekAccuracy` interface and `getAccuracyByGameweek()` method are exported but never imported anywhere
+- [ ] `kelly.ts`: standalone `isValueBet()` function exported but never imported outside the file
+- [ ] `aiAnalysis.ts`: `MAX_CACHED_ANALYSES = 50` declared but never referenced (eviction uses a different strategy)
+- [ ] `advancedPredictions.ts`: `TeamRating` interface exported but never used anywhere
+- [ ] `app.css`: `.match-card`, `.match-score`, `.chart-container` classes appear unused by any component
+- [ ] `app.css`: `@keyframes scroll` ticker animation is dead code — overridden by `LiveTicker.svelte` local `@keyframes ticker-scroll`
+- [ ] `main.py:24`: `timedelta` imported but never used
+- [ ] `modern_oracle.py:18`: `asyncio` imported but never used
+
+### P5t. Frontend Resilience
+
+- [ ] `footballData.ts`: no `AbortController` or timeout on fetch requests — a hung API call blocks the entire rate-limit queue indefinitely (unlike `backendService.ts` which correctly uses AbortController)
+- [ ] `dataService.ts`: inconsistent error contract — `getTeamStats()` returns `null` silently, `getTeamForm()` returns `[]` silently, but `getMatches()`/`getStandings()` throw. Callers cannot reliably distinguish "no data" from "error"
+- [ ] `Predictions.svelte`: `catch (error)` variable shadows the outer `let error` state variable — may cause unexpected UI state after failed predictions
+
 ---
 
 ## Deferred Minor Items (from P1/P4)
@@ -372,6 +429,12 @@ Priority features to implement with real data:
 | `optimizedPredictions.ts` | Confidence boost/penalty thresholds and values — all hardcoded | Low |
 | `optimizedPredictions.ts` | Fallback prediction returns static `{result: 'D', confidence: 0.33, goals: 1-1, odds: 3.0/3.3/3.0}` | Low |
 | `optimizedPredictions.ts` | `getStandingsProbabilities` — `0.025` per position-difference step is arbitrary | Low |
+| `optimizedPredictions.ts` | `getStandingsProbabilities` no-data fallback uses `homeWin: 0.40` instead of `DEFAULT_HOME_WIN_RATE` (0.46) | P5o |
+| `optimizedPredictions.ts:278` | `predictScoreProbabilities(..., 5)` — maxGoals should be 7 per spec | P5n |
+| `Predictions.svelte` | `PoissonPredictor.predictScoreProbabilities(..., 6)` — maxGoals should be 7 per spec | P5n |
+| `value.ts:234` | Local Poisson implementation uses `maxGoals = 10` — should be 7 per spec | P5n |
+| `advancedPredictions.ts` | `SEED_RATINGS` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) | Low |
+| `betBuilder.ts:441` | `'Over 7.5 corners'` string hardcoded — not derived from `corners` predictions object | Low |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | Low |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | Low |
 | `betBuilder.ts` | `ftBias = 0.4` — HT-FT correlation arbitrarily set at 40% | Low |
@@ -447,14 +510,14 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~80% — missing: confidence historical calibration (P5m). **Markers: 5/8** |
-| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — missing: progressive 5-season bulk loader. **Markers: 6/8** |
-| `specs/03-backend-integration.md` | Python ML backend connection | ~85% — missing: AGENTS.md historical data command. **Markers: 7/8** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI. **Markers: 11/12** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — missing: match event notifications. **Markers: 9/10** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~75% — missing: Poisson from real stats (Req 2), confidence calibration P5m (Req 5). **Markers: 5/8** |
+| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). **Markers: 6/8** |
+| `specs/03-backend-integration.md` | Python ML backend connection | ~85% — missing: AGENTS.md historical data command (Req 6). **Markers: 7/8** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~80% — missing: match event notifications (Req 9), extra-time status filter P5q. **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — remaining: Dialog, Sheet. **Markers: 13/17** |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. **Markers: 23/24** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — remaining: Dialog (Req 5), Sheet (Req 8), form strings from real data, dead code. **Markers: 13/17** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---
 

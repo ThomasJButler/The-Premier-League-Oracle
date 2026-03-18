@@ -4,6 +4,25 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Ninth Planning Audit — 22 New Findings (26 March 2026)
+- **7-agent parallel codebase sweep:** Studied all 8 specs, all frontend lib/services/components, all backend Python files, all test files, CHANGELOG.md, and hunted for stubs/TODOs/hardcoded values across the entire project
+- **Critical finding — Poisson maxGoals inconsistency (P5n):** 4 different cap values across the codebase (5, 6, 7, 10) where the spec requires 7. Only `advancedPredictions.ts` was fixed (P5l); `optimizedPredictions.ts:278` still uses 5, `Predictions.svelte` uses 6, and `value.ts:234` uses 10. Three separate Poisson implementations exist — consolidation recommended
+- **Prediction bias — getStandingsProbabilities fallback (P5o):** `optimizedPredictions.ts:644` uses `homeWin: 0.40` for no-data fallback, inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (different location from the P5k H2H fix)
+- **ELO corruption risk — backtest processedMatchIds leak (P5p):** `backtest.ts` snapshots/restores ratings but not `processedMatchIds` — matches processed during backtesting remain marked as processed, potentially blocking future live ELO updates
+- **Live match gap — extra time/penalties invisible (P5q):** `dataService.getLiveMatches()` queries `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included
+- **Accessibility — ApiSetupWizard WCAG failures (P5r):** No focus trap on dialog open, no Escape key handler — independent of the shadcn Dialog migration
+- **Dead code catalogue (P5s):** Confirmed dead: `cn()` duplicate file, `GameweekAccuracy`/`getAccuracyByGameweek()` in predictionTracker, `isValueBet()` in kelly.ts, `TeamRating` interface, `MAX_CACHED_ANALYSES` constant, `.match-card`/`.match-score`/`.chart-container` CSS classes, `@keyframes scroll` ticker animation, `timedelta` and `asyncio` unused imports in backend
+- **Frontend resilience issues (P5t):** `footballData.ts` has no AbortController/timeout (hung fetch blocks queue), `dataService.ts` has inconsistent error contracts (throws vs null vs []), `Predictions.svelte` `catch(error)` shadows outer state variable
+- **Other findings:** `SEED_RATINGS` includes relegated teams, `betBuilder.ts:441` hardcoded corner string, `processCompletedMatches` silently skips matches with undefined status, `advancedPredictions.ts` `valueBets` always returns empty array
+- **Spec status refined:** Spec 01 lowered to ~75% (Poisson real stats gap identified), Spec 05 updated (extra-time status filter), all spec requirement numbers now cross-referenced in plan
+- **CLAUDE.md updated:** 18 new entries added — Poisson consistency, dead code catalogue, ELO leak, live match gap, accessibility, resilience issues
+- **P5 expanded:** 9 new items (P5n–P5t) added to IMPLEMENTATION_PLAN.md, total P5 items now 22 (was 13)
+
+### First ML Training Run Results (18 March 2026)
+- **Model trained and saved:** `backend/models/xgboost_free_tier.joblib` — 51.0% overall accuracy (+6.4% lift over LR baseline 44.5%), position_difference is strongest feature by 3×
+- **Draw prediction broken:** Only 6.7% draw accuracy (7/104 draws correct). Model biased towards home/away predictions. Draw AUC-ROC near random (0.495)
+- **Improvement roadmap added:** Quick wins (class weights, probability calibration, feature selection, hyperparameter tuning), medium effort (draw-specific features, Elo-based features, recency weighting), larger effort (stacked ensemble, odds-as-features, rolling CV)
+
 ### Documentation Restructure (18 March 2026)
 - **IMPLEMENTATION_PLAN.md slimmed:** Archived all completed P0–P4 work (reduced from ~1,140 lines to ~480 lines). Now contains only remaining/pending work and deferred Pro-tier items
 - **Project completion assessed:** ~82% of v3.0 scope complete. Pro-tier backend (P3a–d) deferred as future work
