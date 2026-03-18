@@ -4,6 +4,24 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### Performance & Data Accuracy (18 March 2026)
+- **Fetch optimisation:** `advancedPredictions.ts` and `optimizedPredictions.ts` now fetch `dataService.getMatches()` once per prediction instead of 3 times. `calculateFatigueFactor` async method removed entirely from optimizedPredictions — both live and backtest paths use `calculateFatigueFromMatches`
+- **`window.location.reload()` eliminated:** Settings API key test and ApiSetupWizard "Start Using App" both replaced with targeted `dataService.clearCache()` + `refreshApiConfiguration()` + event dispatch. No more full page reload losing app state
+- **Cache size accuracy:** Settings now uses `navigator.storage.estimate()` to report total origin storage (IndexedDB + localStorage + Cache API) instead of measuring localStorage alone
+- **IndexedDB cache invalidation:** Both API key change paths now clear IndexedDB alongside the in-memory cache, preventing stale data from being served after a key change
+- **Dynamic team list:** Settings favourite team selector now loads from `dataService.getStandings()` instead of a hardcoded 2024-25 season list. Automatically updates when teams are promoted/relegated
+
+### P4b — Accessibility Wave 2 (18 March 2026)
+- **Flip card a11y:** Prediction card faces toggle `aria-hidden` based on flip state — screen readers only read the visible face. "Tap for Analysis" button gets `aria-label` with match team names
+- **LiveTicker pause button:** WCAG 2.2.2 compliant — pause/resume toggle appears on hover/focus, uses `animation-play-state` to halt CSS scroll
+- **TopScorers semantic table:** Replaced `<div class="grid">` with proper `<table>` — column headers, `aria-sort="descending"` on Goals, responsive column hiding
+- **Focus trapping:** Sidebar (mobile) and MobileNav "More" popup trap keyboard focus when open over backdrop. Reusable `focusTrap` Svelte action in `$lib/utils.ts`. Both close on Escape
+- **Colourblind audit:** All colour-coded indicators already use text alongside colour (W/D/L letters, +/- signs, Correct/Incorrect labels) — WCAG 1.4.1 compliant
+
+### Dead Code Removal (18 March 2026)
+- **`betHistoryService`:** Removed `getBetsByMonth()`, `clearHistory()`, `importBets()` — never called from any component. 4 tests removed (340 remain)
+- **`EloRatingSystem.updateRatings` consolidation:** Instance method now delegates to static method, eliminating duplicated ELO math
+
 ### P4b — Accessibility Improvements (20 March 2026)
 - **Chart accessibility:** Dashboard line chart and BettingHistory bar chart containers now have `role="img"` and descriptive `aria-label` attributes for screen readers
 - **LiveMatches tab pattern:** Tab navigation uses proper ARIA pattern — `role="tablist"` on container, `role="tab"` + `aria-selected` + `aria-controls` on each button
