@@ -570,12 +570,12 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] Remove `Math.random()` star particles in `App.svelte` — REMOVED (App rewritten)
 - [x] Fix hardcoded "Tom Butler" / "tom@example.com" in `Header.svelte` — REMOVED (Header rewritten)
 - [x] Fix hardcoded "3 new predictions available" in `Header.svelte` — REMOVED (Header rewritten)
-- [ ] Wire or remove Header.svelte search bar (dispatches event but nothing handles it)
-- [ ] Wire or remove Header.svelte profile/logout actions
-- [ ] Fix `ApiSetupWizard.svelte` Step 3 single-option auto-advance
-- [ ] Fix `ApiSetupWizard.svelte` double `window.location.reload()` (5s delay + button click)
-- [ ] Fix `ApiSetupWizard.svelte` — no way to dismiss/close the wizard ("Skip" path)
-- [ ] `StandingsTable.svelte` movement arrows need tooltip explaining they're form-based ("Based on recent form"), not actual position change
+- [x] Wire or remove Header.svelte search bar — REMOVED (Header rewritten, no search bar exists)
+- [x] Wire or remove Header.svelte profile/logout actions — REMOVED (Header rewritten, no profile/logout exists)
+- [x] Fix `ApiSetupWizard.svelte` Step 3 single-option auto-advance — REMOVED step entirely (5→4 steps). Provider selection was a fake choice with only Football-Data.org available
+- [x] Fix `ApiSetupWizard.svelte` double `window.location.reload()` — removed artificial 5s delay timer and auto-reload. Single reload on "Start Using App" button click only
+- [x] Fix `ApiSetupWizard.svelte` — no way to dismiss/close the wizard — added X close button with `aria-label="Skip setup wizard"`. Dispatches `complete` event with empty API key so parent can handle gracefully
+- [x] `StandingsTable.svelte` movement arrows tooltip — wrapped in `<span title="Based on recent form, not actual position change">` to clarify arrows are momentum proxies, not actual table movement
 
 ### P4b. Accessibility (spec 07: 0 of 5 ARIA requirements met)
 

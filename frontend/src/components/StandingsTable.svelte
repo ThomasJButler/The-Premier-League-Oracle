@@ -193,7 +193,9 @@
                     </span>
                     {#if i < 5}
                       {@const movement = getMovementIcon(team)}
-                      <svelte:component this={movement.icon} class="w-3 h-3 {movement.color}" />
+                      <span title="Based on recent form, not actual position change">
+                        <svelte:component this={movement.icon} class="w-3 h-3 {movement.color}" />
+                      </span>
                     {/if}
                   </div>
                 </td>

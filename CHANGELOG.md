@@ -4,6 +4,14 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4a — UI Dead Code Cleanup (20 March 2026)
+- **ApiSetupWizard simplified from 5 steps to 4:** Removed the pointless "Choose Provider" step — Football-Data.org was the only option. The wizard now goes Welcome → Privacy → API Setup → Ready
+- **Removed double `window.location.reload()`:** The old wizard had an artificial 5-second delay timer that auto-reloaded, plus the "Start Using App" button also reloaded — a race condition waiting to happen. Now there's a single explicit reload when the user clicks "Start Using App"
+- **Added dismiss button:** X close button in the header (`aria-label="Skip setup wizard"`) dispatches `complete` with empty API key so users who already have a key configured aren't trapped
+- **Removed dead code:** `isRefreshing`, `validationMessage` state variables, `Trophy`/`RefreshCw` icon imports, and the `selectProvider()` function — all orphaned by the step 3 removal
+- **StandingsTable movement arrows tooltip:** Wrapped form-based momentum icons in `<span title="Based on recent form, not actual position change">` — the free API tier doesn't expose per-matchday position history so arrows are momentum proxies, not actual table movement
+- **Header.svelte items confirmed done:** Search bar and profile/logout actions were already removed in a previous rewrite — the 46-line Header has none of this code
+
 ### P3e — ML Backend Integrated into Prediction Ensemble (20 March 2026)
 - **OptimizedPredictor now merges ML backend predictions:** When `use_backend` is enabled in Settings and the Python backend is reachable, the ML prediction joins the ensemble as a 6th weighted model at 30% weight. The five TypeScript models (ELO, Poisson, Form, H2H, Standings) are scaled down proportionally to share the remaining 70%
 - **Silent fallback:** If the backend is unreachable or returns an error, the prediction proceeds with the TypeScript ensemble alone — no user-visible error, no degraded output

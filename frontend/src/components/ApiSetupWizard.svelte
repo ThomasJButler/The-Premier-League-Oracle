@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, Trophy, RefreshCw } from 'lucide-svelte';
+  import { Key, Shield, Zap, BookOpen, Info, ExternalLink, X } from 'lucide-svelte';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   
@@ -12,15 +12,12 @@
   let validationError = '';
   let validationSuccess = false;
   let selectedProvider: 'football-data' = 'football-data';
-  let isRefreshing = false;
-  let validationMessage = '';
   
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
     { id: 2, title: 'Privacy & Security', icon: Shield },
-    { id: 3, title: 'Choose Provider', icon: Key },
-    { id: 4, title: 'API Setup', icon: Key },
-    { id: 5, title: 'Ready!', icon: BookOpen }
+    { id: 3, title: 'API Setup', icon: Key },
+    { id: 4, title: 'Ready!', icon: BookOpen }
   ];
   
   async function validateAndSave() {
@@ -45,30 +42,15 @@
       
       if (isConnected) {
         validationSuccess = true;
-        
+
         // Save to localStorage
         localStorage.setItem('football_data_api_key', apiKey.trim());
-        
-        // Set the provider in dataService
-        // API key is saved
-        
+
+        // Clear stale cache so fresh data loads with the new key
+        await dataService.clearCache();
+
         // Move to final step
-        currentStep = 5;
-        validationMessage = 'API key validated! Refreshing dashboard in 5 seconds...';
-        isRefreshing = true;
-        
-        // Add 5-second delay before refreshing
-        setTimeout(async () => {
-          // Clear cache to force fresh data
-          await dataService.clearCache();
-          
-          dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
-          
-          // Reload page to reinitialize with new API key
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-        }, 5000);
+        currentStep = 4;
       } else {
         validationError = `Invalid API key. Please check that you copied it correctly from ${
           'Football-Data.org'
@@ -83,20 +65,19 @@
   }
   
   function nextStep() {
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       currentStep++;
     }
   }
-  
+
   function prevStep() {
     if (currentStep > 1) {
       currentStep--;
     }
   }
-  
-  function selectProvider() {
-    selectedProvider = 'football-data';
-    nextStep();
+
+  function dismiss() {
+    dispatch('complete', { apiKey: '', provider: selectedProvider });
   }
 </script>
 
@@ -107,12 +88,21 @@
     <div class="p-8 pb-0">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-3xl font-bold font-display text-foreground">Premier League Oracle</h1>
-        <div class="flex items-center gap-2">
-          {#each steps as step}
-            <div 
-              class="w-3 h-3 rounded-full transition-all duration-300 {currentStep >= step.id ? 'bg-primary' : 'bg-border'}"
-            ></div>
-          {/each}
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            {#each steps as step}
+              <div
+                class="w-3 h-3 rounded-full transition-all duration-300 {currentStep >= step.id ? 'bg-primary' : 'bg-border'}"
+              ></div>
+            {/each}
+          </div>
+          <button
+            on:click={dismiss}
+            class="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Skip setup wizard"
+          >
+            <X class="w-5 h-5" />
+          </button>
         </div>
       </div>
       
@@ -239,62 +229,6 @@
         </div>
         
       {:else if currentStep === 3}
-        <!-- API Provider Step -->
-        <div class="space-y-6">
-          <div class="text-center">
-            <h3 class="text-2xl font-bold mb-2">Football-Data.org API</h3>
-            <p class="text-muted-foreground">Free Premier League data with real-time updates</p>
-          </div>
-          
-          <div class="max-w-md mx-auto">
-            <div class="p-6 border-2 border-primary bg-primary/5 rounded-xl">
-              <div class="flex items-center justify-between mb-4">
-                <Trophy class="w-8 h-8 text-green-600" />
-                <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
-                  FREE TIER
-                </span>
-              </div>
-              <h4 class="font-bold text-lg mb-2">Football-Data.org</h4>
-              <p class="text-sm text-muted-foreground mb-4">
-                Perfect for Premier League predictions and analysis
-              </p>
-              <ul class="space-y-2 text-sm mb-6">
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Complete Premier League data
-                </li>
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  10 requests per minute (free tier)
-                </li>
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Matches, standings, and scorers
-                </li>
-                <li class="flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Statistical match predictions
-                </li>
-              </ul>
-              <button
-                on:click={selectProvider}
-                class="w-full px-4 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                Continue with Football-Data.org
-              </button>
-            </div>
-          </div>
-        </div>
-        
-      {:else if currentStep === 4}
         <!-- API Setup Step -->
         <div class="space-y-6">
           <div class="text-center">
@@ -363,24 +297,16 @@
           </div>
         </div>
         
-      {:else if currentStep === 5}
+      {:else if currentStep === 4}
         <!-- Success Step -->
         <div class="text-center space-y-6">
           <div class="w-20 h-20 mx-auto bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full flex items-center justify-center">
-            {#if isRefreshing}
-              <RefreshCw class="w-10 h-10 text-green-600 animate-spin" />
-            {:else}
-              <BookOpen class="w-10 h-10 text-green-600" />
-            {/if}
+            <BookOpen class="w-10 h-10 text-green-600" />
           </div>
           <div>
-            <h3 class="text-2xl font-bold mb-4 text-green-600">{isRefreshing ? 'Setting Up...' : 'All Set!'}</h3>
+            <h3 class="text-2xl font-bold mb-4 text-green-600">All Set!</h3>
             <p class="text-muted-foreground text-lg">
-              {#if isRefreshing}
-                {validationMessage}
-              {:else}
-                Your API key has been validated and saved. You're ready to explore Premier League predictions!
-              {/if}
+              Your API key has been validated and saved. You're ready to explore Premier League predictions!
             </p>
           </div>
           
@@ -420,30 +346,29 @@
         </button>
         
         <div class="flex gap-3">
-          {#if currentStep === 4}
+          {#if currentStep === 3}
             <button
               on:click={validateAndSave}
               disabled={!apiKey.trim() || isValidating}
               class="btn btn-primary {!apiKey.trim() ? 'opacity-50 cursor-not-allowed' : ''}"
             >
               {#if isValidating}
-                <span class="animate-spin">⏳</span> Validating...
+                Validating...
               {:else}
                 Validate & Save
               {/if}
             </button>
-          {:else if currentStep === 5}
+          {:else if currentStep === 4}
             <button
               on:click={() => {
                 dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
-                // Reload page to reinitialize with new API key
-                setTimeout(() => window.location.reload(), 100);
+                window.location.reload();
               }}
               class="btn btn-primary"
             >
               Start Using App
             </button>
-          {:else if currentStep !== 3}
+          {:else}
             <button
               on:click={nextStep}
               class="btn btn-primary"
