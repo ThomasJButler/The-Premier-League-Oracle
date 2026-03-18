@@ -114,6 +114,45 @@ These were silent logic bugs producing wrong data for users:
 - [x] `dataService.ts`: `setCachedData` awaits an IDBRequest directly which isn't a real Promise — DONE — wrapped in proper Promise with onsuccess/onerror callbacks; also fixed `clearCache` same issue
 - [x] `dataService.ts`: `initializeIndexedDB` is async but called without `await` in constructor — DONE — returns proper Promise, wired into `readyPromise` chain so DB is guaranteed open before first query
 
+### P1f. Frontend UX Critical Fixes (NEW — discovered in audit 18 March 2026)
+
+These are user-facing problems where the UI actively misleads users or blocks them from discovering features.
+
+**Help.svelte — lying to users (5 inaccurate claims):**
+
+- [ ] Claims "three-model system" — actual production model is 5-component ensemble (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%)
+- [ ] Mentions xG as a core prediction model — xG unavailable on free tier, `ExpectedGoalsCalculator` always returns `{homeXG: 0, awayXG: 0}`
+- [ ] Claims "5-minute polling" — actual polling is adaptive (30s live / 5min matchday / 30min idle)
+- [ ] Says "export functionality is planned" — BettingHistory export is already implemented
+- [ ] Accuracy claim "60-65%" should use real `predictionTracker` stat
+
+**Dashboard hero section — misleading "Live" label:**
+
+- [ ] Hero displays "Live Predictions" with animated green dot but shows historical data — change to "Match Predictions" or only show "Live" when actual live matches exist
+
+**Hardcoded dark colours (broken in light mode):**
+
+- [ ] `Dashboard.svelte` hero: `bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e293b]` — hardcoded dark greys, invisible in light mode. Replace with theme-aware Tailwind classes
+- [ ] `KellyCalculator.svelte` header: `style="background: linear-gradient(135deg, #0f172a, #1e293b)"` — same issue
+
+**Missing onboarding / empty states:**
+
+- [ ] After API key setup, new users see empty dashboard (0%, £0, 0 predictions) with no guidance. Add "Getting Started" prompt linking to Predictions view
+- [ ] `Predictions.svelte` empty state says "No predictions available yet" — add call-to-action: "Click 'Predict Gameweek' to generate predictions"
+- [ ] `BettingHistory.svelte` — no empty state for users with zero bets, just blank chart and empty filters
+
+**Inconsistent error/loading states:**
+
+- [ ] Error styling: `StandingsTable` uses `border-destructive/50 bg-destructive/10`, `LiveMatches` uses `border-border bg-card` (barely visible) — standardise across all components
+- [ ] Loading spinners: different sizes (`h-8 w-8` vs `h-16 w-16`) across views — standardise
+- [ ] No "Last updated" indicator on most views — users don't know if data is fresh
+
+**Prediction UX clarity:**
+
+- [ ] Confidence score badge has no tooltip or legend — users don't know what 75% means or whether they should bet
+- [ ] Flip cards have no visual affordance (hover hint, focus indicator) — first-time users don't realise they're tappable
+- [ ] Dashboard "How We Predict" section lists 4 models (ELO, Poisson, Form, Home Advantage) but actual model uses 5 components (adds H2H, Standings; no "Home Advantage" as standalone)
+
 ---
 
 ## P2 — Next Sprint
@@ -168,13 +207,14 @@ Still missing:
 - [x] `Prediction` interface documented: not dead — used in `Predictions.svelte` as view-level type. Added JSDoc comment clarifying its role vs `StoredPrediction` (persistence type in `predictionTracker.ts`). Snake_case convention is intentional (matches original data model)
 - [ ] Remaining: add missing interfaces (`EloRatings`, `Bet`/`BetRecord`, `KellyResult`, `ValueBet`, `MLPrediction`, `LiveMatch`, `ChatMessage`, `CacheEntry`) — deferred as low priority, types are co-located with their implementations
 
-### P2f. Backtest Runner
+### P2f. Backtest Runner — DONE (18 March 2026)
 
 **New file:** `frontend/src/lib/backtest.ts`
 
-- [ ] `BacktestRunner` class — takes completed match array, runs ensemble on each
-- [ ] Reports: overall accuracy %, H/D/A accuracy, log loss, Brier score
-- [ ] Accessible from Predictions view (button in accuracy panel)
+- [x] `BacktestRunner` class — takes completed match array, runs ensemble on each
+- [x] Reports: overall accuracy %, H/D/A accuracy, log loss, Brier score
+- [x] 15 unit tests covering metrics, probability extraction, progress callbacks, error handling
+- [ ] Accessible from Predictions view (button in accuracy panel) — UI integration deferred to P2f-UI
 
 ### P2g. Kelly Auto-Suggestions
 
@@ -211,20 +251,56 @@ Two-tier approach: **P3-Free** builds a lean XGBoost model trained on ~73 featur
 
 ### P3-Free. Free-Tier ML Model (separate entry point)
 
-Standalone XGBoost model trained on ~73 features available from the free API tier. Completely separate from the full 150-feature pipeline (P3a-P3c), which is kept for future Pro API use. This is the model used for all testing and initial deployment.
+Standalone ML model trained on features available from the free API tier. Completely separate from the full 150-feature pipeline (P3a-P3c), which is kept for future Pro API use. This is the model used for all testing and initial deployment.
 
-**Architecture:** `FreeTierFeatureEngineer` wraps `AdvancedFeatureEngineer` via composition (not subclassing) and cherry-picks only the ~73 methods that return real computed data — no stubs, no flags polluting the existing class. The two tiers are fully decoupled.
+**Architecture:** `FreeTierFeatureEngineer` wraps `AdvancedFeatureEngineer` via composition (not subclassing) and cherry-picks only the methods that return real computed data — no stubs, no flags polluting the existing class. The two tiers are fully decoupled.
 
-**Features used (~73):** Basic stats (12), Form & momentum (20), H2H (15), Contextual (12), Time series (9), Derived (5) — all computable from match results, standings, and dates available on the free API.
+**Features used (~83):** Basic stats (12), Form & momentum (20), H2H (15), Contextual (12), Time series (9), Derived (5), Half-time (3–5), Match stats from history (5–7: cards, corners, fouls, shots rolling averages) — all computable from match results, standings, and dates available on the free API.
+
+**New features identified (audit 18 March 2026):**
+
+- [ ] Half-time goals scored avg (home/away) — free API returns `match.score.halfTime`; CSVs have `HTHG`/`HTAG`
+- [ ] Half-time form last N — rolling points from `HTR` (half-time result)
+- [ ] Half-time momentum — HT form last 5 minus HT form last 10
+- [ ] Yellow cards rolling avg (last 5) — CSVs have `HY`/`AY`; free API returns card data in match details
+- [ ] Corners rolling avg (last 5) — CSVs have `HC`/`AC`; implement `_calculate_corners_for/against`
+- [ ] Fouls rolling avg (last 5) — CSVs have `HF`/`AF`
+- [ ] Shots per game rolling avg — CSVs have `HS`/`AS`; implement `_calculate_shots_per_game`
+- [ ] Shot accuracy rolling avg — CSVs have `HST`/`AST`; implement `_calculate_shot_accuracy`
+- [ ] Goal difference trend (rolling std of GF-GA over last 10) — derivable from scores
+- [ ] Clean sheet streak (current consecutive) — derivable from scores
 
 **Files:**
 
-- [ ] `backend/app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class (~73 features via composition over `AdvancedFeatureEngineer`)
+- [ ] `backend/app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class (~83 features via composition over `AdvancedFeatureEngineer`)
 - [ ] `backend/tests/test_free_tier_features.py` — feature unit tests (no stubs leak through, no data leakage, team name normalisation)
 - [ ] `backend/train_free_tier.py` — training script (CSVs → `FreeTierFeatureEngineer` → `XGBoostPredictor` → `xgboost_free_tier.joblib`)
 - [ ] `backend/tests/test_train_free_tier.py` — training integration tests (chronological split, model save/load with metadata)
 - [ ] `backend/app/api/main.py` — add `POST /predict/free` + `GET /models/free-tier/info` endpoints
 - [ ] `backend/tests/test_predict_free_tier.py` — API endpoint tests (response shape, validation, rate limiting)
+
+**Logistic regression baseline:**
+
+- [ ] Train a logistic regression model on the same free-tier features alongside XGBoost
+- [ ] Compare accuracy, log loss, and feature importances between the two
+- [ ] Report in training output: "XGBoost accuracy: X% vs Logistic Regression baseline: Y% (+Z% lift)"
+- [ ] Keep LR as a sanity check — if XGBoost isn't beating LR by >3%, investigate feature engineering
+
+**Evaluation metrics (beyond accuracy):**
+
+- [ ] Log loss (already computed during training — report it)
+- [ ] Brier score (average squared error of probabilities per class)
+- [ ] Calibration curve (predicted probability vs actual win rate — save as PNG)
+- [ ] Confusion matrix (H/D/A classification errors — print and save)
+- [ ] ROI simulation (if betting on all predictions at estimated odds, what's the return?)
+- [ ] Per-class AUC-ROC (one-vs-rest)
+
+**Data quality checks (added to training script):**
+
+- [ ] Log rows dropped by `dropna()` — flag if >2% of matches lost
+- [ ] Print class distribution (H/D/A split) — flag if draws <20% or >35%
+- [ ] Verify all 6 season CSVs loaded with expected row counts
+- [ ] Team name consistency check across seasons (promoted/relegated mapping)
 
 **Security (scoped to this feature):**
 
@@ -341,10 +417,13 @@ Priority features to implement with real data:
 - [ ] Fix `ApiSetupWizard.svelte` Step 3 single-option auto-advance
 - [ ] Update `Help.svelte` accuracy claim "60-65%" to use real `predictionTracker` stat
 - [ ] Update `Help.svelte` to remove push notifications / offline caching claims (they don't exist)
-- [ ] **NEW**: `Help.svelte` claims "three-model system" — actual production model is 5-component ensemble
-- [ ] **NEW**: `Help.svelte` claims "5-minute refresh" — actual polling is adaptive (30s/5min/30min)
-- [ ] **NEW**: `Help.svelte` says "export functionality is planned" — BettingHistory export is already implemented
-- [ ] **NEW**: `Help.svelte` mentions xG on dashboard — xG unavailable on free tier
+- [ ] **NEW**: `Help.svelte` claims "three-model system" — actual production model is 5-component ensemble — **moved to P1f (critical)**
+- [ ] **NEW**: `Help.svelte` claims "5-minute refresh" — actual polling is adaptive (30s/5min/30min) — **moved to P1f (critical)**
+- [ ] **NEW**: `Help.svelte` says "export functionality is planned" — BettingHistory export is already implemented — **moved to P1f (critical)**
+- [ ] **NEW**: `Help.svelte` mentions xG on dashboard — xG unavailable on free tier — **moved to P1f (critical)**
+- [ ] **NEW**: `StandingsTable.svelte` movement arrows need tooltip explaining they're form-based ("Based on recent form"), not actual position change
+- [ ] **NEW**: `Dashboard.svelte` "How We Predict" section lists 4 models but actual model uses 5 components — update copy
+- [ ] **NEW**: Glassmorphism `.card-glass` over hero section's blurred bubbles creates double-blur — use solid `.card` for nested content
 
 ### P4b. Accessibility (spec 07: 0 of 5 ARIA requirements met)
 
@@ -358,6 +437,8 @@ Priority features to implement with real data:
 - [ ] **NEW**: `LiveTicker.svelte` has no way to pause scrolling animation (WCAG 2.2.2)
 - [ ] **NEW**: `Predictions.svelte` progress bar has no `role="progressbar"` or `aria-valuenow`
 - [ ] **NEW**: `ChatBot.svelte` message list has no `aria-live="polite"` for new responses
+- [ ] **NEW**: Prediction flip cards have no `aria-label` or focus indicator — keyboard users can't tell when a card is selected
+- [ ] **NEW**: Win/loss indicators use colour only (green/red) — add icons for colourblind users (WCAG 1.4.1)
 
 ### P4c. Component Data Accuracy Cleanup
 

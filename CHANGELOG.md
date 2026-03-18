@@ -4,6 +4,15 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2f Backtest Runner — Complete (18 March 2026)
+- **New file `backtest.ts`**: `BacktestRunner` class runs completed matches through the ensemble predictor retrospectively, comparing predicted vs actual results
+- **Metrics**: overall accuracy %, per-outcome accuracy (H/D/A), log loss (calibration), Brier score (probability quality)
+- **Probability extraction**: reverses `valueOdds` (margin 1.05) back to normalised probabilities; falls back to confidence-based split when `valueOdds` absent
+- **Progress callback**: reports `(completed, total)` after each match for UI integration
+- **Error resilience**: skipped matches (prediction failures) still report progress; metrics computed from successful predictions only
+- **15 new tests** in `backtest.test.ts` covering accuracy, per-outcome breakdown, probability extraction, log loss (perfect + wrong), Brier score (perfect + worst case + uniform), progress callbacks, error handling, historical match exclusion, referee pass-through
+- **Test count 297 → 312**: 17 test files, 312/312 passing, 0 type errors
+
 ### P2d Component Unit Tests — Partial (18 March 2026)
 - **Test count 275 → 297**: 22 new tests across 3 new test files (16 total test files now)
 - **`LiveMatches.test.ts`** (7 tests): header render, loading spinner, tab display after load, auto-switch to upcoming, error state with Try Again, recent match display with auto-switch, service call verification
