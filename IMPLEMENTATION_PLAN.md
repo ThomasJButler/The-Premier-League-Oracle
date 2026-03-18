@@ -206,7 +206,7 @@ No frontend code calls the Python backend. **0 of 8 acceptance criteria from spe
 Key discovery: `onMount` doesn't fire in jsdom with @testing-library/svelte 5.x + Svelte 4. Workaround: `export` the init function and call via `(component as any).method()` (same pattern as Dashboard.test.ts).
 
 Still missing:
-- [ ] `Predictions.svelte` — generate, gameweek nav, Kelly stake display
+- [x] `Predictions.svelte` — 14 tests: header, gameweek selector, predict button, 38 options, loading spinner, match loading, API error, completed gameweek message, gameweek filtering, accuracy panel show/hide, team logos, predictor call, prediction storage
 - [ ] `ChatBot.svelte` — API key setup, message send/receive, context building
 - [ ] IndexedDB cache layer — completely untested
 

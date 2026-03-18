@@ -4,6 +4,13 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### P2d Predictions Component Tests — Partial (18 March 2026)
+- **New `Predictions.test.ts`** — 14 tests covering the core prediction view
+- Tests: header render, gameweek selector with 38 options, Predict Gameweek button, loading spinner, match loading by gameweek, API error state, completed gameweek message, gameweek filtering (only shows selected week), accuracy panel visibility, team logos, OptimizedPredictor integration, predictionTracker storage
+- Added `export` to `loadGameweekMatches()` and `predictGameweek()` for testability
+- Full BetBuilderPrediction mock matching the complete interface shape
+- **Test count 332 → 346**: 19 test files, 346/346 passing, 0 type errors
+
 ### P1f Frontend UX Critical Fixes — Partial (18 March 2026)
 - **Help.svelte rewritten** — replaced "Three-Model System" with accurate "Five-Component Ensemble" showing ELO (25%), Poisson (30%), Form (20%), H2H (10%), Standings (15%) with weight badges; removed xG model (unavailable on free tier); corrected polling frequency, export status, accuracy claims, mobile features
 - **Dashboard hero** — "Live Predictions" label → "Match Predictions"; hardcoded hex colours (`#0f172a`, `#111827`) → theme-aware Tailwind classes (`from-slate-900 via-gray-900 to-slate-800` with dark variants); description updated to reference five-component ensemble

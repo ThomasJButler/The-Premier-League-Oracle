@@ -45,7 +45,7 @@
   let currentProcessingTeam = '';
   let totalGameweeks = 38; // Updated from API season data if available
 
-  async function loadGameweekMatches(gameweek: number) {
+  export async function loadGameweekMatches(gameweek: number) {
     loading = true;
     error = null;
     predictions = [];
@@ -99,7 +99,7 @@
     }
   }
   
-  async function predictGameweek() {
+  export async function predictGameweek() {
     if (isBatchPredicting) return;
     
     isBatchPredicting = true;
