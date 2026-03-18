@@ -100,7 +100,9 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- See `IMPLEMENTATION_PLAN.md` for the prioritised task list
+- **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Free-tier ML model ready to train** — `cd backend && python train_free_tier.py` (86 features, 62 tests, API endpoints wired)
+- **Remaining work:** P2 partial (Docker, backend deps, CI), P5 hardening (rate limiter, test quality, type safety), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
 

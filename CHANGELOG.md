@@ -4,6 +4,12 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
+### Documentation Restructure (18 March 2026)
+- **IMPLEMENTATION_PLAN.md slimmed:** Archived all completed P0–P4 work (reduced from ~1,140 lines to ~480 lines). Now contains only remaining/pending work and deferred Pro-tier items
+- **Project completion assessed:** ~82% of v3.0 scope complete. Pro-tier backend (P3a–d) deferred as future work
+- **Free-tier ML readiness confirmed:** Pipeline complete — `cd backend && python train_free_tier.py` to generate first model. 86 features, 62 tests, API endpoints all wired
+- **Stale items cleaned:** Removed 5 duplicate/corrected `[ ]` items (already-fixed gitignore, duplicate WebSocket entries, corrected Prediction type diagnosis)
+
 ### Spec 07 — shadcn Component Wiring (26 March 2026)
 - **Button migration:** Replaced all `.btn-*` CSS classes with shadcn `<Button>` across 5 components (Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions). Variant mapping: `.btn-primary` → default, `.btn-secondary` → secondary, `.btn-outline` → outline, `.btn-ghost` → ghost. `.btn-neon` kept as class override for glow effect CTA
 - **Card migration:** Wrapped 10 `.card-glass` divs with shadcn `<Card class="card-glass">` in Dashboard (8 cards) and ChatBot (2 cards). Glassmorphism aesthetic preserved via class layering
