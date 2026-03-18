@@ -58,13 +58,14 @@ E2E coverage expanded from 27 tests (2 skipped) to 43 unique tests × 3 viewport
 
 - [ ] "Last updated" indicator — deferred (requires data layer changes to track cache freshness)
 
-**Remaining Help.svelte inaccuracies (discovered in audit):**
+**Remaining Help.svelte inaccuracies — DONE (19 March 2026):**
 
-- [ ] "Offline data caching" claim — IndexedDB cache exists but no Service Worker; this isn't offline capability
-- [ ] FAQ "CSV export button" — `BettingHistory.svelte` exports JSON, not CSV
-- [ ] "Value Bets > Historical performance" — aspirational, feature doesn't exist
-- [ ] "Golden Rules" accuracy claims ("75-85%", "15% drop", "+15% manager bounce") — made-up figures not backed by any model measurement
-- [ ] "Bounce-Back Effect" — presented as model insight, but no such logic exists in the prediction engine
+- [x] "Offline data caching" → "Local data caching" — IndexedDB is a browser cache, not offline capability
+- [x] FAQ "CSV export button" → "JSON export button" — BettingHistory exports JSON, not CSV
+- [x] "Value Bets > Historical performance" → "Track placed bets" — the actual feature
+- [x] "Golden Rules" accuracy claims → removed specific percentages ("75-85%"), replaced with "check the Predictions accuracy panel"
+- [x] "Bounce-Back Effect" and "New Manager Bounce" → replaced with practical advice ("Fixture Difficulty" and "Use the Backtest") that reflects actual model features
+- [x] FAQ "offline viewing" answer → clarified there is no full offline mode, just browser caching
 
 ### P1h. CodeRabbit Unfixed — High Priority (18 March 2026)
 
@@ -128,9 +129,9 @@ All 5 probability and UX bugs fixed. 378/378 tests passing, 0 type errors.
 
 - [x] `footballData.ts:189`: HTTP 403 now parses the response body and checks for rate-limit keywords (`rate`, `limit`, `quota`, `too many`). Rate-limit 403s show "Rate limit exceeded — please wait and try again" instead of "API authentication failed". Also added explicit HTTP 429 handling as a separate branch
 
-### P1o. Backend `/standings` Endpoint Crashes at Runtime — NEW (18 March 2026, fourth audit)
+### P1o. Backend `/standings` Endpoint Crashes at Runtime — DONE (19 March 2026)
 
-- [ ] `main.py` `/standings` endpoint calls `oracle.data_collector.get_standings()` which returns a `pd.DataFrame`. FastAPI attempts to serialise this to JSON, raising `TypeError` because `pd.DataFrame` is not JSON-serialisable. Fix: convert to `.to_dict(orient='records')` before returning
+- [x] `main.py` `/standings` endpoint: added `standings.to_dict(orient='records')` conversion with `hasattr` guard — `pd.DataFrame` is now properly serialised to a list of dicts before FastAPI returns it as JSON
 
 ### P1p. dataService `getTeamForm` Cache Key Bug — DONE (19 March 2026)
 

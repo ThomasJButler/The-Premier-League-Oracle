@@ -4,6 +4,10 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P1f, P1o — Help.svelte Inaccuracies and Backend Fix (19 March 2026)
+- **Help.svelte text corrections:** Removed made-up accuracy figures ("75-85%", "15% drop", "+15% manager bounce"), replaced "Bounce-Back Effect" and "New Manager Bounce" with practical advice ("Fixture Difficulty", "Use the Backtest"). Fixed "Offline data caching" → "Local data caching", "CSV export" → "JSON export", "Historical performance" → "Track placed bets", clarified FAQ offline answer
+- **Backend /standings crash fixed:** `main.py` `/standings` endpoint now converts `pd.DataFrame` to `list[dict]` via `.to_dict(orient='records')` before FastAPI JSON serialisation
+
 ### P1k, P1m, P1n, P1p — Data Layer and Storage Fixes (19 March 2026)
 - **Prediction storage `was_correct` removed:** `Predictions.svelte` no longer sets `was_correct: false` when creating the view-level prediction object — correctness is only determined later by `predictionTracker.updateWithResult()`. Made `was_correct` optional on the `Prediction` type
 - **Cache TTL mismatches fixed:** `dataService.ts` `getHistoricalMatches` now passes 24h TTL (was using 5-minute default despite "24h cache" comment). `getTeamRecentMatches` now passes 30min TTL (was using 5-minute default despite "30min cache" comment)

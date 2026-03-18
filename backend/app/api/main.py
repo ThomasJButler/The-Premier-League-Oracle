@@ -407,8 +407,11 @@ async def get_standings():
     
     try:
         standings = oracle.data_collector.get_standings()
+        # get_standings() returns a pd.DataFrame — convert to list of dicts
+        # so FastAPI can serialise it to JSON
+        standings_data = standings.to_dict(orient='records') if hasattr(standings, 'to_dict') else standings
         return {
-            'standings': standings,
+            'standings': standings_data,
             'timestamp': datetime.now().isoformat()
         }
     except Exception as e:
