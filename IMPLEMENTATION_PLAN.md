@@ -123,7 +123,7 @@ All 5 probability and UX bugs fixed. 378/378 tests passing, 0 type errors.
 
 **footballData double-cache architecture — deferred (P3):**
 
-- [ ] The `FootballDataAPI` in-memory `Map` cache and `dataService` IndexedDB cache operate independently with separate TTLs. After `setApiKey()`, only the in-memory cache clears but IndexedDB retains stale entries. Consider consolidating or adding IndexedDB invalidation on key change
+- [x] The `FootballDataAPI` in-memory `Map` cache and `dataService` IndexedDB cache operate independently with separate TTLs — **FIXED:** both API key change paths (Settings test flow and ApiSetupWizard completion) now call `dataService.clearCache()` to invalidate IndexedDB alongside `footballDataAPI.setApiKey()` which clears the in-memory cache. Both layers are flushed on key change
 
 ### P1n. footballData API Error Misidentification — DONE (19 March 2026)
 

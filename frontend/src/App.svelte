@@ -83,10 +83,9 @@
     const { dataService } = await import('./services/dataService');
     const { footballDataAPI } = await import('./services/api/footballData');
     
-    // Set the API key in the Football Data API
+    // Set the API key and clear any stale cached data
     footballDataAPI.setApiKey(event.detail.apiKey);
-    
-    // Refresh data source availability
+    await dataService.clearCache();
     await dataService.refreshApiConfiguration();
     
     // API key setup completed successfully
