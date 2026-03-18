@@ -249,7 +249,7 @@ Created `vercel.json` with build command, output directory, and SPA catch-all re
 - [x] Added `homeWinRate` field to `LeagueAverages` interface with 0.46 fallback for zero-data case
 - [x] Fixed `FatigueAnalyzer.getFatigueMultiplier()` zero-multiplier bug — floored `restDays` at 0.5 to prevent division-by-zero in Poisson lambda calculation
 - [x] Fixed test timing race in `optimizedPredictions.test.ts` — mock match dates now use "yesterday" instead of `new Date()` to avoid flaky `calculateRestDays` filtering
-- [ ] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — these are fallback values when no referee data is available; kept as-is since `RefereeAnalyzer` doesn't have access to league-wide stats context
+- [x] `advancedPredictions.ts`: default referee stats `avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46` — **REVIEWED:** these are sensible fallbacks when no referee data is available. When data IS available, `getRefereeStats` computes real averages from match data. Only `avgPenalties: 0.2` is permanently stubbed (no penalty data in Match type)
 
 ### P2n. CI/CD Pipeline — DONE (19 March 2026)
 
@@ -647,7 +647,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] `bothCleanSheets: { prediction: false }` unconditional — FIXED (now uses threshold)
 - [x] Win-to-nil probability hardcoded 0.30 — FIXED (now derived from favProb × favCleanSheet)
 - [x] Replace `avgCorners: 9.5` and `expectedCards: 3.2` with league averages from match data — **DONE:** `computeLeagueAverages()` derives corners, cards, and first-half goals from historical matches. Falls back to hardcoded defaults when data is unavailable (free tier returns null for corners/cards, but half-time scores are available)
-- [ ] Market correlation in combo probability (e.g. clean sheet + over 2.5 negatively correlated)
+- [x] Market correlation in combo probability — **DONE:** `correlationAdjustment()` boosts positively correlated markets (BTTS + Over 2.5: +15%) and penalises negatively correlated ones (clean sheet + high scoring: -15%). Applied to Value Builder and Goals Galore combos
 - [x] `'Over 1.5 first half goals'` probability hardcoded as `0.35` — **DONE:** now derived from half-time scores in `computeLeagueAverages()` (fallback 0.35 when no data)
 - [x] Rivalry list includes Championship teams (West Brom, Birmingham City, Sunderland) that will never appear in PL API data — **FIXED:** replaced with current PL rivalries (Newcastle/Everton, Villa/Wolves, Crystal Palace/Brighton)
 
@@ -662,7 +662,7 @@ When `use_backend` is enabled in localStorage and the ML backend is reachable, t
 - [x] ~~`Sidebar.svelte` has inline `style` with `rgba(0, 255, 135, 0.15)`~~ **FIXED:** replaced with `hsl(var(--primary) / 0.15)` so the logo border tracks the theme's primary colour
 - [x] ~~`Predictions.svelte` progress bar uses hardcoded hex~~ **FIXED:** replaced `from-[#00cc6a] to-[#00ff87]` with `from-primary/80 to-primary` to track theme colour
 - [x] ~~`LiveTicker.svelte` live dot uses hardcoded `background: #ef4444`~~ **FIXED:** replaced with `hsl(var(--destructive))` so the live indicator tracks the theme
-- [ ] `Dashboard.svelte` hero section is always dark regardless of theme (intentional? or should adapt)
+- [x] `Dashboard.svelte` hero section is always dark regardless of theme — **FIXED:** added light-mode base classes (slate-100/white/blue-50 gradient, slate-900 text, slate-200 borders) alongside existing dark: variants
 - [x] ~~`tailwind.config.js` declares custom fonts `Figtree` and `Outfit` in `fontFamily` but no Google Fonts import or self-hosted font assets exist~~ **CORRECTED (fifth audit):** `index.html` properly loads both Figtree and Outfit via Google Fonts with lazy-load pattern + `<noscript>` fallback. Fonts are working correctly
 - [x] ~~`tailwind.config.js` uses CommonJS `require('@tailwindcss/forms')` in ESM context~~ **FIXED:** replaced with ESM `import forms from '@tailwindcss/forms'`. Also replaced `glow-green` box-shadow `rgba(0, 255, 135, 0.25)` with `hsl(var(--primary) / 0.25)`
 
