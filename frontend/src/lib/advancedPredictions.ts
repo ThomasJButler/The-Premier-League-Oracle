@@ -303,31 +303,6 @@ export class EloRatingSystem {
   }
 }
 
-// Expected Goals (xG) Calculator
-export class ExpectedGoalsCalculator {
-  static async calculateMatchXG(matchId: string): Promise<{ homeXG: number; awayXG: number }> {
-    // This would fetch shot data from the database
-    // For now, we'll estimate based on shots and shots on target
-    try {
-      const matches = await dataService.getMatches();
-      const match = matches.find(m => m.id === matchId);
-
-      if (!match) return { homeXG: 0, awayXG: 0 };
-
-      // Simplified xG calculation based on available data
-      const homeXG = (match.home_shots_target || 0) * 0.38 + 
-                     ((match.home_shots || 0) - (match.home_shots_target || 0)) * 0.03;
-      const awayXG = (match.away_shots_target || 0) * 0.38 + 
-                     ((match.away_shots || 0) - (match.away_shots_target || 0)) * 0.03;
-
-      return { homeXG, awayXG };
-    } catch (error) {
-      // Error calculating match xG
-      return { homeXG: 0, awayXG: 0 };
-    }
-  }
-}
-
 // Fixture Congestion & Fatigue Analysis
 export class FatigueAnalyzer {
   static async calculateRestDays(teamName: string, matchDate: Date, allMatches?: Match[]): Promise<number> {
