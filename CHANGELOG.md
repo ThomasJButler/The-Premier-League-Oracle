@@ -4,6 +4,27 @@ All notable changes to The Premier League Oracle are documented here.
 
 ## [Unreleased] - v3.0-Frontend Branch
 
+### P4b — Accessibility Improvements (20 March 2026)
+- **Chart accessibility:** Dashboard line chart and BettingHistory bar chart containers now have `role="img"` and descriptive `aria-label` attributes for screen readers
+- **LiveMatches tab pattern:** Tab navigation uses proper ARIA pattern — `role="tablist"` on container, `role="tab"` + `aria-selected` + `aria-controls` on each button
+- **LiveTicker marquee semantics:** Added `role="marquee"`, `aria-live="off"`, `aria-hidden` on scrolling content, and `.sr-only` static summary for screen readers
+- **Help.svelte navigation:** Section buttons get `aria-current="page"` when active; mobile menu toggle gets `aria-expanded` and `aria-label`
+- **SeasonStats cursor fix:** Removed misleading `cursor-pointer` from non-interactive stat cards
+
+### P4e — CSS & Theme Polish (20 March 2026)
+- **LiveTicker live dot:** Replaced hardcoded `#ef4444` with `hsl(var(--destructive))` to track theme
+- **Sidebar logo border:** Replaced `rgba(0, 255, 135, 0.15)` with `hsl(var(--primary) / 0.15)` to track primary colour
+- **Predictions progress bar:** Replaced `from-[#00cc6a] to-[#00ff87]` with `from-primary/80 to-primary` to track theme
+- **Tailwind config:** Fixed CommonJS `require('@tailwindcss/forms')` → ESM `import`, replaced `glow-green` rgba with `hsl(var(--primary) / 0.25)`
+
+### P4f/P4c — Dead Code, Constants, Infrastructure (20 March 2026)
+- **BettingHistory loading spinner:** Removed invisible `{#if loading}` block — synchronous localStorage reads complete before DOM repaint
+- **`refreshDataSources` removed:** Dead method on dataService (no component called it). Tests updated to use `refreshApiConfiguration()` directly
+- **ApiSetupWizard stale comments:** Removed redundant step descriptions
+- **`DEFAULT_HOME_WIN_RATE` constant:** Extracted hardcoded `0.46` to `lib/constants.ts`, imported by optimizedPredictions.ts and advancedPredictions.ts
+- **Chunk splitting:** Added Vite `manualChunks` — Chart.js (180KB) and vendor deps (50KB) split into separate chunks. Main bundle reduced 687KB → 458KB
+- **Plan corrections:** VALUE_ODDS_MARGIN already extracted, calculateCLV already removed, BettingHistory `<style global>` already cleaned, predictions.ts shadow types resolved by module deletion, `getTeamByName` not dead (used by `getTeamForm`), `getTopOutcome`/`determinePrediction` not redundant (different signatures)
+
 ### P4f — Dead Parameters, Dead Fields, Null Coalesce Fix (20 March 2026)
 - **`calculateFormScore` cleaned up:** Removed unused `isHome` parameter — function body never references it
 - **`getEnhancedTeamStats` form field removed:** Dead output field `form: '?????'` and `form: standing.form` — no caller reads it
