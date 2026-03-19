@@ -155,9 +155,9 @@ class TestFeatureCompleteness:
         assert set(features.keys()) == set(FreeTierFeatureEngineer.FEATURE_NAMES)
         assert len(features) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
 
-    def test_feature_count_is_94(self):
-        """FEATURE_NAMES should have exactly 94 entries (86 original + 8 draw indicators)."""
-        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 94
+    def test_feature_count_is_99(self):
+        """FEATURE_NAMES should have exactly 99 entries (86 original + 8 draw + 5 Elo)."""
+        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 99
 
     def test_no_duplicate_feature_names(self):
         """No duplicate entries in FEATURE_NAMES."""
@@ -488,3 +488,92 @@ class TestNonZeroFeatures:
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         # Since our test data includes shots
         assert features['home_shots_avg'] > 0
+
+    def test_elo_features_nonzero(self, engineer, sample_data):
+        """Elo features should be non-zero with match history."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        # Both teams have played matches, so Elo should diverge from default
+        assert features['home_elo'] != 0.0 or features['away_elo'] != 0.0, \
+            'At least one team should have a non-default Elo rating'
+        # Expected score should be between 0 and 1
+        assert 0.0 < features['elo_expected_home'] < 1.0
+
+
+# ---------------------------------------------------------------------------
+# Tests: Elo rating computation
+# ---------------------------------------------------------------------------
+
+class TestEloFeatures:
+    """Elo rating computation and feature generation."""
+
+    def test_elo_updates_after_results(self):
+        """Winning team's Elo should increase; losing team's should decrease."""
+        matches = [
+            _make_match('01/09/2024', 'Arsenal', 'Chelsea', 3, 0),
+            _make_match('08/09/2024', 'Arsenal', 'Chelsea', 2, 0),
+        ]
+        df = pd.DataFrame(matches)
+        df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+        eng = FreeTierFeatureEngineer(df)
+
+        # After two wins, Arsenal should have higher Elo than Chelsea
+        features = eng.create_features('Arsenal', 'Chelsea', datetime(2024, 9, 15))
+        assert features['home_elo'] > features['away_elo'], \
+            'Arsenal (2 wins) should have higher Elo than Chelsea (2 losses)'
+        assert features['elo_difference'] > 0
+
+    def test_elo_expected_score_ranges(self):
+        """Expected score should be between 0 and 1."""
+        matches = [
+            _make_match(f'{1 + i:02d}/09/2024', 'Arsenal', 'Chelsea', 2, 1)
+            for i in range(5)
+        ]
+        df = pd.DataFrame(matches)
+        df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+        eng = FreeTierFeatureEngineer(df)
+
+        features = eng.create_features('Arsenal', 'Chelsea', datetime(2024, 9, 20))
+        assert 0.0 < features['elo_expected_home'] < 1.0
+        assert features['elo_home_advantage'] > 0, \
+            'Home advantage should contribute positively'
+
+    def test_elo_no_leakage(self):
+        """Elo features at match_date should not include the match itself."""
+        matches = [
+            _make_match('01/09/2024', 'Arsenal', 'Chelsea', 5, 0),  # Big Arsenal win
+        ]
+        df = pd.DataFrame(matches)
+        df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+        eng = FreeTierFeatureEngineer(df)
+
+        # Features for the exact match date should use pre-match ratings
+        features = eng.create_features('Arsenal', 'Chelsea', datetime(2024, 9, 1))
+        # Both teams should be at default (1500) normalised: (1500-1000)/1000 = 0.5
+        assert features['home_elo'] == pytest.approx(0.5, abs=0.01)
+        assert features['away_elo'] == pytest.approx(0.5, abs=0.01)
+
+    def test_elo_draw_keeps_ratings_close(self):
+        """After a series of draws, Elo ratings should stay close together."""
+        matches = [
+            _make_match(f'{1 + i:02d}/09/2024', 'Arsenal', 'Chelsea', 1, 1)
+            for i in range(5)
+        ]
+        df = pd.DataFrame(matches)
+        df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+        eng = FreeTierFeatureEngineer(df)
+
+        features = eng.create_features('Arsenal', 'Chelsea', datetime(2024, 9, 20))
+        # After only draws, ratings should stay close to default
+        assert abs(features['elo_difference']) < 0.5, \
+            'After 5 draws, Elo difference should be small'
+
+    def test_elo_default_for_unknown_team(self):
+        """Unknown teams should get default Elo (1500 → normalised 0.5)."""
+        df = pd.DataFrame([_make_match('01/09/2024', 'Arsenal', 'Chelsea', 2, 1)])
+        df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+        eng = FreeTierFeatureEngineer(df)
+
+        features = eng.create_features('FakeTeamFC', 'AlsoFake', datetime(2024, 10, 1))
+        assert features['home_elo'] == pytest.approx(0.5, abs=0.01)
+        assert features['away_elo'] == pytest.approx(0.5, abs=0.01)

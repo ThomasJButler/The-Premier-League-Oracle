@@ -2,6 +2,22 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — Elo-based features for ML (5 new features, 94→99 total)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Feature engineering (`free_tier_features.py`)
+- **5 Elo-based features added:** `home_elo`, `away_elo`, `elo_difference`, `elo_expected_home`, `elo_home_advantage`. Implements the same algorithm as the frontend (`K=32`, home advantage `65`, default `1500`)
+- **Precomputed Elo ratings:** `_precompute_elo()` walks the match DataFrame once (O(n)) in `__init__`, storing pre-match ratings keyed by row index. `_elo_features()` looks up ratings in O(1) — no repeated traversals during training
+- **Normalisation for ML:** Raw Elo (typically 1200–1900) normalised to ML-friendly ranges: `home_elo`/`away_elo` → `(rating - 1000) / 1000`, `elo_difference` → `(home - away) / 400`, `elo_expected_home` → already [0, 1]
+- **Live inference fallback:** When predicting a future match not in the training data, uses the latest known ratings from the end of the dataset
+
+### Backend tests
+- **6 new Elo tests:** Elo update direction after wins, expected score ranges, no-leakage (pre-match only), draw stability, unknown team defaults, non-zero features with history
+- Test count: 67 → 73
+
+---
+
 ## 30 March 2026 — Backend API hardening (security + deprecation fixes)
 
 **Branch:** `v3.0-BackendMLTraining`

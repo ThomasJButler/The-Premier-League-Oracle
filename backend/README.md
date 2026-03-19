@@ -6,9 +6,9 @@
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
 | Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
-| Free-tier feature engineering | 94 features, standalone, no heavy deps |
+| Free-tier feature engineering | 99 features, standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Scaffolded — explicitly deferred, not trained |
-| Backend tests | **67 tests across 3 files — all passing** |
+| Backend tests | **73 tests across 3 files — all passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -30,7 +30,7 @@ backend/
 │   ├── api/
 │   │   └── main.py                       # FastAPI server
 │   ├── features/
-│   │   ├── free_tier_features.py         # 94-feature pipeline (active)
+│   │   ├── free_tier_features.py         # 99-feature pipeline (active)
 │   │   └── advanced_engineering.py       # 150+ feature pipeline (Pro-tier, deferred — 63 methods return 0.0)
 │   ├── models/
 │   │   ├── xgboost_model.py              # XGBoost (Pro-tier wrapper, unused at runtime)
@@ -163,7 +163,7 @@ Current result: **51.0% accuracy** (3-class: home win / draw / away win).
 
 ### Feature engineering
 
-`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 94 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier). The CSV training data is richer than the live API, providing shots, corners, and cards columns that feed additional features during training.
+`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 99 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier). The CSV training data is richer than the live API, providing shots, corners, and cards columns that feed additional features during training.
 
 ---
 
@@ -184,8 +184,8 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-67 tests across 3 files, all passing:
-- `test_free_tier_features.py` — 39 tests covering the feature engineering pipeline
+73 tests across 3 files, all passing:
+- `test_free_tier_features.py` — 45 tests covering the feature engineering pipeline (incl. Elo ratings)
 - `test_train_free_tier.py` — 12 tests covering the training script
 - `test_predict_free_tier.py` — 16 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
 

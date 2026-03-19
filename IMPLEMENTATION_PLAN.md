@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-eighth update — main.py security/deprecation fixes)
+Last updated: 30 March 2026 (twenty-ninth update — Elo-based features for ML)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -14,7 +14,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 27/27 (100%) | ALL DONE — Docker fixed, CI coverage enforced, .env.example created |
-| P3-Free ML Pipeline | DONE | 94 features (incl. 8 draw indicators), 62 tests, API endpoints wired |
+| P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 73 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | ~47/49 (96%) | P5af backend paths, P5am Dockerfile non-root user |
@@ -114,7 +114,7 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 
 **Medium effort (likely significant impact):**
 - [x] **Draw-specific features** — 8 new features added to `free_tier_features.py`: `form_closeness`, `standings_closeness`, `home_draw_rate`, `away_draw_rate`, `combined_defensive_strength`, `low_scoring_indicator`, `h2h_draw_tendency`, `draw_streak_proximity`
-- [ ] **Elo-based features** — feed the frontend Elo ratings (already computed) into the backend feature engineer as additional inputs
+- [x] **Elo-based features** — 5 new features (`home_elo`, `away_elo`, `elo_difference`, `elo_expected_home`, `elo_home_advantage`). Precomputed O(n) running Elo ratings (K=32, home advantage=65, default 1500) matching the frontend algorithm. 6 new tests (batch 18)
 - [x] **Recency weighting** — `compute_sample_weights()` now applies exponential decay (0.85 per older season) alongside class weights. `build_dataset()` returns season labels; `train_xgboost()` passes them to sample weighting
 
 **Larger effort (for later):**
@@ -226,7 +226,7 @@ curl -X POST http://localhost:8000/predict/free \
 Additionally, the free-tier feature engineer is initialised with an empty DataFrame when CSVs are absent (gitignored). All features return `0.0` for live predictions with no warning.
 
 - [x] Log a clear warning when CSV data is unavailable and the engineer is running on empty data
-- [ ] Document how to obtain the CSV training data in the README or a setup script
+- [x] Document how to obtain the CSV training data in the README or a setup script — done in batch 16 (README updated with source URL, format, columns)
 
 ### P5c. Backend CI Pipeline — DONE
 

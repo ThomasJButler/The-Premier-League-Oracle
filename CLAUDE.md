@@ -65,7 +65,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `api/main.py` - FastAPI server with prediction endpoints
 - `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
 - `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
-- `features/free_tier_features.py` - Free-tier feature engineering (94 features incl. 8 draw indicators, standalone, fully functional)
+- `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo, standalone, fully functional)
 - `train_free_tier.py` - Free-tier training script (XGBoost + LR baseline, chronological split)
 - `data/football_data_collector.py` - Historical data collection
 - `security/` - Auth, secrets, validators
@@ -113,7 +113,7 @@ These specs are the single source of truth for requirements.
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200. Oracle ensemble model loading removed from startup (no `xgboost_model.pkl`, `lstm_model.pt`, `transformer_model.pt`). Frontend uses `/predict/free` endpoint exclusively
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
-- ~~Backend has 0% test coverage~~ **FIXED:** 67 backend tests across 3 files (39 feature engineering, 12 training pipeline, 16 API endpoints) — all passing. ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
+- ~~Backend has 0% test coverage~~ **FIXED:** 73 backend tests across 3 files (45 feature engineering incl. Elo, 12 training pipeline, 16 API endpoints) — all passing. ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
 - Frontend has 369 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
@@ -134,7 +134,7 @@ These specs are the single source of truth for requirements.
 - ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
 - ~~`ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML~~ **FIXED:** `renderMarkdown()` output now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist
 - ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
-- ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests with coverage enforcement (60/65/65/60 thresholds), and production build on push/PR to `main` and `v3.0-*` branches. Backend Python tests (67 tests via pytest) now also run in CI (P5c). Node version reads from `.nvmrc` instead of hardcoded `20` (P5g)
+- ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests with coverage enforcement (60/65/65/60 thresholds), and production build on push/PR to `main` and `v3.0-*` branches. Backend Python tests (73 tests via pytest) now also run in CI (P5c). Node version reads from `.nvmrc` instead of hardcoded `20` (P5g)
 - ~~`docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start~~ **FIXED:** stripped to just `oracle-api` service; Pro-tier services (Redis, MLflow, Postgres, Jupyter, Nginx) commented out (P2o)
 - ~~Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass~~ **FIXED:** tautological tests removed (18→4), conditional assertions made unconditional. ~~`predictions.test.ts` tests a dead module~~ **REMOVED** (P4f). `kelly.test.ts:240` guarded arb assertion also removed. See P4h in IMPLEMENTATION_PLAN.md
 - ~~`EloRatingSystem.processCompletedMatches()` exists but is never called~~ **FIXED:** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings auto-update when match results load
