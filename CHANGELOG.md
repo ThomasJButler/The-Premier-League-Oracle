@@ -2,6 +2,48 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Twentieth audit: comprehensive codebase review (P5h)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Discovered
+
+17 new items across 4 categories — all documented in `IMPLEMENTATION_PLAN.md` under P5h:
+
+**Real bugs (3):**
+- `KellyCalculator.svelte:431` — edge percentage double-multiplied by 100 (5% edge displays as 500%)
+- `optimizedPredictions.ts:676,749` — zero-guard fallbacks use magic `draw: 0.27` instead of a named constant
+- `check_imports.py:103-104` — `ModernPremierLeagueOracle` import check never actually imports the module
+
+**Accessibility (6):**
+- `StandingsTable.svelte` "Show All" button missing `aria-expanded`
+- `LiveTicker.svelte` uses deprecated `role="marquee"` (ARIA 1.2)
+- `ChatBot.svelte` "Clear chat" button missing `aria-label`
+- `Help.svelte` uses `aria-current="page"` for in-page section nav
+- `AccumulatorBuilder.svelte` selection buttons missing `aria-label`
+- `SeasonStats.svelte` stat cards lack `prefers-reduced-motion` guard
+
+**Type safety / code quality (4):**
+- `ChatBot.svelte:264` — `catch (err: any)` missed in P5g cleanup
+- `BettingHistory.svelte:195` — `ctx: any` in Chart.js callback
+- `BettingHistory.svelte` — vestigial `animation-delay` styles with no effect
+- `main.py:392` — `/predict` error handler leaks internal details
+
+**Consistency / documentation (4):**
+- `SEED_RATINGS` contains relegated teams, missing 2025/26 promoted teams
+- `Settings.svelte` `teamColors` hardcodes 2024/25 season teams
+- `Help.svelte` claims Dashboard has "Live standings"
+- `ApiSetupWizard.svelte` betting recommendation contradicts research-only disclaimer
+
+### Confirmed clean
+- All 8 specs: 100% of active acceptance criteria met (99/99)
+- Zero TODO/FIXME/HACK comments in codebase
+- 404 Vitest tests passing, 43 E2E tests passing, 86 backend tests passing
+- `svelte-check`: 0 errors, 0 warnings
+- Test count in `IMPLEMENTATION_PLAN.md` corrected from 402 to 404
+
+---
+
 ## April 2026 — Nineteenth audit: resolve all P5g findings (7 bugs)
 
 **Fixed all 7 remaining eighteenth audit bugs:**

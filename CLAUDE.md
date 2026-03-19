@@ -101,9 +101,10 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~85% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Project ~87% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **All 8 specs: 100% of active acceptance criteria met** (99/99). Pro-tier spec 08 Req 6 explicitly deferred.
 - **Free-tier ML model trained** — stacked OvR ensemble now trained alongside single XGBoost (51.0% accuracy baseline, model at `backend/models/xgboost_free_tier.joblib`). Ensemble uses 3 binary classifiers (H/D/A vs rest) with dedicated draw-class tuning + logistic regression meta-learner. `/predict/free` endpoint auto-uses ensemble when present. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
-- **Remaining work:** P1 ALL DONE, P2 partial (Docker, CI, deps, .gitignore), P5 hardening (CSS bugs, prediction quality, test quality, dead code), deferred Pro-tier (P3a–d)
+- **Remaining work:** P5h twentieth audit (17 items), deferred minor items (3), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
 
@@ -267,5 +268,24 @@ These specs are the single source of truth for requirements.
 - ~~`Predictions.svelte:62-64`: AI analysis maps (`analyses`, `loading`, `errors`) not cleared on gameweek load — stale AI analysis from previous gameweek shown for new matches~~ **FIXED:** all three maps now cleared on gameweek load (P5g)
 - ~~`optimizedPredictions.ts:484`: `getEnhancedTeamStats` marked `async` but contains no `await` — misleading signature~~ **FIXED:** unnecessary `async` removed (P5g)
 - ~~`StandingsTable.svelte` and `TopScorers.svelte`: `catch (err: any)` bypasses TypeScript's `unknown` type for caught errors~~ **FIXED:** both changed to `catch (err: unknown)` with proper type narrowing (P5g)
+
+- **Twentieth audit (April 2026) — 17 new items found (P5h):**
+- `KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100: `kelly.ts:72` computes `edgePercentage = edge * 100` (already a %), then template does `(calculation.edgePercentage * 100)` — displays 500% instead of 5%
+- `optimizedPredictions.ts:676,749` — zero-guard fallbacks use magic `draw: 0.27` instead of a named constant — will drift if `DEFAULT_HOME_WIN_RATE` changes
+- `check_imports.py:103-104` — `ModernPremierLeagueOracle` check never imports the module (try block only prints, always reports success)
+- `StandingsTable.svelte` — "Show All / Show Less" button missing `aria-expanded`
+- `LiveTicker.svelte:124` — `role="marquee"` deprecated in ARIA 1.2 (the `sr-only` + `aria-live="off"` pattern already handles accessibility)
+- `ChatBot.svelte:397` — "Clear chat" button uses `title` instead of `aria-label` (not reliably announced on touch devices)
+- `ChatBot.svelte:264` — `catch (err: any)` missed in P5g cleanup (StandingsTable/TopScorers were fixed but ChatBot was not)
+- `BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback (should be `TooltipItem<'bar'>`)
+- `BettingHistory.svelte:219-275` — `style="animation-delay"` on 6 summary cards has no effect (no animation class on individual cards; vestigial)
+- `SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United), missing 2025/26 promoted teams. Cold-start ELO priors wrong for new users
+- `Settings.svelte:33-42` — `teamColors` hardcodes 2024/25 season teams, will go stale on promotion/relegation
+- `Help.svelte:345` — claims Dashboard has "Live standings" (Standings is a separate view)
+- `ApiSetupWizard.svelte:309` — "Use Kelly Calculator for betting" contradicts "research and educational purposes only" disclaimer
+- `main.py:392` — `/predict` error handler leaks internal details via `detail=str(e)` (only affects permanently-503 oracle endpoints)
+- `Help.svelte:53` — `aria-current="page"` used for in-page section navigation (should be `aria-current="true"`)
+- `AccumulatorBuilder.svelte` — selection buttons use `title` instead of `aria-label`
+- `SeasonStats.svelte` — stat cards `hover:scale-105 transition-all` lacks `prefers-reduced-motion` guard
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

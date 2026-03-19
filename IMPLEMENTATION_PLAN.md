@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (thirty-third update — spec sync, plan cleanup)
+Last updated: April 2026 (thirty-fourth update — twentieth audit)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~85% Complete
+## Project Status: ~87% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -17,11 +17,13 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 86 tests, rolling CV, stacked ensemble, ELO leakage fixed |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | 56/56 (100%) | ALL DONE — P5g eighteenth audit items resolved |
+| P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
+| P5h Twentieth Audit | 0/17 (0%) | NEW — 17 items found (3 real bugs, 6 a11y, 4 type/code quality, 4 consistency) |
 
-**Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
+**All 8 specs:** 100% of active acceptance criteria met (99/99)
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
 
@@ -164,6 +166,43 @@ All issues fixed:
 - [x] `Predictions.svelte:62-64` — `aiAnalysisErrors` map never cleared on re-prediction (low) — **FIXED:** `loadGameweekMatches()` now clears all three AI analysis maps (analyses, loading, errors) on each gameweek load
 - [x] `optimizedPredictions.ts:484` — `getEnhancedTeamStats` is `async` but never calls `await` (low, code quality) — **FIXED:** removed unnecessary `async` keyword from `getEnhancedTeamStats` — callers already handle it correctly via `Promise.all`
 - [x] `StandingsTable.svelte` and `TopScorers.svelte` — `catch (err: any)` should be `catch (err: unknown)` (low) — **FIXED:** changed to `catch (err: unknown)` with `instanceof Error` narrowing before accessing `.message`
+
+### P5h. Twentieth Audit (April 2026) — 17 items
+
+**Real bugs (3):**
+
+- [ ] `KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100. `kelly.ts:72` computes `edgePercentage = edge * 100` (already a percentage), then the template does `(calculation.edgePercentage * 100).toFixed(1)%` — a 5% edge displays as `500.0%` (high, confirmed)
+- [ ] `optimizedPredictions.ts:676,749` — `combineModels` and `getStandingsProbabilities` zero-guard fallbacks use magic `draw: 0.27` instead of a named constant. If `DEFAULT_HOME_WIN_RATE` is ever changed, these fallbacks will be silently inconsistent (low, maintenance risk)
+- [ ] `check_imports.py:103-104` — `ModernPremierLeagueOracle` import check never actually imports the module — the `try` block only contains a `print()` call, so the check always reports success regardless of whether the module is importable (low)
+
+**Accessibility (6):**
+
+- [ ] `StandingsTable.svelte` — "Show All / Show Less" toggle button missing `aria-expanded` attribute — screen readers cannot determine current state (medium)
+- [ ] `LiveTicker.svelte:124` — `role="marquee"` is deprecated in ARIA 1.2. Should remove the role — the `aria-live="off"` + `sr-only` pattern already handles screen readers correctly (low)
+- [ ] `ChatBot.svelte:397` — "Clear chat" button has only a `title` attribute, no `aria-label`. `title` not reliably announced on touch devices (low)
+- [ ] `Help.svelte:53` — Section navigation uses `aria-current="page"` for in-page section switching — should be `aria-current="true"` (not actual page navigation) (low)
+- [ ] `AccumulatorBuilder.svelte` — Individual selection "Add" buttons have `title` but no `aria-label` — not reliably announced on touch devices (low)
+- [ ] `SeasonStats.svelte` — Stat cards use `hover:scale-105 transition-all` without `@media (prefers-reduced-motion)` guard. `transition-all` can cause unexpected animation of non-visual properties (low)
+
+**Type safety / code quality (4):**
+
+- [ ] `ChatBot.svelte:264` — `catch (err: any)` should be `catch (err: unknown)` with `instanceof Error` narrowing. P5g fixed this in StandingsTable and TopScorers but ChatBot was missed (low)
+- [ ] `BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback should be typed using `TooltipItem<'bar'>` (low)
+- [ ] `BettingHistory.svelte:219-275` — `style="animation-delay: 100ms"` on 6 summary cards but no animation class on the individual cards — the parent `animate-fade-in` doesn't propagate delay. Delays are vestigial/non-functional (low)
+- [ ] `backend/app/api/main.py:392` — `/predict` error handler leaks internal error details via `detail=str(e)`, inconsistent with the global handler which returns a generic message (low, only affects permanently-503 oracle endpoints)
+
+**Consistency / documentation (4):**
+
+- [ ] `SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United) that are not in the 2025/26 Premier League. Missing any 2025/26 promoted teams who fall back to DEFAULT_RATING (1500). Cold-start ELO priors are wrong for new users (medium)
+- [ ] `Settings.svelte:33-42` — `teamColors` map hardcodes 2024/25 season teams. Will become stale on promotion/relegation (low)
+- [ ] `Help.svelte:345` — Dashboard feature list claims "Live standings" which the Dashboard does not show (Standings is a separate view) (low)
+- [ ] `ApiSetupWizard.svelte:309` — Step 4 "Use Kelly Calculator for betting" directly contradicts Step 2's "research and educational purposes only" disclaimer (low)
+
+**Not bugs (confirmed false positives from audit):**
+
+- `Dashboard.svelte:25` `Users` import — IS used at line 455 for model weight icons
+- `Predictions.svelte` catch blocks — all correctly use `catch (err)` (no `any`), only ChatBot has this issue
+- `LiveMatches raw buttons` — investigated, these are within interactive sections that would be over-engineered with `<Button>`
 
 ### P5f. Type Safety — PARTIAL
 
@@ -410,7 +449,7 @@ All feature specifications in `specs/`:
 | `backendService.test.ts` | 11 | Passing |
 | `aiAnalysis.test.ts` | 23 | Passing |
 | `AccumulatorBuilder.test.ts` | 17 | Passing |
-| **Total** | **402** | **All passing** |
+| **Total** | **404** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 
