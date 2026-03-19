@@ -403,7 +403,7 @@ Several test files have assertions that pass when they shouldn't:
 
 - [ ] `backtest.test.ts:154-178`: Expected value `0.525` encodes the Kelly 1.05 inflation bug — actively prevents fixing the bug. Update to `0.50` when P1l is fixed
 - [x] `liveService.test.ts`: WS tests removed as part of P5v — all WebSocket infrastructure removed from liveService
-- [ ] `value.test.ts`: Three tests assert only `Array.isArray(result)` — should also assert `result.length > 0` and check element shape
+- [x] `value.test.ts`: Strengthened 4 weak `Array.isArray` assertions — now check `result.length`, element shape (`market`, `ourProbability`, `edge`), and market-specific invariants
 - [ ] `test_free_tier_features.py`: H2H test conditionally skips assertions when `h2h_total_matches == 0`; basic stats test uses weak `or` assertion
 - [ ] `test_predict_free_tier.py`: No happy-path test for `/predict/free` with a loaded model; no test for `_get_client_ip()` X-Forwarded-For extraction
 
@@ -482,20 +482,20 @@ These are low-priority items deferred from completed priority tiers:
 - [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed
 - [ ] **P5u:** `SeasonStats.svelte`: "Most Cards" stat uses `Calendar` icon — wrong icon for a disciplinary stat, should be `AlertTriangle` or similar
-- [ ] **P5u:** `MobileNav.svelte`: "More" toggle button missing `aria-expanded` attribute — screen readers get no open/close feedback
-- [ ] **P5u:** `KellyCalculator.svelte`: Refresh button missing `aria-label`; confidence range slider uses `on:change` (not fired by keyboard drags) instead of `on:input`
-- [ ] **P5u:** `Settings.svelte`: `dispatch('apiConfigured')` fires a 5-second `setTimeout` that is not cleaned up in `onDestroy` — callback can fire after component unmounts in SPA navigation
-- [ ] **P5u:** `ApiSetupWizard.svelte`: Close button `aria-label="Skip setup wizard"` is misleading — action is dismiss/close, not skip
-- [ ] **P5u:** `BettingHistory.svelte`: Stat card `animation-delay` inline styles not guarded by `prefers-reduced-motion`
+- [x] **P5u:** `MobileNav.svelte`: Added `aria-expanded={isMoreOpen}` to "More" toggle button
+- [x] **P5u:** `KellyCalculator.svelte`: Added `aria-label="Refresh suggestions"` to refresh button; changed slider from `on:change` to `on:input` for keyboard drag support
+- [x] **P5u:** `Settings.svelte`: Added `refreshTimer` variable and `onDestroy` cleanup — setTimeout no longer fires after component unmounts
+- [x] **P5u:** `ApiSetupWizard.svelte`: Changed close button `aria-label` from "Skip setup wizard" to "Close setup wizard"
+- [x] **P5u:** `BettingHistory.svelte`: Already guarded — `app.css` has global `@media (prefers-reduced-motion: reduce)` that kills all animations
 - [ ] **P5u:** `Spec 02` status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
 - [ ] **P5x:** `Dashboard.svelte:436`: Profit/Loss `<canvas>` has no `role="img"` or `aria-label` (accessibility gap)
 - [ ] **P5x:** `Help.svelte:39`: Mobile menu `<nav>` has no `id`/`aria-controls` linking to the toggle button
 - [ ] **P5x:** `TopScorers.svelte:165`: Medal emoji `<span>` elements lack `aria-label`
-- [ ] **P5x:** `ChatBot.svelte:353`: Privacy copy says "never sent to our servers" — inaccurate for the server-proxy key path
-- [ ] **P5x:** `Settings.svelte:292`: Section heading says "API Provider Selection" — only one provider exists (misleading)
+- [x] **P5x:** `ChatBot.svelte:353`: Privacy copy changed from "never sent to our servers" to "stored in your browser only"
+- [x] **P5x:** `Settings.svelte:292`: HTML comment changed from "API Provider Selection" to "Football-Data.org API Configuration" (visible heading was already correct)
 - [ ] **P5x:** `AdvancedMatchPredictor.predictMatch` confidence is effectively constant (returns 0.85 or 0.75) — should vary with actual model signal
 - [ ] **P5x:** `advancedPredictions.ts:processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on `Match` type — add fallback to check `m.score.fullTime` presence
-- [ ] **P5x:** `betBuilder.ts:441`: `'Over 7.5 corners'` selection text mismatches the 8.5 threshold used for probability calculation
+- [x] **P5x:** `betBuilder.ts:441`: Fixed corners selection text from 'Over 7.5 corners' to 'Over 8.5 corners' to match the `totalOver85` probability threshold
 - [ ] **P5x:** `Dockerfile:COPY config.yml .` references non-existent file — Docker build fails on clean clone. `EXPOSE 5000` is misleading (MLflow port, not the app)
 
 ---

@@ -96,6 +96,7 @@
       class="mobile-nav-item {isMoreActive ? 'mobile-nav-item-active' : ''}"
       on:click={() => isMoreOpen = !isMoreOpen}
       aria-label="More options"
+      aria-expanded={isMoreOpen}
     >
       <MoreHorizontal class="w-5 h-5 mb-1" />
       <span>More</span>

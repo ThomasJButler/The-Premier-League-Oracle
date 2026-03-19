@@ -2,6 +2,29 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5ae/P5u/P5x — test quality, accessibility, content fixes
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ae — Test quality improvements
+- Strengthened 4 weak `Array.isArray` assertions in `value.test.ts` — now check `result.length`, element shape properties (`market`, `ourProbability`, `edge`), and market-specific probability bounds
+
+### P5u — Accessibility fixes
+- `MobileNav.svelte`: Added `aria-expanded={isMoreOpen}` to "More" toggle button
+- `KellyCalculator.svelte`: Added `aria-label` to refresh button; changed slider from `on:change` to `on:input` for keyboard drag support
+- `Settings.svelte`: Added `refreshTimer` variable and `onDestroy` cleanup — 5-second setTimeout no longer fires after unmount
+- `ApiSetupWizard.svelte`: Changed close button `aria-label` from "Skip" to "Close"
+
+### P5x — Content and text fixes
+- `ChatBot.svelte`: Privacy copy changed from "never sent to our servers" to "stored in your browser only"
+- `Settings.svelte`: HTML comment corrected from "API Provider Selection" to "Football-Data.org API Configuration"
+- `betBuilder.ts`: Fixed corners selection text from 'Over 7.5 corners' to 'Over 8.5 corners' (was mismatched with `totalOver85` probability threshold)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+
+---
+
 ## 30 March 2026 — P5v/P5ag — WebSocket removal, spinner and button cleanup
 
 **Branch:** `v3.0-BackendMLTraining`

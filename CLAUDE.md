@@ -194,7 +194,7 @@ These specs are the single source of truth for requirements.
 - ~~`dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws~~ **FIXED:** error contract documented with JSDoc: essential data methods throw, supplementary methods return empty/null (P5t)
 - ~~`Predictions.svelte`: `catch (error)` variable shadows outer `let error`~~ **FIXED:** renamed to `catch (err)` (P5t)
 - `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
-- `betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded — not derived from the calculated `corners` predictions object
+- ~~`betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded~~ **FIXED:** changed to 'Over 8.5 corners' to match the `totalOver85` probability used in confidence calculation
 - Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
 - `advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped
 - ~~Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)~~ **FIXED:** `timedelta` import removed from `main.py` (P5s), `asyncio` import removed from `modern_oracle.py` (P5s). `main.py` still imports `asyncio` but it IS used (WebSocket handler line 566)

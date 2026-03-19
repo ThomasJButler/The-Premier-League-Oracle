@@ -216,6 +216,7 @@
         disabled={suggestionsLoading}
         class="p-2 rounded-lg hover:bg-muted transition-colors"
         title="Refresh suggestions"
+        aria-label="Refresh suggestions"
       >
         <RefreshCw class="w-4 h-4 text-muted-foreground {suggestionsLoading ? 'animate-spin' : ''}" />
       </button>
@@ -235,7 +236,7 @@
         max="90"
         step="5"
         class="w-full accent-primary"
-        on:change={loadSuggestions}
+        on:input={loadSuggestions}
       />
       <div class="flex justify-between text-xs text-muted-foreground mt-0.5">
         <span>More bets</span>

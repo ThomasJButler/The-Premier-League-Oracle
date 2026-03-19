@@ -430,7 +430,7 @@ export class BetBuilderPredictor {
       const safeSelections = [
           `${matchResult.prediction === 'H' ? homeTeam : matchResult.prediction === 'A' ? awayTeam : 'Draw'} to win`,
           totalGoals.over25.probability > 0.5 ? 'Over 2.5 goals' : 'Under 3.5 goals',
-          'Over 7.5 corners'
+          'Over 8.5 corners'
         ];
       const safeOdds = (1 / matchResult.confidence) *
                        (1 / Math.max(totalGoals.over25.probability, totalGoals.under35.probability)) *

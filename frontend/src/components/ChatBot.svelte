@@ -350,7 +350,7 @@ Current data:\n`;
         </div>
         <div>
           <h2 class="text-lg font-bold font-display text-foreground">Connect OpenAI</h2>
-          <p class="text-xs text-muted-foreground">Your key stays in your browser, never sent to our servers</p>
+          <p class="text-xs text-muted-foreground">Your key is stored in your browser only</p>
         </div>
       </div>
 

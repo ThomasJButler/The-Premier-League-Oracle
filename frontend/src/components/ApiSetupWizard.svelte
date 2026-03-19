@@ -89,7 +89,7 @@
           <button
             on:click={dismiss}
             class="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            aria-label="Skip setup wizard"
+            aria-label="Close setup wizard"
           >
             <X class="w-5 h-5" />
           </button>

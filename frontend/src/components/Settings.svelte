@@ -5,7 +5,7 @@
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
   import { aiAnalysisService } from '../services/aiAnalysis';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
 
@@ -20,7 +20,12 @@
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
   let isRefreshing = false;
-  
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onDestroy(() => {
+    if (refreshTimer) clearTimeout(refreshTimer);
+  });
+
   // Favourite team
   let favouriteTeam = '';
   let plTeams: string[] = [];
@@ -126,7 +131,7 @@
         isRefreshing = true;
 
         // Clear stale cache and refresh data services with the new key
-        setTimeout(async () => {
+        refreshTimer = setTimeout(async () => {
           await dataService.clearCache();
           await dataService.refreshApiConfiguration();
           dispatch('apiConfigured');
@@ -287,7 +292,7 @@
     </div>
   </div>
   
-  <!-- API Provider Selection -->
+  <!-- Football-Data.org API Configuration -->
   <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
     <h2 class="text-lg font-bold font-display text-foreground mb-4">Football-Data.org API Configuration</h2>
     
