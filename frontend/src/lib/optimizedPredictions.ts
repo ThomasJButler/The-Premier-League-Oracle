@@ -666,8 +666,8 @@ export class OptimizedPredictor {
       return Math.floor((ref.getTime() - new Date(teamMatches[0].date).getTime()) / (1000 * 60 * 60 * 24));
     };
     return {
-      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam), 1),
-      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(awayTeam), 1)
+      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam)),
+      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(awayTeam))
     };
   }
 

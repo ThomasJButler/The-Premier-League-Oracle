@@ -2,6 +2,30 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5ad/P5u/P5al/P5ab — fatigue model, live display, bet correlation
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ad — FatigueAnalyzer congestion branch removed
+- Simplified `getFatigueMultiplier()` from 2 params to 1 — `recentFixtures` was always `1`, making the congestion formula dead code. Now a clean linear ramp: `min(max(restDays, 0.5) / 7, 1)`
+- Updated all call sites in `advancedPredictions.ts` and `optimizedPredictions.ts`
+- Rewrote fatigue tests (3 focused tests replacing 1 multi-assertion test)
+
+### P5u — LiveMatches minute display for extra time and penalties
+- `getMinute()` now handles `EXTRA_TIME` (shows elapsed minutes or "ET") and `PENALTY_SHOOTOUT` (shows "PEN") — previously these statuses showed blank despite having valid kick-off time
+
+### P5al — correlationAdjustment applied to all 4 combo types
+- "Safe Builder" and "High Risk Builder" now apply `correlationAdjustment()` for consistent combo confidence calculations — previously only "Value Builder" and "Goals Galore" did
+
+### P5ab — Marked as stale (false positive)
+- Investigation confirmed backtest only reads ELO ratings via `predictMatch()`, never calls `updateRatings()` — no unnecessary localStorage writes occur
+
+### Stats
+- P5 Hardening: ~42/49 (86%)
+- Frontend: 384 tests, 0 type errors
+
+---
+
 ## 30 March 2026 — P2t/P2u/P2v/P5x/P5s — backend deps, gitignore, environment, CSS fix, dead code
 
 **Branch:** `v3.0-BackendMLTraining`

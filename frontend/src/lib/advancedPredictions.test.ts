@@ -244,18 +244,22 @@ describe('Advanced Predictions Module', () => {
     });
 
     describe('getFatigueMultiplier', () => {
-      it('should calculate fatigue multiplier correctly', () => {
-        // Optimal rest, few fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(7, 1)).toBe(1);
+      it('should return 1.0 for fully rested teams (7+ days)', () => {
+        expect(FatigueAnalyzer.getFatigueMultiplier(7)).toBe(1);
+        expect(FatigueAnalyzer.getFatigueMultiplier(10)).toBe(1);
+      });
 
-        // No rest, many fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(2, 3)).toBeCloseTo(0.286 * 0.8, 3);
+      it('should scale linearly with rest days', () => {
+        // 4 days rest → 4/7 ≈ 0.571
+        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBeCloseTo(4 / 7, 3);
+        // 2 days rest → 2/7 ≈ 0.286
+        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 7, 3);
+      });
 
-        // Good rest, many fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(7, 4)).toBe(0.7);
-
-        // Some rest, some fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(4, 2)).toBeCloseTo(0.571 * 0.9, 3);
+      it('should floor at 0.5 days to prevent NaN in Poisson', () => {
+        // 0 days rest → clamped to 0.5/7 ≈ 0.071
+        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 7, 3);
+        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 7, 3);
       });
     });
   });

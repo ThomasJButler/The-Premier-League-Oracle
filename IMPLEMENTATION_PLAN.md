@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (eighteenth update — P1g wizard bug fixed, P5ah/P5w/P5y/P5z resolved)
+Last updated: 30 March 2026 (nineteenth update — P5ad/P5u/P5al fixed, P5ab marked stale)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,9 +17,9 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~38/49 (78%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
+| P5 Hardening | ~42/49 (86%) | P5ad fatigue simplified, P5u minute display, P5al correlation fix, P5ab stale |
 
-**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 384 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -338,11 +338,11 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 - [x] `dataService.ts`: error contract documented — essential data methods (`getMatches`) throw so callers can surface errors; supplementary methods (`getTeamStats`, `getTeamForm`) return null/empty so optional UI sections degrade gracefully rather than crashing the page
 - [x] `Predictions.svelte`: `catch (error)` renamed to `catch (err)` — no longer shadows outer reactive error state
 
-### P5u. LiveMatches Minute Display Gap
+### P5u. LiveMatches Minute Display Gap — DONE
 
-`LiveMatches.svelte:85-90`: `getMinute()` only computes elapsed time for `IN_PLAY` and `PAUSED` statuses. Matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` (added to the live query in P5q) show an empty minute string despite having a valid kick-off time.
+`LiveMatches.svelte:85-90`: `getMinute()` only computed elapsed time for `IN_PLAY` and `PAUSED` statuses. Matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` (added to the live query in P5q) showed an empty minute string.
 
-- [ ] Extend `getMinute()` to estimate elapsed time for `EXTRA_TIME` (e.g. show `90+N'` based on kick-off) and `PENALTY_SHOOTOUT` (show `PEN`)
+- [x] Extended `getMinute()` to handle all live statuses: `EXTRA_TIME` shows elapsed minutes (or "ET" fallback), `PENALTY_SHOOTOUT` shows "PEN"
 
 ### P5v. WebSocket onmessage No-Op
 
@@ -378,11 +378,11 @@ This systematically inflates home win probabilities. The fix is to remove the 10
 
 - [x] Removed `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` — ELO already accounts for home advantage
 
-### P5ab. Backtest localStorage Noise
+### P5ab. Backtest localStorage Noise — STALE (False Positive)
 
-`backtest.ts`: During a backtest run, `EloRatingSystem.updateRatings()` calls `saveToStorage()` on every match. These writes are immediately overwritten when the backtest restores the ELO snapshot at the end. This is unnecessary I/O (~300+ localStorage writes per full-season backtest).
+Investigation confirmed this is not a real issue. Backtest calls `predictMatch()` which only READS ELO ratings — `updateRatings()` is never called during a backtest run. The snapshot/restore cycle (P5p) handles the read path correctly. No unnecessary localStorage writes occur.
 
-- [ ] Add a `suppressStorage` flag to `EloRatingSystem.updateRatings()` or skip `saveToStorage()` during backtest runs
+- [x] Investigated and confirmed false positive — no fix needed
 
 ### P5ac. betBuilder Half-Time Prior Bias — DONE
 
@@ -390,11 +390,13 @@ This systematically inflates home win probabilities. The fix is to remove the 10
 
 - [x] Corrected priors to 0.26 + 0.46 + 0.28 = 1.0, matching real PL HT distributions
 
-### P5ad. FatigueAnalyzer Congestion Branch Dead
+### P5ad. FatigueAnalyzer Congestion Branch Dead — DONE
 
-`advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` has a `recentFixtures` parameter for fixture congestion, but every caller passes `1`. The congestion component of the formula never activates.
+`advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` had a `recentFixtures` parameter for fixture congestion, but every caller passed `1`. The congestion component of the formula never activated.
 
-- [ ] Either wire `recentFixtures` from real match scheduling data, or simplify the formula to remove the dead congestion branch
+- [x] Simplified `getFatigueMultiplier()` to a single-parameter `(restDays: number)` signature — linear ramp from `min(max(restDays, 0.5) / 7, 1)`. Dead congestion branch removed
+- [x] Updated all call sites in `advancedPredictions.ts` and `optimizedPredictions.ts`
+- [x] Rewrote 4 tests to cover the simplified API (rest scaling, floor at 0.5 days, cap at 7+ days)
 
 ### P5ae. Test Quality — Newly Discovered Issues
 
@@ -446,11 +448,11 @@ Several exported service methods are never called from any component or test:
 - [ ] `KellyCalculator.simulate()` — Monte Carlo simulation with `Math.random()`, never called from any component or test
 - [ ] `aiAnalysis.invalidateServerKeyCache()` — public method, no caller exists
 
-### P5al. betBuilder correlationAdjustment Inconsistency
+### P5al. betBuilder correlationAdjustment Inconsistency — DONE
 
-`betBuilder.ts`: `correlationAdjustment()` applies correlation multipliers (1.15, 1.10, 0.85) to improve combo probability accuracy by accounting for market dependencies. It is applied to "Value Builder" and "Goals Galore" combos but NOT to "Safe Builder" or "High Risk Builder" combos — producing less accurate combined odds for those two combo types.
+`betBuilder.ts`: `correlationAdjustment()` applies correlation multipliers (1.15, 1.10, 0.85) to improve combo probability accuracy by accounting for market dependencies. Previously only applied to "Value Builder" and "Goals Galore" — "Safe Builder" and "High Risk Builder" skipped it.
 
-- [ ] Apply `correlationAdjustment()` consistently to all four combo generators, or document why only specific combos use it
+- [x] Applied `correlationAdjustment()` to all four combo types. Selections now extracted to named arrays (`safeSelections`, `aggressiveSelections`) for consistency with the existing `valueSelections`/`goalsSelections` pattern
 
 ### P5am. Dockerfile Runs as Root
 
@@ -602,7 +604,7 @@ Priority features to implement with real data:
 | `optimizedPredictions.ts` | `MODEL_WEIGHTS` — static ensemble weights, not derived from backtesting | Low |
 | `optimizedPredictions.ts` | `eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600)` — base 26.5% and scale 600 hardcoded | Low |
 | `optimizedPredictions.ts` | Form weight array `[0.35, 0.25, 0.20, 0.12, 0.08]` — arbitrary decay | Low |
-| `optimizedPredictions.ts` | `homeMomentum * 1.1` / `awayMomentum * 0.9` — arbitrary 10% home advantage in form | Low |
+| ~~`optimizedPredictions.ts`~~ | ~~`homeMomentum * 1.1` / `awayMomentum * 0.9` — arbitrary 10% home advantage in form~~ | ~~P5aa~~ DONE |
 | `optimizedPredictions.ts` | Confidence boost/penalty thresholds and values — all hardcoded | Low |
 | `optimizedPredictions.ts` | Fallback prediction returns static `{result: 'D', confidence: 0.33, goals: 1-1, odds: 3.0/3.3/3.0}` | Low |
 | `optimizedPredictions.ts` | `getStandingsProbabilities` — `0.025` per position-difference step is arbitrary | Low |
@@ -683,11 +685,11 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~85% — missing: Poisson lambda from real stats (Req 2); home advantage double-counting discovered (P5aa); fatigue congestion branch dead (P5ad). **Markers: 7/8** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~90% — missing: Poisson lambda from real stats (Req 2). Home advantage double-counting fixed (P5aa), fatigue simplified (P5ad). **Markers: 7/8** |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~75% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). Backend proxy marker stale (done since P2b). **Markers: 6/8 (1 stale)** |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~90% — AGENTS.md historical data command added (Req 6 met). **Markers: 8/8** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12); HT prior bias discovered (P5ac). **Markers: 11/12** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~92% — missing: accumulator/combination bet UI (Req 12). HT prior bias fixed (P5ac), correlation adjustment applied to all combos (P5al). **Markers: 11/12** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~88% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q), minute display for ET/PEN fixed (P5u). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~98% — all 17 structural criteria met; 5 new CSS/class bugs found in sixteenth audit (P5x). **Markers: 17/17 structural** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
@@ -714,7 +716,7 @@ All feature specifications in `specs/`:
 |------|-------|--------|
 | `betBuilder.test.ts` | 40 | Passing |
 | `value.test.ts` | 17 | Passing |
-| `advancedPredictions.test.ts` | 22 | Passing |
+| `advancedPredictions.test.ts` | 21 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
 | `footballData.test.ts` | 23 | Passing |
 | `kelly.test.ts` | 13 | Passing |
@@ -735,7 +737,7 @@ All feature specifications in `specs/`:
 | `liveService.test.ts` | 14 | Passing |
 | `backendService.test.ts` | 19 | Passing |
 | `aiAnalysis.test.ts` | 24 | Passing |
-| **Total** | **382** | **All passing** |
+| **Total** | **384** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

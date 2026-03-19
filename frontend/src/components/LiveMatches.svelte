@@ -82,10 +82,15 @@
       return `${match.minute}'`;
     }
     // Estimate from kick-off time if minute not provided
-    if (match.status === 'IN_PLAY' || match.status === 'PAUSED') {
+    const liveStatuses = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'];
+    if (liveStatuses.includes(match.status ?? '')) {
+      if (match.status === 'PAUSED') return "HT";
+      if (match.status === 'PENALTY_SHOOTOUT') return "PEN";
       const kickoff = new Date(match.date).getTime();
       const elapsed = Math.floor((Date.now() - kickoff) / 60_000);
-      if (match.status === 'PAUSED') return "HT";
+      if (match.status === 'EXTRA_TIME') {
+        return elapsed >= 90 ? `${elapsed}'` : "ET";
+      }
       if (elapsed >= 0 && elapsed <= 120) return `${elapsed}'`;
     }
     return '';

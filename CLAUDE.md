@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
-- Frontend has 382 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
+- Frontend has 384 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -144,7 +144,7 @@ These specs are the single source of truth for requirements.
 - ~~`footballData.ts`: halfTimeResult 0-0 bug~~ — FIXED: explicit null/undefined check replaces falsy check
 - ~~`dataService.ts` cache TTL comments lie about actual TTL (comments say 24h/30m, actual is 5 minutes)~~ **FIXED:** TTL values now passed correctly (24h for historical, 30min for team recent)
 - ~~Two parallel fatigue models exist~~ **FIXED:** `OptimizedPredictor.calculateFatigueFactor()` now delegates to `FatigueAnalyzer.getFatigueMultiplier()` — single source of truth for fatigue calculations
-- `FatigueAnalyzer.getFatigueMultiplier()` floors restDays at 0.5 to prevent zero-multiplier causing NaN in Poisson calculations
+- ~~`FatigueAnalyzer.getFatigueMultiplier()` had a dead `recentFixtures` parameter — every caller passed `1`~~ **FIXED:** simplified to single-param `(restDays: number)` with formula `min(max(restDays, 0.5) / 7, 1)` — floors at 0.5 to prevent zero-multiplier NaN in Poisson (P5ad)
 - `LEAGUE_AVG_HOME_WIN_RATE` is no longer hardcoded — computed from actual completed matches via `computeLeagueAverages().homeWinRate` (fallback 0.46)
 - ~~Dead frontend dependencies: `tailwind-variants`, `bits-ui`, `happy-dom`~~ **FIXED:** all three uninstalled. `bits-ui` remains uninstalled; Dialog and Sheet components are custom implementations using the project's `focusTrap` action, consistent with the other 5 shadcn components (none use bits-ui)
 - ~~`.gitignore` gaps: only one `__pycache__` path covered~~ **FIXED:** `**/__pycache__/` glob added, plus `backend/cache/`, `backend/logs/`, `backend/mlruns/`
@@ -201,7 +201,7 @@ These specs are the single source of truth for requirements.
 - `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 - `SidebarNav.svelte` — extracted nav content component used by both desktop `<aside>` and mobile `<Sheet>` rendering paths to avoid 66 lines of template duplication
 - ~~`SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118~~ **FIXED:** dead variable removed (P5s)
-- `LiveMatches.svelte:85-90`: `getMinute()` only computes elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` show empty minute string despite having valid kick-off time
+- ~~`LiveMatches.svelte:85-90`: `getMinute()` only computed elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` showed empty minute string~~ **FIXED:** `getMinute()` now handles all live statuses — `EXTRA_TIME` shows elapsed minutes (or "ET"), `PENALTY_SHOOTOUT` shows "PEN" (P5u)
 - `liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely — the connection exists but delivers no data to any store. Dead infrastructure until the backend sends a payload the frontend needs
 - `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used to generate "BTTS No" value bets — vestigial field
 - `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial
@@ -231,7 +231,7 @@ These specs are the single source of truth for requirements.
 - ~~`Help.svelte`: Uses `prose prose-slate dark:prose-invert` classes (6 instances) and local `@apply .prose h2/h3/h4` rules, but `@tailwindcss/typography` is NOT installed. All typography styling silently non-functional~~ **FIXED:** installed `@tailwindcss/typography` and added to `tailwind.config.js` plugins (P5ai)
 - ~~`Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state~~ **FIXED:** added `aria-expanded={isSidebarOpen}` with prop from App.svelte (P5aj)
 - Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()` (P5ak)
-- `betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types ("Value Builder" and "Goals Galore") — "Safe Builder" and "High Risk Builder" skip correlation (P5al)
+- ~~`betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types~~ **FIXED:** all four combo types ("Safe Builder", "Value Builder", "High Risk Builder", "Goals Galore") now apply `correlationAdjustment()` for consistent confidence calculations (P5al)
 - `backend/Dockerfile`: No non-root user created — app runs as root inside container (P5am)
 - `backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI (P5an)
 

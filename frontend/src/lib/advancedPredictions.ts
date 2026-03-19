@@ -322,13 +322,11 @@ export class FatigueAnalyzer {
     }
   }
 
-  static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
+  static getFatigueMultiplier(restDays: number): number {
     // Less rest = more fatigue = worse performance
     // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
-    const restFactor = Math.min(Math.max(restDays, 0.5) / 7, 1); // Optimal rest is 7+ days
-    const fixtureFactor = Math.max(1 - (recentFixtures - 1) * 0.1, 0.6); // Each extra fixture reduces performance
-
-    return restFactor * fixtureFactor;
+    // Optimal rest is 7+ days → multiplier of 1.0
+    return Math.min(Math.max(restDays, 0.5) / 7, 1);
   }
 }
 
@@ -364,8 +362,8 @@ export class AdvancedMatchPredictor {
       FatigueAnalyzer.calculateRestDays(awayTeam, matchDate, allMatches)
     ]);
 
-    const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1);
-    const awayFatigue = FatigueAnalyzer.getFatigueMultiplier(awayRestDays, 1);
+    const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays);
+    const awayFatigue = FatigueAnalyzer.getFatigueMultiplier(awayRestDays);
 
     // 3. Adjust ratings for fatigue
     const adjustedHomeRating = homeRating * homeFatigue;
