@@ -2,6 +2,40 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — P5 Hardening Batch 2: Type safety, test quality, resilience
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.77`
+
+### P5e — Test quality fixes
+- `ChatBot.test.ts`: DOMPurify mock now uses a spy — verifies `sanitize()` is called with response content, catching XSS regressions
+- `liveService.test.ts`: WebSocket `onmessage` now triggered via `simulateMessage()` with store update assertion
+- `optimizedPredictions.test.ts`: conditional `if (prediction.valueOdds)` guard removed — assertions always execute
+- `advancedPredictions.test.ts`: empty `valueBets` loop replaced with explicit `.toHaveLength(0)` assertion
+
+### P5f — Type safety (partial — 3/5 items)
+- `optimizedPredictions.ts`: `(form: any[])` → `TeamForm[]`, added `FormAnalysis`/`H2HAnalysis` interfaces for typed Dixon-Coles parameters
+- `footballData.ts`: in-memory cache `data: any` → `data: unknown` with explicit cast on retrieval
+- Documented 2 remaining items as Svelte 4 framework limitations (component constructor typing, `CustomEvent` vs `KeyboardEvent`)
+
+### P5l — TopScorers type cleanup
+- Removed `(s: any)` cast and nonexistent `FDScorer` fallback properties (`numberOfGoals`, `numberOfAssists`, `penaltyGoals`)
+
+### P5s — Dead code cleanup (continued)
+- Deleted duplicate `$lib/utils/cn.ts` — all 10 shadcn component imports updated to `$lib/utils`
+- Removed unused `MAX_CACHED_ANALYSES` constant from `aiAnalysis.ts`
+- Removed unused `timedelta` import from `main.py`
+- Removed unused `asyncio` import from `modern_oracle.py`
+
+### P5t — Frontend resilience (partial — 2/3 items)
+- `footballData.ts`: added AbortController with 15-second timeout to `rateLimitedFetch()` — hung API calls no longer block the rate-limit queue indefinitely
+- `Predictions.svelte`: renamed `catch (error)` to `catch (err)` to fix variable shadow with outer reactive state
+
+### Stats
+- Frontend: 376 Vitest tests passing, 0 type errors
+- P5 progress: 59% → 86% (19/22 items done)
+
+---
+
 ## 19 March 2026 — P5 Hardening Batch: Poisson consistency, data integrity, dead code
 
 **Branch:** `v3.0-BackendMLTraining`
