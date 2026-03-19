@@ -14,7 +14,7 @@ Features:
 - Authentication support
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, status
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -714,16 +714,28 @@ def _resolve_team_name(name: str) -> str:
     )
 
 
+def _get_client_ip(request: Request) -> str:
+    """Extract the real client IP, checking X-Forwarded-For for reverse proxies."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # First entry is the original client IP
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
 @app.post("/predict/free", tags=["Free-Tier Predictions"])
-async def predict_free_tier(request: FreeTierPredictionRequest,
-                            client_ip: str = "unknown"):
+async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
+                            request: Request):
     """
     Predict match outcome using the free-tier XGBoost model.
 
     Uses ~86 features derived from match results, form, H2H, and contextual data.
     No paid API data required.
     """
-    # Rate limiting
+    # Rate limiting — extract real client IP from request
+    client_ip = _get_client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(
             status_code=429,
@@ -731,8 +743,8 @@ async def predict_free_tier(request: FreeTierPredictionRequest,
         )
 
     # Validate and normalise team names first (422 before 503)
-    home = _resolve_team_name(request.home_team)
-    away = _resolve_team_name(request.away_team)
+    home = _resolve_team_name(prediction_request.home_team)
+    away = _resolve_team_name(prediction_request.away_team)
 
     if free_tier_model is None:
         raise HTTPException(

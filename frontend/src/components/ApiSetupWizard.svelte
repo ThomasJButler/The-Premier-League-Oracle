@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { Key, Shield, Zap, BookOpen, Info, ExternalLink, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
+  import { focusTrap } from '$lib/utils';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   
@@ -64,13 +65,32 @@
     }
   }
 
+  /** Restore focus to the element that was active before the dialog opened. */
+  let previousActiveElement: HTMLElement | null = null;
+
+  onMount(() => {
+    previousActiveElement = document.activeElement as HTMLElement | null;
+    return () => {
+      previousActiveElement?.focus();
+    };
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent
+  function handleKeydown(e: any) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      dismiss();
+    }
+  }
+
   function dismiss() {
     dispatch('complete', { apiKey: '', provider: selectedProvider });
   }
 </script>
 
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="presentation">
-  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-label="API Setup Wizard">
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="presentation" on:click|self={dismiss}>
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-label="API Setup Wizard" use:focusTrap on:keydown={handleKeydown}>
     <div class="flex-shrink-0">
     <!-- Header -->
     <div class="p-8 pb-0">
