@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 49/49 (100%) | ALL DONE |
 
-**Frontend:** 373 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 389 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -738,7 +738,7 @@ All feature specifications in `specs/`:
 | `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | **100% — ALL 8/8 criteria met.** Poisson lambda now uses per-team stats from `dataService.getTeamStats()` (Dixon-Coles formula). |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | **100% — ALL 8/8 criteria met.** Progressive 5-season bulk loader added (Req 5), rate-limit queue serialises concurrent callers (Req 7), backend proxy done since P2b (Req 8). **Markers: 8/8** |
 | `specs/03-backend-integration.md` | Python ML backend connection | **100% — ALL 8/8 criteria met.** Historical data command documented in AGENTS.md (Req 6). WebSocket criterion was previously marked done but WS infrastructure was removed (P5v) — polling-only architecture now satisfies the live data requirement via the existing `/live` endpoint. **Markers: 8/8** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~92% — missing: accumulator/combination bet UI (Req 12). HT prior bias fixed (P5ac), correlation adjustment applied to all combos (P5al). **Markers: 11/12** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | **100% — ALL 12/12 criteria met.** AccumulatorBuilder.svelte added with cross-match accumulator building, Track Bet integration, 17 tests. **Markers: 12/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~88% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q), minute display for ET/PEN fixed (P5u). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~98% — all 17 structural criteria met; 5 new CSS/class bugs found in sixteenth audit (P5x). **Markers: 17/17 structural** |
@@ -787,7 +787,8 @@ All feature specifications in `specs/`:
 | `liveService.test.ts` | 14 | Passing |
 | `backendService.test.ts` | 11 | Passing |
 | `aiAnalysis.test.ts` | 23 | Passing |
-| **Total** | **372** | **All passing** |
+| `AccumulatorBuilder.test.ts` | 17 | Passing |
+| **Total** | **389** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

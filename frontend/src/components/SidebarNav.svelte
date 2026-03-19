@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
   import { createEventDispatcher } from 'svelte';
 
@@ -22,6 +22,7 @@
   const bettingItems = [
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
     { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
   ];
 

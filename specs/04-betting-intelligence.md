@@ -18,6 +18,7 @@ The following items from this spec have been **implemented**:
 The following items **remain unimplemented or partially done**:
 
 - **Requirement 5 (BetBuilder completion):** `suggestedCombos` in `betBuilder.ts` needs verification for completeness.
+- **Requirement 12 (Accumulator UI):** DONE. `AccumulatorBuilder.svelte` in `frontend/src/components/betting/` provides a dedicated accumulator view: loads upcoming matches, generates bet builder combos for each, displays all 4 combo types with confidence/reasoning/selections, supports building custom cross-match accumulators by selecting individual legs, Kelly-sized stakes, EV calculation, and Track Bet integration via `betHistoryService.storeBet()` with `market: 'combo'`. 17 tests in `AccumulatorBuilder.test.ts`.
 
 ---
 
@@ -32,6 +33,7 @@ The following items **remain unimplemented or partially done**:
 | `frontend/src/components/betting/ValueBets.svelte` | Fully implemented — manual odds entry, real EV calculations, "Track Bet" integration |
 | `frontend/src/components/BettingHistory.svelte` | Fully implemented — real data, chart, table, export |
 | `frontend/src/lib/betBuilder.ts` | `suggestedCombos` partially complete |
+| `frontend/src/components/betting/AccumulatorBuilder.svelte` | Fully implemented — cross-match accumulator builder, Track Bet integration |
 
 ---
 
@@ -173,4 +175,4 @@ When a match result comes in via the API, auto-resolve any pending bets for that
 - [x] BetHistoryService resolution bugs fixed (P1g)
 - [x] betBuilder corner/card probability overflow clamped to [0, 0.99] (P1l)
 - [x] Kelly circular probability bug fixed — uses model confidence as ourProbability (P1l)
-- [ ] Accumulator/combination bet UI (not done)
+- [x] Accumulator/combination bet UI — `AccumulatorBuilder.svelte` with cross-match accumulator building, per-combo Track Bet, and betHistoryService integration (17 tests)

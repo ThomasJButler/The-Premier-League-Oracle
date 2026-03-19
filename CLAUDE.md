@@ -114,10 +114,11 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 86 backend tests across 3 files (45 feature engineering incl. Elo leakage, 25 training pipeline incl. rolling CV + stacked ensemble + recency weights, 16 API endpoints) — all non-skip tests pass (7 skip without libomp). ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
-- Frontend has 372 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
+- Frontend has 389 Vitest tests across 24 test files, all passing
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
-- 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
+- 9 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets, AccumulatorBuilder) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
+- `AccumulatorBuilder.svelte` in `components/betting/` — dedicated accumulator/combination bet UI with cross-match leg selection, Kelly-sized stakes, Track Bet integration (17 tests)
 - ~~`predictions.ts` was entirely dead at runtime~~ **REMOVED:** module and 11 misleading tests deleted. Production model is `optimizedPredictions.ts`
 - ~~3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)~~ **ALL DONE:** backendService (P2b), liveService (P3f), aiAnalysis (P3g) all created
 - ~~`ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab)~~ **FIXED:** Created `api/chat.ts` Vercel Edge Function that proxies OpenAI calls. ChatBot calls `/api/chat` instead. Vite dev middleware provides local proxy. `OPENAI_API_KEY` env var enables server-side key (users skip key setup)

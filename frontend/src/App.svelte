@@ -10,6 +10,7 @@
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
   import ValueBets from './components/betting/ValueBets.svelte';
+  import AccumulatorBuilder from './components/betting/AccumulatorBuilder.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
@@ -20,7 +21,7 @@
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
 
   let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
@@ -129,6 +130,8 @@
           <KellyCalculator />
         {:else if currentView === 'Value Bets'}
           <ValueBets />
+        {:else if currentView === 'Accumulators'}
+          <AccumulatorBuilder />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
         {:else if currentView === 'Season Stats'}

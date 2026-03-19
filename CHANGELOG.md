@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 2 April 2026 — AccumulatorBuilder, Spec 04 complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **AccumulatorBuilder.svelte** — dedicated accumulator/combination bet UI in `frontend/src/components/betting/`. Features: loads upcoming matches and generates bet builder combos for each, displays all 4 combo types (Safe Builder, Value Builder, High Risk Builder, Goals Galore) with confidence percentages, reasoning, and individual selections. Users can build custom cross-match accumulators by selecting legs from different matches, with combined odds, win probability, expected value, and quarter-Kelly stake calculations. Track Bet integration via `betHistoryService.storeBet()` with `market: 'combo'` type
+- **Accumulators navigation item** added to sidebar (SidebarNav.svelte) and mobile nav (MobileNav.svelte) under the Betting section, with Layers icon
+- **17 new tests** in `AccumulatorBuilder.test.ts` covering rendering, loading states, combo expansion, selection interactions, Track Bet wiring, and error handling
+- **Spec 04 (Betting Intelligence) now 100% complete** — all 12/12 acceptance criteria met (was 11/12, missing accumulator UI)
+
+### Changed
+
+- Frontend test count: 372 → 389 Vitest tests across 24 test files (was 23)
+- App.svelte ViewName union extended with 'Accumulators' (14 views, was 13)
+
+---
+
 ## 1 April 2026 — Rolling cross-validation, ELO data leakage fix
 
 **Branch:** `v3.0-BackendMLTraining`
