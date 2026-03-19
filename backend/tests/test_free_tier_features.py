@@ -326,10 +326,12 @@ class TestHeadToHead:
     def test_h2h_rates_range(self, engineer, sample_data):
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        if features['h2h_total_matches'] > 0:
-            assert 0.0 <= features['h2h_home_win_rate'] <= 1.0
-            assert 0.0 <= features['h2h_btts_rate'] <= 1.0
-            assert 0.0 <= features['h2h_over_2_5_rate'] <= 1.0
+        # With 12 rounds of round-robin fixtures, Arsenal vs Chelsea must have H2H data
+        assert features['h2h_total_matches'] > 0, \
+            'Expected H2H matches for Arsenal vs Chelsea in round-robin fixture data'
+        assert 0.0 <= features['h2h_home_win_rate'] <= 1.0
+        assert 0.0 <= features['h2h_btts_rate'] <= 1.0
+        assert 0.0 <= features['h2h_over_2_5_rate'] <= 1.0
 
 
 class TestContextual:
@@ -465,15 +467,21 @@ class TestNonZeroFeatures:
     def test_basic_stats_nonzero(self, engineer, sample_data):
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        # These should all be > 0 with sufficient match history
-        assert features['home_goals_scored_avg'] > 0 or features['home_goals_conceded_avg'] > 0
+        # With 12 rounds of round-robin data, all basic stats should be computable
+        assert features['home_goals_scored_avg'] > 0, \
+            'home_goals_scored_avg should be > 0 with match data'
+        assert features['home_goals_conceded_avg'] > 0, \
+            'home_goals_conceded_avg should be > 0 with match data'
         assert features['home_points_per_game'] > 0
 
     def test_form_features_nonzero(self, engineer, sample_data):
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        # With 12 rounds of data, form should be computable
-        assert features['home_form_last_5'] > 0 or features['home_form_last_10'] > 0
+        # With 12 rounds of data, both form windows should have data
+        assert features['home_form_last_5'] > 0, \
+            'home_form_last_5 should be > 0 with 12 rounds of data'
+        assert features['home_form_last_10'] > 0, \
+            'home_form_last_10 should be > 0 with 12 rounds of data'
 
     def test_match_stats_nonzero(self, engineer, sample_data):
         match_date = sample_data['date'].max() + timedelta(days=1)

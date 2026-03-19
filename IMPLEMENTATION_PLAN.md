@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-fifth update — recency weighting, chart theme colours, dead code cleanup)
+Last updated: 30 March 2026 (twenty-sixth update — hyperparameter tuning, backend test quality)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -20,7 +20,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P5 Hardening | ~47/49 (96%) | P5af backend paths, P5am Dockerfile non-root user |
 
 **Frontend:** 373 Vitest tests, 43 E2E tests, 0 type errors
-**Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
+**Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
@@ -110,7 +110,7 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 - [x] **Class weights** — `compute_sample_weights()` applies inverse-frequency weighting to training samples. Draws get higher weight (~1.4x) to compensate for 23% class imbalance
 - [x] **Probability calibration** — `calibrate_probabilities()` fits per-class isotonic regression on validation set, then re-normalises. Calibrators saved in model file and applied at inference in `/predict/free`
 - [x] **Feature selection** — `select_features()` drops features with importance < 0.005 after a first training pass, then retrains with the pruned set. Reduces overfitting on the ~1,680 training samples
-- [ ] **Hyperparameter tuning** — model stopped at iteration 48 (early stopping). Default XGBoost params may not be optimal. Grid search or Optuna over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`
+- [x] **Hyperparameter tuning** — `tune_hyperparameters()` runs a random search (~25 trials) over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`, `gamma`, `reg_alpha`, `reg_lambda`. Enabled via `--tune` flag. No new dependencies (uses numpy random, not Optuna)
 
 **Medium effort (likely significant impact):**
 - [x] **Draw-specific features** — 8 new features added to `free_tier_features.py`: `form_closeness`, `standings_closeness`, `home_draw_rate`, `away_draw_rate`, `combined_defensive_strength`, `low_scoring_indicator`, `h2h_draw_tendency`, `draw_streak_proximity`
@@ -127,7 +127,9 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 ```bash
 cd backend
 python train_free_tier.py                                # Train model → xgboost_free_tier.joblib
-python -m pytest tests/ -v                               # All 62 tests
+python train_free_tier.py --tune                         # Train with hyperparameter tuning (25 trials)
+python train_free_tier.py --tune --tune-trials 50        # More thorough tuning
+python -m pytest tests/ -v                               # All 67 tests
 uvicorn app.api.main:app --reload --port 8000            # Start server
 curl -X POST http://localhost:8000/predict/free \
   -H "Content-Type: application/json" \
@@ -404,8 +406,8 @@ Several test files have assertions that pass when they shouldn't:
 - [ ] `backtest.test.ts:154-178`: Expected value `0.525` encodes the Kelly 1.05 inflation bug — actively prevents fixing the bug. Update to `0.50` when P1l is fixed
 - [x] `liveService.test.ts`: WS tests removed as part of P5v — all WebSocket infrastructure removed from liveService
 - [x] `value.test.ts`: Strengthened 4 weak `Array.isArray` assertions — now check `result.length`, element shape (`market`, `ourProbability`, `edge`), and market-specific invariants
-- [ ] `test_free_tier_features.py`: H2H test conditionally skips assertions when `h2h_total_matches == 0`; basic stats test uses weak `or` assertion
-- [ ] `test_predict_free_tier.py`: No happy-path test for `/predict/free` with a loaded model; no test for `_get_client_ip()` X-Forwarded-For extraction
+- [x] `test_free_tier_features.py`: H2H conditional assertion made unconditional (fixture data guarantees H2H history); `or` assertions split into separate `assert` for each field with failure messages
+- [x] `test_predict_free_tier.py`: Added happy-path test for `/predict/free` (mocked model + engineer, validates probability sum, predicted outcome, response shape). Added 4 tests for `_get_client_ip()` covering X-Forwarded-For parsing, single IP, client.host fallback, and null client
 
 ### P5af. Backend Path Fragility — DONE
 

@@ -2,6 +2,22 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — Hyperparameter tuning, backend test quality
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### ML pipeline (`train_free_tier.py`)
+- **Hyperparameter tuning:** Added `tune_hyperparameters()` — random search over 25 parameter combinations (max_depth, learning_rate, min_child_weight, subsample, colsample_bytree, gamma, reg_alpha, reg_lambda). Enabled via `--tune` flag, configurable trial count via `--tune-trials`. No new dependencies — uses numpy random sampling, not Optuna. Best params automatically flow to first-pass training and feature-selection retrain
+- `train_xgboost()` now accepts `params_override` for injecting tuned parameters
+
+### Backend test quality (P5ae)
+- **Happy-path test for `/predict/free`:** Mocks model + feature engineer, validates: response 200, probability sum ≈ 1.0, predicted outcome matches highest probability, confidence field, model version
+- **`_get_client_ip()` tests (4 new):** X-Forwarded-For multi-IP parsing, single IP, client.host fallback, null client → "unknown"
+- **Feature test assertions hardened:** H2H `if h2h_total_matches > 0` conditional removed — fixture data guarantees matches exist. Weak `or` assertions split into separate `assert` per field with failure messages
+- Test count: 62 → 67
+
+---
+
 ## 30 March 2026 — Recency weighting, chart theme colours, dead code cleanup
 
 **Branch:** `v3.0-BackendMLTraining`

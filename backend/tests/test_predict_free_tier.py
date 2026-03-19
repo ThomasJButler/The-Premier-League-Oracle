@@ -10,9 +10,11 @@ Validates:
 - Existing /predict endpoint is unchanged
 """
 
+import numpy as np
 import pytest
 import sys
 import os
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -25,7 +27,7 @@ except ImportError:
 
 # Import the app — will have free_tier_model = None by default
 if FASTAPI_AVAILABLE:
-    from app.api.main import app, _check_rate_limit, _rate_limit_store, _resolve_team_name
+    from app.api.main import app, _check_rate_limit, _rate_limit_store, _resolve_team_name, _get_client_ip
 
 
 @pytest.fixture
@@ -182,3 +184,101 @@ class TestExistingEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data['status'] == 'healthy'
+
+
+# ---------------------------------------------------------------------------
+# Tests: /predict/free happy path (mocked model)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason='fastapi not available')
+class TestPredictFreeHappyPath:
+    """Happy-path test for /predict/free with a mocked model and engineer."""
+
+    def test_returns_valid_prediction(self, client):
+        """POST /predict/free with valid team names should return probabilities summing to ~1.0."""
+        import app.api.main as main_module
+        from app.features.free_tier_features import FreeTierFeatureEngineer
+
+        original_model = main_module.free_tier_model
+        original_meta = main_module.free_tier_metadata
+        original_eng = main_module.free_tier_engineer
+
+        # Build a mock model that returns fixed probabilities
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([[0.45, 0.25, 0.30]])
+
+        # Build a mock engineer that returns zeroed features
+        feature_names = FreeTierFeatureEngineer.FEATURE_NAMES
+        mock_engineer = MagicMock()
+        mock_engineer.create_features.return_value = {
+            name: 0.5 for name in feature_names
+        }
+
+        main_module.free_tier_model = mock_model
+        main_module.free_tier_metadata = {
+            'feature_names': feature_names,
+            'version': '2.0.0-free',
+            'feature_importance': {'position_difference': 0.042},
+        }
+        main_module.free_tier_engineer = mock_engineer
+        _rate_limit_store.clear()
+
+        try:
+            response = client.post('/predict/free', json={
+                'home_team': 'Arsenal',
+                'away_team': 'Chelsea',
+            })
+            assert response.status_code == 200
+            data = response.json()
+
+            # Probabilities must be present and sum to ~1.0
+            probs = data['probabilities']
+            assert 'home_win' in probs
+            assert 'draw' in probs
+            assert 'away_win' in probs
+            total = probs['home_win'] + probs['draw'] + probs['away_win']
+            assert abs(total - 1.0) < 0.01, f'Probabilities sum to {total}, expected ~1.0'
+
+            # Predicted outcome must match highest probability
+            assert data['predicted_outcome'] == 'Home win'  # 0.45 is highest
+            assert data['confidence'] == pytest.approx(0.45, abs=0.01)
+            assert data['model_version'] == '2.0.0-free'
+            assert data['home_team'] == 'Arsenal'
+            assert data['away_team'] == 'Chelsea'
+        finally:
+            main_module.free_tier_model = original_model
+            main_module.free_tier_metadata = original_meta
+            main_module.free_tier_engineer = original_eng
+
+
+# ---------------------------------------------------------------------------
+# Tests: _get_client_ip
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason='fastapi not available')
+class TestGetClientIp:
+    """_get_client_ip should extract real IP from X-Forwarded-For or fall back to client.host."""
+
+    def test_uses_x_forwarded_for_first_entry(self):
+        mock_request = MagicMock()
+        mock_request.headers = {'x-forwarded-for': '1.2.3.4, 5.6.7.8'}
+        mock_request.client.host = '127.0.0.1'
+        assert _get_client_ip(mock_request) == '1.2.3.4'
+
+    def test_single_forwarded_ip(self):
+        mock_request = MagicMock()
+        mock_request.headers = {'x-forwarded-for': '10.0.0.1'}
+        mock_request.client.host = '127.0.0.1'
+        assert _get_client_ip(mock_request) == '10.0.0.1'
+
+    def test_falls_back_to_client_host(self):
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client.host = '192.168.1.1'
+        assert _get_client_ip(mock_request) == '192.168.1.1'
+
+    def test_returns_unknown_when_no_client(self):
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client = None
+        assert _get_client_ip(mock_request) == 'unknown'

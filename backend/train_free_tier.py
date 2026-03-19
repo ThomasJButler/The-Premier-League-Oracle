@@ -7,6 +7,8 @@ derived from historical CSV data. No paid API data required.
 
 Usage:
     python train_free_tier.py                # Train with 80/20 chronological split
+    python train_free_tier.py --tune         # Run hyperparameter tuning first (25 trials)
+    python train_free_tier.py --tune --tune-trials 50  # More thorough search
     python train_free_tier.py --test         # Also evaluate on 2025/26 held-out data
     python train_free_tier.py --csv-dir DIR  # Custom CSV directory
 
@@ -233,6 +235,7 @@ def train_xgboost(
     X_val: np.ndarray, y_val: np.ndarray,
     feature_names: List[str],
     seasons_train: Optional[np.ndarray] = None,
+    params_override: Optional[Dict] = None,
 ) -> dict:
     """Train XGBoost model with early stopping, class weighting, and recency weighting."""
     import xgboost as xgb
@@ -252,6 +255,8 @@ def train_xgboost(
         'eval_metric': 'mlogloss',
         'verbosity': 0,
     }
+    if params_override:
+        params.update(params_override)
 
     # Compute sample weights: class balance × recency
     sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
@@ -387,6 +392,106 @@ def calibrate_probabilities(
         'raw_log_loss': raw_ll,
         'calibrated_log_loss': cal_ll,
     }
+
+
+def tune_hyperparameters(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_val: np.ndarray, y_val: np.ndarray,
+    feature_names: List[str],
+    seasons_train: Optional[np.ndarray] = None,
+    n_trials: int = 25,
+    seed: int = 42,
+) -> Dict:
+    """
+    Random search over XGBoost hyperparameters.
+
+    Uses chronological train/val split (no shuffled CV) to avoid data leakage.
+    Evaluates `n_trials` random parameter combinations and returns the best.
+
+    No additional dependencies required — uses numpy random sampling.
+    """
+    import xgboost as xgb
+
+    rng = np.random.RandomState(seed)
+
+    # Search space
+    search_space = {
+        'max_depth': [3, 4, 5, 6, 7, 8],
+        'learning_rate': [0.01, 0.02, 0.05, 0.08, 0.1],
+        'min_child_weight': [1, 2, 3, 5, 7],
+        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'gamma': [0.0, 0.05, 0.1, 0.2, 0.5],
+        'reg_alpha': [0.0, 0.01, 0.05, 0.1, 0.5],
+        'reg_lambda': [0.5, 1.0, 2.0, 5.0],
+    }
+
+    sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
+    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
+                         weight=sample_weights)
+    dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
+
+    best_score = float('inf')
+    best_params: Dict = {}
+    results = []
+
+    logger.info('Hyperparameter tuning: %d trials...', n_trials)
+
+    for trial in range(n_trials):
+        params = {
+            'objective': 'multi:softprob',
+            'num_class': 3,
+            'eval_metric': 'mlogloss',
+            'verbosity': 0,
+            'seed': seed,
+        }
+        for key, choices in search_space.items():
+            params[key] = choices[rng.randint(len(choices))]
+
+        evals_result: Dict = {}
+        model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=500,
+            evals=[(dval, 'val')],
+            early_stopping_rounds=30,
+            evals_result=evals_result,
+            verbose_eval=False,
+        )
+
+        score = evals_result['val']['mlogloss'][model.best_iteration]
+        results.append({'params': params.copy(), 'score': score, 'iterations': model.best_iteration})
+
+        if score < best_score:
+            best_score = score
+            best_params = params.copy()
+            logger.info(
+                '  Trial %d/%d: mlogloss=%.4f (NEW BEST) — depth=%d, lr=%.3f, mcw=%d',
+                trial + 1, n_trials, score,
+                params['max_depth'], params['learning_rate'], params['min_child_weight'],
+            )
+        elif (trial + 1) % 5 == 0:
+            logger.info('  Trial %d/%d: mlogloss=%.4f (best=%.4f)', trial + 1, n_trials, score, best_score)
+
+    # Sort by score and show top 5
+    results.sort(key=lambda r: r['score'])
+    logger.info('\nTop 5 parameter sets:')
+    for i, r in enumerate(results[:5], 1):
+        p = r['params']
+        logger.info(
+            '  %d. mlogloss=%.4f — depth=%d, lr=%.3f, mcw=%d, sub=%.1f, col=%.1f, iters=%d',
+            i, r['score'], p['max_depth'], p['learning_rate'],
+            p['min_child_weight'], p['subsample'], p['colsample_bytree'],
+            r['iterations'],
+        )
+
+    # Remove non-XGBoost keys from best_params (keep only training params)
+    logger.info('\nBest params (mlogloss=%.4f): %s', best_score, {
+        k: v for k, v in best_params.items()
+        if k not in ('objective', 'num_class', 'eval_metric', 'verbosity', 'seed')
+    })
+
+    return best_params
 
 
 def train_logistic_baseline(
@@ -561,6 +666,14 @@ def main():
         '--test', action='store_true',
         help='Also evaluate on 2025/26 held-out data',
     )
+    parser.add_argument(
+        '--tune', action='store_true',
+        help='Run hyperparameter tuning before final training (random search, ~25 trials)',
+    )
+    parser.add_argument(
+        '--tune-trials', type=int, default=25,
+        help='Number of hyperparameter search trials (default: 25)',
+    )
     args = parser.parse_args()
 
     # 1. Load data
@@ -586,11 +699,21 @@ def main():
         100 * len(X_train) / len(X), 100 * len(X_val) / len(X),
     )
 
-    # 4. First XGBoost pass (all features — to get importance scores)
+    # 4. Optional hyperparameter tuning
+    tuned_params: Optional[Dict] = None
+    if args.tune:
+        logger.info('Running hyperparameter tuning (%d trials)...', args.tune_trials)
+        tuned_params = tune_hyperparameters(
+            X_train, y_train, X_val, y_val, feature_names,
+            seasons_train=seasons_train, n_trials=args.tune_trials,
+        )
+
+    # 5. First XGBoost pass (all features — to get importance scores)
     logger.info('Training XGBoost (first pass — all %d features)...', len(feature_names))
     import xgboost as xgb
     xgb_result_v1 = train_xgboost(X_train, y_train, X_val, y_val, feature_names,
-                                   seasons_train=seasons_train)
+                                   seasons_train=seasons_train,
+                                   params_override=tuned_params)
 
     # 5. Feature selection — drop low-importance features and retrain
     X_train_sel, X_val_sel, sel_feature_names = select_features(
@@ -602,7 +725,8 @@ def main():
     if len(sel_feature_names) < len(feature_names):
         logger.info('Retraining XGBoost with %d selected features...', len(sel_feature_names))
         xgb_result = train_xgboost(X_train_sel, y_train, X_val_sel, y_val, sel_feature_names,
-                                   seasons_train=seasons_train)
+                                   seasons_train=seasons_train,
+                                   params_override=tuned_params)
         active_feature_names = sel_feature_names
         X_train_active, X_val_active = X_train_sel, X_val_sel
     else:
