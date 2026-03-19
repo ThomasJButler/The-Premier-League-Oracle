@@ -1,7 +1,7 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (fortieth update — P6b Oracle Chat RAG done)
-Active branch: `v3.0-BackendMLTraining`
+Last updated: March 2026 (forty-first update — P6d Deployment docs done, MVP complete)
+Active branch: `v3.0-Development`
 
 ---
 
@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
-| **P6 Final Push** | **4/5 (80%)** | **P6c, P6e, P6a, P6b DONE — deployment docs remaining** |
+| **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 
 **Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -34,7 +34,7 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Goal:** Ship a viable, deployable MVP. This is the last set of work before the project is complete.
 
-**Execution order:** P6c ✓ → P6e ✓ → P6a ✓ → P6b ✓ → P6d
+**Execution order:** P6c ✓ → P6e ✓ → P6a ✓ → P6b ✓ → P6d ✓
 
 ### P6c. Repo Cleanup — Remove Dead Code
 
@@ -114,14 +114,16 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Result:** 44 backend tests + 5 frontend tests (512 total), all passing. Server-side API key resolves the browser-exposed key security issue.
 
-### P6d. Docker & Deployment Documentation
+### P6d. Docker & Deployment Documentation ✅
 
-- [ ] Create `DEPLOYMENT.md` with step-by-step instructions:
-  - **Frontend (Vercel):** Connect repo → set build/output → add env vars → deploy
-  - **Backend (Docker):** `docker-compose up --build` → set API keys → production host options (Railway, Fly.io, Render)
-  - **Environment variables table:** `OPENAI_API_KEY`, `FOOTBALL_DATA_API_KEY`, `VITE_BACKEND_URL`
-- [ ] Verify `backend/docker-compose.yml` works end-to-end
-- [ ] Document `vercel.json` configuration
+- [x] Create `DEPLOYMENT.md` with step-by-step instructions:
+  - **Frontend (Vercel):** Connect repo → set root directory → add env vars → deploy
+  - **Backend (Docker):** `docker-compose up --build` → set API keys → production host options (Railway, Fly.io, Render, Cloud Run, ECS)
+  - **Environment variables table:** `OPENAI_API_KEY`, `FOOTBALL_DATA_API_KEY`, `VITE_FOOTBALL_DATA_API_KEY`
+  - **Edge Function docs:** `api/chat.ts` deployment scope, Vercel root directory caveat
+  - **Troubleshooting guide:** libomp, model loading, CORS, ARM Mac, API keys
+- [x] Verify `backend/docker-compose.yml` works end-to-end — config validated, added `OPENAI_API_KEY` passthrough, removed obsolete `version` field
+- [x] Document `vercel.json` configuration — SPA rewrites, build command, output directory, backend proxy rewrite pattern for production
 
 ---
 
@@ -523,7 +525,7 @@ All feature specifications in `specs/`:
 | `MatchList.test.ts` | 12 | Passing |
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
-| **Total** | **507** | **All passing (32 files)** |
+| **Total** | **512** | **All passing (32 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 
@@ -543,4 +545,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**86 tests across 3 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), and API endpoints (16). Pro-tier models and data collector have 0% test coverage. Security modules are entirely unused at runtime and untested.
+**131 tests across 4 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (44). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.

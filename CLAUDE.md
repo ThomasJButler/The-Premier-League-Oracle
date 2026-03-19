@@ -106,7 +106,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | **DONE** |
 | P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | **DONE** |
 | P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | **DONE** |
-| P6d | Docker & deployment documentation | Not started |
+| P6d | Docker & deployment documentation | **DONE** |
 
 **Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
@@ -114,9 +114,9 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Test Coverage
 - **Frontend:** 512 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
-- **Backend:** 130 pytest tests (4 files), all non-skip passing (7 skip without libomp)
+- **Backend:** 131 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
-- **Untested components (3):** Header, SidebarNav, Sidebar — layout/navigation only
+- **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 
 ### Frontend Gotchas
 - `Prediction` type in `types/index.ts` is a dead legacy interface — `StoredPrediction` is the actual runtime type

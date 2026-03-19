@@ -2,6 +2,33 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## March 2026 — P6d: Docker & Deployment Documentation (MVP Complete)
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.20`
+
+### New: DEPLOYMENT.md — comprehensive deployment guide
+- Step-by-step instructions for both frontend (Vercel) and backend (Docker) deployments
+- Environment variables table with component mapping and required/optional status
+- Edge Function (`api/chat.ts`) documentation including Vercel root directory caveat
+- Production deployment options for backend: Railway, Fly.io, Render, Cloud Run, ECS
+- Frontend-to-backend connection guide using Vercel rewrites for `/api/oracle` proxy
+- Local development setup with Vite proxy details
+- Model training instructions for the free-tier XGBoost pipeline
+- Troubleshooting table: libomp, model loading, CORS, ARM Mac, API keys
+
+### Fixed: docker-compose.yml
+- Added `OPENAI_API_KEY` passthrough (was missing — RAG chat endpoint needs it)
+- Removed obsolete `version: '3.8'` field (Docker Compose V2 ignores it)
+
+### Fixed: backend test — test_returns_valid_prediction
+- Added XGBoost availability skip guard matching existing test pattern
+- Test now skips cleanly on macOS without libomp instead of failing with `XGBoostError`
+
+### Housekeeping
+- CLAUDE.md: corrected backend test count (130→131), skip count (7→8), untested components (3→4, added MobileNav)
+- IMPLEMENTATION_PLAN.md: fixed stale branch header (BackendMLTraining→Development), updated test counts (507→512, 86→131)
+- P6 Final Push now 5/5 (100%) — all MVP work complete
+
 ## April 2026 — P6b: Oracle Chat RAG — data-grounded responses using CSV DataFrame
 
 **Branch:** `v3.0-Development` | **Tag:** `v0.1.19`
