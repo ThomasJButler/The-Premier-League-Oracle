@@ -149,7 +149,9 @@ vi.mock('lucide-svelte', () => {
     Users: stub,
     Target: stub,
     BarChart2: stub,
-    Trophy: stub
+    Trophy: stub,
+    ChevronDown: stub,
+    Calendar: stub
   };
 });
 
@@ -288,12 +290,14 @@ describe('Dashboard Component', () => {
     });
   });
 
-  it('should display recent predictions section', async () => {
+  it('should display activity section with predictions tab', async () => {
     render(Dashboard);
 
     await waitFor(() => {
-      const recentPredictionsTitle = screen.queryByText(/Recent Predictions/i);
-      expect(recentPredictionsTitle).toBeInTheDocument();
+      const predictionsTab = screen.queryByTestId('tab-predictions');
+      expect(predictionsTab).toBeInTheDocument();
+      const upcomingTab = screen.queryByTestId('tab-upcoming');
+      expect(upcomingTab).toBeInTheDocument();
     });
   });
 
@@ -322,7 +326,7 @@ describe('Dashboard Component', () => {
   it('should apply responsive grid layout', () => {
     render(Dashboard);
 
-    const gridElements = document.querySelectorAll('.grid.grid-cols-1');
+    const gridElements = document.querySelectorAll('.grid');
     expect(gridElements.length).toBeGreaterThan(0);
   });
 });

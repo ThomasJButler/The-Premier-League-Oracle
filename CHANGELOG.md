@@ -2,6 +2,42 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — P6a: Dashboard redesign — reduce scrolling, fix empty charts, merge sections
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.18`
+
+### Hero section streamlined (Dashboard.svelte)
+- Removed duplicate quick stats grid (Accuracy, Profit, Upcoming, Matches) that overlapped with the Stats Grid cards below
+- Reduced Hero padding and heading size for a more compact layout
+- Stats Grid is now the single source of truth for KPI display
+
+### Charts: meaningful empty states for new users (Dashboard.svelte)
+- Prediction Accuracy chart shows "No accuracy data yet" card with guidance text instead of a flat-line chart when no predictions exist
+- Profit/Loss chart shows "Place your first bet to track P&L" card instead of a zero-line "No data" chart
+- Added `hasAccuracyData` and `hasProfitData` flags to control chart vs empty state rendering
+
+### "How We Predict" collapsed (Dashboard.svelte)
+- Wrapped the 5 methodology tiles in a native `<details>/<summary>` element — collapsed by default
+- Added ChevronDown icon with CSS rotation on open
+- Accessible by default: keyboard navigation and screen reader support built into native HTML element
+
+### Activity section: tabbed Predictions + Upcoming (Dashboard.svelte)
+- Merged "Recent Predictions" and "Upcoming Matches" sections into a single "Activity" card with Predictions | Upcoming tabs
+- Upcoming tab shows a match count badge when fixtures are available
+- Both tabs have dedicated empty state cards with icons and guidance text
+- Removed the two-column grid layout in favour of a full-width tabbed card
+
+### Spacing and animation polish
+- Reduced `space-y-6` to `space-y-4` between sections
+- Lowered animation delay values for snappier load appearance
+- Overall height reduced from ~3.5 viewport heights to ~1.5 on desktop
+
+### Tests updated (Dashboard.test.ts)
+- Updated "Recent Predictions" test → "Activity section with predictions tab" (verifies tab test IDs)
+- Added `ChevronDown` and `Calendar` to lucide-svelte icon mocks
+- Simplified responsive grid layout assertion (`.grid` instead of `.grid.grid-cols-1`)
+- All 12 Dashboard tests passing
+
 ## April 2026 — P6e: MVP quality pass — fix Chart.js, null form, chart labels, team name 422s
 
 **Branch:** `v3.0-Development` | **Tag:** `v0.1.17`

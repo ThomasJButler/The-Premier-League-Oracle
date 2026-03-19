@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: March 2026 (thirty-eighth update — P6 Final Push added)
+Last updated: April 2026 (thirty-ninth update — P6a Dashboard Redesign done)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
-| **P6 Final Push** | **2/5 (40%)** | **P6c, P6e DONE — Dashboard redesign, Oracle Chat RAG, deployment docs remaining** |
+| **P6 Final Push** | **3/5 (60%)** | **P6c, P6e, P6a DONE — Oracle Chat RAG, deployment docs remaining** |
 
 **Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -34,7 +34,7 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Goal:** Ship a viable, deployable MVP. This is the last set of work before the project is complete.
 
-**Execution order:** P6c ✓ → P6e ✓ → P6a → P6b → P6d
+**Execution order:** P6c ✓ → P6e ✓ → P6a ✓ → P6b → P6d
 
 ### P6c. Repo Cleanup — Remove Dead Code
 
@@ -78,14 +78,14 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Problem:** 7 sections, ~3,300px on mobile. Hero and Stats Grid show overlapping metrics. "How We Predict" is static. Charts empty for new users.
 
-**File:** `frontend/src/components/Dashboard.svelte` (540 lines)
+**File:** `frontend/src/components/Dashboard.svelte` (reduced from 541 to ~490 lines)
 
-- [ ] **Merge Hero + Stats Grid** — remove duplicate 4-card stats grid (Prediction Accuracy, Total Profit, Total Predictions, Bets Placed) since hero already shows same quick stats. Or replace hero quick stats with the detailed cards
-- [ ] **Collapse "How We Predict"** — move 5 methodology cards into collapsible `<details>` or info tooltip. Static weights (25%/30%/20%/10%/15%) aren't actionable dashboard content
-- [ ] **Fix charts for new users** — Profit/Loss chart: show "Place your first bet to track P&L" card instead of empty chart. Prediction Accuracy: improve fallback label clarity
-- [ ] **Merge Recent Predictions + Upcoming Matches** — combine into single "Activity" section with Predictions | Upcoming tabs
+- [x] **Merge Hero + Stats Grid** — removed duplicate quick stats from Hero; kept detailed Stats Grid cards with change strings as the single source of KPI data
+- [x] **Collapse "How We Predict"** — wrapped in native `<details>/<summary>` with ChevronDown rotation; accessible by default (keyboard + screen reader)
+- [x] **Fix charts for new users** — both charts now show meaningful empty state cards with icons and guidance text instead of flat-line/zero charts. `hasAccuracyData` and `hasProfitData` flags control rendering
+- [x] **Merge Recent Predictions + Upcoming Matches** — combined into single "Activity" card with Predictions | Upcoming tabs. Upcoming tab shows match count badge. Empty states for both tabs
 
-**Target:** ~1.5 viewport heights on desktop (down from ~3.5)
+**Result:** ~1.5 viewport heights on desktop (down from ~3.5). Dashboard tests updated (12 tests, all passing).
 
 ### P6b. Oracle Chat RAG — Data-Grounded Responses
 
