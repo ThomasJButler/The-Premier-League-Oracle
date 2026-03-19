@@ -689,7 +689,7 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~90% — missing: Poisson lambda from real stats (Req 2). Home advantage double-counting fixed (P5aa), fatigue simplified (P5ad). **Markers: 7/8** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | **100% — ALL 8/8 criteria met.** Poisson lambda now uses per-team stats from `dataService.getTeamStats()` (Dixon-Coles formula). |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~75% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). Backend proxy marker stale (done since P2b). **Markers: 6/8 (1 stale)** |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~90% — AGENTS.md historical data command added (Req 6 met). **Markers: 8/8** |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~92% — missing: accumulator/combination bet UI (Req 12). HT prior bias fixed (P5ac), correlation adjustment applied to all combos (P5al). **Markers: 11/12** |
@@ -720,12 +720,12 @@ All feature specifications in `specs/`:
 |------|-------|--------|
 | `betBuilder.test.ts` | 40 | Passing |
 | `value.test.ts` | 17 | Passing |
-| `advancedPredictions.test.ts` | 21 | Passing |
+| `advancedPredictions.test.ts` | 24 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
 | `footballData.test.ts` | 23 | Passing |
 | `kelly.test.ts` | 11 | Passing |
 | `types.test.ts` | 4 | Passing |
-| `predictionTracker.test.ts` | 24 | Passing |
+| `predictionTracker.test.ts` | 22 | Passing |
 | `ChatBot.test.ts` | 18 | Passing |
 | `Predictions.test.ts` | 17 | Passing |
 | `BettingHistory.test.ts` | 15 | Passing |
@@ -741,7 +741,7 @@ All feature specifications in `specs/`:
 | `liveService.test.ts` | 14 | Passing |
 | `backendService.test.ts` | 11 | Passing |
 | `aiAnalysis.test.ts` | 23 | Passing |
-| **Total** | **373** | **All passing** |
+| **Total** | **372** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

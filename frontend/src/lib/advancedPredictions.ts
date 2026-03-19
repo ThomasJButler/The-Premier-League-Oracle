@@ -365,24 +365,51 @@ export class AdvancedMatchPredictor {
     const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays);
     const awayFatigue = FatigueAnalyzer.getFatigueMultiplier(awayRestDays);
 
-    // 3. Adjust ratings for fatigue
-    const adjustedHomeRating = homeRating * homeFatigue;
-    const adjustedAwayRating = awayRating * awayFatigue;
-
-    // 4. Calculate expected goals using adjusted ratings and real league averages
-    const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
-
-    // Derive league average goals from completed matches (fallback: 1.5 / 1.2)
+    // 3. Compute league average goals from completed matches (fallback: 1.5 / 1.2)
     const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
-    let baseHomeGoals = 1.5;
-    let baseAwayGoals = 1.2;
+    let leagueAvgHomeGoals = 1.5;
+    let leagueAvgAwayGoals = 1.2;
     if (completed.length > 0) {
-      baseHomeGoals = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
-      baseAwayGoals = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+      leagueAvgHomeGoals = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
+      leagueAvgAwayGoals = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+    }
+    const leagueAvgGoalsPerGame = (leagueAvgHomeGoals + leagueAvgAwayGoals) / 2 || 1.35;
+
+    // 4. Calculate expected goals using per-team attack/defence strengths (Dixon-Coles)
+    //    λ_home = (home avg goals scored at home × away avg goals conceded away) / league avg
+    //    λ_away = (away avg goals scored away × home avg goals conceded at home) / league avg
+    const [homeStats, awayStats] = await Promise.all([
+      dataService.getTeamStats(homeTeam),
+      dataService.getTeamStats(awayTeam)
+    ]);
+
+    let expectedHomeGoals: number;
+    let expectedAwayGoals: number;
+
+    const homeHasData = homeStats && homeStats.home_matches_played >= 3;
+    const awayHasData = awayStats && awayStats.away_matches_played >= 3;
+
+    if (homeHasData && awayHasData) {
+      // Full per-team formula from spec: real attacking and defensive stats
+      const homeAvgScoredAtHome = homeStats.home_goals_for / homeStats.home_matches_played;
+      const awayAvgConcededAway = awayStats.away_goals_against / awayStats.away_matches_played;
+      const awayAvgScoredAway = awayStats.away_goals_for / awayStats.away_matches_played;
+      const homeAvgConcededAtHome = homeStats.home_goals_against / homeStats.home_matches_played;
+
+      expectedHomeGoals = (homeAvgScoredAtHome * awayAvgConcededAway) / leagueAvgGoalsPerGame;
+      expectedAwayGoals = (awayAvgScoredAway * homeAvgConcededAtHome) / leagueAvgGoalsPerGame;
+    } else {
+      // Fallback: ELO-derived estimate when team stats are insufficient
+      const adjustedHomeRating = homeRating * homeFatigue;
+      const adjustedAwayRating = awayRating * awayFatigue;
+      const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
+      expectedHomeGoals = leagueAvgHomeGoals * Math.exp(ratingDiff * 0.1);
+      expectedAwayGoals = leagueAvgAwayGoals * Math.exp(-ratingDiff * 0.1);
     }
 
-    const expectedHomeGoals = baseHomeGoals * Math.exp(ratingDiff * 0.1);
-    const expectedAwayGoals = baseAwayGoals * Math.exp(-ratingDiff * 0.1);
+    // Apply fatigue adjustment to expected goals
+    expectedHomeGoals = Math.max(0.3, Math.min(4.5, expectedHomeGoals * homeFatigue));
+    expectedAwayGoals = Math.max(0.3, Math.min(4.5, expectedAwayGoals * awayFatigue));
 
     // 5. Use Poisson distribution for outcome probabilities
     const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
@@ -417,8 +444,9 @@ export class AdvancedMatchPredictor {
     if (awayRestDays < 3) {
       insights.push(`${awayTeam} has only ${awayRestDays} days rest - fatigue could be a factor`);
     }
-    if (ratingDiff > 2) {
-      insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(ratingDiff * 100).toFixed(0)} points higher`);
+    const eloDiff = (homeRating + EloRatingSystem['HOME_ADVANTAGE'] - awayRating) / 100;
+    if (eloDiff > 2) {
+      insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(eloDiff * 100).toFixed(0)} points higher`);
     }
     // Fair odds derived from model — shown for reference
     insights.push(`Fair odds: H ${fairOdds.home.toFixed(2)} / D ${fairOdds.draw.toFixed(2)} / A ${fairOdds.away.toFixed(2)}`);

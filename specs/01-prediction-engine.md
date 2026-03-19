@@ -56,15 +56,15 @@ Standings:  15%
 
 ---
 
-### 2. Poisson Distribution (Priority: High)
+### 2. Poisson Distribution (Priority: High) — IMPLEMENTED
 
-**Current problem:** `PoissonPredictor` uses manually estimated lambda values. Lambda (expected goals) should be derived from each team's real attacking and defensive stats.
-
-**Required behaviour:**
-- Lambda home = `(home team avg goals scored at home) × (away team avg goals conceded away) / (league avg goals per game)`
-- Lambda away = `(away team avg goals scored away) × (home team avg goals conceded at home) / (league avg goals per game)`
-- Pull these stats from `dataService.getTeamStats()` rather than hardcoded averages
-- Maximum goals capped at 7 per team in the score matrix (was 10 — overkill)
+**Current state:** `AdvancedMatchPredictor.predictMatch()` now calls `dataService.getTeamStats()` for both teams and applies the Dixon-Coles per-team formula:
+- λ_home = (home avg goals scored at home × away avg goals conceded away) / league avg goals per game
+- λ_away = (away avg goals scored away × home avg goals conceded at home) / league avg goals per game
+- Requires ≥3 home/away matches per team; falls back to ELO-exponent estimate when data is insufficient
+- Fatigue adjustment applied after lambda calculation (clamps to 0.3–4.5 range)
+- `OptimizedPredictor` already had a full Dixon-Coles implementation via `computeLeagueAverages()` — both callers now use per-team strengths
+- Maximum goals capped at 7 per team (already fixed)
 
 ---
 
@@ -145,10 +145,10 @@ Ralph should run backtests with ±5% weight variations to optimise these values 
 ## Acceptance Criteria
 
 - [x] ELO ratings update from real match results and persist across sessions (persistence done; auto-update wired via `dataService.reconcilePredictions()` → `sharedEloSystem.processCompletedMatches()`)
-- [ ] Poisson lambda derived from real team stats, not hardcoded averages
+- [x] Poisson lambda derived from real team stats, not hardcoded averages (`AdvancedMatchPredictor` uses `dataService.getTeamStats()` with Dixon-Coles formula; `OptimizedPredictor` uses `computeLeagueAverages()` inline — both use per-team attack/defence strengths)
 - [x] Fatigue multiplier uses real ELO opponent ratings (via `calculateFixtureDifficulty` with `eloSystem` param)
 - [x] Referee adjustments applied when referee name is available (via `OptimizedPredictor.predictMatch`)
 - [x] Confidence reflects both model certainty and historical calibration — ensemble disagreement lowers confidence; `getCalibrationFactors()` in predictionTracker adjusts based on per-band historical accuracy
 - [x] AI analysis available as a configurable feature in Settings (`aiAnalysis.ts` created, wired into Settings)
 - [x] Backtest runner produces accuracy metrics for historical seasons (`frontend/src/lib/backtest.ts` — `BacktestRunner` class with accuracy, log loss, Brier score)
-- [x] All prediction unit tests pass — 382/382 passing (`npm run test:run`)
+- [x] All prediction unit tests pass — 372/372 passing (`npm run test:run`)

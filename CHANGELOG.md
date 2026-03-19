@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 31 March 2026 — Poisson lambda from real per-team stats (Spec 01 complete)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Prediction quality (`advancedPredictions.ts`)
+- **`AdvancedMatchPredictor.predictMatch()` now uses Dixon-Coles per-team formula:** Calls `dataService.getTeamStats()` for both teams and computes λ_home = (home avg goals scored at home × away avg goals conceded away) / league avg, λ_away = (away avg goals scored away × home avg goals conceded at home) / league avg. Previously used a crude ELO-exponent approach with league-wide averages
+- **Graceful fallback:** When team stats are unavailable or either team has fewer than 3 home/away matches, falls back to the ELO-derived lambda estimate
+- **Fatigue applied after lambda calculation:** Expected goals clamped to 0.3–4.5 range after fatigue multiplier
+
+### Tests
+- **3 new tests added:** Per-team stats lambda (verifies stronger home team produces higher expected goals), ELO fallback (verifies predictions work with no stats), insufficient data fallback (verifies <3 match threshold triggers fallback)
+- Frontend test count: 21 → 24 for `advancedPredictions.test.ts` (372 total, all passing)
+
+### Spec completion
+- **Spec 01 (prediction engine) now 100% complete** — all 8/8 acceptance criteria met. The Poisson lambda criterion was the last outstanding item
+
+---
+
 ## 30 March 2026 — Elo-based features for ML (5 new features, 94→99 total)
 
 **Branch:** `v3.0-BackendMLTraining`

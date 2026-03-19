@@ -179,6 +179,7 @@ These specs are the single source of truth for requirements.
 - `footballData.ts`: `competitionId` now uses named `PREMIER_LEAGUE_ID` constant (was magic number 2021)
 - `lib/utils.ts`: exports `getSeasonYear(date?)`, `SEASON_START_MONTH`, `getSeasonLabel()`, `cn()`, `focusTrap()` — the shared utility module for the frontend
 - No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
+- Spec 01 (prediction engine) is 100% complete — all 8/8 acceptance criteria met. Poisson lambda now derived from per-team stats via `dataService.getTeamStats()` using Dixon-Coles formula (both `AdvancedMatchPredictor` and `OptimizedPredictor`)
 - Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
 - Spec 07 (UI/UX) at 100% — ALL 17/17 criteria met. All 7 shadcn components wired (Button, Card, Badge, Separator, Skeleton, Dialog, Sheet)
 - ~~**Poisson maxGoals inconsistency (P5n):** 4 different values across codebase — `advancedPredictions.ts` fixed to 7, but `optimizedPredictions.ts:278` uses 5, `Predictions.svelte` uses 6, `value.ts:234` uses 10. Spec says 7. All three unfixed sites directly affect prediction probabilities~~ **FIXED:** all four sites now use `maxGoals=7`. `optimizedPredictions.ts`, `Predictions.svelte`, and `value.ts` updated. Note: `value.ts` no longer has its own Poisson implementation — private methods removed, now imports `PoissonPredictor` from `advancedPredictions.ts`
