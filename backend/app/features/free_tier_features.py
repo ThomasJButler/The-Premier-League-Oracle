@@ -1158,8 +1158,10 @@ class FreeTierFeatureEngineer:
                 home_elo = snap.get(home_team, self._ELO_DEFAULT)
                 away_elo = snap.get(away_team, self._ELO_DEFAULT)
             else:
-                # Live prediction — use latest ratings from data
-                home_elo, away_elo = self._latest_elo(home_team, away_team)
+                # Match not in data — use latest ratings before match_date
+                home_elo, away_elo = self._latest_elo(
+                    home_team, away_team, before_date=match_date,
+                )
         else:
             home_elo, away_elo = self._latest_elo(home_team, away_team)
 
@@ -1179,15 +1181,33 @@ class FreeTierFeatureEngineer:
 
         return f
 
-    def _latest_elo(self, home_team: str, away_team: str) -> Tuple[float, float]:
-        """Get the latest known Elo ratings from the end of the precomputed data."""
-        # Walk backwards from the last snapshot to find each team's latest rating
+    def _latest_elo(
+        self,
+        home_team: str,
+        away_team: str,
+        before_date: Optional[datetime] = None,
+    ) -> Tuple[float, float]:
+        """
+        Get the latest known Elo ratings, optionally only from matches
+        before a given date (prevents future data leakage).
+
+        When ``before_date`` is None (live inference), all data is used.
+        When provided, only matches strictly before that date contribute.
+        """
         home_elo = self._ELO_DEFAULT
         away_elo = self._ELO_DEFAULT
         found_home = False
         found_away = False
 
+        cutoff = pd.Timestamp(before_date) if before_date is not None else None
+
         for idx in reversed(self.data.index):
+            # Skip matches at or after the cutoff date
+            if cutoff is not None:
+                row_date = self.data.at[idx, 'date']
+                if pd.Timestamp(row_date) >= cutoff:
+                    continue
+
             snap = self._elo_ratings.get(idx, {})
             if not found_home and home_team in snap:
                 home_elo = snap[home_team]
@@ -1198,12 +1218,10 @@ class FreeTierFeatureEngineer:
             if found_home and found_away:
                 break
 
-        # Also need to account for the rating *after* the last match
-        # by replaying the last match's result
-        # (snapshot stores pre-match ratings, so post-match ratings are
-        # implicitly encoded in the next match's pre-match ratings —
-        # but the very last match's post-match rating isn't captured).
-        # For live inference this is close enough — the difference is
-        # at most one K-factor update (~32 points).
+        # Snapshot stores pre-match ratings, so the returned value is
+        # the rating before the team's last match prior to cutoff.
+        # The post-match rating is implicitly encoded in the *next*
+        # match's pre-match snapshot. For live inference (no cutoff)
+        # this is close enough — at most one K-factor update (~32 points).
 
         return home_elo, away_elo
