@@ -1,7 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { dataService } from '../services/dataService';
   import { format } from 'date-fns';
+  import {
+    liveMatchesStore,
+    recentMatchesStore,
+    upcomingMatchesStore,
+    matchEventsStore,
+    hasLiveMatches as hasLiveStore,
+    liveService,
+  } from '../services/liveService';
 
   interface TickerItem {
     text: string;
@@ -9,73 +16,88 @@
     priority: number; // lower = higher priority
   }
 
-  let tickerContent = '';
-  let hasLiveMatches = false;
-  let paused = false;
-  let pollInterval: ReturnType<typeof setInterval>;
+  // Reactive store subscriptions — rebuilt whenever any store changes
+  $: liveMatches = $liveMatchesStore;
+  $: recentMatches = $recentMatchesStore;
+  $: upcomingMatches = $upcomingMatchesStore;
+  $: matchEvents = $matchEventsStore;
+  $: hasLiveMatches = $hasLiveStore;
 
-  onMount(async () => {
-    await buildTicker();
-    // Refresh ticker every 60s to pick up live score changes
-    pollInterval = setInterval(buildTicker, 60_000);
+  let paused = false;
+
+  // Rebuild ticker whenever any input store changes
+  $: tickerContent = buildTicker(liveMatches, recentMatches, upcomingMatches, matchEvents);
+
+  onMount(() => {
+    // Ensure the service is started (idempotent — no-op if already running)
+    liveService.start();
   });
 
   onDestroy(() => {
-    if (pollInterval) clearInterval(pollInterval);
+    liveService.stop();
   });
 
-  async function buildTicker() {
+  function buildTicker(
+    live: typeof $liveMatchesStore,
+    recent: typeof $recentMatchesStore,
+    upcoming: typeof $upcomingMatchesStore,
+    events: typeof $matchEventsStore,
+  ): string {
     try {
       const items: TickerItem[] = [];
 
-      // Priority 1: Live scores (highest priority)
-      try {
-        const liveMatches = await dataService.getLiveMatches();
-        liveMatches.forEach(match => {
-          const minute = match.minute != null ? `${match.minute}'` :
-                         match.status === 'PAUSED' ? 'HT' : '';
-          items.push({
-            text: `${match.home_team} ${match.home_goals ?? 0}-${match.away_goals ?? 0} ${match.away_team} (${minute})`,
-            type: 'live',
-            priority: 0
-          });
+      // Priority 0: Match events (highest priority) — goals, status changes
+      events.forEach((event) => {
+        items.push({
+          text: event.message,
+          type: 'update',
+          priority: -1,
         });
-      } catch {
-        // Live endpoint may not be available
-      }
+      });
 
-      // Priority 2: Recent results (last 24h)
-      const recentMatches = await dataService.getMatches({ recent: true, days: 1 });
-      const finishedRecent = recentMatches.filter(m => m.result);
-      finishedRecent.slice(0, 4).forEach(match => {
+      // Priority 1: Live scores — from shared store
+      live.forEach((match) => {
+        const minute = match.minute != null ? `${match.minute}'` :
+                       match.status === 'PAUSED' ? 'HT' : '';
+        items.push({
+          text: `${match.home_team} ${match.home_goals ?? 0}-${match.away_goals ?? 0} ${match.away_team} (${minute})`,
+          type: 'live',
+          priority: 0,
+        });
+      });
+
+      // Priority 2: Recent results (last 24h) — filter from wider 3-day store
+      const oneDayAgo = Date.now() - 24 * 60 * 60_000;
+      const recentToday = recent.filter((m) => new Date(m.date).getTime() > oneDayAgo);
+
+      recentToday.slice(0, 4).forEach((match) => {
         const winner = match.result === 'H' ? match.home_team :
                        match.result === 'A' ? match.away_team : 'Draw';
         items.push({
           text: `Result: ${match.home_team} ${match.home_goals}-${match.away_goals} ${match.away_team} (${winner}${match.result === 'D' ? '' : ' win'})`,
           type: 'result',
-          priority: 1
+          priority: 1,
         });
       });
 
-      // Priority 3: Upcoming fixtures (next 48h)
-      const upcomingMatches = await dataService.getMatches({ upcoming: true, days: 2 });
-      upcomingMatches.slice(0, 4).forEach(match => {
+      // Priority 3: Upcoming fixtures (next 48h) — filter from wider 7-day store
+      const twoDaysFromNow = Date.now() + 2 * 24 * 60 * 60_000;
+      const soonUpcoming = upcoming.filter((m) => new Date(m.date).getTime() < twoDaysFromNow);
+
+      soonUpcoming.slice(0, 4).forEach((match) => {
         const dateStr = format(new Date(match.date), 'EEEE h:mmaaa');
         items.push({
           text: `Upcoming: ${match.home_team} vs ${match.away_team} - ${dateStr}`,
           type: 'fixture',
-          priority: 2
+          priority: 2,
         });
       });
 
       // Sort by priority
       items.sort((a, b) => a.priority - b.priority);
-      hasLiveMatches = items.some(item => item.type === 'live');
 
       if (items.length === 0) {
-        tickerContent = 'Premier League Oracle — No matches scheduled in the next 48 hours';
-        hasLiveMatches = false;
-        return;
+        return 'Premier League Oracle — No matches scheduled in the next 48 hours';
       }
 
       // Build ticker with type-appropriate icons
@@ -83,19 +105,19 @@
         live: '\u26BD',     // football
         result: '\u2705',   // check
         fixture: '\uD83D\uDCC5', // calendar
-        update: '\uD83D\uDCCA'   // chart
+        update: '\uD83D\uDCCA',  // chart
       };
 
-      const tickerTexts = items.map(item => `${iconMap[item.type] || ''} ${item.text}`);
+      const tickerTexts = items.map((item) => `${iconMap[item.type] || ''} ${item.text}`);
       // Duplicate for seamless CSS scroll loop
-      tickerContent = tickerTexts.join(' \u2022 ') + ' \u2022 ' + tickerTexts.join(' \u2022 ');
+      return tickerTexts.join(' \u2022 ') + ' \u2022 ' + tickerTexts.join(' \u2022 ');
     } catch {
-      tickerContent = 'Premier League Oracle — Live Predictions — Real-time Analysis';
+      return 'Premier League Oracle — Live Predictions — Real-time Analysis';
     }
   }
 </script>
 
-<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" role="marquee" aria-live="off" aria-label="Live match updates ticker">
+<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" aria-label="Live match updates ticker">
   {#if hasLiveMatches}
     <span class="live-dot" aria-hidden="true"></span>
   {/if}

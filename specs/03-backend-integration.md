@@ -6,7 +6,7 @@
 
 ## Current State
 
-The Python backend in `backend/` is fully built but **zero frontend code calls it**. It has:
+The Python backend in `backend/` is integrated with the frontend via `BackendService`. Key components:
 
 > **Note (March 2026 audit — updated):** The backend server now starts with graceful degradation — all heavy deps (LangChain, ChromaDB, torch, shap, optuna) are wrapped in try/except with availability flags. ML endpoints are disabled when deps are missing but `/health` returns 200. Feature engineering methods no longer return `np.random.uniform()` — 63 methods now return hardcoded `0.0` (still stubs, but not random). See `IMPLEMENTATION_PLAN.md` P3 for the remediation plan.
 
@@ -17,7 +17,7 @@ The Python backend in `backend/` is fully built but **zero frontend code calls i
 - Ensemble orchestrator: `backend/app/models/modern_oracle.py`
 - 150+ feature pipeline: `backend/app/features/advanced_engineering.py`
 - Data collector: `backend/app/data/football_data_collector.py`
-- Docker Compose: `backend/docker-compose.yml` (includes Redis + MLflow)
+- Docker Compose: `backend/docker-compose.yml` (just `oracle-api` — Redis/MLflow/Postgres/Jupyter/Nginx commented out since P2o)
 
 ---
 
@@ -25,12 +25,13 @@ The Python backend in `backend/` is fully built but **zero frontend code calls i
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/predict` | Single match prediction |
-| POST | `/predict/batch` | Batch predictions for multiple matches |
+| POST | `/predict` | Single match prediction (Pro-tier Oracle) |
+| POST | `/predict/free` | Free-tier XGBoost prediction |
 | GET | `/predict/upcoming` | Predictions for all upcoming PL fixtures |
-| POST | `/nl-query` | Natural language query (LangChain) |
-| POST | `/team-stats` | Team statistics with ML features |
-| WS | `/ws` | WebSocket for real-time updates |
+| GET | `/health` | Health check (backend availability) |
+| GET | `/models/free-tier/info` | Free-tier model metadata |
+
+Note: `POST /predict/batch`, `POST /team-stats`, and `WS /ws` were removed — `predictBatch()` and `getTeamStats()` were dead code (P5ak); WebSocket was removed from frontend in P5v.
 
 Auth: `HTTPBearer` token. For development, support `ORACLE_API_TOKEN` env var or an unauthenticated dev mode flag.
 
@@ -61,14 +62,14 @@ class BackendService {
 
   async isAvailable(): Promise<boolean>
   async predictMatch(homeTeam: string, awayTeam: string): Promise<MLPrediction>
-  async predictBatch(matches: MatchFixture[]): Promise<MLPrediction[]>
   async getUpcomingPredictions(): Promise<MLPrediction[]>
   async queryNaturalLanguage(query: string): Promise<string>
-  async getTeamStats(teamName: string): Promise<MLTeamStats>
 }
 
 export const backendService = new BackendService()
 ```
+
+> **Note (P5ak):** `predictBatch()` and `getTeamStats()` were removed as dead code — never called at runtime.
 
 Key design decisions:
 - `isAvailable()` pings `/health` — if the backend is down, return `false` immediately
@@ -132,11 +133,14 @@ The Python backend needs 5 seasons of data to train. `backend/app/data/football_
 
 ---
 
-## WebSocket for Live Updates
+## ~~WebSocket for Live Updates~~ — SUPERSEDED (P5v)
 
-When backend is running, `LiveMatches.svelte` and `LiveTicker.svelte` should use WebSocket instead of polling:
+> **Note (P5v):** WebSocket infrastructure was entirely removed from the frontend. `liveService.ts` is now polling-only with adaptive intervals and polling-diff match event detection (`matchEventsStore`). `MatchEventToast.svelte` renders colour-coded toast notifications for goals and status changes (auto-expire 30s). The backend `/ws/predictions` endpoint still exists but the frontend no longer connects to it.
+
+The original design (shown below for historical reference) called for WebSocket when the backend was running:
 
 ```typescript
+// HISTORICAL — no longer implemented in the frontend
 // frontend/src/services/liveService.ts
 class LiveService {
   private ws: WebSocket | null = null
@@ -151,11 +155,11 @@ class LiveService {
 }
 ```
 
-WebSocket falls back to polling if backend is not available.
-
 ---
 
-## AI Analysis via Backend
+## AI Analysis via Backend — Deferred (Pro-tier, P3a–d)
+
+> **Note:** Backend LangChain-based AI analysis is deferred to Pro-tier. The frontend has its own `aiAnalysis.ts` service (Spec 01 Req 6) that calls OpenAI/Anthropic directly via the `/api/chat` proxy.
 
 The backend has LangChain integration. Add a route that:
 1. Takes a match fixture
@@ -169,28 +173,32 @@ This analysis is displayed as an optional card in the Predictions component.
 ## Running the Backend
 
 ```bash
-# With Docker (recommended)
+# With Docker (just oracle-api service)
 cd backend && docker-compose up
 
-# Local (requires Redis on port 6379)
+# Local
 cd backend
 pip install -r requirements.txt
 uvicorn app.api.main:app --reload --port 8000
 
-# Train models (run once after data collection)
+# Train free-tier model (run once after CSV data is in place)
 cd backend
-python -m app.models.modern_oracle --train --seasons 2020,2021,2022,2023,2024
+python train_free_tier.py
 ```
+
+> **Note (P2o):** Redis, MLflow, Postgres, Jupyter, and Nginx services were commented out in `docker-compose.yml` — only `oracle-api` runs. Redis is not required for the free-tier stack.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `BackendService` class created with `isAvailable()`, `predictMatch()`, `predictBatch()`
-- [ ] Vite proxy configured for `/api/oracle`
-- [ ] `useBackend` toggle in Settings, persisted to localStorage
-- [ ] `OptimizedPredictor` calls backend when feature flag is on, falls back gracefully
-- [ ] WebSocket connection established when backend available
-- [ ] Historical data collection command documented in `AGENTS.md`
-- [ ] ML prediction type defined in `frontend/src/types/index.ts`
-- [ ] Settings UI shows backend connection status (connected / disconnected)
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `BackendService` class created with `isAvailable()`, `predictMatch()` — dead methods `predictBatch()` and `getTeamStats()` removed in P5ak
+- [x] Vite proxy configured for `/api/oracle`
+- [x] `useBackend` toggle in Settings, persisted to localStorage
+- [x] `OptimizedPredictor` calls backend when feature flag is on, falls back gracefully
+- [x] ~~WebSocket connection established when backend available~~ WebSocket infrastructure removed in P5v — `liveService` is now polling-only with adaptive intervals. The backend `/ws/predictions` endpoint still exists but the frontend no longer connects to it
+- [x] Historical data collection command documented in `AGENTS.md`
+- [x] ML prediction type defined in `frontend/src/types/index.ts`
+- [x] Settings UI shows backend connection status (connected / disconnected)

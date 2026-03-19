@@ -1,0 +1,40 @@
+# Test files
+tests/
+check_imports.py
+
+# Training data and spreadsheets (~100MB+)
+spreadsheets/
+
+# Documentation
+docs/
+README.md
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment and config
+.env
+.env.*
+environment.yml
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Generated data
+cache/
+logs/
+chroma_db/
+mlruns/
+
+# Training scripts (not needed at runtime)
+train.py
+train_free_tier.py
+setup.sh
+
+# Models are COPY'd explicitly in Dockerfile
+# but joblib files should not be in build context twice
+*.pkl

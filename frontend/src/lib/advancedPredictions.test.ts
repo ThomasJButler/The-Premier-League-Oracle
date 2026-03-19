@@ -7,11 +7,12 @@ import {
   AdvancedMatchPredictor
 } from './advancedPredictions';
 import { dataService } from '../services/dataService';
-import type { Match } from '../types';
+import type { Match, TeamStats } from '../types';
 
 vi.mock('../services/dataService', () => ({
   dataService: {
-    getMatches: vi.fn()
+    getMatches: vi.fn(),
+    getTeamStats: vi.fn()
   }
 }));
 
@@ -48,6 +49,8 @@ function createMockMatch(overrides: Partial<Match> & { id: string; season_id: st
 describe('Advanced Predictions Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no team stats available — tests that need stats override this
+    vi.mocked(dataService.getTeamStats).mockResolvedValue(null);
   });
 
   describe('PoissonPredictor', () => {
@@ -244,18 +247,22 @@ describe('Advanced Predictions Module', () => {
     });
 
     describe('getFatigueMultiplier', () => {
-      it('should calculate fatigue multiplier correctly', () => {
-        // Optimal rest, few fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(7, 1)).toBe(1);
+      it('should return 1.0 for fully rested teams (7+ days)', () => {
+        expect(FatigueAnalyzer.getFatigueMultiplier(7)).toBe(1);
+        expect(FatigueAnalyzer.getFatigueMultiplier(10)).toBe(1);
+      });
 
-        // No rest, many fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(2, 3)).toBeCloseTo(0.286 * 0.8, 3);
+      it('should scale linearly with rest days', () => {
+        // 4 days rest → 4/7 ≈ 0.571
+        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBeCloseTo(4 / 7, 3);
+        // 2 days rest → 2/7 ≈ 0.286
+        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 7, 3);
+      });
 
-        // Good rest, many fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(7, 4)).toBe(0.7);
-
-        // Some rest, some fixtures
-        expect(FatigueAnalyzer.getFatigueMultiplier(4, 2)).toBeCloseTo(0.571 * 0.9, 3);
+      it('should floor at 0.5 days to prevent NaN in Poisson', () => {
+        // 0 days rest → clamped to 0.5/7 ≈ 0.071
+        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 7, 3);
+        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 7, 3);
       });
     });
   });
@@ -364,9 +371,9 @@ describe('Advanced Predictions Module', () => {
         expect(prediction).toHaveProperty('valueBets');
         expect(prediction).toHaveProperty('insights');
 
-        // Check probabilities sum to 1
+        // Check probabilities sum to ~1 (Poisson truncation at maxGoals=7 loses ~0.06% tail mass)
         const probSum = prediction.homeWinProb + prediction.drawProb + prediction.awayWinProb;
-        expect(probSum).toBeCloseTo(1, 5);
+        expect(probSum).toBeCloseTo(1, 2);
 
         // Check confidence is reasonable
         expect(prediction.confidence).toBeGreaterThan(0);
@@ -379,7 +386,10 @@ describe('Advanced Predictions Module', () => {
         expect(prediction.expectedAwayGoals).toBeLessThan(5);
       });
 
-      it('should identify value bets', async () => {
+      it('should return empty valueBets when no bookmaker odds are available', async () => {
+        // P5e: The production code explicitly returns [] because the model has no
+        // external bookmaker odds to compare against. This test documents that
+        // intentional behaviour and will catch regressions if the array shape changes.
         vi.mocked(dataService.getMatches).mockResolvedValue([]);
 
         const prediction = await AdvancedMatchPredictor.predictMatch(
@@ -388,14 +398,109 @@ describe('Advanced Predictions Module', () => {
           new Date('2025-08-25')
         );
 
-        // valueBets should always be a valid array
         expect(Array.isArray(prediction.valueBets)).toBe(true);
-        // When value bets are found, each must have valid structure
-        for (const bet of prediction.valueBets) {
-          expect(bet.expectedValue).toBeGreaterThan(0);
-          expect(bet.odds).toBeGreaterThan(1);
-          expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
-        }
+        expect(prediction.valueBets).toHaveLength(0);
+      });
+
+      it('should use per-team stats for Poisson lambda when available', async () => {
+        // Arsenal: strong at home (2.0 goals/game scored, 0.5 conceded)
+        // Chelsea: weak away (0.8 goals/game scored, 1.5 conceded)
+        const arsenalStats: TeamStats = {
+          id: 'Arsenal_2025', season_id: '2025', team_name: 'Arsenal',
+          matches_played: 10, wins: 7, draws: 2, losses: 1,
+          goals_for: 25, goals_against: 8, clean_sheets: 5, failed_to_score: 1, points: 23,
+          home_matches_played: 5, home_wins: 4, home_draws: 1, home_losses: 0,
+          home_goals_for: 10, home_goals_against: 2,
+          away_matches_played: 5, away_wins: 3, away_draws: 1, away_losses: 1,
+          away_goals_for: 6, away_goals_against: 4,
+          updated_at: new Date().toISOString()
+        };
+        // Chelsea: decent away (1.2 goals/game scored, 1.6 conceded)
+        const chelseaStats: TeamStats = {
+          id: 'Chelsea_2025', season_id: '2025', team_name: 'Chelsea',
+          matches_played: 10, wins: 4, draws: 3, losses: 3,
+          goals_for: 15, goals_against: 13, clean_sheets: 3, failed_to_score: 2, points: 15,
+          home_matches_played: 5, home_wins: 3, home_draws: 1, home_losses: 1,
+          home_goals_for: 9, home_goals_against: 5,
+          away_matches_played: 5, away_wins: 1, away_draws: 2, away_losses: 2,
+          away_goals_for: 6, away_goals_against: 8,
+          updated_at: new Date().toISOString()
+        };
+
+        // Provide completed matches so league averages can be computed
+        const completedMatches: Match[] = Array.from({ length: 20 }, (_, i) => createMockMatch({
+          id: String(i + 1), season_id: '2025-26',
+          date: `2025-08-${String(i + 1).padStart(2, '0')}T15:00:00Z`,
+          home_team: i % 2 === 0 ? 'Arsenal' : 'Chelsea',
+          away_team: i % 2 === 0 ? 'Chelsea' : 'Arsenal',
+          home_goals: 2, away_goals: 1, result: 'H',
+          created_at: '2025-08-01'
+        }));
+
+        vi.mocked(dataService.getMatches).mockResolvedValue(completedMatches);
+        vi.mocked(dataService.getTeamStats).mockImplementation(async (team: string) => {
+          if (team === 'Arsenal') return arsenalStats;
+          if (team === 'Chelsea') return chelseaStats;
+          return null;
+        });
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'Arsenal', 'Chelsea', new Date('2025-09-15')
+        );
+
+        // Arsenal at home vs Chelsea away: strong attack vs weak defence
+        // Expected home goals should be notably higher than away goals
+        expect(prediction.expectedHomeGoals).toBeGreaterThan(prediction.expectedAwayGoals);
+        // Goals should be in a reasonable range
+        expect(prediction.expectedHomeGoals).toBeGreaterThan(0.5);
+        expect(prediction.expectedHomeGoals).toBeLessThan(4.5);
+        expect(prediction.expectedAwayGoals).toBeGreaterThan(0.3);
+        expect(prediction.expectedAwayGoals).toBeLessThan(3.0);
+        // Home win should be most likely given Arsenal's home dominance
+        expect(prediction.homeWinProb).toBeGreaterThan(prediction.awayWinProb);
+      });
+
+      it('should fall back to ELO-derived lambda when team stats are insufficient', async () => {
+        // No team stats available — should fall back to ELO-exponent approach
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+        vi.mocked(dataService.getTeamStats).mockResolvedValue(null);
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'Arsenal', 'Chelsea', new Date('2025-08-20')
+        );
+
+        // Should still produce valid predictions using fallback
+        const probSum = prediction.homeWinProb + prediction.drawProb + prediction.awayWinProb;
+        expect(probSum).toBeCloseTo(1, 2);
+        expect(prediction.expectedHomeGoals).toBeGreaterThan(0);
+        expect(prediction.expectedAwayGoals).toBeGreaterThan(0);
+      });
+
+      it('should fall back when one team has fewer than 3 home/away matches', async () => {
+        // Only 2 home matches — below the 3-match threshold
+        const thinStats: TeamStats = {
+          id: 'NewTeam_2025', season_id: '2025', team_name: 'NewTeam',
+          matches_played: 4, wins: 2, draws: 1, losses: 1,
+          goals_for: 6, goals_against: 4, clean_sheets: 1, failed_to_score: 0, points: 7,
+          home_matches_played: 2, home_wins: 1, home_draws: 1, home_losses: 0,
+          home_goals_for: 4, home_goals_against: 1,
+          away_matches_played: 2, away_wins: 1, away_draws: 0, away_losses: 1,
+          away_goals_for: 2, away_goals_against: 3,
+          updated_at: new Date().toISOString()
+        };
+
+        vi.mocked(dataService.getMatches).mockResolvedValue([]);
+        vi.mocked(dataService.getTeamStats).mockResolvedValue(thinStats);
+
+        const prediction = await AdvancedMatchPredictor.predictMatch(
+          'NewTeam', 'NewTeam2', new Date('2025-08-20')
+        );
+
+        // Should still produce valid predictions
+        expect(prediction.expectedHomeGoals).toBeGreaterThan(0);
+        expect(prediction.expectedAwayGoals).toBeGreaterThan(0);
+        const probSum = prediction.homeWinProb + prediction.drawProb + prediction.awayWinProb;
+        expect(probSum).toBeCloseTo(1, 2);
       });
 
       it('should generate meaningful insights', async () => {

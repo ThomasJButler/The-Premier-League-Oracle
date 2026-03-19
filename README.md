@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
 ![Status](https://img.shields.io/badge/status-active-success)
-![Tests](https://img.shields.io/badge/tests-364%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-507%20passing-brightgreen)
 
 A data-driven Premier League prediction platform that uses statistical models to predict match outcomes and analyse team performance. Built with Svelte, TypeScript, and a Python ML backend.
 
@@ -52,7 +52,7 @@ Open `http://localhost:5173` — the setup wizard will guide you through adding 
 ```bash
 cd frontend
 npm run check        # TypeScript + Svelte type checking
-npm run test:run     # 364 unit tests (Vitest)
+npm run test:run     # 507 unit tests (Vitest)
 npm run test:e2e     # 43 E2E tests × 3 viewports (Playwright)
 ```
 
@@ -63,8 +63,8 @@ npm run test:e2e     # 43 E2E tests × 3 viewports (Playwright)
 | **Frontend** | Svelte 4, TypeScript, Tailwind CSS, Vite |
 | **Charts** | Chart.js with svelte-chartjs |
 | **Caching** | IndexedDB (3-tier: memory → IDB → API) |
-| **Testing** | Vitest (364 tests), Playwright (43 E2E tests) |
-| **Backend** | Python, FastAPI, XGBoost (optional — scaffolded, not yet trained) |
+| **Testing** | Vitest (507 tests), Playwright (43 E2E tests) |
+| **Backend** | Python, FastAPI, XGBoost (optional — free-tier model trained, 51% accuracy) |
 | **API** | Football-Data.org v4 |
 | **Deployment** | Vercel |
 
@@ -80,13 +80,13 @@ frontend/src/
 └── utils/             # Shared utilities
 
 backend/app/           # Python ML backend (optional)
-├── models/            # XGBoost, LSTM, Transformer scaffolds
+├── models/            # XGBoost (trained), LSTM, Transformer
 ├── features/          # 150+ feature engineering pipeline
 ├── data/              # Football-Data.org collector
 └── api/               # FastAPI server
 ```
 
-The frontend prediction engine runs entirely in the browser — the Python backend is an optional enhancement for ML-based predictions (currently scaffolded but untrained).
+The frontend prediction engine runs entirely in the browser — the Python backend is an optional enhancement for ML-based predictions. The free-tier XGBoost model has been trained (51% accuracy baseline) and is available at `backend/models/xgboost_free_tier.joblib`, with a stacked OvR ensemble alongside it.
 
 ## Python Backend (Optional)
 

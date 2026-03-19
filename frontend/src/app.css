@@ -254,20 +254,6 @@
     border-color: hsl(var(--primary) / 0.2);
   }
 
-  /* Stat card */
-  .card-stats {
-    @apply rounded-xl p-6 transition-all duration-300;
-    @apply flex flex-col items-center justify-center text-center;
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border) / 0.6);
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
-  }
-  .card-stats:hover {
-    @apply -translate-y-1;
-    box-shadow: 0 8px 24px hsl(var(--primary) / 0.1);
-    border-color: hsl(var(--primary) / 0.25);
-  }
-
   .stat-value {
     @apply text-3xl font-bold font-display text-primary mt-1 mb-1;
   }
@@ -280,69 +266,10 @@
     @apply mb-3 p-3 rounded-full;
   }
 
-  /* Match card */
-  .match-card {
-    @apply rounded-xl transition-all duration-300;
-    @apply p-4 sm:p-5 flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-3 sm:gap-4;
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border) / 0.6);
-    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
-  }
-  .match-card:hover {
-    @apply -translate-y-0.5;
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.1);
-    border-color: hsl(var(--primary) / 0.3);
-  }
-
-  .match-score {
-    @apply text-xl sm:text-2xl font-bold font-display px-3 py-1 rounded-lg bg-muted;
-  }
 }
 
-/* ─── BUTTONS ─── */
+/* ─── BUTTONS (special effects only — standard buttons use shadcn Button component) ─── */
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold;
-    @apply px-4 py-2.5 transition-all duration-200;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-    @apply disabled:pointer-events-none disabled:opacity-50;
-    @apply bg-primary text-primary-foreground;
-  }
-  .btn:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-  }
-
-  .btn-primary {
-    @apply bg-primary text-primary-foreground;
-  }
-  .btn-primary:hover {
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
-  }
-
-  .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
-  }
-
-  .btn-outline {
-    @apply border border-input bg-transparent text-foreground;
-  }
-  .btn-outline:hover {
-    @apply bg-muted/60;
-  }
-
-  .btn-ghost {
-    @apply bg-transparent hover:bg-muted/60 transition-all duration-200;
-  }
-
-  .btn-sm {
-    @apply h-9 rounded-md px-3 text-xs;
-  }
-
-  .btn-icon {
-    @apply h-10 w-10 p-0 inline-flex items-center justify-center;
-  }
-
   .btn-neon {
     @apply relative px-6 py-3 font-bold rounded-lg;
     background: var(--gradient-accent);
@@ -355,34 +282,6 @@
   }
 }
 
-/* ─── BADGES ─── */
-@layer components {
-  .badge {
-    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold;
-    @apply transition-colors;
-  }
-
-  .badge-success {
-    @apply bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800;
-  }
-
-  .badge-error {
-    @apply bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800;
-  }
-
-  .badge-warning {
-    @apply bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800;
-  }
-
-  .badge-info {
-    @apply bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800;
-  }
-
-  .badge-neutral {
-    @apply bg-muted text-muted-foreground border-border;
-  }
-}
-
 /* ─── FORMS ─── */
 @layer components {
   .form-input, .form-select {
@@ -391,15 +290,6 @@
     @apply transition duration-150 ease-in-out;
   }
 
-  .chart-container {
-    @apply rounded-xl p-6 transition-all duration-300;
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border) / 0.6);
-  }
-  .chart-container:hover {
-    @apply -translate-y-0.5;
-    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
-  }
 
 }
 
@@ -481,45 +371,11 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Ticker scroll */
-  .live-ticker {
-    @apply overflow-hidden whitespace-nowrap relative;
-  }
-
-  .ticker-content {
-    @apply inline-block;
-    animation: scroll 60s linear infinite;
-  }
-
-  @keyframes scroll {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-  }
-
-  .ticker-content:hover {
-    animation-play-state: paused;
-  }
-
   /* Stat change indicator */
   .stat-change {
     @apply text-xs font-medium;
   }
 
-  /* Loading spinner — branded and visible */
-  .spinner-branded {
-    @apply rounded-full;
-    border: 3px solid hsl(var(--border));
-    border-top-color: hsl(var(--primary));
-    animation: spin 0.8s linear infinite;
-  }
-  .dark .spinner-branded {
-    border-color: hsl(var(--muted));
-    border-top-color: hsl(var(--accent));
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
 }
 
 /* ─── ATMOSPHERE & TEXTURE ─── */

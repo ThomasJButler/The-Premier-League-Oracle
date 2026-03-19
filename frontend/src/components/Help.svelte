@@ -25,6 +25,7 @@
           class="sm:hidden p-2 rounded-lg hover:bg-muted"
           on:click={() => showMobileMenu = !showMobileMenu}
           aria-expanded={showMobileMenu}
+          aria-controls="help-nav"
           aria-label="Toggle documentation menu"
         >
           <ChevronRight class="w-5 h-5 transition-transform {showMobileMenu ? 'rotate-90' : ''}" />
@@ -36,7 +37,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Navigation -->
-      <nav class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
+      <nav id="help-nav" class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
         <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 sticky top-24">
           <h2 class="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
             Documentation
@@ -49,7 +50,7 @@
                     {selectedSection === section.id
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted'}"
-                  aria-current={selectedSection === section.id ? 'page' : undefined}
+                  aria-current={selectedSection === section.id ? 'true' : undefined}
                   on:click={() => {
                     selectedSection = section.id;
                     showMobileMenu = false;
@@ -324,11 +325,12 @@
 
               <h3 class="text-xl font-semibold mb-4">Kelly Criterion Calculator</h3>
               <div class="p-6 bg-muted rounded-xl">
-                <p class="mb-4">Use our Kelly Calculator to determine optimal stake sizes:</p>
+                <p class="mb-4">The app uses <strong>Half-Kelly</strong> staking — halving the full Kelly recommendation for a safer risk profile:</p>
                 <div class="bg-card p-4 rounded-lg font-mono text-sm">
-                  Stake % = (Probability × Odds - 1) / (Odds - 1)
+                  Full Kelly = (Probability × Odds - 1) / (Odds - 1)<br/>
+                  Recommended Stake = Full Kelly ÷ 2
                 </div>
-                <p class="text-sm mt-4 text-amber-600">⚠️ Never bet more than 25% of Kelly recommendation for safety.</p>
+                <p class="text-sm mt-4 text-muted-foreground">Half-Kelly reduces variance significantly while retaining most of the theoretical edge.</p>
               </div>
             </div>
 
@@ -341,7 +343,7 @@
                   <h3 class="font-bold text-lg mb-3">📊 Dashboard</h3>
                   <p class="text-sm mb-3">Your command center for all Premier League data and predictions.</p>
                   <ul class="text-sm space-y-1">
-                    <li>• Live standings</li>
+                    <li>• Prediction accuracy stats</li>
                     <li>• Upcoming fixtures</li>
                     <li>• Recent results</li>
                     <li>• Team performance metrics</li>
@@ -364,9 +366,9 @@
                   <p class="text-sm mb-3">Optimize your stake sizes using the Kelly Criterion formula.</p>
                   <ul class="text-sm space-y-1">
                     <li>• Input odds and probability</li>
-                    <li>• Get recommended stake</li>
-                    <li>• Adjust for risk tolerance</li>
-                    <li>• Track bankroll growth</li>
+                    <li>• Get Half-Kelly recommended stake</li>
+                    <li>• Auto-suggested bets from predictions</li>
+                    <li>• Track placed bets in Betting History</li>
                   </ul>
                 </div>
                 
@@ -387,8 +389,8 @@
                   <ul class="text-sm space-y-1">
                     <li>• Natural language queries</li>
                     <li>• Statistical explanations</li>
-                    <li>• Trend analysis</li>
-                    <li>• Custom recommendations</li>
+                    <li>• Match-specific analysis</li>
+                    <li>• Prediction context and reasoning</li>
                   </ul>
                 </div>
                 
@@ -398,7 +400,7 @@
                   <ul class="text-sm space-y-1">
                     <li>• Bottom navigation bar</li>
                     <li>• Touch-optimised controls</li>
-                    <li>• Local data caching</li>
+                    <li>• IndexedDB data caching</li>
                     <li>• Responsive layouts</li>
                   </ul>
                 </div>
@@ -431,7 +433,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">All data comes directly from Football-Data.org, bypassing our servers.</p>
+                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your OpenAI key out of the browser.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">
@@ -494,12 +496,12 @@
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
-                  <p>Yes — the Betting History page has a JSON export button for your tracked bets. You can also copy data from tables directly.</p>
+                  <p>Yes — the Betting History page has a JSON export button for your tracked bets.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Will you add other leagues?</h3>
-                  <p>We're focusing on perfecting Premier League predictions first. Other leagues are on our roadmap for future versions.</p>
+                  <p>The app is focused exclusively on the Premier League. There are no current plans to add other leagues.</p>
                 </div>
               </div>
             </div>
@@ -510,16 +512,3 @@
   </div>
 </div>
 
-<style>
-  .prose h2 {
-    @apply text-2xl sm:text-3xl;
-  }
-
-  .prose h3 {
-    @apply text-lg sm:text-xl;
-  }
-
-  .prose h4 {
-    @apply text-base sm:text-lg;
-  }
-</style>

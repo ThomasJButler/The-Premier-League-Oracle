@@ -1,9 +1,13 @@
 import type { Match, MatchStatus, Season, TeamForm } from '../../types';
+import { getSeasonYear } from '../../lib/utils';
+
+/** Football-Data.org competition ID for the Premier League */
+const PREMIER_LEAGUE_ID = 2021;
 
 interface FootballDataConfig {
   apiKey: string;
   baseUrl: string;
-  competitionId: number; // Premier League = 2021
+  competitionId: number;
 }
 
 interface FDTeam {
@@ -101,13 +105,16 @@ interface FDScorer {
 
 class FootballDataAPI {
   private config: FootballDataConfig;
-  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private cache: Map<string, { data: unknown; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
   // Real API needs 6s between requests (free tier: 10/min).
   // Dev proxy has no rate limit, so use a shorter delay to keep the UI snappy.
   private rateLimitDelay = import.meta.env.DEV ? 200 : 6000;
   private lastRequestTime = 0;
-  
+  // Promise-based queue: each request chains onto the previous one so that
+  // concurrent callers are serialised and the rate-limit gap is guaranteed.
+  private requestQueue: Promise<void> = Promise.resolve();
+
   constructor() {
     const envKey = import.meta.env.VITE_FOOTBALL_DATA_API_KEY;
     const savedApiKey = localStorage.getItem('football_data_api_key');
@@ -122,7 +129,7 @@ class FootballDataAPI {
     this.config = {
       apiKey,
       baseUrl,
-      competitionId: 2021 // Premier League
+      competitionId: PREMIER_LEAGUE_ID
     };
     
     // Football-Data API initialised: mode, API key status
@@ -146,23 +153,47 @@ class FootballDataAPI {
     this.cache.clear();
   }
   
+  /** Timeout for individual fetch requests (15s). Prevents a hung API call from
+   *  blocking the entire rate-limit queue indefinitely. */
+  private static readonly FETCH_TIMEOUT = 15_000;
+
   private async rateLimitedFetch(url: string): Promise<Response> {
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequestTime;
-    
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest));
-    }
-    
-    this.lastRequestTime = Date.now();
-    
-    // Add mode and credentials for better CORS handling
-    return fetch(url, {
-      headers: {
-        'X-Auth-Token': this.config.apiKey
-      },
-      mode: 'cors',
-      credentials: 'same-origin'
+    // Chain onto the queue so concurrent callers are serialised.
+    // Without this, two simultaneous calls would both read the same
+    // lastRequestTime and fire within milliseconds of each other,
+    // blowing past the API rate limit.
+    return new Promise<Response>((resolve, reject) => {
+      this.requestQueue = this.requestQueue.then(async () => {
+        const now = Date.now();
+        const timeSinceLastRequest = now - this.lastRequestTime;
+
+        if (timeSinceLastRequest < this.rateLimitDelay) {
+          await new Promise(r => setTimeout(r, this.rateLimitDelay - timeSinceLastRequest));
+        }
+
+        this.lastRequestTime = Date.now();
+
+        // AbortController ensures a hung API call fails fast rather than
+        // blocking the rate-limit queue indefinitely (P5t).
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), FootballDataAPI.FETCH_TIMEOUT);
+
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'X-Auth-Token': this.config.apiKey
+            },
+            signal: controller.signal,
+            mode: 'cors',
+            credentials: 'same-origin'
+          });
+          resolve(response);
+        } catch (err) {
+          reject(err);
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      });
     });
   }
   
@@ -172,7 +203,7 @@ class FootballDataAPI {
     const timeout = customCacheTimeout ?? this.cacheTimeout;
 
     if (cached && Date.now() - cached.timestamp < timeout) {
-      return cached.data;
+      return cached.data as T;
     }
     
     try {
@@ -214,6 +245,13 @@ class FootballDataAPI {
       
       return data;
     } catch (error) {
+      // Re-throw user-actionable errors (auth failure, rate limit) so callers
+      // can display meaningful feedback instead of a blank "no data" state
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('API authentication failed') || msg.includes('Rate limit exceeded')) {
+        throw error;
+      }
+      // Transient/network errors degrade gracefully to empty state
       console.error(`Error fetching ${endpoint}:`, error);
       return null;
     }
@@ -343,7 +381,7 @@ class FootballDataAPI {
     
     // Derive season year from match date (July onwards = new season)
     const matchDate = new Date(fdMatch.utcDate);
-    const seasonYear = matchDate.getMonth() >= 6 ? matchDate.getFullYear() : matchDate.getFullYear() - 1;
+    const seasonYear = getSeasonYear(matchDate);
 
     return {
       id: fdMatch.id.toString(),
@@ -476,7 +514,7 @@ class FootballDataAPI {
   
   // Get live matches (in play) — uses 60s cache for freshness
   public async getLiveMatches(): Promise<Match[]> {
-    const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
+    const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT`;
     const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint, 60_000);
 
     if (!data) return [];

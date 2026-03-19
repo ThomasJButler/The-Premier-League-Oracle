@@ -12,8 +12,13 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2 } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
+  import { aiAnalysisService } from '../services/aiAnalysis';
+  import type { AnalysisInput } from '../services/aiAnalysis';
+  import { renderMarkdown } from '$lib/renderMarkdown';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -44,7 +49,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  let totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
+  const totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;
@@ -52,6 +57,53 @@
   let backtestProgress = 0;
   let backtestTotal = 0;
   let backtestError: string | null = null;
+
+  // AI analysis state — keyed by matchId
+  let aiAnalyses: Map<string, string> = new Map();
+  let aiAnalysisLoading: Set<string> = new Set();
+  let aiAnalysisErrors: Map<string, string> = new Map();
+
+  /** Fetch AI analysis for a match when the user flips the card */
+  async function fetchAiAnalysis(matchData: typeof predictions[0]) {
+    if (!aiAnalysisService.isEnabled()) return;
+    if (aiAnalyses.has(matchData.id)) return; // Already loaded
+    if (aiAnalysisLoading.has(matchData.id)) return; // Already fetching
+
+    const pred = matchData.prediction;
+    const detail = matchData.detailedAnalysis;
+    if (!pred || !detail) return;
+
+    aiAnalysisLoading.add(matchData.id);
+    aiAnalysisLoading = new Set(aiAnalysisLoading); // trigger reactivity
+
+    const input: AnalysisInput = {
+      homeTeam: matchData.home_team,
+      awayTeam: matchData.away_team,
+      matchId: matchData.id,
+      matchDate: format(new Date(matchData.date), 'EEEE d MMMM yyyy, HH:mm'),
+      predictedResult: pred.predicted_result,
+      confidence: pred.confidence_score,
+      predictedHomeGoals: pred.predicted_home_goals,
+      predictedAwayGoals: pred.predicted_away_goals,
+      homeForm: detail.homeForm,
+      awayForm: detail.awayForm,
+      insights: detail.keyFactors,
+    };
+
+    try {
+      const analysis = await aiAnalysisService.getAnalysis(input);
+      if (analysis) {
+        aiAnalyses.set(matchData.id, analysis);
+        aiAnalyses = new Map(aiAnalyses);
+      }
+    } catch (err) {
+      aiAnalysisErrors.set(matchData.id, err instanceof Error ? err.message : 'Analysis failed');
+      aiAnalysisErrors = new Map(aiAnalysisErrors);
+    } finally {
+      aiAnalysisLoading.delete(matchData.id);
+      aiAnalysisLoading = new Set(aiAnalysisLoading);
+    }
+  }
 
   export async function runBacktest() {
     if (isBacktesting) return;
@@ -90,6 +142,10 @@
     loading = true;
     error = null;
     predictions = [];
+    // Clear stale AI analysis state from previous gameweek
+    aiAnalyses = new Map();
+    aiAnalysisLoading = new Set();
+    aiAnalysisErrors = new Map();
     
     try {
       // Get all matches for the season
@@ -174,7 +230,6 @@
           match.referee
         );
         
-        // Convert to legacy format for compatibility
         const prediction = {
           predictedResult: optimizedPrediction.predictedResult,
           confidence: optimizedPrediction.confidence,
@@ -187,8 +242,7 @@
         // Calculate Poisson probabilities for additional analysis
         const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
           prediction.predictedHomeGoals,
-          prediction.predictedAwayGoals,
-          6
+          prediction.predictedAwayGoals
         );
         const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
@@ -246,15 +300,20 @@
           selectedGameweek
         );
         
-      } catch (error) {
-        // Error predicting match
+        // Auto-fetch AI analysis in the background (don't block the loop)
+        if (aiAnalysisService.isEnabled()) {
+          fetchAiAnalysis(predictions[matchIndex]);
+        }
+
+      } catch (err) {
+        console.warn(`Prediction failed for match ${matchIndex}:`, err);
         predictions[matchIndex].predictionStatus = 'error';
       }
-      
+
       // Force UI update
       predictions = [...predictions];
     }
-    
+
     batchPredictionMessage = 'All predictions complete!';
     setTimeout(() => {
       isBatchPredicting = false;
@@ -267,6 +326,11 @@
       flippedCards.delete(matchId);
     } else {
       flippedCards.add(matchId);
+      // Lazy-load AI analysis when card is flipped to back
+      const matchData = predictions.find(p => p.id === matchId);
+      if (matchData) {
+        fetchAiAnalysis(matchData);
+      }
     }
     flippedCards = new Set(flippedCards);
   }
@@ -311,11 +375,11 @@
       </div>
       
       <!-- Predict Button -->
-      <button
+      <Button
         on:click={predictGameweek}
         disabled={isBatchPredicting || loading}
         data-testid="predict-gameweek"
-        class="btn-neon px-5 py-2.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+        class="btn-neon px-5 py-2.5"
       >
         {#if isBatchPredicting}
           <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -324,7 +388,7 @@
           <Calculator class="w-4 h-4" />
           Predict Gameweek
         {/if}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -338,7 +402,7 @@
         <div class="flex items-center gap-2">
           <BarChart3 class="w-5 h-5 text-primary" />
           <span class="font-semibold text-foreground">Prediction Accuracy</span>
-          <span class="badge badge-neutral text-xs">{accuracyStats.totalPredictions} predictions</span>
+          <Badge variant="neutral" class="text-xs">{accuracyStats.totalPredictions} predictions</Badge>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-lg font-bold text-primary">{accuracyStats.accuracy.toFixed(1)}%</span>
@@ -537,13 +601,13 @@
   {/if}
 
   {#if loading}
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
       <p class="font-medium">{error}</p>
-      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
+      <Button class="mt-4" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</Button>
     </div>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -581,12 +645,12 @@
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
-                  <span
-                    class="badge {prediction.prediction.confidence_score > 0.75 ? 'badge-success' : prediction.prediction.confidence_score > 0.6 ? 'badge-warning' : 'badge-neutral'}"
+                  <Badge
+                    variant={prediction.prediction.confidence_score > 0.75 ? 'success' : prediction.prediction.confidence_score > 0.6 ? 'warning' : 'neutral'}
                     title="{prediction.prediction.confidence_score > 0.75 ? 'High confidence — all models agree strongly' : prediction.prediction.confidence_score > 0.6 ? 'Moderate confidence — some model disagreement' : 'Low confidence — models disagree significantly'}"
                   >
                     {(prediction.prediction.confidence_score * 100).toFixed(0)}%
-                  </span>
+                  </Badge>
                 {/if}
               </div>
               
@@ -631,14 +695,17 @@
               {/if}
 
               {#if prediction.prediction && prediction.detailedAnalysis}
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   on:click={() => toggleCard(prediction.id)}
-                  class="w-full btn btn-outline btn-sm mt-2 flex items-center justify-center gap-2"
+                  class="w-full mt-2 flex items-center justify-center gap-2"
                   aria-label="View analysis for {prediction.home_team} vs {prediction.away_team}"
+                  tabindex={flippedCards.has(prediction.id) ? -1 : 0}
                 >
                   <Calculator class="w-4 h-4" />
                   Tap for Analysis
-                </button>
+                </Button>
               {:else}
                 <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
                   Click "Predict Gameweek" to generate analysis
@@ -652,12 +719,14 @@
                 <div class="h-full overflow-y-auto">
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-foreground">Analysis</h3>
-                    <button
+                    <Button
                       on:click={() => toggleCard(prediction.id)}
-                      class="btn btn-ghost btn-sm"
-                      aria-label="Close analysis">
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Close analysis"
+                      tabindex={flippedCards.has(prediction.id) ? 0 : -1}>
                       ×
-                    </button>
+                    </Button>
                   </div>
 
                   <!-- Predicted Score Section -->
@@ -789,6 +858,30 @@
                       {/if}
                     </div>
                   {/if}
+
+                  <!-- AI Analysis Section -->
+                  {#if aiAnalysisService.isEnabled()}
+                    <div class="mt-4 p-3 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg border border-violet-200 dark:border-violet-700">
+                      <div class="flex items-center gap-2 mb-2">
+                        <Sparkles class="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        <span class="font-semibold text-violet-800 dark:text-violet-200">AI Analysis</span>
+                      </div>
+                      {#if aiAnalyses.has(prediction.id)}
+                        <div class="text-sm text-muted-foreground prose-chat">
+                          {@html renderMarkdown(aiAnalyses.get(prediction.id) || '')}
+                        </div>
+                      {:else if aiAnalysisLoading.has(prediction.id)}
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 class="w-4 h-4 animate-spin" />
+                          <span>Generating analysis…</span>
+                        </div>
+                      {:else if aiAnalysisErrors.has(prediction.id)}
+                        <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                      {:else}
+                        <p class="text-xs text-muted-foreground">Flip the card to load AI analysis</p>
+                      {/if}
+                    </div>
+                  {/if}
                 </div>
               {:else}
                 <div class="h-full flex flex-col items-center justify-center text-center p-6">
@@ -801,11 +894,12 @@
                   <p class="text-sm text-muted-foreground mb-4">
                     Click the "Predict Gameweek" button to generate predictions and analysis for this match.
                   </p>
-                  <button 
+                  <Button
                     on:click={() => toggleCard(prediction.id)}
-                    class="btn btn-outline btn-sm">
+                    variant="outline"
+                    size="sm">
                     Go Back
-                  </button>
+                  </Button>
                 </div>
               {/if}
             </div>

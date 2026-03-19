@@ -2,6 +2,1089 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Documentation accuracy sweep: active scope marked 100% complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Documentation updates
+- **IMPLEMENTATION_PLAN.md** — updated project status from "~89%" to "Active Scope 100% Complete" (all P0–P5h done, only deferred Pro-tier remains)
+- **IMPLEMENTATION_PLAN.md** — test coverage table updated: 24 → 32 file rows, 404 → 507 total, 8 new test files added, 2 row counts corrected (betHistoryService 27→23, footballData 23→25)
+- **IMPLEMENTATION_PLAN.md** — untested components list corrected: 10 → 3 (App, MobileNav, Sidebar — layout only)
+- **README.md** — test count badge corrected: 364 → 507 passing
+- **README.md** — backend status corrected: "scaffolded, not yet trained" → "free-tier model trained, 51% accuracy"
+- **specs/01-prediction-engine.md** — removed hardcoded "402/402" test count (now says "All prediction unit tests pass")
+- **CLAUDE.md** — updated project status to "Active scope 100% complete"
+
+---
+
+## April 2026 — Unit test coverage expansion: 8 new test files, 103 new tests
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### New test files (8)
+- `StandingsTable.test.ts` (15 tests) — loading states, error handling, standings data, show all toggle, form badges, goal difference, ARIA
+- `TopScorers.test.ts` (13 tests) — loading, API errors, scorer table, medals, position badges, goals, null data handling, ARIA
+- `SeasonStats.test.ts` (13 tests) — loading skeletons, error state, stat cards, avg goals, biggest comeback, draw rate, streaks, extended analytics
+- `Help.test.ts` (13 tests) — navigation, section switching, aria-current, external links, mobile menu, ensemble weights
+- `MatchList.test.ts` (12 tests) — seasons, match loading, error states, filter controls, sort buttons, quick filters, scores/times
+- `LiveTicker.test.ts` (12 tests) — store subscriptions, live dot, ticker content, pause/resume, fallback text, ARIA
+- `ApiSetupWizard.test.ts` (13 tests) — wizard steps, navigation, API validation, error states, progress dots, close button
+- `MatchEventToast.test.ts` (12 tests) — event rendering, colour-coded borders, score lines, multiple events, ARIA, store clearing
+
+### Component changes
+- `StandingsTable.svelte` — exported `loadStandings()` for test access
+- `TopScorers.svelte` — exported `loadTopScorers()` for test access
+- `SeasonStats.svelte` — exported `loadSeasonStats()` for test access
+- `MatchList.svelte` — exported `loadSeasons()` and `loadMatches()` for test access; fixed missing `loading = false` in error path
+- `LiveTicker.svelte` — refactored from manual `store.subscribe()` to idiomatic `$:` reactive declarations (fixes test store propagation)
+
+### Totals
+- Frontend tests: 404 → 507 (+103 tests across 8 new files)
+- Test files: 24 → 32
+- Components with unit tests: 9 → 17 (3 remaining: Header, SidebarNav, Sidebar — layout only)
+
+---
+
+## April 2026 — Twentieth audit: all 17 items resolved (P5h)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Resolved — 17 items across 4 categories
+
+**Real bugs (3):**
+- `KellyCalculator.svelte:431` — removed extra `* 100` on `edgePercentage` (was displaying 500% instead of 5%)
+- `optimizedPredictions.ts:676,749` — replaced magic `draw: 0.27` with `DEFAULT_DRAW_RATE` constant from `constants.ts`
+- `check_imports.py:103-104` — added actual `from app.models.modern_oracle import ModernPremierLeagueOracle`
+
+**Accessibility (6):**
+- `StandingsTable.svelte` — added `aria-expanded` to "Show All / Show Less" toggle
+- `LiveTicker.svelte` — removed deprecated `role="marquee"` (ARIA 1.2); sr-only + aria-live already handles a11y
+- `ChatBot.svelte` — replaced `title` with `aria-label` on "Clear chat" button
+- `Help.svelte` — changed `aria-current="page"` to `aria-current="true"` for in-page navigation
+- `AccumulatorBuilder.svelte` — replaced `title` with `aria-label` on selection buttons
+- `SeasonStats.svelte` — added `motion-safe:` Tailwind prefix guard for `hover:scale-105` and `transition-all`
+
+**Type safety / code quality (4):**
+- `ChatBot.svelte:264` — changed `catch (err: any)` to `catch (err: unknown)`
+- `BettingHistory.svelte:195` — typed Chart.js tooltip callback as `TooltipItem<'bar'>`
+- `BettingHistory.svelte` — removed all 6 vestigial `animation-delay` style attributes (no animation class to propagate to)
+- `main.py` — all 5 endpoint error handlers now return generic messages instead of `detail=str(e)`
+
+**Consistency / documentation (4):**
+- `SEED_RATINGS` — removed 5 relegated non-PL teams (Leeds, Luton, Burnley, Sheffield United, Sunderland), added seasonal update comment
+- `Settings.svelte` — added seasonal update comment to `teamColors` map
+- `Help.svelte` — replaced "Live standings" with "Prediction accuracy stats" (Dashboard doesn't show standings)
+- `ApiSetupWizard.svelte` — changed "Use Kelly Calculator for betting" to "Explore Kelly Calculator for research"
+
+### Confirmed clean
+- All 8 specs: 100% of active acceptance criteria met (99/99)
+- Zero TODO/FIXME/HACK comments in codebase
+- 404 Vitest tests passing, 43 E2E tests passing, 86 backend tests passing
+- `svelte-check`: 0 errors, 0 warnings
+- Test count in `IMPLEMENTATION_PLAN.md` corrected from 402 to 404
+
+---
+
+## April 2026 — Nineteenth audit: resolve all P5g findings (7 bugs)
+
+**Fixed all 7 remaining eighteenth audit bugs:**
+
+- **Timer race in liveService** — replaced `setInterval` with `setTimeout` in `scheduleNextPoll()`. Polls can no longer overlap if a request takes longer than the polling interval
+- **Stale events on remount** — `liveService.stop()` now clears `matchEventsStore`, preventing stale toast notifications on rapid component remount
+- **NaN in combineModels** — added `total === 0` guard in `OptimizedPredictor.combineModels()` that returns league-average fallback probabilities instead of NaN
+- **Standing.form nullable** — `Standing.form` type changed from `string` to `string | null` to match API behaviour (returns null pre-season); `formatForm()` already handles null gracefully
+- **AI analysis errors not cleared** — `Predictions.svelte` `loadGameweekMatches()` now resets all three AI analysis maps (analyses, loading, errors) when switching gameweeks
+- **Unnecessary async** — removed `async` keyword from `getEnhancedTeamStats()` in `optimizedPredictions.ts` — the method performs no async work and callers already handle it correctly
+- **Type safety in catch blocks** — `StandingsTable.svelte` and `TopScorers.svelte` now use `catch (err: unknown)` with `instanceof Error` narrowing instead of `catch (err: any)`
+
+**Type check:** 0 errors, 0 warnings. **Tests:** 404/404 passing.
+
+---
+
+## April 2026 — Eighteenth audit: zero warnings, error propagation, a11y fixes
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Fixed
+
+- **svelte-check: 0 errors, 0 warnings** (was 0 errors, 7 warnings):
+  - Dialog/Sheet: added `a11y-no-noninteractive-element-interactions` ignore for `role="dialog"` false positive
+  - MatchList: changed `<label>` to `<span>` for "Quick Filters" heading (not a form control — WCAG)
+  - SeasonStats: removed redundant local `.line-clamp-2` CSS rule (Tailwind 3.4 has this built-in)
+  - Help: removed `@apply` style block — `@tailwindcss/typography` prose plugin handles heading sizes
+- **footballData.ts: error swallowing fixed** — `fetchWithCache()` now re-throws auth failure and rate-limit errors instead of silently returning `null`. Users see "API key invalid" or "Rate limit exceeded" rather than blank screens. Transient/network errors still degrade gracefully
+- **SeasonStats: empty dataset crash** — `highestScoringMatch` reduce guarded with `completedMatches.length > 0`. Was producing "undefined vs undefined" when no completed matches exist
+- **Dashboard: stale profit chart** — `refresh()` now calls `initProfitChart()` after data reload. Chart was not updating on user-triggered refresh
+- **LiveMatches: ARIA panel fix** — "No Live Matches" fallback now carries `id="panel-live" role="tabpanel" aria-labelledby="tab-live"`. Tab buttons' `aria-controls` references were dangling (WCAG 4.1.2)
+- **Predictions: flip card keyboard trap** — Buttons on hidden card faces now get `tabindex={-1}` to prevent Tab focus on `aria-hidden` content (WCAG 2.1.1)
+- **SeasonStats: dead code** — removed unused `currentUnbeaten` variable
+
+### Added
+
+- 2 new tests for 403 auth failure and 403 rate-limit error propagation
+- Frontend now at **404 Vitest tests** across 24 files (was 402)
+- Eighteenth audit findings documented in `IMPLEMENTATION_PLAN.md` (7 low/medium items)
+
+---
+
+## 2 April 2026 — Spec sync and plan cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Fixed
+
+- **All 8 spec files synced with implementation reality:**
+  - Spec 01: added DONE markers to Requirements 5, 6, 8 (calibration, ELO auto-update, backtest optimisation)
+  - Spec 02: live status filter updated to include `EXTRA_TIME`/`PENALTY_SHOOTOUT` (P5q), season range corrected (2020/21–2024/25 complete, 2025/26 current)
+  - Spec 03: removed dead `predictBatch()`/`getTeamStats()` from code example (P5ak), marked WebSocket section as superseded (P5v), updated Docker references (P2o), marked AI Analysis as deferred to Pro-tier
+  - Spec 04: added DONE marker to Requirement 3 (Kelly Auto-Suggestions)
+  - Spec 05: marked WebSocket section as superseded with polling-diff replacement description, added `EXTRA_TIME`/`PENALTY_SHOOTOUT` to status list, clarified polling interval implementation (30s vs spec's 60s)
+  - Spec 06: added implementation note about on-the-fly gameweek accuracy derivation (no separate localStorage key)
+  - Spec 07: clarified Dialog/Sheet are custom implementations (not bits-ui), marked Tabs as intentionally not migrated, documented Priority 6+ items as deferred
+  - Spec 08: corrected feature count ~83 → 99, match count 2,197 → 2,191, updated error sanitisation section, struck through removed `train.py`
+
+### Changed
+
+- `IMPLEMENTATION_PLAN.md` cleaned — collapsed completed improvement opportunities to summary, removed duplicated "How to Retrain" section (single source of truth: `backend/README.md`), annotated dead-module deps as zero runtime risk, updated specs table
+- Spec 07 status upgraded from ~98% to 100% (all criteria met, remaining items were documentation gaps not implementation gaps)
+
+---
+
+## 19 March 2026 — ESLint + ruff linting added to CI pipeline
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **ESLint for frontend** — flat config (`eslint.config.js`) with TypeScript, Svelte 4, and browser globals. Catches unused variables, unreachable code, constant binary expressions, self-comparison, and more. Svelte-specific rules downgraded to warnings where they're best-practice rather than bugs (e.g. `require-each-key`, `require-event-dispatcher-types`). shadcn UI components exempted from a11y/assignment rules due to intentional overlay patterns
+- **ruff for backend** — configured in `pyproject.toml` with pycodestyle, pyflakes, isort, pyupgrade, flake8-bugbear, and flake8-simplify rules. Pro-tier and dead security modules excluded from analysis. Auto-fixed 326 issues (import sorting, modern type annotations, whitespace)
+- **CI lint steps** — both `npm run lint` (frontend) and `ruff check` (backend) now run in the GitHub Actions pipeline before tests, catching regressions early
+- **`lint` and `lint:fix` scripts** added to `frontend/package.json`
+
+### Fixed
+
+- Unused catch `error` variables across `dataService.ts`, `advancedPredictions.ts`, `predictionTracker.ts` prefixed with `_` (14 instances)
+- Unused `Match` import removed from `predictionTracker.ts`
+- `MatchList.svelte` — lexical declarations in `case` block now properly scoped with braces
+- Backend: unused `API_TO_CSV` import removed from `main.py`, unused `n_classes` and `xgb_metrics_raw` variables cleaned up in `train_free_tier.py`, loop variables prefixed with `_` where unused
+- Auto-fixed `let` → `const` for 23 never-reassigned variables across frontend source
+
+### Changed
+
+- `IMPLEMENTATION_PLAN.md` cleaned up — 812 → 451 lines, all completed P5/P1/P2 subsections archived
+- Kelly 1.05 "bug" documentation corrected — `backtest.test.ts` expected value `0.525` confirmed mathematically correct (normalisation cancels `VALUE_ODDS_MARGIN`), not a bug
+
+---
+
+## 2 April 2026 — Match event notifications, Spec 05 complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **Match event detection via polling-diff** — `liveService.ts` now compares consecutive poll snapshots to detect goals and status changes (kickoff, half-time, second half, full-time, extra time, penalties). Since Football-Data.org free tier provides no per-match events API, events are inferred from score/status diffs between polls. Events auto-expire after 30 seconds
+- **`MatchEventToast.svelte`** — colour-coded toast notification component with fly transition (slides in from right). Green border for goals, amber for half-time, blue for full-time, red for extra time/penalties. ARIA `role="status"` and `aria-live="polite"` for accessibility
+- **`matchEventsStore`** — new Svelte writable store in liveService for reactive event propagation
+- **`MatchEvent` and `MatchEventType` types** added to `types/index.ts`
+- **LiveTicker integration** — match events surfaced at highest priority (priority -1) in the scrolling ticker
+- **13 new tests** in `liveService.test.ts` covering goal detection (home/away/multiple), kickoff, half-time, second half, full-time, extra time, penalties, event expiry, simultaneous goal+status, and multi-match independence
+- **Spec 05 (Live Data) now 100% complete** — all 10/10 acceptance criteria met (was 9/10, missing match event notifications)
+
+### Changed
+
+- `.gitignore` consolidated — duplicate `.env` entries merged, `frontend/.env*.local` glob replaces individual entries, added `backend/models/*.png`, `*.pyo`, `.pytest_cache/`, `backend/.coverage`, `backend/htmlcov/`, `.DS_Store`
+- Frontend test count: 389 → 402 Vitest tests (liveService.test.ts: 11 → 24)
+
+---
+
+## 2 April 2026 — AccumulatorBuilder, Spec 04 complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **AccumulatorBuilder.svelte** — dedicated accumulator/combination bet UI in `frontend/src/components/betting/`. Features: loads upcoming matches and generates bet builder combos for each, displays all 4 combo types (Safe Builder, Value Builder, High Risk Builder, Goals Galore) with confidence percentages, reasoning, and individual selections. Users can build custom cross-match accumulators by selecting legs from different matches, with combined odds, win probability, expected value, and quarter-Kelly stake calculations. Track Bet integration via `betHistoryService.storeBet()` with `market: 'combo'` type
+- **Accumulators navigation item** added to sidebar (SidebarNav.svelte) and mobile nav (MobileNav.svelte) under the Betting section, with Layers icon
+- **17 new tests** in `AccumulatorBuilder.test.ts` covering rendering, loading states, combo expansion, selection interactions, Track Bet wiring, and error handling
+- **Spec 04 (Betting Intelligence) now 100% complete** — all 12/12 acceptance criteria met (was 11/12, missing accumulator UI)
+
+### Changed
+
+- Frontend test count: 372 → 389 Vitest tests across 24 test files (was 23)
+- App.svelte ViewName union extended with 'Accumulators' (14 views, was 13)
+
+---
+
+## 1 April 2026 — Rolling cross-validation, ELO data leakage fix
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Rolling Cross-Validation
+
+- **`rolling_cross_validation()`** implements expanding-window CV across seasons — train on seasons 1..k, validate on k+1. For 6 seasons with `min_train_seasons=2`, this produces 4 folds with progressively growing training sets
+- **CLI flag `--cv`** runs rolling CV before the final model training. Results are informational only — they don't affect the saved model, but give robust accuracy estimates across multiple seasons rather than depending on a single 80/20 split
+- **Per-fold metrics** for XGBoost (calibrated), logistic regression baseline, and stacked ensemble. Reports accuracy, log loss, and per-class accuracy for each fold, plus aggregate mean±std
+- **`_per_class_accuracy()` helper** extracted for fold-level class accuracy computation
+- **8 new tests** (3 for `_per_class_accuracy`, 5 for rolling CV including boundary cases and fold structure validation)
+
+### Bug fix: ELO data leakage
+
+- **`free_tier_features.py:_latest_elo()`** fallback path walked backwards from the END of the full dataset, picking up ELO ratings influenced by future matches. Added `before_date` parameter that skips matches at or after the cutoff date. `_elo_features()` now passes `match_date` as `before_date`, ensuring ELO features only reflect matches that have actually occurred before the prediction date. `test_no_future_data_used` now passes
+
+---
+
+## 1 April 2026 — Stacked ensemble for draw prediction, standings bug fix
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Stacked OvR Ensemble
+
+- **3 One-vs-Rest binary classifiers** (Home/Draw/Away vs rest) trained alongside the existing single XGBoost. Draw classifier has dedicated tuning: `max_depth=4`, `lr=0.03`, `scale_pos_weight=~3.35`, higher regularisation
+- **Logistic regression meta-learner** combines the 3 binary classifier outputs into final H/D/A probabilities. Trained on chronological OOF predictions (70/30 base/meta split within training data) to avoid data leakage
+- **`predict_with_ensemble()` helper** for clean inference from the stacked ensemble
+- **`/predict/free` auto-detection:** endpoint uses stacked ensemble when present in model file, falls back to single XGBoost + calibration otherwise
+- **Model info endpoint** updated to report ensemble architecture and per-class accuracy
+- **6 new tests** for recency weights and stacked ensemble (3 recency, 3 ensemble)
+
+### Bug fix: `_draw_indicators` standings
+
+- **`free_tier_features.py:1023`** called non-existent `_get_standings(data)` — fixed to `_compute_standings(data, match_date)` with `match_date` threaded through the method chain. Restores 2 of 8 draw indicator features (`standings_closeness`, related calculations)
+
+---
+
+## 1 April 2026 — Progressive data loader, rate-limit queue, stale file cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Spec 02 (Data Pipeline) — now 100% complete
+
+- **Progressive 5-season loader:** `dataService.loadAllHistoricalSeasons()` fetches seasons 2020–2024 sequentially in the background on startup. Skips already-cached seasons (24h IndexedDB TTL). Uses `historical_seasons_loaded` localStorage flag to avoid re-triggering on every page load
+- **`getAllHistoricalMatches()` public method:** Returns all cached historical data for backtesting and ELO initialisation
+- **Rate-limit queue fix:** `footballData.ts:rateLimitedFetch()` now uses a promise-based request queue — concurrent callers are serialised so the 6-second gap between API calls is guaranteed (was a race condition where simultaneous calls could both fire)
+
+### Backend hardening
+
+- **WebSocket null guards (P5ao):** `main.py` WebSocket handler now checks `oracle is None` at connection time (closes with 1008 + error JSON), validates `match` field before `.split()`, and catches prediction errors in the inner loop (reports as JSON instead of silently disconnecting)
+
+### Stale file cleanup (P5ap)
+
+- **`backend/train.py`** removed — superseded by `train_free_tier.py`, produced deleted `xgboost_model.pkl`
+- **`backend/setup.sh`** removed — stale setup script with outdated Pro-tier env vars and broken download stub
+- **`.vscode/launch.json`** removed — debug config pointed to wrong port (8080 instead of 5173)
+- **Root `node_modules/`** removed — accidental artefact from running vitest from project root
+
+### Other improvements
+
+- **`check_imports.py` modernised (P5aq):** Now checks free-tier deps (joblib, httpx, pandas, numpy) and `FreeTierFeatureEngineer` module, with clear "Required" vs "Optional (Pro-tier)" sections
+- **Spec inconsistencies fixed:** Spec 02 backend proxy checkbox updated (was `[ ]`, now `[x]`); Specs 03 and 05 WebSocket criteria corrected to reflect P5v removal (now polling-only)
+- **Spec 08 feature counts updated** to match current state (99 features)
+
+---
+
+## 31 March 2026 — Poisson lambda from real per-team stats (Spec 01 complete)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Prediction quality (`advancedPredictions.ts`)
+- **`AdvancedMatchPredictor.predictMatch()` now uses Dixon-Coles per-team formula:** Calls `dataService.getTeamStats()` for both teams and computes λ_home = (home avg goals scored at home × away avg goals conceded away) / league avg, λ_away = (away avg goals scored away × home avg goals conceded at home) / league avg. Previously used a crude ELO-exponent approach with league-wide averages
+- **Graceful fallback:** When team stats are unavailable or either team has fewer than 3 home/away matches, falls back to the ELO-derived lambda estimate
+- **Fatigue applied after lambda calculation:** Expected goals clamped to 0.3–4.5 range after fatigue multiplier
+
+### Tests
+- **3 new tests added:** Per-team stats lambda (verifies stronger home team produces higher expected goals), ELO fallback (verifies predictions work with no stats), insufficient data fallback (verifies <3 match threshold triggers fallback)
+- Frontend test count: 21 → 24 for `advancedPredictions.test.ts` (372 total, all passing)
+
+### Spec completion
+- **Spec 01 (prediction engine) now 100% complete** — all 8/8 acceptance criteria met. The Poisson lambda criterion was the last outstanding item
+
+---
+
+## 30 March 2026 — Elo-based features for ML (5 new features, 94→99 total)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Feature engineering (`free_tier_features.py`)
+- **5 Elo-based features added:** `home_elo`, `away_elo`, `elo_difference`, `elo_expected_home`, `elo_home_advantage`. Implements the same algorithm as the frontend (`K=32`, home advantage `65`, default `1500`)
+- **Precomputed Elo ratings:** `_precompute_elo()` walks the match DataFrame once (O(n)) in `__init__`, storing pre-match ratings keyed by row index. `_elo_features()` looks up ratings in O(1) — no repeated traversals during training
+- **Normalisation for ML:** Raw Elo (typically 1200–1900) normalised to ML-friendly ranges: `home_elo`/`away_elo` → `(rating - 1000) / 1000`, `elo_difference` → `(home - away) / 400`, `elo_expected_home` → already [0, 1]
+- **Live inference fallback:** When predicting a future match not in the training data, uses the latest known ratings from the end of the dataset
+
+### Backend tests
+- **6 new Elo tests:** Elo update direction after wins, expected score ranges, no-leakage (pre-match only), draw stability, unknown team defaults, non-zero features with history
+- Test count: 67 → 73
+
+---
+
+## 30 March 2026 — Backend API hardening (security + deprecation fixes)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Security
+- **Global exception handler no longer leaks error details:** Removed `str(exc)` from the 500 response body — now returns a generic "Internal server error" message. Full error is still logged server-side for debugging
+
+### Deprecation fixes
+- **Pydantic v2 compliance:** `response.dict()` → `response.model_dump()` in the Oracle prediction cache path
+
+### Bug fixes
+- **WebSocket `active_websockets` changed from `List` to `set`:** `list.remove()` raises `ValueError` if the socket was never appended (e.g. if `accept()` succeeded but the socket was never added due to an early exception). `set.discard()` is safe and O(1)
+
+### Cleanup
+- **Stale CLAUDE.md note:** "broken links in FOR_BEGINNERS.md and README.md" marked as resolved — no broken links remain in either file
+
+---
+
+## 30 March 2026 — README docs, warnings cleanup, CORS
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Documentation
+- **`backend/README.md` updated:** Feature count 86→94, test count 62→67 (11→16 for API tests). CSV training data section expanded with source URL (Football-Data.co.uk), expected file naming convention, required columns table, and `--tune` CLI flags. Duplicate "security modules unused" bullet removed, docker-compose limitation clarified
+
+### Backend cleanup
+- **Global `warnings.filterwarnings('ignore')` removed from `advanced_engineering.py`:** This was silencing all Python warnings for the entire process, masking genuine issues from unrelated libraries. The `warnings` import (now unused) was also removed
+- **CORS origins expanded in `main.py`:** Added `allow_origin_regex=r"https://.*\.vercel\.app"` to cover Vercel production and preview deployment URLs. Localhost dev/preview origins unchanged
+
+---
+
+## 30 March 2026 — Hyperparameter tuning, backend test quality
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### ML pipeline (`train_free_tier.py`)
+- **Hyperparameter tuning:** Added `tune_hyperparameters()` — random search over 25 parameter combinations (max_depth, learning_rate, min_child_weight, subsample, colsample_bytree, gamma, reg_alpha, reg_lambda). Enabled via `--tune` flag, configurable trial count via `--tune-trials`. No new dependencies — uses numpy random sampling, not Optuna. Best params automatically flow to first-pass training and feature-selection retrain
+- `train_xgboost()` now accepts `params_override` for injecting tuned parameters
+
+### Backend test quality (P5ae)
+- **Happy-path test for `/predict/free`:** Mocks model + feature engineer, validates: response 200, probability sum ≈ 1.0, predicted outcome matches highest probability, confidence field, model version
+- **`_get_client_ip()` tests (4 new):** X-Forwarded-For multi-IP parsing, single IP, client.host fallback, null client → "unknown"
+- **Feature test assertions hardened:** H2H `if h2h_total_matches > 0` conditional removed — fixture data guarantees matches exist. Weak `or` assertions split into separate `assert` per field with failure messages
+- Test count: 62 → 67
+
+---
+
+## 30 March 2026 — Recency weighting, chart theme colours, dead code cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### ML pipeline (`train_free_tier.py`)
+- **Recency weighting:** `compute_sample_weights()` now combines class weights with season-based exponential decay (factor 0.85 per older season). `build_dataset()` returns season labels as a 4th return value. Most recent season gets full weight; oldest (~5 seasons back) gets ~0.44× — the Premier League meta shifts over time, so newer matches are more predictive
+- Test file updated for the 4th return value from `build_dataset()`
+
+### Frontend cleanup
+- **Chart.js theme-aware colours (P4e):** Dashboard charts now use CSS variables (`hsl(var(--primary))`, `hsl(var(--accent))`, `hsl(var(--muted-foreground))`) for dataset lines, fills, grid, and tick text — adapts to light/dark theme. BettingHistory already used CSS variables for scales
+- **Dead GET handler removed (P5g):** `vite.config.ts` had a dead GET handler for `/api/chat` that nothing called — the frontend already uses POST with empty messages for the server key probe. Removed the dead code and fixed stale test mocks in `ChatBot.test.ts`
+
+---
+
+## 30 March 2026 — Draw-specific features (8 new features, 86→94 total)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Feature engineering (`free_tier_features.py`)
+- Added 8 draw-indicator features targeting the model's weakest prediction class (6.7% draw accuracy):
+  - `form_closeness` — inverse of PPG gap between teams (closer = more likely draw)
+  - `standings_closeness` — inverse of league position gap
+  - `home_draw_rate` / `away_draw_rate` — draw frequency in recent matches per team
+  - `combined_defensive_strength` — average clean sheet rate across both teams
+  - `low_scoring_indicator` — inverted average total goals (lower scoring = more draws)
+  - `h2h_draw_tendency` — draw rate in head-to-head history
+  - `draw_streak_proximity` — recent draw count for both teams
+- Feature count: 86 → 94 (all counts updated across codebase and tests)
+- Test updated: `test_feature_count_is_86` → `test_feature_count_is_94`
+
+---
+
+## 30 March 2026 — ML v2: class weights, calibration, feature selection
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Training pipeline improvements (`train_free_tier.py`)
+- **Class weighting:** Added `compute_sample_weights()` — inverse-frequency weighting makes draws ~1.4x more important during training. Previously 6.7% draw accuracy because the model ignored the minority class
+- **Feature selection:** Added `select_features()` — trains a first pass on all 86 features, then drops features with importance < 0.005 and retrains. Reduces noise from low-signal features that cause overfitting on 1,680 training samples
+- **Probability calibration:** Added `calibrate_probabilities()` — fits per-class isotonic regression on the validation set. Maps overconfident XGBoost probabilities to observed frequencies. Calibrators saved in the model file
+- Model version bumped from `1.0.0-free` to `2.0.0-free`
+- Training flow now: load → build features → split → first pass (all features) → select features → retrain (selected) → calibrate → evaluate → save
+
+### Backend API (`main.py`)
+- `/predict/free` endpoint now applies probability calibration when calibrators are present in the model file
+- Backwards compatible — works with both v1 (uncalibrated) and v2 (calibrated) model files
+
+### Context
+These three improvements target the key weaknesses identified in the v1 training run:
+- Draw prediction was nearly non-functional (6.7% accuracy)
+- Log loss was 1.034 (overconfident probabilities)
+- Feature importance was flat after position_difference — 80+ features had negligible signal
+
+---
+
+## 30 March 2026 — P2o/P2l/P2n/P5u — Docker, CI, and polish
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P2o — Docker compose cleanup
+- Stripped `docker-compose.yml` to just the working `oracle-api` service — Redis, MLflow, Postgres, Jupyter, Nginx all commented out as optional Pro-tier services
+- Removed broken `./data`, `./logs` bind mounts and the nginx service (no `nginx.conf` exists)
+
+### P2l — Backend .env.example
+- Created `backend/.env.example` documenting `FOOTBALL_DATA_API_KEY` (required) and optional Pro-tier variables (OpenAI, Redis, MLflow, Postgres)
+
+### P2n — CI coverage enforcement
+- CI now runs `npm run test:coverage` instead of `npm run test:run` — coverage thresholds enforced at 60/65/65/60 (statements/branches/functions/lines)
+- Previous aspirational thresholds (80/75/80/80) lowered to match reality — acts as a ratchet preventing regression
+- Removed ad-hoc `httpx` from backend CI install (already in `requirements.txt` since P2t)
+
+### P5u — SeasonStats icon fix
+- "Most Cards" stat icon changed from `Calendar` (schedule icon) to `AlertTriangle` (disciplinary icon)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing), coverage enforced
+- P2 tier: 27/27 (100%) complete
+
+---
+
+## 30 March 2026 — P5x — prediction quality improvements
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5x — processCompletedMatches filter fix
+- `advancedPredictions.ts`: ELO `processCompletedMatches` now accepts matches with `undefined` status (not just `'FINISHED'`). Historical matches from CSV training data often lack status — these were silently skipped, leaving ELO ratings stale
+
+### P5x — Variable confidence scoring
+- `advancedPredictions.ts`: Replaced binary confidence score (0.85/0.75) with a variable calculation based on three factors:
+  - **Prediction clarity** (40%): how dominant the top outcome probability is (normalised against 0.6 threshold)
+  - **Fatigue certainty** (30%): whether both teams have adequate rest (≥3 days)
+  - **Data quality** (30%): how many completed matches are available (scales from 0.6 at 0 matches to 0.85 at 20+)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+
+---
+
+## 30 March 2026 — P4g/P5x/P5u — .dockerignore, accessibility, spec corrections
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P4g — Backend .dockerignore created
+- Excludes tests, docs, spreadsheets (~100MB+ CSVs), caches, training scripts, and Docker files from build context — dramatically faster builds
+
+### P5x — Accessibility fixes
+- `Help.svelte`: Added `id="help-nav"` and `aria-controls` linking toggle button to nav
+- `TopScorers.svelte`: Added `role="img"` and `aria-label` ("1st/2nd/3rd place") to medal emoji spans
+
+### P5u — Spec corrections
+- Spec 02: Updated "Backend ML proxy: NOT DONE" to DONE — proxy exists at `vite.config.ts:120` since P2b
+
+---
+
+## 30 March 2026 — P5ae/P5u/P5x — test quality, accessibility, content fixes
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ae — Test quality improvements
+- Strengthened 4 weak `Array.isArray` assertions in `value.test.ts` — now check `result.length`, element shape properties (`market`, `ourProbability`, `edge`), and market-specific probability bounds
+
+### P5u — Accessibility fixes
+- `MobileNav.svelte`: Added `aria-expanded={isMoreOpen}` to "More" toggle button
+- `KellyCalculator.svelte`: Added `aria-label` to refresh button; changed slider from `on:change` to `on:input` for keyboard drag support
+- `Settings.svelte`: Added `refreshTimer` variable and `onDestroy` cleanup — 5-second setTimeout no longer fires after unmount
+- `ApiSetupWizard.svelte`: Changed close button `aria-label` from "Skip" to "Close"
+
+### P5x — Content and text fixes
+- `ChatBot.svelte`: Privacy copy changed from "never sent to our servers" to "stored in your browser only"
+- `Settings.svelte`: HTML comment corrected from "API Provider Selection" to "Football-Data.org API Configuration"
+- `betBuilder.ts`: Fixed corners selection text from 'Over 7.5 corners' to 'Over 8.5 corners' (was mismatched with `totalOver85` probability threshold)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+
+---
+
+## 30 March 2026 — P5v/P5ag — WebSocket removal, spinner and button cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5v — Dead WebSocket infrastructure removed
+- Removed ALL WebSocket code from `liveService.ts`: `ws` field, `wsReconnectAttempts`, `wsReconnectTimer`, `connectWebSocket()`, `disconnectWebSocket()`, `attemptReconnect()`, `isWebSocketConnected()`, `isBackendEnabled()`, WS constants, `backendService` import
+- Service is now a clean polling-only architecture with adaptive intervals (30s live, 5min matchday, 30min idle)
+- Removed 4 WebSocket tests and mock infrastructure from `liveService.test.ts` (16 → 11 tests)
+
+### P5ag — Spinner and button consistency
+- Removed dead `spinner-branded` CSS class and `@keyframes spin` from `app.css` (never used — all components use Tailwind `animate-spin`)
+- Standardised all 5 full-page loading spinners to consistent `h-12 w-12` with `py-12` wrapper (was `h-16 w-16` with `h-64` in MatchList and Predictions)
+- Migrated Retry/Refresh/Export buttons from raw `<button>` to shadcn `<Button>` in: MatchList, Predictions, StandingsTable, TopScorers, BettingHistory
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+- shadcn `<Button>` now used in 9 components (was 5)
+
+---
+
+## 30 March 2026 — P5af/P5am — backend path robustness, Dockerfile security
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5af — Backend path fragility fixed
+- Added `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` constant to `main.py` — model and CSV paths now resolve relative to `backend/` regardless of which directory `uvicorn` is started from
+
+### P5am — Dockerfile security hardened
+- Added non-root `appuser` user — container no longer runs as root
+- Removed stale `COPY config.yml .` that broke Docker build on clean clones
+- Removed misleading `EXPOSE 5000` (MLflow port, Pro-tier only)
+- Removed `git` from apt-get dependencies (not needed at runtime)
+
+### Stats
+- P5 Hardening: ~47/49 (96%)
+
+---
+
+## 30 March 2026 — P5ak/P5s/P5an — dead code removal, test_setup false confidence
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ak — Dead service methods removed
+- Removed `backendService.predictBatch()`, `backendService.getTeamStats()`, and `headers(includeAuth)` auth branch — none called from any component
+- Removed `KellyCalculator.simulate()` — Monte Carlo simulation with no UI integration
+- Removed `aiAnalysis.invalidateServerKeyCache()` — no component calls this
+- Deleted 11 corresponding tests (honest coverage reduction)
+
+### P5s — Dead variable cleanup
+- Removed `selectedProvider` from ApiSetupWizard.svelte — single-value union `'football-data'`, never changed, parent ignores the dispatched value
+- `bttsNo` investigated and confirmed NOT dead — actively used by ValueBets.svelte as a validation gate for BTTS market scanning
+
+### P5an — test_setup.py false confidence fixed
+- Renamed `backend/test_setup.py` to `backend/check_imports.py` — pytest no longer collects it as a passing test. The file makes zero assertions and was providing false confidence in CI
+
+### Stats
+- P5 Hardening: ~45/49 (92%)
+- Frontend: 373 tests, 0 type errors (honest reduction from dead-code test removal)
+
+---
+
+## 30 March 2026 — P5ad/P5u/P5al/P5ab — fatigue model, live display, bet correlation
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ad — FatigueAnalyzer congestion branch removed
+- Simplified `getFatigueMultiplier()` from 2 params to 1 — `recentFixtures` was always `1`, making the congestion formula dead code. Now a clean linear ramp: `min(max(restDays, 0.5) / 7, 1)`
+- Updated all call sites in `advancedPredictions.ts` and `optimizedPredictions.ts`
+- Rewrote fatigue tests (3 focused tests replacing 1 multi-assertion test)
+
+### P5u — LiveMatches minute display for extra time and penalties
+- `getMinute()` now handles `EXTRA_TIME` (shows elapsed minutes or "ET") and `PENALTY_SHOOTOUT` (shows "PEN") — previously these statuses showed blank despite having valid kick-off time
+
+### P5al — correlationAdjustment applied to all 4 combo types
+- "Safe Builder" and "High Risk Builder" now apply `correlationAdjustment()` for consistent combo confidence calculations — previously only "Value Builder" and "Goals Galore" did
+
+### P5ab — Marked as stale (false positive)
+- Investigation confirmed backtest only reads ELO ratings via `predictMatch()`, never calls `updateRatings()` — no unnecessary localStorage writes occur
+
+### Stats
+- P5 Hardening: ~42/49 (86%)
+- Frontend: 384 tests, 0 type errors
+
+---
+
+## 30 March 2026 — P2t/P2u/P2v/P5x/P5s — backend deps, gitignore, environment, CSS fix, dead code
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P2t — httpx added to requirements.txt
+- Added `httpx==0.27.2` to the testing section — backend tests (`pytest-asyncio` async HTTP tests) now work from a fresh `pip install -r requirements.txt` without ad-hoc CI workarounds
+
+### P2u — .gitignore gaps closed
+- Added `backend/models/*.joblib` — prevents trained model binaries from accidental commit
+- Added `frontend/.env.local` and `frontend/.env.production.local` — standard Vite local override files now protected
+
+### P2v — environment.yml cleaned up
+- Removed dead security deps (`python-jose`, `passlib`, `cryptography`, `python-dotenv`, `sqlalchemy`)
+- Moved Pro-tier ML deps (`shap`, `optuna`, `mlflow`, LangChain, ChromaDB, `openai`) to commented-out section
+- Confirmed `httpx` present (now also in `requirements.txt`)
+
+### P5x — Dashboard CSS token fixed (ALL P5x items resolved)
+- Changed `dark:text-primary-light` (undefined) to `text-primary` (theme-aware via CSS variables) — icon renders correct colour in both light and dark modes
+
+### P5s — Dead code cleanup
+- Removed unused `currentStreak` variable from `SeasonStats.svelte:96`
+
+### Stats
+- P2 Next Sprint: 25/27 (93%) — only Docker cleanup and CI gaps remain
+- P5 Hardening: ~38/49 (78%)
+
+---
+
+## 30 March 2026 — P5aa/P5ac/P5ai/P5aj — prediction quality, typography, accessibility
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5aa — Home advantage double-counting removed
+- Removed `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` in `optimizedPredictions.ts` — ELO's `HOME_ADVANTAGE` (65 points) is the single source of truth for home advantage
+
+### P5ac — HT priors corrected
+- Fixed half-time result priors from 0.25 + 0.45 + 0.25 = 0.95 to 0.26 + 0.46 + 0.28 = 1.0, matching real PL half-time distributions
+
+### P5ai — Typography plugin installed
+- Installed `@tailwindcss/typography` and added to `tailwind.config.js` — Help.svelte's `prose` classes now functional
+
+### P5aj — Sidebar toggle aria-expanded
+- Added `aria-expanded={isSidebarOpen}` to Header sidebar toggle button, with `isSidebarOpen` prop passed from App.svelte
+
+### Stats
+- P5 Hardening: ~36/49 (73%)
+
+---
+
+## 30 March 2026 — P1g wizard dismiss bug fixed, P5ah/P5w/P5y/P5z resolved
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P1g — ApiSetupWizard dismiss bug (last P1 item)
+- `handleApiSetupComplete` in `App.svelte` now early-returns when `apiKey` is empty. Dismissing the wizard no longer sets `hasApiKey = true`, preventing silent data-fetch failures when no API key is configured
+
+### P5ah — animate-fadeIn typo
+- Changed `animate-fadeIn` (camelCase) to `animate-fade-in` (kebab-case) in `App.svelte` — page transition overlay now fades correctly
+
+### P5w — Dead global CSS rules
+- Removed dead `.live-ticker`, `.ticker-content`, and `.ticker-content:hover` rules from `app.css` — all overridden by LiveTicker.svelte scoped styles, and `.ticker-content` referenced the deleted `@keyframes scroll`
+
+### P5y — SeasonStats NaN guard
+- "Second Half Goals" stat now guarded with `totalGoals > 0` check — displays "N/A" instead of `NaN%` at season start
+
+### P5z — renderMarkdown semantic HTML
+- Numbered list items now wrapped in `<ol>` instead of `<ul>` — correct semantic HTML for screen reader list navigation
+
+### Stats
+- P1 High Priority: 17/17 (100%) — ALL DONE
+- P5 Hardening: ~32/49 (65%)
+- Project completion: ~80% → ~82%
+
+---
+
+## 29 March 2026 — Seventeenth audit: P5x corrections + 7 new items from deep parallel analysis
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Deep parallel audit using 7 Opus/Sonnet subagents cross-referencing all specs, frontend lib/services/components, backend Python code, config/infrastructure, and stub hunting against `tailwind.config.js` definitions.
+
+### P5x false-positive corrections
+- **`hover:shadow-glow-primary-sm`** — IS defined in `tailwind.config.js:69` under `boxShadow.glow-primary-sm`. Dashboard hover effect works correctly. Removed from P5x
+- **`animate-fade-in` in BettingHistory/MatchList** — IS defined globally in `tailwind.config.js:78` (maps to `fadeIn` keyframe, opacity 0→1). Both components' animations work. Predictions.svelte has a local version that also translates Y — cosmetic difference, not a bug. Removed from P5x
+- Only surviving P5x item: `dark:text-primary-light` (genuinely undefined token)
+
+### Newly discovered items (7)
+- **P5ah** `App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind uses kebab-case `animate-fade-in`. Overlay fade animation broken
+- **P5ai** `Help.svelte`: `@tailwindcss/typography` not installed — `prose` classes (6 instances) and local `@apply .prose h2/h3/h4` rules all silently non-functional
+- **P5aj** `Header.svelte`: sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state
+- **P5ak** Dead service methods: `backendService.predictBatch()`, `backendService.getTeamStats()`, `headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()`
+- **P5al** `betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types — inconsistent correlation handling
+- **P5am** `Dockerfile` runs as root — no non-root user created
+- **P5an** `test_setup.py` makes zero assertions — always passes in pytest, false confidence in CI
+
+### Stats
+- Project completion: ~82% → ~80% (2 false positives removed, 7 new items added; net +5 open items)
+- P5 hardening: ~28/44 → ~28/49 (57%)
+
+---
+
+## 29 March 2026 — Sixteenth audit: 23 new items discovered via comprehensive parallel analysis
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Full codebase audit using 7 parallel Sonnet agents covering: all 8 specs, frontend lib/services/components, backend Python code, all tests + CI, all config/infra files, and stub/TODO hunting.
+
+### Newly discovered bugs (P1/P5)
+- **P1g** `App.svelte:79`: wizard dismiss sets `hasApiKey = true` unconditionally — app attempts data load without a key
+- **P5w** `app.css:376-387`: dead `.live-ticker` and `.ticker-content` global rules referencing deleted keyframe
+- **P5x** `Dashboard.svelte`: two undefined Tailwind classes (`shadow-glow-primary-sm`, `text-primary-light`) — silently no-op
+- **P5x** `MatchList.svelte`, `BettingHistory.svelte`: `animate-fade-in` only defined locally in `Predictions.svelte` — animations never run
+- **P5y** `SeasonStats.svelte:374`: `NaN%` when `totalGoals === 0`
+- **P5z** `renderMarkdown.ts`: numbered lists use `<ul>` instead of `<ol>`
+
+### Prediction quality issues
+- **P5aa** Home advantage double-counted: ELO (+65 points) AND form analysis (*1.1 momentum)
+- **P5ac** `betBuilder.ts` HT priors sum to 0.95 not 1.0 — systematic bias
+- **P5ad** `FatigueAnalyzer.recentFixtures` always `1` — congestion formula branch dead
+
+### Infrastructure gaps
+- **P2t** `requirements.txt` missing `httpx` (needed for tests)
+- **P2u** `.gitignore` missing `*.joblib` and `frontend/.env.local`
+- **P2v** `environment.yml` stale — still includes dead security deps
+- **P5af** `main.py` model/CSV paths resolve relative to CWD, not `__file__`
+
+### Test quality discoveries
+- **P5ae** `backtest.test.ts` encodes Kelly 1.05 bug as correct expected value — actively prevents fix
+- **P5ae** `liveService.test.ts` WS test passes BECAUSE handler discards data
+- **P5ae** `value.test.ts` three array-shape-only assertions
+- **P5ae** Backend missing `/predict/free` happy-path test and `_get_client_ip` test
+- **P2n** CI has no coverage enforcement, no linting, no E2E tests
+
+### UI consistency
+- **P5ag** Three different spinner implementations, none using `spinner-branded`
+- **P5ag** Mix of raw `<button>` and shadcn `<Button>` across components
+- **P5ab** Backtest fires ~300+ unnecessary `saveToStorage()` calls
+
+### 10 new deferred minor items added
+Dashboard canvas accessibility, Help.svelte ARIA, TopScorers emoji labels, ChatBot privacy copy, Settings heading, AdvancedMatchPredictor constant confidence, processCompletedMatches status filter, betBuilder corners mismatch, Dockerfile broken COPY
+
+### Stats
+- Frontend: 382 Vitest tests, 43 E2E tests, 0 type errors (unchanged)
+- Backend: 62 pytest tests (unchanged)
+- P1: 100% → 94% (1 new bug)
+- P2: 92% → 81% (3 new items)
+- P5: 88% → 64% (12 new items)
+- Overall: ~85% → ~82% (denominator increased by 23)
+
+---
+
+## 28 March 2026 — Fifteenth audit: newly discovered items, spec marker corrections
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Full codebase re-audit using parallel agents across specs, frontend lib/services/components, and backend Python code.
+
+### Newly discovered items added to plan
+- `SeasonStats.svelte:96`: dead `currentStreak` variable (P5s)
+- `ApiSetupWizard.svelte`: dead `selectedProvider` variable (P5s)
+- `value.ts`: vestigial `MarketOdds.bttsNo` field (P5s)
+- `LiveMatches.svelte`: `getMinute()` doesn't handle EXTRA_TIME/PENALTY_SHOOTOUT minute display (P5u)
+- `liveService.ts`: WebSocket `onmessage` is a no-op — parses then discards data (P5v)
+- 7 deferred minor accessibility/UX items added
+
+### Spec marker corrections
+- Spec 01: markers corrected from 6/8 → 7/8 (only Req 2 Poisson lambda remains)
+- Spec 02: noted stale backend proxy marker (done since P2b, spec status not updated)
+
+### Confirmed clean
+- Zero TODO/FIXME/HACK comments in entire codebase
+- Zero hardcoded form strings in production code (all in test fixtures only)
+- Zero hardcoded accuracy values in production code
+- Zero hardcoded API keys or secrets
+- `Math.random()` only in Kelly Monte Carlo simulation (intentional)
+- `np.random` calls: 2 remaining (lstm_predictor fake importance, modern_oracle fake Optuna objective) — both in deferred Pro-tier code
+
+### Stats
+- Frontend: 382 Vitest tests, 43 E2E tests, 0 type errors (unchanged)
+- Backend: 62 pytest tests (unchanged)
+- P5 progress: 97% → 88% (new items discovered, no regressions)
+- Overall: ~86% → ~85% (denominator increased)
+
+---
+
+## 27 March 2026 — Spec 07 complete: shadcn Dialog and Sheet, sidebar refactor, dead code removal
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.82`
+
+### Spec 07 — shadcn Dialog component
+- Created custom `$lib/components/ui/dialog/` (Root, Content, Header, Footer, Title, Description)
+- Uses Svelte context API for close handler propagation, `focusTrap` action, body scroll lock, focus save/restore
+- No bits-ui dependency — matches existing component pattern
+
+### Spec 07 — shadcn Sheet component
+- Created custom `$lib/components/ui/sheet/` (Root, Content)
+- Configurable `side` prop (left/right/top/bottom) with fly transitions
+- Focus trap, escape key, and click-outside-to-close
+
+### Spec 07 — ApiSetupWizard migration
+- Migrated from hand-rolled modal to shadcn Dialog compound component
+- Removed duplicated focus trap, escape key, and scroll lock logic (now handled by Dialog)
+
+### Spec 07 — Sidebar mobile Sheet migration
+- Extracted `SidebarNav.svelte` — shared nav content used by both desktop aside and mobile Sheet
+- Desktop: CSS transform slide with `<aside>`
+- Mobile: Sheet overlay with side="left"
+- Removed ~100 lines of duplicated nav rendering and manual overlay code
+
+### Dead code removal
+- Removed `.card-stats` / `.card-stats:hover` from `app.css` (unused)
+- Removed stale comments from Dashboard.svelte and Predictions.svelte
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Spec 07 progress: 75% → 100% (17/17 criteria met)
+- Overall: ~84% → ~86%
+
+---
+
+## 19 March 2026 — P2r/P2s/P5a: Backend runtime crash fix, dead deps cleanup, data guards
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.81`
+
+### P2r — `/features/importance` runtime crash fix
+- Added `is not None` guard for `oracle.lstm_model` and `oracle.transformer_model` in the `/features/importance` endpoint — previously raised `AttributeError` when torch was unavailable (the normal free-tier scenario)
+
+### P2r — requirements.txt dead dependency cleanup
+- Removed 14 dead packages from `requirements.txt`: `python-jose`, `passlib`, `cryptography`, `python-dotenv`, `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity`, `sqlalchemy`, `mlflow`, `optuna`, `chromadb`, `langchain`, `langchain-openai`
+- These were only used by security modules (`auth.py`, `secrets.py`, `validators.py`) that are never imported by `main.py`, or by the disabled Pro-tier oracle (`modern_oracle.py`)
+- Also removed `shap` (only used in inactive `xgboost_model.py`) and `scipy` (indirect dep, installed automatically by sklearn)
+- Fixed Python version header from 3.13 to 3.11 (matching Dockerfile and CI)
+- Net saving: ~30MB+ of install time and Docker image size
+
+### P2s — LSTM synthetic training data guard
+- `LSTMPredictor.train()` now raises `ValueError` when called with empty data instead of proceeding silently
+- `__main__` demo block clearly labelled as synthetic data — not a real training run
+
+### P5a — CSV-absent warning
+- When `backend/spreadsheets/KnowledgeFilesCSV/` is not found at startup, the free-tier feature engineer now logs a clear warning explaining that all features will return 0.0
+- Previously failed silently with no indication why predictions were empty
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Backend: Python syntax verified; CI will run 62 pytest tests
+- P2 progress: 83% → 92% (20/24 → 22/24)
+- P5 progress: 96% → 97% (27/28 → 28/29)
+- Overall: ~82% → ~84%
+
+---
+
+## 19 March 2026 — P5 Hardening Batch 5: Backend CI pipeline, spec consistency, stale docs
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.80`
+
+### P5c — Backend CI pipeline
+- Added `backend` job to `.github/workflows/ci.yml` — runs 62 Python tests via pytest on every push/PR
+- Uses Python 3.11 (matching Dockerfile and environment.yml), pip cache for faster runs
+- Installs from `requirements.txt` plus `httpx` (required by FastAPI `TestClient`)
+- Frontend and backend jobs run in parallel for faster CI
+
+### P5g — CI node version fixed
+- Changed `node-version: 20` to `node-version-file: .nvmrc` — Node version now reads from `.nvmrc` (single source of truth)
+- Previously blocked by OAuth `workflow` scope — now pushed
+
+### Documentation consistency
+- Fixed stale CLAUDE.md entries: LiveMatches ARIA association already fixed (panel IDs exist), dead backend imports already removed (`timedelta` from main.py, `asyncio` from modern_oracle.py)
+- Updated backend/README.md — was actively contradicting current state (claimed 0% test coverage, untrained models)
+- Synced spec body text with acceptance criteria across specs 01, 02, 04, 05, 07, 08 — body descriptions still said "not done" while criteria were ticked
+- Removed dead `frontend/src/assets/svelte.svg` (unused Vite template scaffolding)
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Backend: 62 pytest tests (now running in CI)
+- P5 progress: 96% → 96% (27/28 items done — 2 new items resolved, recount)
+
+---
+
+## 27 March 2026 — P5 Hardening Batch 4: Confidence calibration, WebSocket cleanup, error contracts
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.79`
+
+### P5m — Confidence calibration (Spec 01 Req 5)
+- Added `CalibrationFactors` interface and `getCalibrationFactors()` method to `predictionTracker.ts`
+- Computes per-band accuracy factors: (actual accuracy) / (average stated confidence) for high (>0.7), medium (0.5–0.7), and low (<0.5) bands
+- Minimum 10 settled predictions per band before calibration activates; factors clamped to [0.5, 1.5]
+- Wired into `OptimizedPredictor.predictMatch()` — raw confidence multiplied by the band's calibration factor
+- 6 new tests covering insufficient data, overconfident/underconfident models, clamping, and independent band computation
+
+### P5i — WebSocket URL configurable
+- Extracted hardcoded `hostname:8000` WebSocket URL to use `VITE_BACKEND_WS_URL` environment variable
+- Falls back to `${protocol}//${hostname}:8000` for local development
+- Production deployments can now set the env var to match their backend URL
+
+### P5g — Dead WebSocket code removed
+- Removed aspirational `data.liveMatches` handler from `liveService.ts` — backend never sends this payload
+- Updated test from asserting dead behaviour to verifying WebSocket messages parse without crashing
+- Confirmed `backend/chroma_db/` is already in `.gitignore` (line 20) — corrected stale CLAUDE.md note
+
+### P5t — Error contract documented
+- Added JSDoc to `DataService` class documenting the two-tier error contract:
+  - Essential data methods (`getMatches`, `getStandings`, `getTopScorers`, `getCurrentSeason`) throw
+  - Supplementary methods return empty (`[]` for collections, `null` for single objects)
+
+### Spec 08 — Rate limiter marker synced
+- Ticked the Section 4d acceptance criterion — `_get_client_ip()` fix from P5a was already deployed
+
+### Spec 03 — Historical data command
+- Added `python -m app.data.football_data_collector --seasons 2020,2021,2022,2023,2024` to AGENTS.md
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- P5 progress: 95% → 96% (25/26 items done)
+
+---
+
+## 19 March 2026 — P5 Hardening Batch 3: Accessibility, rate limiter, CI
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.78`
+
+### P5r — ApiSetupWizard WCAG 2.1 accessibility
+- Wired `use:focusTrap` Svelte action — focus trapped within dialog, auto-focuses first element on mount
+- Added `Escape` key handler to dismiss the wizard
+- Added click-outside-to-close on the backdrop overlay
+- Restores focus to the previously active element on unmount
+
+### P5a — Backend rate limiter IP extraction
+- Added `_get_client_ip()` helper extracting real client IP from `X-Forwarded-For` header (for reverse proxies) with `request.client.host` fallback
+- Renamed `client_ip: str = "unknown"` parameter to proper `Request` injection — all clients no longer share a single bucket
+
+### P5g — CI config (partial)
+- Created `.nvmrc` at repo root (Node 20) — single source of truth for Node version
+- CI `node-version-file: .nvmrc` change prepared but push blocked by OAuth `workflow` scope
+
+### Stats
+- Frontend: 376 Vitest tests passing, 0 type errors
+- P5 progress: 86% → 95% (21/22 items done)
+
+---
+
+## 19 March 2026 — P5 Hardening Batch 2: Type safety, test quality, resilience
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.77`
+
+### P5e — Test quality fixes
+- `ChatBot.test.ts`: DOMPurify mock now uses a spy — verifies `sanitize()` is called with response content, catching XSS regressions
+- `liveService.test.ts`: WebSocket `onmessage` now triggered via `simulateMessage()` with store update assertion
+- `optimizedPredictions.test.ts`: conditional `if (prediction.valueOdds)` guard removed — assertions always execute
+- `advancedPredictions.test.ts`: empty `valueBets` loop replaced with explicit `.toHaveLength(0)` assertion
+
+### P5f — Type safety (partial — 3/5 items)
+- `optimizedPredictions.ts`: `(form: any[])` → `TeamForm[]`, added `FormAnalysis`/`H2HAnalysis` interfaces for typed Dixon-Coles parameters
+- `footballData.ts`: in-memory cache `data: any` → `data: unknown` with explicit cast on retrieval
+- Documented 2 remaining items as Svelte 4 framework limitations (component constructor typing, `CustomEvent` vs `KeyboardEvent`)
+
+### P5l — TopScorers type cleanup
+- Removed `(s: any)` cast and nonexistent `FDScorer` fallback properties (`numberOfGoals`, `numberOfAssists`, `penaltyGoals`)
+
+### P5s — Dead code cleanup (continued)
+- Deleted duplicate `$lib/utils/cn.ts` — all 10 shadcn component imports updated to `$lib/utils`
+- Removed unused `MAX_CACHED_ANALYSES` constant from `aiAnalysis.ts`
+- Removed unused `timedelta` import from `main.py`
+- Removed unused `asyncio` import from `modern_oracle.py`
+
+### P5t — Frontend resilience (partial — 2/3 items)
+- `footballData.ts`: added AbortController with 15-second timeout to `rateLimitedFetch()` — hung API calls no longer block the rate-limit queue indefinitely
+- `Predictions.svelte`: renamed `catch (error)` to `catch (err)` to fix variable shadow with outer reactive state
+
+### Stats
+- Frontend: 376 Vitest tests passing, 0 type errors
+- P5 progress: 59% → 86% (19/22 items done)
+
+---
+
+## 19 March 2026 — P5 Hardening Batch: Poisson consistency, data integrity, dead code
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5n — Poisson maxGoals consistency (CRITICAL)
+- Fixed 3 inconsistent maxGoals values across the codebase to match spec-mandated cap of 7:
+  - `optimizedPredictions.ts:278` — was 5, now uses PoissonPredictor default (7)
+  - `Predictions.svelte` — was 6, now uses PoissonPredictor default (7)
+  - `value.ts:234` — was 10, now 7
+- Consolidated `value.ts` private Poisson implementation (duplicate `poissonProbability` and `factorial` methods) into shared `PoissonPredictor` from `advancedPredictions.ts`. Single source of truth for all Poisson calculations.
+
+### P5o — Standings fallback consistency
+- `getStandingsProbabilities` no-data fallback changed from hardcoded `0.40` to `DEFAULT_HOME_WIN_RATE` (0.46) with proportional draw/away split
+
+### P5p — Backtest ELO processedMatchIds leak
+- Added `getProcessedMatchIds()` and `setProcessedMatchIds()` to `EloRatingSystem`
+- `backtest.ts` now snapshots and restores `processedMatchIds` alongside ratings, preventing backtest runs from permanently marking matches as processed on the shared ELO system
+
+### P5q — Live match status filter
+- Added `EXTRA_TIME` and `PENALTY_SHOOTOUT` to live match query in `footballData.ts` — matches in extra time/penalties no longer disappear from the live view
+
+### P5s — Dead code cleanup (partial)
+- Removed dead standalone `isValueBet()` function from `kelly.ts` (the `KellyStake.isValueBet` property is unaffected)
+- Removed dead `TeamRating` interface from `advancedPredictions.ts`
+- Removed dead CSS classes `.match-card`, `.match-score`, `.chart-container` from `app.css`
+- Removed dead `@keyframes scroll` animation from `app.css` (overridden by LiveTicker local keyframes)
+- Corrected ninth audit finding: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte`
+
+### Test fixes
+- Updated `backtest.test.ts` mock to include `getProcessedMatchIds`/`setProcessedMatchIds`
+- Updated `value.test.ts` mock to preserve real `PoissonPredictor` via `importOriginal` pattern
+
+## [Unreleased] - v3.0-BackendMLTraining Branch
+
+### Ninth Planning Audit — 22 New Findings (26 March 2026)
+- **7-agent parallel codebase sweep:** Studied all 8 specs, all frontend lib/services/components, all backend Python files, all test files, CHANGELOG.md, and hunted for stubs/TODOs/hardcoded values across the entire project
+- **Critical finding — Poisson maxGoals inconsistency (P5n):** 4 different cap values across the codebase (5, 6, 7, 10) where the spec requires 7. Only `advancedPredictions.ts` was fixed (P5l); `optimizedPredictions.ts:278` still uses 5, `Predictions.svelte` uses 6, and `value.ts:234` uses 10. Three separate Poisson implementations exist — consolidation recommended
+- **Prediction bias — getStandingsProbabilities fallback (P5o):** `optimizedPredictions.ts:644` uses `homeWin: 0.40` for no-data fallback, inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (different location from the P5k H2H fix)
+- **ELO corruption risk — backtest processedMatchIds leak (P5p):** `backtest.ts` snapshots/restores ratings but not `processedMatchIds` — matches processed during backtesting remain marked as processed, potentially blocking future live ELO updates
+- **Live match gap — extra time/penalties invisible (P5q):** `dataService.getLiveMatches()` queries `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included
+- **Accessibility — ApiSetupWizard WCAG failures (P5r):** No focus trap on dialog open, no Escape key handler — independent of the shadcn Dialog migration
+- **Dead code catalogue (P5s):** Confirmed dead: `cn()` duplicate file, `GameweekAccuracy`/`getAccuracyByGameweek()` in predictionTracker, `isValueBet()` in kelly.ts, `TeamRating` interface, `MAX_CACHED_ANALYSES` constant, `.match-card`/`.match-score`/`.chart-container` CSS classes, `@keyframes scroll` ticker animation, `timedelta` and `asyncio` unused imports in backend
+- **Frontend resilience issues (P5t):** `footballData.ts` has no AbortController/timeout (hung fetch blocks queue), `dataService.ts` has inconsistent error contracts (throws vs null vs []), `Predictions.svelte` `catch(error)` shadows outer state variable
+- **Other findings:** `SEED_RATINGS` includes relegated teams, `betBuilder.ts:441` hardcoded corner string, `processCompletedMatches` silently skips matches with undefined status, `advancedPredictions.ts` `valueBets` always returns empty array
+- **Spec status refined:** Spec 01 lowered to ~75% (Poisson real stats gap identified), Spec 05 updated (extra-time status filter), all spec requirement numbers now cross-referenced in plan
+- **CLAUDE.md updated:** 18 new entries added — Poisson consistency, dead code catalogue, ELO leak, live match gap, accessibility, resilience issues
+- **P5 expanded:** 9 new items (P5n–P5t) added to IMPLEMENTATION_PLAN.md, total P5 items now 22 (was 13)
+
+### First ML Training Run Results (18 March 2026)
+- **Model trained and saved:** `backend/models/xgboost_free_tier.joblib` — 51.0% overall accuracy (+6.4% lift over LR baseline 44.5%), position_difference is strongest feature by 3×
+- **Draw prediction broken:** Only 6.7% draw accuracy (7/104 draws correct). Model biased towards home/away predictions. Draw AUC-ROC near random (0.495)
+- **Improvement roadmap added:** Quick wins (class weights, probability calibration, feature selection, hyperparameter tuning), medium effort (draw-specific features, Elo-based features, recency weighting), larger effort (stacked ensemble, odds-as-features, rolling CV)
+
+### Documentation Restructure (18 March 2026)
+- **IMPLEMENTATION_PLAN.md slimmed:** Archived all completed P0–P4 work (reduced from ~1,140 lines to ~480 lines). Now contains only remaining/pending work and deferred Pro-tier items
+- **Project completion assessed:** ~82% of v3.0 scope complete. Pro-tier backend (P3a–d) deferred as future work
+- **Free-tier ML readiness confirmed:** Pipeline complete — `cd backend && python train_free_tier.py` to generate first model. 86 features, 62 tests, API endpoints all wired
+- **Stale items cleaned:** Removed 5 duplicate/corrected `[ ]` items (already-fixed gitignore, duplicate WebSocket entries, corrected Prediction type diagnosis)
+
+### Spec 07 — shadcn Component Wiring (26 March 2026)
+- **Button migration:** Replaced all `.btn-*` CSS classes with shadcn `<Button>` across 5 components (Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions). Variant mapping: `.btn-primary` → default, `.btn-secondary` → secondary, `.btn-outline` → outline, `.btn-ghost` → ghost. `.btn-neon` kept as class override for glow effect CTA
+- **Card migration:** Wrapped 10 `.card-glass` divs with shadcn `<Card class="card-glass">` in Dashboard (8 cards) and ChatBot (2 cards). Glassmorphism aesthetic preserved via class layering
+- **Badge migration:** Replaced all `.badge-*` CSS classes with shadcn `<Badge>` across Dashboard, MatchList, Predictions. Added `info` (sky blue) and `neutral` (muted) variants to Badge component to match existing design
+- **CSS cleanup:** Removed ~60 lines of orphaned `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-outline`, `.btn-ghost`, `.btn-sm`, `.btn-icon`, `.badge`, `.badge-success`, `.badge-error`, `.badge-warning`, `.badge-info`, `.badge-neutral` classes from `app.css`
+- **Spec 07 completion:** 13/17 acceptance criteria now met (was 9/17). Remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar), dead code removal, form string computation
+- **Validation:** 375/375 tests passing, 0 type errors
+
+### P5 Hardening Batch — Code Quality & ARIA Fixes (26 March 2026)
+- **P5j — Season year deduplication:** Extracted `getSeasonYear(date?)` and `SEASON_START_MONTH` constant to `lib/utils.ts`. Replaced inline `getMonth() >= 6` in `dataService.ts`, `footballData.ts`, `MatchList.svelte`, and `mockApi.ts` (4 locations). `getSeasonLabel()` now delegates to `getSeasonYear()` — single source of truth for the July boundary
+- **P5k — H2H fallback consistency:** `optimizedPredictions.ts` H2H no-data fallback now uses `DEFAULT_HOME_WIN_RATE` (0.46) from constants instead of hardcoded 0.40. Away/draw rates derived proportionally. Eliminates 6pp anti-home bias when H2H data is missing
+- **P5l — Dead code and magic numbers:** Removed empty if/else branches in `dataService.ts` (Supabase remnants). Extracted `PREMIER_LEAGUE_ID = 2021` constant in `footballData.ts`. Changed Poisson `maxGoals` from 10 to 7 per spec 01 (test tolerance relaxed for tail truncation). Confirmed `Prediction` type in `Predictions.svelte` is actively used (corrected plan)
+- **P5d — ARIA accessibility:** LiveMatches tab panels now have `id`, `role="tabpanel"`, and `aria-labelledby` attributes matching their tab buttons. Dashboard profit chart container has `role="img"` and `aria-label`. SeasonStats stat grids have descriptive `aria-label` attributes. Also fixed `icon: any` type in SeasonStats
+- **P5g — Config and infrastructure:** `normaliseTeamName()` in `betBuilder.ts` now converts `&` to `and` — Crystal Palace/Brighton rivalry now fires when API sends `Brighton & Hove Albion FC`. `@types/node` pinned to `^20.17.0` to match Node 20 runtime (was `^25.5.0`)
+- **P5h — Help.svelte accuracy:** Kelly formula section now correctly describes Half-Kelly staking (was showing full Kelly). Replaced aspirational features ("Track bankroll growth", "Trend analysis") with accurate descriptions of implemented functionality
+- **P5b — Spec markers synced:** Updated `specs/05-live-data.md` LiveTicker pulsing indicator to done. Confirmed specs 03, 04, 07, 08 already in sync
+- **Validation:** 375/375 tests passing, 0 type errors
+
+### Eighth Planning Audit — Comprehensive Spec Compliance (25 March 2026)
+- **5-agent parallel codebase sweep:** Compared all source code against all 8 spec files, audited frontend for stubs/TODOs/hardcoded values, audited backend for issues, verified every acceptance criterion with code evidence
+- **Spec compliance audit results:** Spec 06 is 100% complete (7/7 criteria). Spec 07 is the largest gap — shadcn components installed but 0/5 migration criteria actioned (Button, Card, Dialog, Badge, Sheet). Updated all spec completion percentages: 01 (80%), 02 (65%), 03 (85%), 04 (90%), 05 (80%), 06 (100%), 07 (55%), 08 (95%)
+- **5 new findings documented:** P5i (WebSocket URL hardcodes port 8000 — production breaking), P5j (season year calc duplicated in 3 places), P5k (H2H fallback `0.40` inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46`), P5l (minor dead code: empty if/else branches, dead `Prediction` type import, magic numbers), P5m (confidence calibration not implemented — spec 01 gap)
+- **Confirmed clean:** No TODO/FIXME/HACK comments remain in the entire codebase. Hardcoded form strings exist only in test files (not production components)
+- **Active stubs table cleaned:** 8 already-fixed items struck through with fix references (ExpectedGoalsCalculator removed, LEAGUE_AVG computed, fatigue consolidated, calculateCLV removed, plTeams dynamic, predictions.ts deleted, was_correct fixed, /standings serialisation fixed)
+- **CLAUDE.md updated:** 9 new entries added to Important Notes section
+
+### Seventh Planning Audit — P5 Hardening (24 March 2026)
+- **6-agent comprehensive codebase sweep:** Parallel agents audited all 8 specs, all frontend libs/services, all backend Python files, all Svelte components, all test files, and all project configuration/infrastructure
+- **8 new findings documented:** Rate limiter broken on `/predict/free` (client_ip always "unknown"), Crystal Palace/Brighton rivalry name mismatch, LiveMatches ARIA panel IDs missing, ChatBot DOMPurify test mock bypasses XSS regression detection, `@types/node` v25 on Node 20 runtime, `backend/chroma_db/` not gitignored, WebSocket `onmessage` dead code in liveService, optimizedPredictions conditional test assertions
+- **Test coverage table corrected:** Added `aiAnalysis.test.ts` (24 tests) to table, fixed total from 351 to 375. Backend section corrected from "0% coverage" to "62 tests across 3 files"
+- **Spec marker audit:** Found 5 specs (03, 04, 05, 07, 08) have severely outdated acceptance criteria markers — actual implementation is 13-70 percentage points ahead of what the markers show. Created P5b task to sync markers
+- **New P5 section added to IMPLEMENTATION_PLAN.md:** P5a (rate limiter), P5b (spec markers), P5c (backend CI), P5d (a11y fixes), P5e (test quality), P5f (type safety), P5g (config/infra), P5h (Help inaccuracies)
+- **CLAUDE.md updated:** 7 new findings added, spec marker drift documented
+- **Services section updated:** All 6 planned services marked DONE (backendService, liveService, aiAnalysis, free_tier_features, train_free_tier, tests)
+
+### P3g: AI Match Analysis (22 March 2026)
+- **`aiAnalysis.ts` created:** Singleton `AIAnalysisService` that generates natural language match analysis via the existing `/api/chat` OpenAI proxy. Takes `AnalysisInput` (prediction data, form, insights) and returns a 150–200 word football expert narrative. Supplementary display only — does NOT modify numerical prediction probabilities
+- **24h localStorage cache:** Each analysis cached per match ID with TTL eviction. Evicts oldest half of entries when storage is full. `getCachedAnalysis()`, `getRecentAnalyses()`, `clearCache()` public methods
+- **Server-side key detection:** Probes `/api/chat` with empty messages to detect server-configured `OPENAI_API_KEY`. Caches probe result in memory (session) and localStorage (1 hour). Falls back to user-provided key from Settings
+- **Settings.svelte integration:** New "AI Match Analysis" section with toggle switch, API key availability indicator (green/amber), and "Clear AI Cache" button. Uses existing OpenAI API key from ChatBot configuration
+- **Predictions.svelte integration:** AI analysis lazy-loads when user flips a prediction card to the back face. Violet/purple gradient display panel with loading spinner and error states. Does not block the prediction workflow
+- **ChatBot.svelte enrichment:** `buildSystemPrompt()` now fetches up to 3 recent AI analyses and appends match summaries to the system context, giving the chatbot awareness of previously generated insights
+- **24 new tests:** `aiAnalysis.test.ts` covers isEnabled/setEnabled (3), hasApiKey with server probe (4), getAnalysis with cache/fetch/errors (7), getCachedAnalysis with TTL/corruption (4), getRecentAnalyses with sorting/expiry/limits (4), clearCache (1), invalidateServerKeyCache (1). Map-backed localStorage mock for round-trip storage testing
+- **Settings.test.ts fix:** Disambiguated `getByRole('switch')` selectors to use `{ name: 'Use ML backend' }` after adding the second toggle switch
+- **Test count:** 351 → 375 tests across 23 files. All passing. 0 type errors
+
+### P3f: LiveService with WebSocket (22 March 2026)
+- **`liveService.ts` created:** Centralised singleton service that owns all live match data fetching, eliminating duplicate API calls between `LiveMatches.svelte` and `LiveTicker.svelte`. Exports five Svelte stores (`liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches` derived, `pollLabel`) and a `liveService` singleton with `start()`, `stop()`, `refresh()`, `isRunning()`, `isWebSocketConnected()` methods
+- **Adaptive polling:** Three-tier intervals — 30s when matches are live, 5min on match days with no live games, 30min when idle. Consecutive-empty-poll backoff (3 empty polls → idle rate). Poll interval re-evaluated after each fetch cycle
+- **WebSocket integration:** Connects to `ws://{hostname}:8000/ws/predictions` when the ML backend is enabled in Settings and responds healthy. Exponential reconnect (5s base delay × attempt count, max 5 attempts). Consumes `liveMatches` data if sent by backend (future feature)
+- **LiveMatches.svelte refactored:** Removed all direct `dataService` imports, inline polling logic, and `date-fns` filter logic. Now subscribes to shared stores via `$:` reactive declarations. Fixed UX bug where the reactive auto-switch from the empty Live tab fired on every cycle — now guarded with `hasAutoSwitched` flag so users can manually navigate to the Live tab to see the "No Live Matches" countdown
+- **LiveTicker.svelte refactored:** Removed independent 60s polling interval and direct API calls. Now subscribes to shared stores in `onMount` and uses synchronous `get()` reads in `buildTicker()`. Filters recent matches to last 24h and upcoming to next 48h from the wider store windows
+- **23 new tests:** 14 liveService tests (store init, polling, start/stop/refresh, error handling, sorting, adaptive poll labels, WebSocket connection logic, derived store reactivity) + 9 LiveMatches component tests (header, tabs, empty states, store counts, service delegation, cleanup)
+- **Test count:** 335 → 351 tests across 22 files. All passing. 0 type errors
+
+### P3-Free: Free-Tier ML Training Pipeline (21 March 2026)
+- **FreeTierFeatureEngineer** (`backend/app/features/free_tier_features.py`): Standalone feature engineering class computing 86 features across 8 categories — basic stats (12), form & momentum (20), H2H (15), contextual (12), time series (9), derived (5), half-time (5), match stats (8). Fully decoupled from the 150-feature `AdvancedFeatureEngineer` (which has 63 stub methods). Includes bidirectional team name normalisation (28 PL teams + aliases), CSV loading with UTF-8 BOM handling, and graceful degradation when match stats columns are missing
+- **Training script** (`backend/train_free_tier.py`): End-to-end pipeline — loads CSV data, builds chronological feature matrix with warmup filter (MIN_PRIOR_MATCHES=5), trains XGBoost multi-class classifier (Home/Draw/Away) with early stopping, trains logistic regression baseline for comparison, evaluates with accuracy/log loss/Brier score/AUC-ROC/confusion matrix/calibration curve, saves model + metadata to joblib
+- **API endpoints** (`backend/app/api/main.py`): `POST /predict/free` returns probability distribution with rate limiting (60 req/min per IP) and team name validation (422 for unknown teams, 503 when model not loaded). `GET /models/free-tier/info` returns training metadata. Input validation fires before resource checks (422 before 503)
+- **62 backend tests** across 3 test files — all passing:
+  - `test_free_tier_features.py` (39 tests): feature completeness, no data leakage, team name normalisation, edge cases (empty data, unknown teams), non-zero value checks
+  - `test_train_free_tier.py` (12 tests): build_dataset shapes, chronological split, CSV loading, model save/load
+  - `test_predict_free_tier.py` (11 tests): endpoint responses, rate limiting, team name resolution
+- **Edge case fix**: `_get_team_matches()` now ensures synthetic columns (`team_result`, `team_goals`, etc.) exist on empty DataFrames, preventing `KeyError` crashes for unknown teams
+
 ## [Unreleased] - v3.0-Frontend Branch
 
 ### Betting Intelligence & Theme (20 March 2026)

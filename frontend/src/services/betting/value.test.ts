@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ValueBettingEngine, type MarketOdds } from './value';
 
-// Mock the AdvancedMatchPredictor dependency
-vi.mock('../../lib/advancedPredictions', () => ({
-  AdvancedMatchPredictor: {
-    predictMatch: vi.fn()
-  }
-}));
+// Mock only AdvancedMatchPredictor — keep real PoissonPredictor for goals calculations
+vi.mock('../../lib/advancedPredictions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/advancedPredictions')>();
+  return {
+    ...actual,
+    AdvancedMatchPredictor: {
+      predictMatch: vi.fn()
+    }
+  };
+});
 
 import { AdvancedMatchPredictor } from '../../lib/advancedPredictions';
 
@@ -136,8 +140,13 @@ describe('ValueBettingEngine', () => {
         standardOdds()
       );
 
-      // Should not throw — bankroll defaults to 1000
-      expect(Array.isArray(result)).toBe(true);
+      // Should produce results using the default bankroll
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      for (const bet of result) {
+        expect(bet).toHaveProperty('market');
+        expect(bet).toHaveProperty('ourProbability');
+        expect(bet).toHaveProperty('edge');
+      }
     });
 
     it('should check goals markets when over25 and under25 odds are provided', async () => {
@@ -151,10 +160,14 @@ describe('ValueBettingEngine', () => {
         1000
       );
 
-      // With 3.5 expected goals, over 2.5 probability should be high
-      const overBet = result.find(b => b.market === 'over2.5');
-      // May or may not be a value bet depending on Kelly — but the code path was exercised
-      expect(Array.isArray(result)).toBe(true);
+      // With 3.5 expected goals, goals market bets should be generated
+      expect(result.length).toBeGreaterThan(0);
+      const goalsMarkets = result.filter(b => b.market === 'over2.5' || b.market === 'under2.5');
+      expect(goalsMarkets.length).toBeGreaterThan(0);
+      for (const bet of goalsMarkets) {
+        expect(bet.ourProbability).toBeGreaterThan(0);
+        expect(bet.ourProbability).toBeLessThan(1);
+      }
     });
 
     it('should NOT check goals markets when only over25 is provided without under25', async () => {
@@ -181,8 +194,13 @@ describe('ValueBettingEngine', () => {
         1000
       );
 
-      // BTTS code path exercised
-      expect(Array.isArray(result)).toBe(true);
+      // BTTS code path exercised — should produce at least one bet from result/goals/BTTS markets
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      const bttsBets = result.filter(b => b.market === 'btts');
+      for (const bet of bttsBets) {
+        expect(bet.ourProbability).toBeGreaterThan(0);
+        expect(bet.ourProbability).toBeLessThan(1);
+      }
     });
 
     it('should NOT check BTTS market when bttsNo is missing', async () => {
@@ -323,8 +341,12 @@ describe('ValueBettingEngine', () => {
         1000
       );
 
-      // All code paths exercised — no errors thrown
-      expect(Array.isArray(result)).toBe(true);
+      // All market code paths exercised — should produce bets across multiple markets
+      expect(result.length).toBeGreaterThan(0);
+      for (const bet of result) {
+        expect(['home', 'draw', 'away', 'over2.5', 'under2.5', 'btts']).toContain(bet.market);
+        expect(bet.edge).toBeGreaterThan(0);
+      }
     });
   });
 });

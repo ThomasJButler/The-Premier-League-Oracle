@@ -216,6 +216,7 @@
         disabled={suggestionsLoading}
         class="p-2 rounded-lg hover:bg-muted transition-colors"
         title="Refresh suggestions"
+        aria-label="Refresh suggestions"
       >
         <RefreshCw class="w-4 h-4 text-muted-foreground {suggestionsLoading ? 'animate-spin' : ''}" />
       </button>
@@ -235,7 +236,7 @@
         max="90"
         step="5"
         class="w-full accent-primary"
-        on:change={loadSuggestions}
+        on:input={loadSuggestions}
       />
       <div class="flex justify-between text-xs text-muted-foreground mt-0.5">
         <span>More bets</span>
@@ -427,7 +428,7 @@
 
         <!-- Edge indicator -->
         <div class="mt-4 pt-3 border-t border-border/30 flex justify-between text-xs text-muted-foreground">
-          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{(calculation.edgePercentage * 100).toFixed(1)}%</span></span>
+          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{calculation.edgePercentage.toFixed(1)}%</span></span>
           <span>{calculation.isValueBet ? '✓ Value bet' : '✗ No value'}</span>
         </div>
 

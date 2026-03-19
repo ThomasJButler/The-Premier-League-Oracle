@@ -116,76 +116,6 @@ export class KellyCalculator {
   }
   
   /**
-   * Simulate Kelly betting over multiple iterations
-   */
-  public static simulate(
-    initialBankroll: number,
-    opportunities: Array<{ probability: number; odds: number }>,
-    iterations: number = 1000,
-    kellyFraction: number = 0.5
-  ): {
-    finalBankroll: number;
-    maxBankroll: number;
-    minBankroll: number;
-    maxDrawdown: number;
-    averageReturn: number;
-    bustRate: number;
-  } {
-    const results: number[] = [];
-    let busts = 0;
-    let maxDrawdown = 0;
-    
-    for (let i = 0; i < iterations; i++) {
-      let bankroll = initialBankroll;
-      let maxBankroll = initialBankroll;
-      
-      for (const opp of opportunities) {
-        const calc = this.calculate({
-          outcome: 'sim',
-          ourProbability: opp.probability,
-          bookmakerOdds: opp.odds,
-          bankroll: bankroll
-        });
-        
-        const stake = calc.fullKelly * kellyFraction * bankroll;
-        
-        // Simulate bet outcome
-        const won = Math.random() < opp.probability;
-        
-        if (won) {
-          bankroll += stake * (opp.odds - 1);
-        } else {
-          bankroll -= stake;
-        }
-        
-        maxBankroll = Math.max(maxBankroll, bankroll);
-        const currentDrawdown = (maxBankroll - bankroll) / maxBankroll;
-        maxDrawdown = Math.max(maxDrawdown, currentDrawdown);
-        
-        // Check for bust
-        if (bankroll < initialBankroll * 0.01) {
-          busts++;
-          break;
-        }
-      }
-      
-      results.push(bankroll);
-    }
-    
-    const avgBankroll = results.reduce((sum, b) => sum + b, 0) / results.length;
-    const avgReturn = ((avgBankroll - initialBankroll) / initialBankroll) * 100;
-    
-    return {
-      finalBankroll: Math.round(avgBankroll * 100) / 100,
-      maxBankroll: Math.round(Math.max(...results) * 100) / 100,
-      minBankroll: Math.round(Math.min(...results) * 100) / 100,
-      maxDrawdown: Math.round(maxDrawdown * 10000) / 100,
-      averageReturn: Math.round(avgReturn * 100) / 100,
-      bustRate: Math.round((busts / iterations) * 10000) / 100
-    };
-  }
-  
-  /**
    * Determine confidence level
    */
   private static getConfidenceLevel(
@@ -227,11 +157,4 @@ export function calculateKelly(
     bankroll,
     maxStakePercentage: kellyFraction
   });
-}
-
-export function isValueBet(ourProbability: number, bookmakerOdds: number): boolean {
-  const impliedProbability = 1 / bookmakerOdds;
-  const edge = ourProbability - impliedProbability;
-  const expectedValue = (ourProbability * bookmakerOdds) - 1;
-  return edge > 0.02 && expectedValue > 0;
 }

@@ -17,12 +17,6 @@ function chatApiProxy(): Plugin {
       server.middlewares.use('/api/chat', (req: IncomingMessage, res: ServerResponse) => {
         res.setHeader('Content-Type', 'application/json');
 
-        // GET: report whether a server-side key is available
-        if (req.method === 'GET') {
-          res.end(JSON.stringify({ hasServerKey: !!process.env.OPENAI_API_KEY }));
-          return;
-        }
-
         if (req.method !== 'POST') {
           res.statusCode = 405;
           res.end(JSON.stringify({ error: 'Method not allowed' }));

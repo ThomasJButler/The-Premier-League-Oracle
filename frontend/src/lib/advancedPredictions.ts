@@ -2,16 +2,6 @@ import { dataService } from '../services/dataService';
 import type { Match } from '../types';
 import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
-// Advanced team rating system using ELO
-export interface TeamRating {
-  team: string;
-  eloRating: number;
-  offensiveStrength: number;
-  defensiveStrength: number;
-  formRating: number; // Dynamic form based on recent performances
-  homeAdvantage: number; // Team-specific home advantage
-}
-
 // Poisson distribution for goal prediction
 export class PoissonPredictor {
   static factorial(n: number): number {
@@ -26,7 +16,7 @@ export class PoissonPredictor {
   static predictScoreProbabilities(
     expectedHomeGoals: number,
     expectedAwayGoals: number,
-    maxGoals: number = 10
+    maxGoals: number = 7
   ): { [key: string]: number } {
     const probabilities: { [key: string]: number } = {};
 
@@ -75,6 +65,10 @@ export class EloRatingSystem {
 
   // Default seed ratings — used only when no localStorage data exists.
   // Keyed by canonical Football-Data.org names (with FC suffix).
+  // Cold-start ELO ratings for new users — should be updated each season to
+  // reflect the current PL squad. Teams not listed here fall back to
+  // DEFAULT_RATING (1500). Once matches are processed, ratings are stored in
+  // localStorage and these seeds are no longer used.
   private static readonly SEED_RATINGS: Record<string, number> = {
     'Manchester City FC': 1850,
     'Arsenal FC': 1800,
@@ -94,13 +88,8 @@ export class EloRatingSystem {
     'Nottingham Forest FC': 1420,
     'AFC Bournemouth': 1400,
     'Leicester City FC': 1380,
-    'Leeds United FC': 1360,
     'Southampton FC': 1340,
     'Ipswich Town FC': 1320,
-    'Sunderland AFC': 1310,
-    'Luton Town FC': 1300,
-    'Burnley FC': 1290,
-    'Sheffield United FC': 1280,
   };
 
   // Short-name aliases → canonical name for fuzzy lookup
@@ -227,6 +216,16 @@ export class EloRatingSystem {
     return result;
   }
 
+  /** Get a copy of all processed match IDs (for snapshotting before backtests). */
+  getProcessedMatchIds(): Set<string> {
+    return new Set(this.processedMatchIds);
+  }
+
+  /** Replace the processed match IDs set (for restoring after backtests). */
+  setProcessedMatchIds(ids: Set<string>): void {
+    this.processedMatchIds = new Set(ids);
+  }
+
   calculateWinProbability(homeRating: number, awayRating: number): number {
     return 1 / (1 + Math.pow(10, (awayRating - homeRating) / 400));
   }
@@ -283,7 +282,7 @@ export class EloRatingSystem {
   processCompletedMatches(matches: Match[]): number {
     // Sort chronologically so ratings evolve in the correct order
     const sorted = [...matches]
-      .filter(m => m.result && m.status === 'FINISHED')
+      .filter(m => m.result && (m.status === 'FINISHED' || !m.status))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let processed = 0;
@@ -316,19 +315,17 @@ export class FatigueAnalyzer {
       if (teamMatches.length === 0) return 7; // Default rest days
       const lastMatch = new Date(teamMatches[0].date);
       return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
-    } catch (error) {
+    } catch (_error) {
       // Error calculating rest days
       return 7;
     }
   }
 
-  static getFatigueMultiplier(restDays: number, recentFixtures: number): number {
+  static getFatigueMultiplier(restDays: number): number {
     // Less rest = more fatigue = worse performance
     // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
-    const restFactor = Math.min(Math.max(restDays, 0.5) / 7, 1); // Optimal rest is 7+ days
-    const fixtureFactor = Math.max(1 - (recentFixtures - 1) * 0.1, 0.6); // Each extra fixture reduces performance
-
-    return restFactor * fixtureFactor;
+    // Optimal rest is 7+ days → multiplier of 1.0
+    return Math.min(Math.max(restDays, 0.5) / 7, 1);
   }
 }
 
@@ -364,27 +361,54 @@ export class AdvancedMatchPredictor {
       FatigueAnalyzer.calculateRestDays(awayTeam, matchDate, allMatches)
     ]);
 
-    const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays, 1);
-    const awayFatigue = FatigueAnalyzer.getFatigueMultiplier(awayRestDays, 1);
+    const homeFatigue = FatigueAnalyzer.getFatigueMultiplier(homeRestDays);
+    const awayFatigue = FatigueAnalyzer.getFatigueMultiplier(awayRestDays);
 
-    // 3. Adjust ratings for fatigue
-    const adjustedHomeRating = homeRating * homeFatigue;
-    const adjustedAwayRating = awayRating * awayFatigue;
-
-    // 4. Calculate expected goals using adjusted ratings and real league averages
-    const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
-
-    // Derive league average goals from completed matches (fallback: 1.5 / 1.2)
+    // 3. Compute league average goals from completed matches (fallback: 1.5 / 1.2)
     const completed = allMatches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
-    let baseHomeGoals = 1.5;
-    let baseAwayGoals = 1.2;
+    let leagueAvgHomeGoals = 1.5;
+    let leagueAvgAwayGoals = 1.2;
     if (completed.length > 0) {
-      baseHomeGoals = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
-      baseAwayGoals = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+      leagueAvgHomeGoals = completed.reduce((sum, m) => sum + m.home_goals!, 0) / completed.length;
+      leagueAvgAwayGoals = completed.reduce((sum, m) => sum + m.away_goals!, 0) / completed.length;
+    }
+    const leagueAvgGoalsPerGame = (leagueAvgHomeGoals + leagueAvgAwayGoals) / 2 || 1.35;
+
+    // 4. Calculate expected goals using per-team attack/defence strengths (Dixon-Coles)
+    //    λ_home = (home avg goals scored at home × away avg goals conceded away) / league avg
+    //    λ_away = (away avg goals scored away × home avg goals conceded at home) / league avg
+    const [homeStats, awayStats] = await Promise.all([
+      dataService.getTeamStats(homeTeam),
+      dataService.getTeamStats(awayTeam)
+    ]);
+
+    let expectedHomeGoals: number;
+    let expectedAwayGoals: number;
+
+    const homeHasData = homeStats && homeStats.home_matches_played >= 3;
+    const awayHasData = awayStats && awayStats.away_matches_played >= 3;
+
+    if (homeHasData && awayHasData) {
+      // Full per-team formula from spec: real attacking and defensive stats
+      const homeAvgScoredAtHome = homeStats.home_goals_for / homeStats.home_matches_played;
+      const awayAvgConcededAway = awayStats.away_goals_against / awayStats.away_matches_played;
+      const awayAvgScoredAway = awayStats.away_goals_for / awayStats.away_matches_played;
+      const homeAvgConcededAtHome = homeStats.home_goals_against / homeStats.home_matches_played;
+
+      expectedHomeGoals = (homeAvgScoredAtHome * awayAvgConcededAway) / leagueAvgGoalsPerGame;
+      expectedAwayGoals = (awayAvgScoredAway * homeAvgConcededAtHome) / leagueAvgGoalsPerGame;
+    } else {
+      // Fallback: ELO-derived estimate when team stats are insufficient
+      const adjustedHomeRating = homeRating * homeFatigue;
+      const adjustedAwayRating = awayRating * awayFatigue;
+      const ratingDiff = (adjustedHomeRating + EloRatingSystem['HOME_ADVANTAGE'] - adjustedAwayRating) / 100;
+      expectedHomeGoals = leagueAvgHomeGoals * Math.exp(ratingDiff * 0.1);
+      expectedAwayGoals = leagueAvgAwayGoals * Math.exp(-ratingDiff * 0.1);
     }
 
-    const expectedHomeGoals = baseHomeGoals * Math.exp(ratingDiff * 0.1);
-    const expectedAwayGoals = baseAwayGoals * Math.exp(-ratingDiff * 0.1);
+    // Apply fatigue adjustment to expected goals
+    expectedHomeGoals = Math.max(0.3, Math.min(4.5, expectedHomeGoals * homeFatigue));
+    expectedAwayGoals = Math.max(0.3, Math.min(4.5, expectedAwayGoals * awayFatigue));
 
     // 5. Use Poisson distribution for outcome probabilities
     const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
@@ -394,9 +418,12 @@ export class AdvancedMatchPredictor {
     const outcomes = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
     // 6. Calculate confidence based on model factors
-    const ratingReliability = 0.8; // How much we trust our ratings
+    // Strength of prediction — higher when one outcome dominates
+    const maxProb = Math.max(outcomes.homeWin, outcomes.draw, outcomes.awayWin);
+    const predictionClarity = Math.min(maxProb / 0.6, 1); // 1.0 when dominant outcome ≥ 60%
     const fatigueCertainty = homeRestDays >= 3 && awayRestDays >= 3 ? 0.9 : 0.7;
-    const confidence = (ratingReliability + fatigueCertainty) / 2;
+    const dataQuality = completed.length >= 20 ? 0.85 : 0.6 + (completed.length / 20) * 0.25;
+    const confidence = (predictionClarity * 0.4 + fatigueCertainty * 0.3 + dataQuality * 0.3);
 
     // 7. Value betting — derive fair odds from model probabilities (no hardcoded bookmaker odds)
     const fairOdds = {
@@ -416,8 +443,9 @@ export class AdvancedMatchPredictor {
     if (awayRestDays < 3) {
       insights.push(`${awayTeam} has only ${awayRestDays} days rest - fatigue could be a factor`);
     }
-    if (ratingDiff > 2) {
-      insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(ratingDiff * 100).toFixed(0)} points higher`);
+    const eloDiff = (homeRating + EloRatingSystem['HOME_ADVANTAGE'] - awayRating) / 100;
+    if (eloDiff > 2) {
+      insights.push(`Significant quality gap - ${homeTeam} rated ${Math.abs(eloDiff * 100).toFixed(0)} points higher`);
     }
     // Fair odds derived from model — shown for reference
     insights.push(`Fair odds: H ${fairOdds.home.toFixed(2)} / D ${fairOdds.draw.toFixed(2)} / A ${fairOdds.away.toFixed(2)}`);
@@ -462,7 +490,7 @@ export class RefereeAnalyzer {
         avgPenalties: 0.2, // Placeholder - would need penalty data
         homeWinRate: homeWins / totalMatches
       };
-    } catch (error) {
+    } catch (_error) {
       // Error getting referee stats
       return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }

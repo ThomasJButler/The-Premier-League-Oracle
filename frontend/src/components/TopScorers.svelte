@@ -4,6 +4,7 @@
   import { dataService } from '../services/dataService';
   import { fade, fly } from 'svelte/transition';
   import { getSeasonLabel } from '../lib/utils';
+  import { Button } from '$lib/components/ui/button';
 
   interface Scorer {
     position?: number;
@@ -37,7 +38,7 @@
     await loadTopScorers();
   });
   
-  async function loadTopScorers() {
+  export async function loadTopScorers() {
     try {
       loading = true;
       error = '';
@@ -53,7 +54,7 @@
       const rawScorers = await dataService.getTopScorers();
       
       // Transform data to consistent format
-      scorers = rawScorers.map((s: any, index: number) => ({
+      scorers = rawScorers.map((s, index) => ({
         position: index + 1,
         player: {
           id: s.player?.id || 0,
@@ -67,23 +68,23 @@
           name: s.team?.name || s.team?.shortName || 'Unknown',
           crest: s.team?.crest
         },
-        goals: s.goals || s.numberOfGoals || 0,
-        assists: s.assists ?? s.numberOfAssists ?? null,
-        penalties: s.penalties ?? s.penaltyGoals ?? null
+        goals: s.goals || 0,
+        assists: s.assists ?? null,
+        penalties: s.penalties ?? null
       }));
       
       if (scorers.length === 0) {
         error = 'No top scorer data available for this season.';
       }
-    } catch (err: any) {
-      if (err.message?.includes('API key')) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('API key')) {
         error = 'Please configure your Football-Data.org API key in Settings to view top scorers.';
-      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+      } else if (message.includes('403') || message.includes('401')) {
         error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
       } else {
         error = 'Failed to load top scorers. Please check your internet connection and try again.';
       }
-      // Error loading top scorers
     } finally {
       loading = false;
     }
@@ -117,13 +118,9 @@
           <p class="text-sm text-muted-foreground">Premier League {getSeasonLabel()} Season</p>
         </div>
       </div>
-      <button 
-        on:click={loadTopScorers}
-        class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-        disabled={loading}
-      >
+      <Button variant="ghost" size="sm" on:click={loadTopScorers} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -134,12 +131,7 @@
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">
       <p class="text-destructive">{error}</p>
-      <button 
-        on:click={loadTopScorers}
-        class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-      >
-        Try Again
-      </button>
+      <Button class="mt-4" on:click={loadTopScorers}>Try Again</Button>
     </div>
   {:else if scorers.length > 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -162,7 +154,7 @@
             >
               <td class="py-3 px-4">
                 {#if index < 3}
-                  <span class="text-xl">{getPositionIcon(index + 1)}</span>
+                  <span class="text-xl" role="img" aria-label="{index === 0 ? '1st' : index === 1 ? '2nd' : '3rd'} place">{getPositionIcon(index + 1)}</span>
                 {:else}
                   <span class="inline-flex w-8 h-8 items-center justify-center bg-gradient-to-br {getPositionColor(index + 1)} rounded-full text-white font-bold text-sm">{index + 1}</span>
                 {/if}

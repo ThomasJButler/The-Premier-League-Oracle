@@ -6,6 +6,7 @@
   import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   import { getSeasonLabel } from '../lib/utils';
+  import { Button } from '$lib/components/ui/button';
 
   let standings: Standing[] = [];
   let loading = true;
@@ -16,7 +17,7 @@
     await loadStandings();
   });
   
-  async function loadStandings() {
+  export async function loadStandings() {
     try {
       loading = true;
       error = '';
@@ -33,15 +34,15 @@
       if (!standings || standings.length === 0) {
         error = 'No standings data available. The season may not have started yet.';
       }
-    } catch (err: any) {
-      if (err.message?.includes('API key')) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('API key')) {
         error = 'Please configure your Football-Data.org API key in Settings to view standings.';
-      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+      } else if (message.includes('403') || message.includes('401')) {
         error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
       } else {
         error = 'Failed to load standings. Please check your internet connection and try again.';
       }
-      // Error loading standings
     } finally {
       loading = false;
     }
@@ -110,13 +111,9 @@
         </div>
       </div>
       
-      <button
-        on:click={loadStandings}
-        disabled={loading}
-        class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -127,12 +124,7 @@
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
       <p>{error}</p>
-      <button 
-        on:click={loadStandings}
-        class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-      >
-        Try Again
-      </button>
+      <Button variant="destructive" class="mt-4" on:click={loadStandings}>Try Again</Button>
     </div>
   {:else if standings.length > 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -252,6 +244,7 @@
           <button
             on:click={() => showFullTable = !showFullTable}
             class="w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            aria-expanded={showFullTable}
           >
             {showFullTable ? 'Show Less' : `Show All ${standings.length} Teams`}
           </button>

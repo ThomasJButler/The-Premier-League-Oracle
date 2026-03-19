@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search } from 'lucide-svelte';
+  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
   import { focusTrap } from '$lib/utils';
 
@@ -22,6 +22,7 @@
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
     { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
@@ -33,7 +34,8 @@
     isMoreOpen = false;
   }
 
-  function handleKeydown(e: any) {
+  // Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent — any is required here
+  function handleKeydown(e: any) {   
     if (e.key === 'Escape' && isMoreOpen) isMoreOpen = false;
   }
 
@@ -95,6 +97,7 @@
       class="mobile-nav-item {isMoreActive ? 'mobile-nav-item-active' : ''}"
       on:click={() => isMoreOpen = !isMoreOpen}
       aria-label="More options"
+      aria-expanded={isMoreOpen}
     >
       <MoreHorizontal class="w-5 h-5 mb-1" />
       <span>More</span>

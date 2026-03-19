@@ -5,13 +5,15 @@
   import { format } from 'date-fns';
   import { getTeamLogo } from '../utils/teamLogos';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Button } from '$lib/components/ui/button';
+  import { getSeasonYear } from '../lib/utils';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
   // Compute current season from date (July onwards = new season). Overwritten by API if available.
-  const now = new Date();
-  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const year = getSeasonYear();
   let selectedSeason = `${year}-${year + 1}`;
   let loading = true;
   let error: string | null = null;
@@ -23,7 +25,7 @@
   let sortOrder: 'asc' | 'desc' = 'asc';
   let teams: string[] = [];
 
-  async function loadSeasons() {
+  export async function loadSeasons() {
     try {
       seasons = await dataService.getAllSeasons();
       if (seasons.length > 0) {
@@ -33,10 +35,11 @@
     } catch (err) {
       console.warn('Failed to load seasons:', err);
       error = 'Failed to load seasons. Please check your API key in Settings.';
+      loading = false;
     }
   }
 
-  async function loadMatches() {
+  export async function loadMatches() {
     loading = true;
     error = null;
     try {
@@ -87,11 +90,12 @@
         case 'team':
           comparison = a.home_team.localeCompare(b.home_team);
           break;
-        case 'status':
+        case 'status': {
           const aStatus = a.result ? 1 : 0;
           const bStatus = b.result ? 1 : 0;
           comparison = aStatus - bStatus;
           break;
+        }
       }
       
       return sortOrder === 'asc' ? comparison : -comparison;
@@ -223,7 +227,7 @@
         
         <!-- Quick Actions -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-foreground">Quick Filters</label>
+          <span class="text-sm font-medium text-foreground">Quick Filters</span>
           <div class="flex gap-2">
             <button
               on:click={() => {
@@ -254,27 +258,24 @@
   {/if}
 
   {#if loading}
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
       <p class="font-medium">{error}</p>
-      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={loadMatches}>Retry</button>
+      <Button class="mt-4" on:click={loadMatches}>Retry</Button>
     </div>
   {:else if filteredMatches.length === 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
       <p class="text-muted-foreground">No matches found with the current filters.</p>
-      <button 
-        class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        on:click={() => {
+      <Button class="mt-4" on:click={() => {
           filterStatus = 'all';
           filterTeam = '';
           handleFilterChange();
-        }}
-      >
+        }}>
         Clear Filters
-      </button>
+      </Button>
     </div>
   {:else}
     <div class="space-y-4">
@@ -311,9 +312,9 @@
           <!-- Status/Actions -->
           <div class="flex items-center justify-center sm:justify-end space-x-2 mt-2 sm:mt-0 col-span-full sm:col-span-1">
             {#if match.result}
-              <span class="badge badge-neutral">Finished</span>
+              <Badge variant="neutral">Finished</Badge>
             {:else}
-              <span class="badge badge-info">Upcoming</span>
+              <Badge variant="info">Upcoming</Badge>
             {/if}
           </div>
         </div>

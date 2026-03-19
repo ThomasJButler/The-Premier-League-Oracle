@@ -308,7 +308,10 @@ export class BetBuilderPredictor {
    * can match the rivalry list.
    */
   private static normaliseTeamName(name: string): string {
-    return name.replace(/\s+(FC|AFC|CF)$/i, '').trim();
+    return name
+      .replace(/\s+(FC|AFC|CF)$/i, '')
+      .replace(/\s*&\s*/g, ' and ')
+      .trim();
   }
 
   private static checkRivalry(team1: string, team2: string): boolean {
@@ -342,11 +345,10 @@ export class BetBuilderPredictor {
    */
   private static calculateHalfTimeResult(fullTimeResult: BetBuilderPrediction['matchResult']) {
     const ftBias = 0.4; // 40 % correlation with full-time
-    // Prior: draws much more common at half-time
-    const priorHome = 0.25;
-    const priorDraw = 0.45;
-    const priorAway = 0.25;
-    // Note: prior doesn't sum to 0.95 not 1.0, but the normalisation below fixes that
+    // Prior: draws much more common at half-time (real PL HT distribution)
+    const priorHome = 0.26;
+    const priorDraw = 0.46;
+    const priorAway = 0.28;
 
     let homeWinProb = fullTimeResult.homeWinProb * ftBias + priorHome * (1 - ftBias);
     let drawProb    = fullTimeResult.drawProb    * ftBias + priorDraw * (1 - ftBias);
@@ -425,19 +427,21 @@ export class BetBuilderPredictor {
     
     // Safe combo - high probability selections
     if (matchResult.confidence > 0.4) {
-      const safeOdds = (1 / matchResult.confidence) * 
-                       (1 / Math.max(totalGoals.over25.probability, totalGoals.under35.probability)) * 
-                       (1 / 0.6) * 1.1; // Adding margin
-      
-      combos.push({
-        name: 'Safe Builder',
-        selections: [
+      const safeSelections = [
           `${matchResult.prediction === 'H' ? homeTeam : matchResult.prediction === 'A' ? awayTeam : 'Draw'} to win`,
           totalGoals.over25.probability > 0.5 ? 'Over 2.5 goals' : 'Under 3.5 goals',
-          'Over 7.5 corners'
-        ],
+          'Over 8.5 corners'
+        ];
+      const safeOdds = (1 / matchResult.confidence) *
+                       (1 / Math.max(totalGoals.over25.probability, totalGoals.under35.probability)) *
+                       (1 / 0.6) * 1.1; // Adding margin
+      const safeCorr = this.correlationAdjustment(safeSelections);
+
+      combos.push({
+        name: 'Safe Builder',
+        selections: safeSelections,
         combinedOdds: Math.round(safeOdds * 100) / 100,
-        confidence: Math.round(matchResult.confidence * Math.max(totalGoals.over25.probability, totalGoals.under35.probability) * corners.totalOver85.probability * 100) / 100,
+        confidence: Math.round(matchResult.confidence * Math.max(totalGoals.over25.probability, totalGoals.under35.probability) * corners.totalOver85.probability * safeCorr * 100) / 100,
         reasoning: 'High probability selections with good combined odds'
       });
     }
@@ -477,21 +481,23 @@ export class BetBuilderPredictor {
         : cleanSheets.awayCleanSheet.probability;
       const winToNilProb = Math.max(0.05, favProb * favCleanSheet);
 
-      const aggressiveOdds = (1 / favProb) *
-                             (1 / winToNilProb) *
-                             (1 / corners.totalOver95.probability) *
-                             (1 / cards.totalOver35.probability) * 1.2;
-      
-      combos.push({
-        name: 'High Risk Builder',
-        selections: [
+      const aggressiveSelections = [
           `${favTeam} to win`,
           `${favTeam} to keep clean sheet`,
           'Over 9.5 corners',
           'Over 3.5 cards'
-        ],
+        ];
+      const aggressiveOdds = (1 / favProb) *
+                             (1 / winToNilProb) *
+                             (1 / corners.totalOver95.probability) *
+                             (1 / cards.totalOver35.probability) * 1.2;
+      const aggressiveCorr = this.correlationAdjustment(aggressiveSelections);
+
+      combos.push({
+        name: 'High Risk Builder',
+        selections: aggressiveSelections,
         combinedOdds: Math.round(aggressiveOdds * 100) / 100,
-        confidence: Math.round(favProb * favCleanSheet * corners.totalOver95.probability * cards.totalOver35.probability * 100) / 100,
+        confidence: Math.round(favProb * favCleanSheet * corners.totalOver95.probability * cards.totalOver35.probability * aggressiveCorr * 100) / 100,
         reasoning: `Banking on ${favTeam} dominance with defensive control`
       });
     }

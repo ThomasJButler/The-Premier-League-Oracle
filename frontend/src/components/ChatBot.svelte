@@ -1,8 +1,11 @@
 <script lang="ts">
   import { MessageCircle, Send, Key, Loader2, AlertTriangle, Trash2, ShieldAlert } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
   import { onMount, tick } from 'svelte';
-  import DOMPurify from 'dompurify';
+  import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
+  import { aiAnalysisService } from '../services/aiAnalysis';
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -179,36 +182,19 @@ Current data:\n`;
       context += '\nRecent results: unavailable\n';
     }
 
+    // Recent AI analyses (from Predictions view)
+    const recentAnalyses = aiAnalysisService.getRecentAnalyses(3);
+    if (recentAnalyses.length > 0) {
+      context += '\nRecent AI match analyses:\n';
+      recentAnalyses.forEach(a => {
+        context += `- Match ${a.matchId}: ${a.analysis.slice(0, 200)}...\n`;
+      });
+    }
+
     return context;
   }
 
   // --- Simple Markdown Rendering (sanitised) ---
-  function renderMarkdown(text: string): string {
-    const html = text
-      // Code blocks (triple backtick)
-      .replace(/```([\s\S]*?)```/g, '<pre class="bg-background/50 rounded p-2 my-1 text-xs font-mono overflow-x-auto">$1</pre>')
-      // Inline code
-      .replace(/`([^`]+)`/g, '<code class="bg-background/50 rounded px-1 py-0.5 text-xs font-mono">$1</code>')
-      // Bold
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      // Bullet points (lines starting with - or *)
-      .replace(/^[\-\*]\s+(.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-      // Numbered lists
-      .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-      // Wrap consecutive <li> in <ul>
-      .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
-      // Line breaks
-      .replace(/\n/g, '<br/>');
-
-    // Sanitise to prevent XSS from injected content in OpenAI responses
-    return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: ['pre', 'code', 'strong', 'em', 'li', 'ul', 'ol', 'br', 'p', 'div', 'span'],
-      ALLOWED_ATTR: ['class'],
-    });
-  }
-
   // --- Send Message ---
   export async function sendMessage() {
     const text = inputText.trim();
@@ -275,7 +261,7 @@ Current data:\n`;
         content: reply,
         timestamp: Date.now()
       }];
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       messages = [...messages, {
         role: 'system',
@@ -357,14 +343,14 @@ Current data:\n`;
 
   <!-- API Key Setup (hidden when the server has its own key) -->
   {#if !hasApiKey && !useServerKey}
-    <div class="card-glass p-4 sm:p-6">
+    <Card class="card-glass p-4 sm:p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="p-2 rounded-lg bg-primary/10">
           <Key class="w-5 h-5 text-primary" />
         </div>
         <div>
           <h2 class="text-lg font-bold font-display text-foreground">Connect OpenAI</h2>
-          <p class="text-xs text-muted-foreground">Your key stays in your browser, never sent to our servers</p>
+          <p class="text-xs text-muted-foreground">Your key is stored in your browser only</p>
         </div>
       </div>
 
@@ -376,12 +362,12 @@ Current data:\n`;
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
           on:keydown={handleKeydown}
         />
-        <button
+        <Button
           on:click={saveApiKey}
-          class="btn btn-primary px-4"
+          class="px-4"
         >
           Connect
-        </button>
+        </Button>
       </div>
 
       {#if error}
@@ -395,11 +381,11 @@ Current data:\n`;
         Get an API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">platform.openai.com</a>.
         You can also configure this in Settings.
       </p>
-    </div>
+    </Card>
   {/if}
 
   <!-- Chat Interface -->
-  <div class="card-glass overflow-hidden flex flex-col" style="height: calc(100vh - 18rem); min-height: 300px;">
+  <Card class="card-glass overflow-hidden flex flex-col" style="height: calc(100vh - 18rem); min-height: 300px;">
     <!-- Chat Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-border/30">
       <div class="flex items-center gap-2">
@@ -411,7 +397,7 @@ Current data:\n`;
         <button
           on:click={clearChat}
           class="p-1.5 rounded-md hover:bg-muted transition-colors"
-          title="Clear chat"
+          aria-label="Clear chat"
         >
           <Trash2 class="w-3.5 h-3.5 text-muted-foreground" />
         </button>
@@ -482,21 +468,21 @@ Current data:\n`;
           on:keydown={handleKeydown}
           data-testid="chatbot-input"
         />
-        <button
+        <Button
           on:click={sendMessage}
           disabled={!hasApiKey || isLoading || !inputText.trim()}
-          class="btn btn-primary px-3 disabled:opacity-50"
+          class="px-3"
           data-testid="chatbot-send"
           aria-label="Send message"
         >
           <Send class="w-4 h-4" />
-        </button>
+        </Button>
       </div>
       <p class="text-xs text-muted-foreground mt-1.5 text-right">
         {inputText.length}/{MAX_INPUT_LENGTH}
       </p>
     </div>
-  </div>
+  </Card>
 </div>
 
 <style>

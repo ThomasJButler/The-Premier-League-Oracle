@@ -1,4 +1,4 @@
-import type { MLPrediction, MLBatchResponse, MLHealthResponse } from '../types';
+import type { MLPrediction, MLHealthResponse } from '../types';
 import { BackendUnavailableError } from '../types';
 
 const BASE_URL = '/api/oracle';
@@ -20,19 +20,9 @@ class BackendService {
   private lastHealthCheck = 0;
   private readonly healthCacheTtl = 30_000; // 30s between health checks
 
-  /** Returns the auth token from localStorage, if configured */
-  private getToken(): string | null {
-    return localStorage.getItem('oracle_api_token');
-  }
-
-  /** Build request headers with optional auth */
-  private headers(includeAuth = false): Record<string, string> {
-    const h: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (includeAuth) {
-      const token = this.getToken();
-      if (token) h['Authorization'] = `Bearer ${token}`;
-    }
-    return h;
+  /** Build JSON request headers */
+  private headers(): Record<string, string> {
+    return { 'Content-Type': 'application/json' };
   }
 
   /**
@@ -80,22 +70,23 @@ class BackendService {
   }
 
   /**
-   * Predict a single match using the backend ML ensemble.
+   * Predict a single match using the free-tier XGBoost model.
    * Throws BackendUnavailableError if the backend is down.
+   *
+   * Calls /predict/free and maps the response to the MLPrediction type
+   * expected by the frontend ensemble (optimizedPredictions.ts).
    */
   async predictMatch(homeTeam: string, awayTeam: string): Promise<MLPrediction> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const res = await fetch(`${BASE_URL}/predict`, {
+      const res = await fetch(`${BASE_URL}/predict/free`, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({
           home_team: homeTeam,
           away_team: awayTeam,
-          include_details: true,
-          use_cache: true,
         }),
         signal: controller.signal,
       });
@@ -109,84 +100,20 @@ class BackendService {
         );
       }
 
-      return await res.json();
-    } catch (err) {
-      clearTimeout(timer);
-      if (err instanceof BackendUnavailableError) throw err;
-      throw new BackendUnavailableError(
-        err instanceof Error ? err.message : 'Failed to reach backend',
-      );
-    }
-  }
+      const data = await res.json();
 
-  /**
-   * Predict multiple matches in a single request.
-   * Throws BackendUnavailableError if the backend is down.
-   * Individual match failures are returned inline (not thrown).
-   */
-  async predictBatch(
-    matches: Array<{ homeTeam: string; awayTeam: string }>,
-  ): Promise<MLBatchResponse> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const res = await fetch(`${BASE_URL}/predict/batch`, {
-        method: 'POST',
-        headers: this.headers(),
-        body: JSON.stringify({
-          matches: matches.map((m) => ({
-            home_team: m.homeTeam,
-            away_team: m.awayTeam,
-          })),
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        throw new BackendUnavailableError(`Backend returned ${res.status}`);
-      }
-
-      return await res.json();
-    } catch (err) {
-      clearTimeout(timer);
-      if (err instanceof BackendUnavailableError) throw err;
-      throw new BackendUnavailableError(
-        err instanceof Error ? err.message : 'Failed to reach backend',
-      );
-    }
-  }
-
-  /**
-   * Get team statistics from the backend.
-   * Throws BackendUnavailableError if the backend is down.
-   */
-  async getTeamStats(
-    teamName: string,
-    lastNMatches = 10,
-  ): Promise<{ team: string; recent_form: unknown; timestamp: string }> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const encoded = encodeURIComponent(teamName);
-      const res = await fetch(
-        `${BASE_URL}/teams/${encoded}/stats?last_n_matches=${lastNMatches}`,
-        {
-          headers: this.headers(),
-          signal: controller.signal,
+      // Map /predict/free response to MLPrediction shape
+      return {
+        match: `${data.home_team} vs ${data.away_team}`,
+        prediction: {
+          home: data.probabilities.home_win,
+          draw: data.probabilities.draw,
+          away: data.probabilities.away_win,
         },
-      );
-
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        throw new BackendUnavailableError(`Backend returned ${res.status}`);
-      }
-
-      return await res.json();
+        confidence: data.confidence,
+        recommendation: data.predicted_outcome,
+        timestamp: new Date().toISOString(),
+      };
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof BackendUnavailableError) throw err;
@@ -195,6 +122,7 @@ class BackendService {
       );
     }
   }
+
 }
 
 /** Singleton instance — import this rather than creating new instances */

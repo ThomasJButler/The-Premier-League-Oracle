@@ -3,12 +3,28 @@ import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
 import { sharedEloSystem } from '../lib/advancedPredictions';
+import { getSeasonYear } from '../lib/utils';
 
 interface DataSource {
   type: 'api';
   available: boolean;
 }
 
+/**
+ * Singleton data layer — the only public interface to Football-Data.org and IndexedDB cache.
+ *
+ * Error contract (two tiers):
+ *
+ * **Throws** — essential data the UI cannot function without:
+ *   `getCurrentSeason()`, `getMatches()`, `getStandings()`, `getTopScorers()`
+ *   Callers must wrap these in try/catch and show an appropriate error state.
+ *
+ * **Returns empty** — supplementary data the UI can degrade without:
+ *   `getTeamForm() → []`, `getLiveMatches() → []`, `getAllSeasons() → []`,
+ *   `getHistoricalMatches() → []` (collections return empty array)
+ *   `getTeamStats() → null` (single-object lookup returns null)
+ *   Callers should provide fallback content when these return empty/null.
+ */
 class DataService {
   private apiSource: DataSource = { type: 'api', available: false };
   private useCache: boolean = true;
@@ -83,24 +99,21 @@ class DataService {
     try {
       // Check if API key is available
       const activeApi = this.getActiveApi();
-      
-      // Check if API key is available
+
       if (!activeApi.hasApiKey()) {
-        // Football-Data: No API key available
         this.apiSource.available = false;
         return;
       }
-      
+
       // Test API availability with the key
       const season = await activeApi.getCurrentSeason();
       this.apiSource.available = season !== null;
-      
+
+      // Kick off background loading of historical seasons (non-blocking)
       if (this.apiSource.available) {
-        // Football-Data (Free) is available and working
-      } else {
-        // Football-Data is not working
+        this.loadAllHistoricalSeasons();
       }
-    } catch (error) {
+    } catch (_error) {
       // Error checking API availability
       this.apiSource.available = false;
     }
@@ -140,7 +153,7 @@ class DataService {
   private async setCachedData<T>(storeName: string, key: string, data: T): Promise<void> {
     if (!this.useCache || !this.cacheDb) return;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const transaction = this.cacheDb!.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.put({
@@ -173,7 +186,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, season);
           return season;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching season from API
       }
     }
@@ -221,7 +234,7 @@ class DataService {
 
           return matches;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching matches from API
       }
     }
@@ -254,7 +267,7 @@ class DataService {
           await this.setCachedData('standings', cacheKey, standings);
           return standings;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching standings from API
       }
     }
@@ -278,7 +291,7 @@ class DataService {
           await this.setCachedData('scorers', cacheKey, scorers);
           return scorers;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching top scorers from API
       }
     }
@@ -300,13 +313,11 @@ class DataService {
         const teamStats = await this.getActiveApi().getTeamStats(teamName);
         if (teamStats) {
           // Transform Football API stats to our TeamStats format
-          const currentYear = new Date().getFullYear();
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
-          // July onwards (getMonth() >= 6) = new season — matches footballData.ts boundary
-          const seasonYear = new Date().getMonth() >= 6 ? currentYear : currentYear - 1;
+          const seasonYear = getSeasonYear();
           // Compute home/away splits from recent matches
-          let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
-          let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          const homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          const awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
           let totalCleanSheets = 0;
           let totalFailedToScore = 0;
 
@@ -338,7 +349,7 @@ class DataService {
           }
 
           const stats: TeamStats = {
-            id: `${teamName}_${currentYear}`,
+            id: `${teamName}_${seasonYear}`,
             season_id: String(seasonYear),
             team_name: teamName,
             matches_played: teamStats.played,
@@ -368,7 +379,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, stats);
           return stats;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching team stats from API
       }
     }
@@ -397,7 +408,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, teamForm);
           return teamForm;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching team form from API
       }
     }
@@ -424,7 +435,7 @@ class DataService {
           await this.setCachedData('matches', cacheKey, seasons);
           return seasons;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching seasons from API
       }
     }
@@ -467,12 +478,75 @@ class DataService {
           await this.setCachedData('matches', cacheKey, matches);
         }
         return matches;
-      } catch (error) {
+      } catch (_error) {
         // Error fetching live matches
       }
     }
 
     return [];
+  }
+
+  /** Seasons to pre-load for the backtester and ELO initialiser */
+  private static readonly HISTORICAL_SEASONS = [2020, 2021, 2022, 2023, 2024];
+  /** localStorage key — stores a timestamp so we don't re-trigger on every page load */
+  private static readonly SEASONS_LOADED_KEY = 'historical_seasons_loaded';
+  /** How often to re-check whether cached seasons have expired (24 hours) */
+  private static readonly SEASONS_LOADED_TTL = 24 * 60 * 60 * 1000;
+
+  /**
+   * Progressively load 5 seasons of historical match data into IndexedDB.
+   *
+   * - Runs in the background (fire-and-forget from checkDataSources)
+   * - Skips seasons already cached with a valid TTL
+   * - Each fetch goes through the rate-limited queue, guaranteeing
+   *   the 6-second gap between API calls on the free tier
+   * - Stores a localStorage flag to avoid re-triggering on every page load
+   */
+  private async loadAllHistoricalSeasons(): Promise<void> {
+    // Skip if we've already loaded recently (within TTL)
+    const lastLoaded = localStorage.getItem(DataService.SEASONS_LOADED_KEY);
+    if (lastLoaded) {
+      const elapsed = Date.now() - Number(lastLoaded);
+      if (elapsed < DataService.SEASONS_LOADED_TTL) {
+        return;
+      }
+    }
+
+    try {
+      // Fetch each season sequentially — the rate-limit queue in footballData.ts
+      // ensures the 6-second gap between API calls automatically
+      for (const season of DataService.HISTORICAL_SEASONS) {
+        // getHistoricalMatches checks IndexedDB first and only hits the API on a cache miss
+        await this.getHistoricalMatches(season);
+      }
+
+      // Mark as loaded so we don't re-trigger until the TTL expires
+      localStorage.setItem(DataService.SEASONS_LOADED_KEY, String(Date.now()));
+    } catch (error) {
+      // Historical loading is non-critical — log and move on
+      console.warn('Background historical data loading failed:', error);
+    }
+  }
+
+  /**
+   * Get all historical matches across the pre-loaded seasons.
+   * Useful for backtesting and ELO initialisation.
+   * Returns whatever is cached — does NOT trigger new API calls.
+   */
+  public async getAllHistoricalMatches(): Promise<Match[]> {
+    await this.ensureReady();
+    const allMatches: Match[] = [];
+
+    for (const season of DataService.HISTORICAL_SEASONS) {
+      const cacheKey = `historical_matches_${season}`;
+      const HISTORICAL_TTL = 24 * 60 * 60 * 1000;
+      const cached = await this.getCachedData<Match[]>('matches', cacheKey, HISTORICAL_TTL);
+      if (cached) {
+        allMatches.push(...cached);
+      }
+    }
+
+    return allMatches;
   }
 
   // Get completed matches for a given season year (e.g. 2024 for 2024/25)
@@ -494,7 +568,7 @@ class DataService {
           await this.setCachedData('matches', cacheKey, matches);
         }
         return matches;
-      } catch (error) {
+      } catch (_error) {
         // Error fetching historical matches
       }
     }

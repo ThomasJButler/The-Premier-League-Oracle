@@ -8,24 +8,26 @@
     BarElement,
     CategoryScale,
     LinearScale,
-    type ChartData
+    type ChartData,
+    type TooltipItem
   } from 'chart.js';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { TrendingUp, TrendingDown, Download, PoundSterling, Minus, Trophy, Percent } from 'lucide-svelte';
   import { formatDistanceToNow } from 'date-fns';
   import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
+  import { Button } from '$lib/components/ui/button';
 
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
   let bets: StoredBet[] = [];
   let filterResult: 'all' | 'win' | 'loss' | 'pending' = 'all';
 
-  let totalWagered = tweened(0, { duration: 800, easing: cubicOut });
-  let totalProfitLoss = tweened(0, { duration: 1000, easing: cubicOut });
-  let roiTweened = tweened(0, { duration: 1200, easing: cubicOut });
-  let winRateTweened = tweened(0, { duration: 1000, easing: cubicOut });
-  let totalBetsTweened = tweened(0, { duration: 800, easing: cubicOut });
+  const totalWagered = tweened(0, { duration: 800, easing: cubicOut });
+  const totalProfitLoss = tweened(0, { duration: 1000, easing: cubicOut });
+  const roiTweened = tweened(0, { duration: 1200, easing: cubicOut });
+  const winRateTweened = tweened(0, { duration: 1000, easing: cubicOut });
+  const totalBetsTweened = tweened(0, { duration: 800, easing: cubicOut });
 
   let monthlyPerformance: ChartData<"bar", number[], string> = {
     labels: [],
@@ -191,7 +193,7 @@
       },
       tooltip: {
         callbacks: {
-          label: (ctx: any) => `£${ctx.parsed.y.toFixed(2)}`
+          label: (ctx: TooltipItem<'bar'>) => `£${ctx.parsed.y.toFixed(2)}`
         }
       }
     }
@@ -215,7 +217,7 @@
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 100ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper {$totalProfitLoss >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         {#if $totalProfitLoss >= 0}
           <TrendingUp class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -229,7 +231,7 @@
       </div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 200ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper {$roiTweened >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         <Percent class="w-5 h-5 {$roiTweened >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}" />
       </div>
@@ -239,7 +241,7 @@
       </div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 300ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-teal-100 dark:bg-teal-900/30">
         <Trophy class="w-5 h-5 text-teal-600 dark:text-teal-400" />
       </div>
@@ -247,7 +249,7 @@
       <div class="stat-value">{$winRateTweened.toFixed(1)}%</div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
         <PoundSterling class="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
@@ -257,7 +259,7 @@
   </div>
 
   <!-- Profit/Loss Chart -->
-  <div class="rounded-xl border border-border bg-card p-5" style="animation-delay: 300ms">
+  <div class="rounded-xl border border-border bg-card p-5">
     <h3 class="text-lg font-semibold font-display text-foreground mb-3">Monthly Profit/Loss</h3>
     {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
       <div class="h-64" role="img" aria-label="Bar chart showing monthly profit and loss from resolved bets">
@@ -271,7 +273,7 @@
   </div>
 
   <!-- Bet History Table -->
-  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold font-display text-foreground">Detailed History</h3>
       <div class="flex space-x-2">
@@ -286,9 +288,9 @@
           <option value="loss">Losses</option>
           <option value="pending">Pending</option>
         </select>
-        <button class="px-3 py-1 text-sm rounded-lg font-medium transition-colors bg-muted text-foreground hover:bg-muted/80 flex items-center" on:click={handleExport}>
+        <Button variant="secondary" size="sm" on:click={handleExport}>
           <Download class="w-4 h-4 mr-1" /> Export
-        </button>
+        </Button>
       </div>
     </div>
 
