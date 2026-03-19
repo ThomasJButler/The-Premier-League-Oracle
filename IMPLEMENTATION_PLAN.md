@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 27 March 2026 (fourteenth update — Spec 07 UI/UX completed: Dialog, Sheet, dead code, form strings)
+Last updated: 28 March 2026 (fifteenth update — full codebase re-audit, newly discovered items added)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~86% Complete
+## Project Status: ~85% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~28/29 (97%) | Backend CI done, node-version fixed, CSV warning logged; Playwright E2E in CI, vite proxy production gap remaining |
+| P5 Hardening | ~28/32 (88%) | Backend CI done, node-version fixed, CSV warning logged; newly discovered: LiveMatches minute gap, WebSocket no-op, dead code; Playwright E2E in CI, vite proxy production gap remaining |
 
 **Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -299,12 +299,27 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 - [x] `app.css`: dead `@keyframes scroll` ticker animation removed
 - [x] `main.py:24`: `timedelta` import removed
 - [x] `modern_oracle.py:18`: `asyncio` import removed
+- [ ] `SeasonStats.svelte:96`: `currentStreak` variable declared and initialised to `0` but never written to or read — the streak calculation uses a separate local `streak` variable (line 118)
+- [ ] `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as `'football-data'` (single-value union), assigned but functionally trivial
+- [ ] `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used — "BTTS No" value bets are never generated. Vestigial field
 
 ### P5t. Frontend Resilience — PARTIAL
 
 - [x] `footballData.ts`: AbortController with 15s timeout added to `rateLimitedFetch()` — prevents hung API calls from blocking the rate-limit queue
 - [x] `dataService.ts`: error contract documented — essential data methods (`getMatches`) throw so callers can surface errors; supplementary methods (`getTeamStats`, `getTeamForm`) return null/empty so optional UI sections degrade gracefully rather than crashing the page
 - [x] `Predictions.svelte`: `catch (error)` renamed to `catch (err)` — no longer shadows outer reactive error state
+
+### P5u. LiveMatches Minute Display Gap
+
+`LiveMatches.svelte:85-90`: `getMinute()` only computes elapsed time for `IN_PLAY` and `PAUSED` statuses. Matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` (added to the live query in P5q) show an empty minute string despite having a valid kick-off time.
+
+- [ ] Extend `getMinute()` to estimate elapsed time for `EXTRA_TIME` (e.g. show `90+N'` based on kick-off) and `PENALTY_SHOOTOUT` (show `PEN`)
+
+### P5v. WebSocket onmessage No-Op
+
+`liveService.ts:244-249`: The WebSocket `onmessage` handler parses incoming JSON but discards it entirely — the connection is established but delivers no data to any Svelte store. This makes the entire WebSocket infrastructure dead weight (the WS connection costs a network socket but provides no value).
+
+- [ ] Either wire parsed data into the appropriate store, or remove the WebSocket connection until the backend sends payload that the frontend needs. Currently the backend only sends prediction probability updates which nothing consumes
 
 ---
 
@@ -319,6 +334,13 @@ These are low-priority items deferred from completed priority tiers:
 - [ ] **P4g:** No `backend/.dockerignore` — test files, docs, spreadsheets (~100MB+ CSVs) all included in Docker build context
 - [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed
+- [ ] **P5u:** `SeasonStats.svelte`: "Most Cards" stat uses `Calendar` icon — wrong icon for a disciplinary stat, should be `AlertTriangle` or similar
+- [ ] **P5u:** `MobileNav.svelte`: "More" toggle button missing `aria-expanded` attribute — screen readers get no open/close feedback
+- [ ] **P5u:** `KellyCalculator.svelte`: Refresh button missing `aria-label`; confidence range slider uses `on:change` (not fired by keyboard drags) instead of `on:input`
+- [ ] **P5u:** `Settings.svelte`: `dispatch('apiConfigured')` fires a 5-second `setTimeout` that is not cleaned up in `onDestroy` — callback can fire after component unmounts in SPA navigation
+- [ ] **P5u:** `ApiSetupWizard.svelte`: Close button `aria-label="Skip setup wizard"` is misleading — action is dismiss/close, not skip
+- [ ] **P5u:** `BettingHistory.svelte`: Stat card `animation-delay` inline styles not guarded by `prefers-reduced-motion`
+- [ ] **P5u:** `Spec 02` status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
 
 ---
 
@@ -509,8 +531,8 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~85% — missing: Poisson from real stats (Req 2). Confidence calibration done (P5m). Poisson maxGoals consistency fixed (P5n). **Markers: 6/8** |
-| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). **Markers: 6/8** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~88% — missing: Poisson from real stats (Req 2). Confidence calibration done (P5m). Poisson maxGoals consistency fixed (P5n). **Markers: 7/8** |
+| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~75% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). Backend proxy marker stale (done since P2b). **Markers: 6/8 (1 stale)** |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~90% — AGENTS.md historical data command added (Req 6 met). **Markers: 8/8** |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |

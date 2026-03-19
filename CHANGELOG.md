@@ -2,6 +2,41 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 28 March 2026 — Fifteenth audit: newly discovered items, spec marker corrections
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Full codebase re-audit using parallel agents across specs, frontend lib/services/components, and backend Python code.
+
+### Newly discovered items added to plan
+- `SeasonStats.svelte:96`: dead `currentStreak` variable (P5s)
+- `ApiSetupWizard.svelte`: dead `selectedProvider` variable (P5s)
+- `value.ts`: vestigial `MarketOdds.bttsNo` field (P5s)
+- `LiveMatches.svelte`: `getMinute()` doesn't handle EXTRA_TIME/PENALTY_SHOOTOUT minute display (P5u)
+- `liveService.ts`: WebSocket `onmessage` is a no-op — parses then discards data (P5v)
+- 7 deferred minor accessibility/UX items added
+
+### Spec marker corrections
+- Spec 01: markers corrected from 6/8 → 7/8 (only Req 2 Poisson lambda remains)
+- Spec 02: noted stale backend proxy marker (done since P2b, spec status not updated)
+
+### Confirmed clean
+- Zero TODO/FIXME/HACK comments in entire codebase
+- Zero hardcoded form strings in production code (all in test fixtures only)
+- Zero hardcoded accuracy values in production code
+- Zero hardcoded API keys or secrets
+- `Math.random()` only in Kelly Monte Carlo simulation (intentional)
+- `np.random` calls: 2 remaining (lstm_predictor fake importance, modern_oracle fake Optuna objective) — both in deferred Pro-tier code
+
+### Stats
+- Frontend: 382 Vitest tests, 43 E2E tests, 0 type errors (unchanged)
+- Backend: 62 pytest tests (unchanged)
+- P5 progress: 97% → 88% (new items discovered, no regressions)
+- Overall: ~86% → ~85% (denominator increased)
+
+---
+
 ## 27 March 2026 — Spec 07 complete: shadcn Dialog and Sheet, sidebar refactor, dead code removal
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.82`

@@ -101,7 +101,7 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Project ~85% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
 - **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Frontend now calls `/predict/free` endpoint. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
 - **Remaining work:** P2 partial (Docker, backend deps, CI), P5 hardening (rate limiter, test quality, type safety), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
@@ -200,5 +200,11 @@ These specs are the single source of truth for requirements.
 - ~~Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)~~ **FIXED:** `timedelta` import removed from `main.py` (P5s), `asyncio` import removed from `modern_oracle.py` (P5s). `main.py` still imports `asyncio` but it IS used (WebSocket handler line 566)
 - `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 - `SidebarNav.svelte` — extracted nav content component used by both desktop `<aside>` and mobile `<Sheet>` rendering paths to avoid 66 lines of template duplication
+- `SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118
+- `LiveMatches.svelte:85-90`: `getMinute()` only computes elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` show empty minute string despite having valid kick-off time
+- `liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely — the connection exists but delivers no data to any store. Dead infrastructure until the backend sends a payload the frontend needs
+- `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used to generate "BTTS No" value bets — vestigial field
+- `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial
+- Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
