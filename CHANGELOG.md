@@ -2,6 +2,34 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P2t/P2u/P2v/P5x/P5s — backend deps, gitignore, environment, CSS fix, dead code
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P2t — httpx added to requirements.txt
+- Added `httpx==0.27.2` to the testing section — backend tests (`pytest-asyncio` async HTTP tests) now work from a fresh `pip install -r requirements.txt` without ad-hoc CI workarounds
+
+### P2u — .gitignore gaps closed
+- Added `backend/models/*.joblib` — prevents trained model binaries from accidental commit
+- Added `frontend/.env.local` and `frontend/.env.production.local` — standard Vite local override files now protected
+
+### P2v — environment.yml cleaned up
+- Removed dead security deps (`python-jose`, `passlib`, `cryptography`, `python-dotenv`, `sqlalchemy`)
+- Moved Pro-tier ML deps (`shap`, `optuna`, `mlflow`, LangChain, ChromaDB, `openai`) to commented-out section
+- Confirmed `httpx` present (now also in `requirements.txt`)
+
+### P5x — Dashboard CSS token fixed (ALL P5x items resolved)
+- Changed `dark:text-primary-light` (undefined) to `text-primary` (theme-aware via CSS variables) — icon renders correct colour in both light and dark modes
+
+### P5s — Dead code cleanup
+- Removed unused `currentStreak` variable from `SeasonStats.svelte:96`
+
+### Stats
+- P2 Next Sprint: 25/27 (93%) — only Docker cleanup and CI gaps remain
+- P5 Hardening: ~38/49 (78%)
+
+---
+
 ## 30 March 2026 — P5aa/P5ac/P5ai/P5aj — prediction quality, typography, accessibility
 
 **Branch:** `v3.0-BackendMLTraining`

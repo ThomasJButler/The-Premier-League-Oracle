@@ -13,11 +13,11 @@ Active branch: `v3.0-BackendMLTraining`
 |----------|--------|-------|
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
-| P2 Next Sprint | 22/27 (81%) | 5 open: httpx, .gitignore gaps, environment.yml stale, Docker, CI gaps |
+| P2 Next Sprint | 25/27 (93%) | 2 open: Docker cleanup, CI gaps |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~36/49 (73%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
+| P5 Hardening | ~38/49 (78%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
 
 **Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -186,24 +186,24 @@ curl -X POST http://localhost:8000/predict/free \
 - [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it
 - [x] Fix `main.py:590,594`: `/features/importance` endpoint accesses `oracle.lstm_model.model` and `oracle.transformer_model.model` without checking if they are not None — will `AttributeError` when torch missing
 
-### P2t. requirements.txt Missing httpx
+### P2t. requirements.txt Missing httpx — DONE
 
 `httpx` is needed to run the backend test suite (pytest-asyncio async HTTP tests) but is not in `requirements.txt`. CI works around this with `pip install -r requirements.txt httpx` but a local `pip install -r requirements.txt` will fail to run tests.
 
-- [ ] Add `httpx` to `requirements.txt` (or create a `requirements-test.txt`)
+- [x] Added httpx==0.27.2 to `requirements.txt` (or create a `requirements-test.txt`)
 
-### P2u. .gitignore Gaps
+### P2u. .gitignore Gaps — DONE
 
-- [ ] `backend/models/*.joblib` not ignored — trained model file (`xgboost_free_tier.joblib`) is unprotected from accidental commit. Binary model files typically don't belong in version control
-- [ ] `frontend/.env.local` and `frontend/.env.production.local` not covered — standard Vite local override files could leak secrets if created
+- [x] `backend/models/*.joblib` not ignored — trained model file (`xgboost_free_tier.joblib`) is unprotected from accidental commit. Binary model files typically don't belong in version control
+- [x] `frontend/.env.local` and `frontend/.env.production.local` not covered — standard Vite local override files could leak secrets if created
 
-### P2v. environment.yml Stale
+### P2v. environment.yml Stale — DONE
 
 `backend/environment.yml` was not updated when dead deps were removed from `requirements.txt` in P2r.
 
-- [ ] Remove dead security module deps (`python-jose`, `passlib`, `cryptography`, `python-dotenv`, `sqlalchemy`) from `environment.yml`
-- [ ] Move `shap`, `optuna`, `mlflow` to a commented-out Pro-tier section (consistent with `requirements.txt`)
-- [ ] Confirm `httpx` is present (it is — but should also be in `requirements.txt` per P2t)
+- [x] Remove dead security module deps (`python-jose`, `passlib`, `cryptography`, `python-dotenv`, `sqlalchemy`) from `environment.yml`
+- [x] Move `shap`, `optuna`, `mlflow` to a commented-out Pro-tier section (consistent with `requirements.txt`)
+- [x] Confirm `httpx` is present (it is — but should also be in `requirements.txt` per P2t)
 
 ### P2s. LSTM Synthetic Training Data — DONE
 
@@ -328,7 +328,7 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 - [x] `app.css`: dead `@keyframes scroll` ticker animation removed
 - [x] `main.py:24`: `timedelta` import removed
 - [x] `modern_oracle.py:18`: `asyncio` import removed
-- [ ] `SeasonStats.svelte:96`: `currentStreak` variable declared and initialised to `0` but never written to or read — the streak calculation uses a separate local `streak` variable (line 118)
+- [x] `SeasonStats.svelte:96`: `currentStreak` dead variable removed
 - [ ] `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as `'football-data'` (single-value union), assigned but functionally trivial
 - [ ] `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used — "BTTS No" value bets are never generated. Vestigial field
 
@@ -354,11 +354,11 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [x] Removed dead `.live-ticker`, `.ticker-content`, and `.ticker-content:hover` global rules from `app.css` — all overridden by LiveTicker.svelte local styles
 
-### P5x. Frontend CSS/Class Bugs — CORRECTED
+### P5x. Frontend CSS/Class Bugs — CORRECTED — ALL DONE
 
 **Seventeenth audit correction:** `hover:shadow-glow-primary-sm` IS defined in `tailwind.config.js:69` (`boxShadow.glow-primary-sm`) — false positive removed. `animate-fade-in` IS defined globally in `tailwind.config.js:78` (`fade-in` animation with `fadeIn` keyframe) — BettingHistory and MatchList animations DO work (opacity-only, vs Predictions.svelte's local version which adds translateY). Only 1 real bug remains:
 
-- [ ] `Dashboard.svelte:87`: `dark:text-primary-light` — undefined token, icon renders wrong colour in dark mode. No `primary-light` colour key exists in the Tailwind config (only `primary.DEFAULT` and `primary.foreground`)
+- [x] `Dashboard.svelte:87`: Changed to `text-primary` (theme-aware via CSS variables, no dark: override needed)
 
 ### P5y. SeasonStats NaN Guard — DONE
 

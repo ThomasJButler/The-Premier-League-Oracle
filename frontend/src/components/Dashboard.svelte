@@ -84,7 +84,7 @@
       value: `${$overallAccuracy.toFixed(1)}%`,
       change: accuracyChange,
       icon: Target,
-      color: 'text-primary dark:text-primary-light',
+      color: 'text-primary',
       bgColor: 'bg-primary/10 dark:bg-primary/20'
     },
     {

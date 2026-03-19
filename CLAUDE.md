@@ -200,7 +200,7 @@ These specs are the single source of truth for requirements.
 - ~~Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)~~ **FIXED:** `timedelta` import removed from `main.py` (P5s), `asyncio` import removed from `modern_oracle.py` (P5s). `main.py` still imports `asyncio` but it IS used (WebSocket handler line 566)
 - `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 - `SidebarNav.svelte` — extracted nav content component used by both desktop `<aside>` and mobile `<Sheet>` rendering paths to avoid 66 lines of template duplication
-- `SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118
+- ~~`SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118~~ **FIXED:** dead variable removed (P5s)
 - `LiveMatches.svelte:85-90`: `getMinute()` only computes elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` show empty minute string despite having valid kick-off time
 - `liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely — the connection exists but delivers no data to any store. Dead infrastructure until the backend sends a payload the frontend needs
 - `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used to generate "BTTS No" value bets — vestigial field
@@ -210,7 +210,7 @@ These specs are the single source of truth for requirements.
 - ~~`App.svelte:79`: `hasApiKey = true` set unconditionally on wizard dismiss — even when no key entered~~ **FIXED:** `handleApiSetupComplete` now early-returns when `apiKey` is empty (P1g)
 - ~~`app.css:376-387`: Dead `.live-ticker` and `.ticker-content` global rules~~ **FIXED:** removed dead ticker CSS rules from app.css (P5w)
 - ~~`Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` undefined~~ **SEVENTEENTH AUDIT CORRECTION:** `glow-primary-sm` IS defined in `tailwind.config.js:69` under `boxShadow` — this class works correctly. False positive removed from P5x
-- `Dashboard.svelte:87`: `dark:text-primary-light` undefined — icon renders wrong colour in dark mode (P5x). Only surviving P5x item
+- ~~`Dashboard.svelte:87`: `dark:text-primary-light` undefined — icon renders wrong colour in dark mode~~ **FIXED:** changed to `text-primary` (theme-aware, no dark override needed) (P5x — ALL P5x items now resolved)
 - ~~`MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` only defined locally in `Predictions.svelte`~~ **SEVENTEENTH AUDIT CORRECTION:** `animate-fade-in` IS defined globally in `tailwind.config.js:78` (maps to `fadeIn` keyframe, opacity 0→1). Both components' animations work. Predictions.svelte has a local version that additionally translates Y — cosmetic difference, not a bug. False positive removed from P5x
 - ~~`SeasonStats.svelte:374`: Division by `totalGoals` produces `NaN%` when no goals scored~~ **FIXED:** guarded with `totalGoals > 0`, displays "N/A" fallback (P5y)
 - ~~`renderMarkdown.ts`: Numbered lists wrap `<li class="list-decimal">` in `<ul>` instead of `<ol>`~~ **FIXED:** bullet items now wrapped in `<ul>`, numbered items in `<ol>` (P5z)
@@ -219,9 +219,9 @@ These specs are the single source of truth for requirements.
 - ~~`betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation~~ **FIXED:** corrected to 0.26 + 0.46 + 0.28 = 1.0 (P5ac)
 - `advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)
 - `main.py`: Model/CSV paths resolve relative to CWD, not `__file__` — server fails silently when started from non-`backend/` directory (P5af)
-- `requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI (P2t)
-- `.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered (P2u)
-- `environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r (P2v)
+- ~~`requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI~~ **FIXED:** added httpx==0.27.2 to requirements.txt (P2t)
+- ~~`.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered~~ **FIXED:** added *.joblib and frontend/.env.local/.env.production.local patterns (P2u)
+- ~~`environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r~~ **FIXED:** removed dead security deps, moved Pro-tier deps to commented section (P2v)
 - Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `liveService.test.ts` passes because WS handler is broken; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
 - CI gaps: No coverage enforcement, no linting step, no E2E tests in pipeline (P2n extensions)
 - Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)

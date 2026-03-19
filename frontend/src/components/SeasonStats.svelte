@@ -93,7 +93,6 @@
     }
 
     // Find longest winning streak
-    let currentStreak = 0;
     let longestStreak = 0;
     let streakTeam = '';
     const teamResults: { [team: string]: string[] } = {};

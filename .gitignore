@@ -11,6 +11,8 @@ node_modules
 # Environment files (contain API keys)
 /.env
 frontend/.env
+frontend/.env.local
+frontend/.env.production.local
 backend/.env
 
 # Build output
@@ -19,6 +21,7 @@ frontend/dist/
 # Backend generated files
 backend/chroma_db/
 backend/models/*.pkl
+backend/models/*.joblib
 
 # Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
