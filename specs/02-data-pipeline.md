@@ -43,7 +43,7 @@ All items from this spec are now **fully implemented**:
 |----------|------|----------|
 | `GET /competitions/PL/matches?status=SCHEDULED` | Upcoming fixtures | 30 min |
 | `GET /competitions/PL/matches?status=FINISHED` | Completed results | 1 hour |
-| `GET /competitions/PL/matches?status=LIVE` | Live scores | 60 sec |
+| `GET /competitions/PL/matches?status=IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT` | Live scores | 60 sec |
 | `GET /competitions/PL/standings` | League table | 1 hour |
 | `GET /competitions/PL/scorers` | Top scorers | 6 hours |
 | `GET /competitions/PL/matches?season=YYYY` | Historical season | 24 hours |
@@ -83,11 +83,12 @@ Component → DataService
 **Requirement:** Load and cache the last 5 completed Premier League seasons for use by the prediction engine backtester and ELO initialiser.
 
 Seasons to fetch:
-- 2020 (2020-21 season)
-- 2021 (2021-22 season)
-- 2022 (2022-23 season)
-- 2023 (2023-24 season)
-- 2024 (2024-25 season — in progress)
+- 2020 (2020/21 season — complete)
+- 2021 (2021/22 season — complete)
+- 2022 (2022/23 season — complete)
+- 2023 (2023/24 season — complete)
+- 2024 (2024/25 season — complete)
+- 2025 (2025/26 season — current/in progress)
 
 **Implementation:**
 - Add `dataService.getHistoricalMatches(season: number): Promise<Match[]>` method

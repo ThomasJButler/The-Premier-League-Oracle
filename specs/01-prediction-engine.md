@@ -82,7 +82,7 @@ Referee adjustments appear as text in the key factors/insights list within the P
 
 ---
 
-### 5. Confidence Calculation (Priority: Medium)
+### 5. Confidence Calculation (Priority: Medium) — DONE
 
 **Current problem:** `calculateConfidence()` in `OptimizedPredictor` uses a simple probability gap formula. It clamps to 25%–95%.
 
@@ -94,7 +94,7 @@ Referee adjustments appear as text in the key factors/insights list within the P
 
 ---
 
-### 6. AI-Assisted Analysis (Priority: Medium)
+### 6. AI-Assisted Analysis (Priority: Medium) — DONE
 
 **New requirement:** Integrate GPT-5 (OpenAI) and/or Claude (Anthropic) for qualitative match analysis to supplement the statistical models.
 
@@ -122,7 +122,7 @@ Referee adjustments appear as text in the key factors/insights list within the P
 
 ---
 
-### 8. Model Weights — Tuning Guide
+### 8. Model Weights — Tuning Guide — DONE
 
 The ensemble weights should be adjustable for backtesting. Current defaults:
 

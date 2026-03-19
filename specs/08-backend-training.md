@@ -21,7 +21,7 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 | `advanced_engineering.py` | 150 features declared | Pro-tier — 63 methods return hardcoded `0.0` (no data from free API) |
 | Backend tests | **86 tests** | 45 features, 25 training pipeline, 16 API endpoints |
 
-**Training data:** 2,197 matches across 6 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
+**Training data:** 2,191 matches across ~5.75 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
 
 **Free API constraint:** Football-Data.org free tier provides match results, standings, and team info only. No xG, shots, possession, cards, corners, or player data. This permanently limits ~70 features at inference time.
 
@@ -57,7 +57,7 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone cla
 
 `FreeTierFeatureEngineer` class that:
 - Is a standalone class (does not wrap `AdvancedFeatureEngineer`)
-- `create_features(home_team, away_team, match_date)` returns a dict of ~83 features
+- `create_features(home_team, away_team, match_date)` returns a dict of 99 features
 - Class-level `FEATURE_NAMES` list for validation and documentation
 - Team name normalisation dict mapping CSV short names (e.g. "Man United") to API canonical names (e.g. "Manchester United FC")
 - Never calls any of the 63 stub methods that require Pro API data
@@ -228,15 +228,17 @@ Team name allowlist on `/predict/free`. Accept current Premier League teams plus
 
 The existing `validators.py` has a `VALID_TEAMS` set but it's outdated (2023/24 clubs) and entirely unused at runtime. The free-tier endpoint should use its own inline validation rather than depending on the broken validator module.
 
-#### 4c. Error sanitisation
+#### 4c. Error sanitisation — FIXED
 
-New endpoints must return generic error messages, never raw `str(exc)` or stack traces. The existing global exception handler in `main.py` (line 582-593) leaks internal error strings — do not replicate this pattern.
+New endpoints must return generic error messages, never raw `str(exc)` or stack traces.
+
+> **Note:** The global exception handler in `main.py` was fixed — it now returns a generic "Internal server error" message and logs the full error server-side. The `str(exc)` leak no longer exists.
 
 ```python
-# Good
+# Good (current pattern)
 {"error": "Prediction failed", "request_id": "abc123"}
 
-# Bad (current pattern in main.py)
+# Bad (old pattern, now fixed)
 {"detail": "KeyError: 'home_goals_scored_avg'"}
 ```
 
@@ -320,7 +322,7 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 
 #### 6c. Full training pipeline
 
-- Update `train.py` to orchestrate: data collection → feature engineering → XGBoost + LSTM + Transformer training → ensemble weight optimisation → evaluation
+- Create a new Pro-tier training script to orchestrate: data collection → feature engineering → XGBoost + LSTM + Transformer training → ensemble weight optimisation → evaluation (the old `train.py` was removed)
 - Train/val/test splits: 2020-2023 train, 2024 validation, 2025 test
 - Wire `/admin/retrain` endpoint (currently returns mock response)
 
@@ -344,8 +346,8 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 | `backend/tests/test_predict_free_tier.py` | Create | High |
 | `.gitignore` | Modify (add `backend/.env`) | High |
 | `backend/app/features/advanced_engineering.py` | No change (free tier) | — |
-| `backend/train.py` | **Removed** — superseded by `train_free_tier.py` | — |
-| `backend/app/models/xgboost_model.py` | No change (reused) | — |
+| ~~`backend/train.py`~~ | **Removed** — superseded by `train_free_tier.py` (outputs deleted `xgboost_model.pkl`) | — |
+| `backend/app/models/xgboost_model.py` | Architecture file still present (Pro-tier). The old `xgboost_model.pkl` artefact was deleted — free-tier uses `xgboost_free_tier.joblib` | — |
 
 ---
 

@@ -109,6 +109,8 @@ Wrap glassmorphism cards with shadcn `Card` as the structural base:
 ### Priority 3: Dialog
 Replace the hand-rolled `ApiSetupWizard` modal with shadcn `Dialog`. The existing modal in `ApiSetupWizard.svelte` uses custom CSS and `bind:showModal` — replace with Dialog's controlled open state.
 
+> **Implementation note:** Dialog and Sheet are custom implementations using the project's `focusTrap` action — `bits-ui` was never installed. The components provide the same accessible behaviour (focus trap, Escape key, click-outside dismiss) via custom Svelte code.
+
 ### Priority 4: Badge
 Replace all `.badge`, `.badge-success`, `.badge-warning`, `.badge-error` CSS classes with shadcn `Badge`:
 
@@ -118,15 +120,17 @@ Replace all `.badge`, `.badge-success`, `.badge-warning`, `.badge-error` CSS cla
 <Badge variant="destructive">Away Win</Badge>
 ```
 
-### Priority 5: Tabs
-Use shadcn `Tabs` for the Predictions view (currently switches between Upcoming/Recent/Analysis via `{#if}` blocks).
+### Priority 5: Tabs — Intentionally not migrated
+~~Use shadcn `Tabs` for the Predictions view (currently switches between Upcoming/Recent/Analysis via `{#if}` blocks).~~
 
-### Priority 6 onwards: Skeleton, Select, Table, Progress, Tooltip
-- **Skeleton:** Replace `.skeleton` CSS loading placeholders
-- **Select:** Settings page form selects
-- **Table:** StandingsTable and BettingHistory
-- **Progress:** Batch prediction progress bar
-- **Tooltip:** Probability bars, confidence scores, odds displays
+> **Note:** The project retains `{#if}` blocks for tab switching rather than adopting shadcn Tabs. This is a deliberate choice — the existing approach works well and avoids an additional component dependency.
+
+### Priority 6 onwards: Skeleton, Select, Table, Progress, Tooltip — Deferred
+- **Skeleton:** Installed but not yet actively used in components. The existing loading patterns work adequately
+- **Select:** Settings page form selects — deferred
+- **Table:** StandingsTable and BettingHistory — deferred
+- **Progress:** Batch prediction progress bar — deferred
+- **Tooltip:** Probability bars, confidence scores, odds displays — deferred
 
 ---
 
@@ -162,6 +166,7 @@ On mobile (< 768px), the sidebar should use shadcn `Sheet` component to slide in
 `Sidebar.svelte` currently uses CSS `transform` to show/hide. Replace the mobile behaviour with:
 
 ```svelte
+<!-- Original design intent — actual implementation uses custom Sheet component (not bits-ui) -->
 <Sheet open={isSidebarOpen} on:close={() => isSidebarOpen = false}>
   <SheetContent side="left" class="w-64 p-0">
     <!-- existing sidebar content -->

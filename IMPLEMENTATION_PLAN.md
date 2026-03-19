@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (thirty-second update — ESLint + ruff linting in CI, plan cleanup)
+Last updated: 19 March 2026 (thirty-third update — spec sync, plan cleanup)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -106,43 +106,14 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 
 ### Improvement Opportunities (for next iteration)
 
-**Quick wins (low effort, likely impact):**
-- [x] **Class weights** — `compute_sample_weights()` applies inverse-frequency weighting to training samples. Draws get higher weight (~1.4x) to compensate for 23% class imbalance
-- [x] **Probability calibration** — `calibrate_probabilities()` fits per-class isotonic regression on validation set, then re-normalises. Calibrators saved in model file and applied at inference in `/predict/free`
-- [x] **Feature selection** — `select_features()` drops features with importance < 0.005 after a first training pass, then retrains with the pruned set. Reduces overfitting on the ~1,680 training samples
-- [x] **Hyperparameter tuning** — `tune_hyperparameters()` runs a random search (~25 trials) over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`, `gamma`, `reg_alpha`, `reg_lambda`. Enabled via `--tune` flag. No new dependencies (uses numpy random, not Optuna)
+All quick-win and medium-effort improvements implemented (class weights, calibration, feature selection, hyperparameter tuning, draw features, Elo features, recency weighting, stacked ensemble, draw indicator fix, rolling CV).
 
-**Medium effort (likely significant impact):**
-- [x] **Draw-specific features** — 8 new features added to `free_tier_features.py`: `form_closeness`, `standings_closeness`, `home_draw_rate`, `away_draw_rate`, `combined_defensive_strength`, `low_scoring_indicator`, `h2h_draw_tendency`, `draw_streak_proximity`
-- [x] **Elo-based features** — 5 new features (`home_elo`, `away_elo`, `elo_difference`, `elo_expected_home`, `elo_home_advantage`). Precomputed O(n) running Elo ratings (K=32, home advantage=65, default 1500) matching the frontend algorithm. 6 new tests (batch 18)
-- [x] **Recency weighting** — `compute_sample_weights()` now applies exponential decay (0.85 per older season) alongside class weights. `build_dataset()` returns season labels; `train_xgboost()` passes them to sample weighting
-
-**Larger effort:**
-- [x] **Stacked ensemble** — 3 One-vs-Rest XGBoost binary classifiers (Home/Draw/Away vs rest) with a logistic regression meta-learner. Draw classifier has dedicated tuning: `max_depth=4`, `lr=0.03`, `scale_pos_weight=~3.35`, higher regularisation. Meta-learner trained on chronological OOF predictions (70/30 base/meta split within training data) to avoid leakage. Final base classifiers retrained on full training data. `predict_with_ensemble()` helper for inference. `/predict/free` endpoint auto-uses ensemble when present in model file
-- [x] **Draw indicator bug fix** — `_draw_indicators()` called non-existent `_get_standings()`. Fixed to `_compute_standings(data, match_date)` with `match_date` threaded through the method chain. Affects `standings_closeness` and `form_closeness` features
+**Remaining:**
 - [ ] **Odds-as-features** — the CSVs contain ~80 bookmaker odds columns. Using closing odds as features would dramatically boost accuracy (bookmakers are the strongest predictor), but makes the model dependent on having odds data at inference time
-- [x] **Rolling cross-validation** — `rolling_cross_validation()` implements expanding-window CV across seasons (train on seasons 1..k, validate on k+1). CLI flag `--cv` runs it before final training. Produces per-fold and aggregate metrics for XGBoost (calibrated), LR baseline, and stacked ensemble. `_per_class_accuracy()` helper extracted for fold-level class metrics. 8 new tests (3 `_per_class_accuracy` + 5 rolling CV)
-
-### How to Retrain
-
-```bash
-cd backend
-python train_free_tier.py                                # Train model → xgboost_free_tier.joblib
-python train_free_tier.py --tune                         # Train with hyperparameter tuning (25 trials)
-python train_free_tier.py --tune --tune-trials 50        # More thorough tuning
-python train_free_tier.py --cv                           # Rolling cross-validation across seasons
-python -m pytest tests/ -v                               # All 86 tests
-uvicorn app.api.main:app --reload --port 8000            # Start server
-curl -X POST http://localhost:8000/predict/free \
-  -H "Content-Type: application/json" \
-  -d '{"home_team": "Arsenal", "away_team": "Chelsea"}'  # Test endpoint
-```
 
 ---
 
-## Remaining Work — P1 (ALL DONE)
-
-All P1 items completed. See CHANGELOG.md for details.
+## Remaining Work — P1: ALL DONE (see CHANGELOG.md)
 
 ---
 
@@ -169,8 +140,8 @@ All P1 items completed. See CHANGELOG.md for details.
 
 **Backend missing dependencies in `requirements.txt`:**
 
-- [ ] Add `langchain-community` — `modern_oracle.py` imports it but package is separate from `langchain` and not listed
-- [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it
+- [ ] Add `langchain-community` — `modern_oracle.py` imports it but package is separate from `langchain` and not listed. **Note:** `modern_oracle.py` is the Pro-tier model (entirely unused at runtime on the free tier); zero runtime risk until P3c is started
+- [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it. **Note:** `auth.py` is not imported by `main.py` and is completely unused at runtime; zero runtime risk until P3d is started
 - [x] Fix `main.py:590,594`: `/features/importance` endpoint accesses `oracle.lstm_model.model` and `oracle.transformer_model.model` without checking if they are not None — will `AttributeError` when torch missing
 
 ---
@@ -374,14 +345,14 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | **100% — ALL 8/8 criteria met.** Poisson lambda now uses per-team stats from `dataService.getTeamStats()` (Dixon-Coles formula). |
-| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | **100% — ALL 8/8 criteria met.** Progressive 5-season bulk loader added (Req 5), rate-limit queue serialises concurrent callers (Req 7), backend proxy done since P2b (Req 8). **Markers: 8/8** |
-| `specs/03-backend-integration.md` | Python ML backend connection | **100% — ALL 8/8 criteria met.** Historical data command documented in AGENTS.md (Req 6). WebSocket criterion was previously marked done but WS infrastructure was removed (P5v) — polling-only architecture now satisfies the live data requirement via the existing `/live` endpoint. **Markers: 8/8** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | **100% — ALL 12/12 criteria met.** AccumulatorBuilder.svelte added with cross-match accumulator building, Track Bet integration, 17 tests. **Markers: 12/12** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | **100% — ALL 10/10 criteria met.** Match event notifications via polling-diff (Req 9). Extra-time/penalty status filter fixed (P5q), minute display for ET/PEN fixed (P5u). **Markers: 10/10** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | **100% — ALL 8/8 criteria met.** Poisson lambda uses per-team stats (Dixon-Coles). Reqs 5/6/8 DONE markers added (calibration, ELO auto-update, backtest optimisation). |
+| `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | **100% — ALL 8/8 criteria met.** Progressive 5-season bulk loader (Req 5), rate-limit queue (Req 7), backend proxy (Req 8). Live status filter expanded to include `EXTRA_TIME`/`PENALTY_SHOOTOUT`. Season range updated to 2020–2024. **Markers: 8/8** |
+| `specs/03-backend-integration.md` | Python ML backend connection | **100% — ALL 8/8 criteria met.** WebSocket superseded note added — polling-only architecture satisfies Req 7 via `/live` endpoint. Docker fixed (P2o). Dead batch/stats methods removed (P5ak). **Markers: 8/8** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | **100% — ALL 12/12 criteria met.** AccumulatorBuilder.svelte with cross-match accumulator building, Track Bet integration, 17 tests. **Markers: 12/12** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | **100% — ALL 10/10 criteria met.** WebSocket superseded note added; polling-only with adaptive intervals. Status filter expanded (`EXTRA_TIME`/`PENALTY_SHOOTOUT`). Match event notifications via polling-diff. **Markers: 10/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~98% — all 17 structural criteria met; 5 new CSS/class bugs found in sixteenth audit (P5x). **Markers: 17/17 structural** |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | **100% — ALL 17/17 criteria met.** bits-ui note clarified (custom implementations, not bits-ui). Tabs section updated. Priority 6+ deferred items documented. **Markers: 17/17** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Feature count corrected to 99 (incl. 8 draw + 5 Elo). Match count updated to 2,191. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---
 

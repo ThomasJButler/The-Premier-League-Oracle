@@ -98,6 +98,8 @@ interface GameweekAccuracy {
 
 Store in localStorage under key `gameweek_accuracy`. The Dashboard's "accuracy over time" chart should use this data.
 
+> **Implementation note:** The actual implementation derives per-gameweek accuracy on the fly from stored predictions using the `matchday` field, rather than maintaining a separate `gameweek_accuracy` localStorage key. This avoids staleness issues when predictions are reconciled after the fact.
+
 ---
 
 ## Requirement 6: Prediction Store on Generate

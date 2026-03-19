@@ -90,7 +90,7 @@ The `bets: any[] = []` stub has been replaced with `bets: StoredBet[] = []` type
 
 ---
 
-## Requirement 3: Kelly Auto-Suggestions
+## Requirement 3: Kelly Auto-Suggestions — DONE
 
 `KellyCalculator.svelte` should offer **auto-populated suggestions** from upcoming match predictions.
 

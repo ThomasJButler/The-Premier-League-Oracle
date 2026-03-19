@@ -74,7 +74,7 @@ function getPollingInterval(): number {
 - If live matches are found, maintain 60s polling
 - If 3 consecutive polls return empty, back off to 5-minute intervals
 
-> **Implementation note:** The actual implementation uses 30s polling when live matches exist, which is more aggressive than this spec.
+> **Implementation note:** The actual implementation uses 30s polling when live matches exist (more aggressive than this spec's 60s). The `dataService.getLiveMatches()` cache TTL is 60s, so effective real API calls are at most once per minute.
 
 ---
 
@@ -92,7 +92,7 @@ Match card fields from Football-Data.org LIVE response:
 - `homeTeam.name`, `awayTeam.name`
 - `score.fullTime.home`, `score.fullTime.away`
 - `score.halfTime.home`, `score.halfTime.away`
-- `status` — one of: LIVE, IN_PLAY, PAUSED, FINISHED
+- `status` — one of: LIVE, IN_PLAY, PAUSED, EXTRA_TIME, PENALTY_SHOOTOUT, FINISHED (extra time/penalties added in P5q)
 - `minute` — current match minute (if available)
 
 ---
@@ -113,11 +113,14 @@ Ticker item format:
 
 ---
 
-## Requirement 5: WebSocket Integration (Backend)
+## ~~Requirement 5: WebSocket Integration (Backend)~~ — SUPERSEDED (P5v)
 
-When the Python backend is running, `LiveService` uses WebSocket instead of polling:
+> **Note (P5v):** WebSocket infrastructure was entirely removed from the frontend. `liveService.ts` is now polling-only with adaptive intervals. Match event detection uses polling-diff: `matchEventsStore` compares consecutive poll snapshots to detect goals and status changes. `MatchEventToast.svelte` renders colour-coded toast notifications (green=goals, amber=half-time, blue=full-time, red=extra time/penalties). Events auto-expire after 30s. `LiveTicker.svelte` surfaces events at highest priority.
+
+The original design (shown below for historical reference) called for WebSocket when the backend was running:
 
 ```typescript
+// HISTORICAL — no longer implemented in the frontend
 // frontend/src/services/liveService.ts
 import { writable } from 'svelte/store'
 
@@ -162,8 +165,6 @@ class LiveService {
 
 export const liveService = new LiveService()
 ```
-
-`LiveMatches.svelte` and `LiveTicker.svelte` subscribe to `liveMatchesStore` rather than managing their own fetching.
 
 ---
 

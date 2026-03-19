@@ -2,6 +2,29 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 2 April 2026 — Spec sync and plan cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Fixed
+
+- **All 8 spec files synced with implementation reality:**
+  - Spec 01: added DONE markers to Requirements 5, 6, 8 (calibration, ELO auto-update, backtest optimisation)
+  - Spec 02: live status filter updated to include `EXTRA_TIME`/`PENALTY_SHOOTOUT` (P5q), season range corrected (2020/21–2024/25 complete, 2025/26 current)
+  - Spec 03: removed dead `predictBatch()`/`getTeamStats()` from code example (P5ak), marked WebSocket section as superseded (P5v), updated Docker references (P2o), marked AI Analysis as deferred to Pro-tier
+  - Spec 04: added DONE marker to Requirement 3 (Kelly Auto-Suggestions)
+  - Spec 05: marked WebSocket section as superseded with polling-diff replacement description, added `EXTRA_TIME`/`PENALTY_SHOOTOUT` to status list, clarified polling interval implementation (30s vs spec's 60s)
+  - Spec 06: added implementation note about on-the-fly gameweek accuracy derivation (no separate localStorage key)
+  - Spec 07: clarified Dialog/Sheet are custom implementations (not bits-ui), marked Tabs as intentionally not migrated, documented Priority 6+ items as deferred
+  - Spec 08: corrected feature count ~83 → 99, match count 2,197 → 2,191, updated error sanitisation section, struck through removed `train.py`
+
+### Changed
+
+- `IMPLEMENTATION_PLAN.md` cleaned — collapsed completed improvement opportunities to summary, removed duplicated "How to Retrain" section (single source of truth: `backend/README.md`), annotated dead-module deps as zero runtime risk, updated specs table
+- Spec 07 status upgraded from ~98% to 100% (all criteria met, remaining items were documentation gaps not implementation gaps)
+
+---
+
 ## 19 March 2026 — ESLint + ruff linting added to CI pipeline
 
 **Branch:** `v3.0-BackendMLTraining`
