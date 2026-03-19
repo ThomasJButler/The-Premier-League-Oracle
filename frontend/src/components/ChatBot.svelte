@@ -26,6 +26,7 @@
   let apiKey = '';
   let hasApiKey = false;
   let useServerKey = false;
+  let useBackendRAG = false;
   let messages: ChatMessage[] = [];
   let inputText = '';
   let isLoading = false;
@@ -50,7 +51,7 @@
         if (Array.isArray(parsed) && parsed.length > 0) {
           messages = parsed;
           scrollToBottom();
-          checkServerKey();
+          checkBackendRAG();
           return;
         }
       } catch {
@@ -64,15 +65,33 @@
       timestamp: Date.now()
     }];
 
-    checkServerKey();
+    checkBackendRAG();
   });
 
-  /** Check whether the server-side chat proxy has an API key configured.
-   * Probes via POST with an empty messages array: if the server has a key the
-   * request reaches the messages-validation step and returns "Messages array required";
-   * if the server has no key it returns "No API key configured" first.
+  /** Check backend RAG availability first, then fall back to the Vercel chat proxy.
+   *
+   * Priority:
+   * 1. Backend RAG (/api/oracle/health) — data-grounded, server-side API key
+   * 2. Vercel chat proxy (/api/chat) — server-side API key, shallow context
+   * 3. User-provided API key — client sends key through proxy
    */
-  async function checkServerKey() {
+  export async function checkBackendRAG() {
+    // 1. Try backend RAG endpoint
+    try {
+      const res = await fetch('/api/oracle/health');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'healthy') {
+          useBackendRAG = true;
+          hasApiKey = true;
+          return;
+        }
+      }
+    } catch {
+      // Backend not available — try fallback
+    }
+
+    // 2. Try Vercel chat proxy server key
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -194,7 +213,6 @@ Current data:\n`;
     return context;
   }
 
-  // --- Simple Markdown Rendering (sanitised) ---
   // --- Send Message ---
   export async function sendMessage() {
     const text = inputText.trim();
@@ -225,35 +243,20 @@ Current data:\n`;
     lastRequestTime = Date.now();
 
     try {
-      const systemPrompt = await buildSystemPrompt();
+      let reply: string | null = null;
 
-      const apiMessages = [
-        { role: 'system' as const, content: systemPrompt },
-        ...messages
-          .filter(m => m.role !== 'system')
-          .slice(-10)
-          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
-      ];
-
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: apiMessages,
-          ...(!useServerKey && apiKey ? { apiKey } : {})
-        })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: '' }));
-        throw new Error(errData.error || `Chat error (${response.status}). Please try again.`);
+      // Try backend RAG first (data-grounded, server-side API key)
+      if (useBackendRAG) {
+        reply = await sendViaBackendRAG(text);
       }
 
-      const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content;
+      // Fall back to Vercel chat proxy if backend RAG failed or unavailable
+      if (!reply) {
+        reply = await sendViaFallbackProxy(text);
+      }
 
       if (!reply) {
-        throw new Error('No response from OpenAI. Please try again.');
+        throw new Error('No response received. Please try again.');
       }
 
       messages = [...messages, {
@@ -272,6 +275,72 @@ Current data:\n`;
       isLoading = false;
       await scrollToBottom();
     }
+  }
+
+  /** Send via backend RAG endpoint — returns reply or null on failure. */
+  async function sendViaBackendRAG(text: string): Promise<string | null> {
+    try {
+      const conversationHistory = messages
+        .filter(m => m.role !== 'system')
+        .slice(-10)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      // Pass user's API key as header if no server key is configured
+      if (apiKey && !useServerKey) {
+        headers['X-OpenAI-Key'] = apiKey;
+      }
+
+      const response = await fetch('/api/oracle/chat/rag', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message: text,
+          conversation_history: conversationHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        // Let the caller fall back to the proxy
+        return null;
+      }
+
+      const data = await response.json();
+      return data.reply || null;
+    } catch {
+      // Backend unreachable — fall back silently
+      return null;
+    }
+  }
+
+  /** Send via Vercel chat proxy (fallback) — throws on failure. */
+  async function sendViaFallbackProxy(text: string): Promise<string | null> {
+    const systemPrompt = await buildSystemPrompt();
+
+    const apiMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages
+        .filter(m => m.role !== 'system')
+        .slice(-10)
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+    ];
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: apiMessages,
+        ...(!useServerKey && apiKey ? { apiKey } : {})
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: '' }));
+      throw new Error(errData.error || `Chat error (${response.status}). Please try again.`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
   }
 
   async function scrollToBottom() {
@@ -303,8 +372,8 @@ Current data:\n`;
 </script>
 
 <div class="max-w-2xl mx-auto space-y-4" data-testid="chatbot">
-  <!-- Security Notice Banner (only shown when using a user-provided key, not a server key) -->
-  {#if hasApiKey && !useServerKey && !showSecurityWarning}
+  <!-- Security Notice Banner (only shown when using a user-provided key, not a server/backend key) -->
+  {#if hasApiKey && !useServerKey && !useBackendRAG && !showSecurityWarning}
     <button
       on:click={() => showSecurityWarning = true}
       class="w-full flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-left hover:bg-blue-500/15 transition-colors"
@@ -341,8 +410,8 @@ Current data:\n`;
     </div>
   {/if}
 
-  <!-- API Key Setup (hidden when the server has its own key) -->
-  {#if !hasApiKey && !useServerKey}
+  <!-- API Key Setup (hidden when server/backend has its own key) -->
+  {#if !hasApiKey && !useServerKey && !useBackendRAG}
     <Card class="card-glass p-4 sm:p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="p-2 rounded-lg bg-primary/10">
@@ -391,6 +460,9 @@ Current data:\n`;
       <div class="flex items-center gap-2">
         <MessageCircle class="w-4 h-4 text-accent" />
         <span class="text-sm font-display font-semibold text-foreground">Oracle Chat</span>
+        {#if useBackendRAG}
+          <span class="text-[10px] text-emerald-400 font-medium">RAG</span>
+        {/if}
         <span class="w-2 h-2 rounded-full {hasApiKey ? 'bg-emerald-500' : 'bg-muted-foreground'} live-pulse"></span>
       </div>
       <div class="flex items-center gap-1">
@@ -401,7 +473,7 @@ Current data:\n`;
         >
           <Trash2 class="w-3.5 h-3.5 text-muted-foreground" />
         </button>
-        {#if hasApiKey && !useServerKey}
+        {#if hasApiKey && !useServerKey && !useBackendRAG}
           <button
             on:click={clearApiKey}
             class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"

@@ -30,12 +30,21 @@ logger = logging.getLogger(__name__)
 
 # Free-tier feature engineer — lightweight, no heavy deps
 try:
-    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer
+    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer, _ALIASES
     FREE_TIER_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
     FreeTierFeatureEngineer = None  # type: ignore
+    CSV_TO_API = {}  # type: ignore
+    _ALIASES = {}  # type: ignore
     FREE_TIER_AVAILABLE = False
+
+try:
+    from app.api.rag import build_rag_prompt, init_team_patterns
+    RAG_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"RAG module unavailable ({e})")
+    RAG_AVAILABLE = False
 
 try:
     from app.data.football_data_collector import FootballDataCollector
@@ -134,6 +143,14 @@ async def lifespan(app: FastAPI):
             logger.info("No free-tier model found at %s — run train_free_tier.py first", free_tier_model_path)
         if not FREE_TIER_AVAILABLE:
             logger.info("FreeTierFeatureEngineer not available")
+
+    # Initialise RAG team patterns for intent parsing
+    if RAG_AVAILABLE and FREE_TIER_AVAILABLE:
+        try:
+            init_team_patterns(CSV_TO_API, _ALIASES)
+            logger.info("RAG team patterns initialised")
+        except Exception as e:
+            logger.warning("Could not initialise RAG team patterns: %s", e)
 
     logger.info("Oracle API startup complete")
 
@@ -403,6 +420,111 @@ async def free_tier_model_info():
         ),
         "stacked_ensemble": ensemble_info,
     }
+
+
+# ---------------------------------------------------------------------------
+# Oracle Chat RAG endpoint (P6b)
+# ---------------------------------------------------------------------------
+
+class ChatRAGRequest(BaseModel):
+    """Request for Oracle Chat with RAG-grounded responses."""
+    message: str = Field(..., min_length=1, max_length=500, description="User message")
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Previous messages [{role, content}]",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "How has Arsenal been doing this season?",
+                "conversation_history": [
+                    {"role": "user", "content": "Hi"},
+                    {"role": "assistant", "content": "Hello! Ask me anything about the Premier League."},
+                ],
+            }
+        }
+
+
+class ChatRAGResponse(BaseModel):
+    """Response from Oracle Chat RAG."""
+    reply: str
+    grounded: bool = Field(description="Whether the response was grounded in match data")
+
+
+@app.post("/chat/rag", response_model=ChatRAGResponse, tags=["Oracle Chat"])
+async def chat_rag(request_body: ChatRAGRequest, request: Request):
+    """
+    Oracle Chat with DataFrame RAG — data-grounded responses.
+
+    Parses user intent, queries the in-memory historical match DataFrame
+    (2,191+ matches), builds an augmented prompt with relevant data, and
+    calls the OpenAI API server-side. No client-side API key needed when
+    OPENAI_API_KEY is set.
+    """
+    # Rate limiting
+    client_ip = _get_client_ip(request)
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded — maximum 60 requests per minute",
+        )
+
+    # Resolve API key: server env var takes priority, then request header
+    api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No OpenAI API key configured. "
+                "Set the OPENAI_API_KEY environment variable or pass via X-OpenAI-Key header."
+            ),
+        )
+
+    if not RAG_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG module not available",
+        )
+
+    # Get the historical match DataFrame
+    df = free_tier_engineer.data if free_tier_engineer is not None else None
+
+    # Build RAG-augmented system prompt
+    system_prompt, has_data = build_rag_prompt(df, request_body.message)
+
+    # Assemble messages for OpenAI
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+
+    # Add conversation history (last 10 non-system messages)
+    for msg in request_body.conversation_history[-10:]:
+        role = msg.get('role', '')
+        content = msg.get('content', '')
+        if role in ('user', 'assistant') and content:
+            messages.append({"role": role, "content": content})
+
+    # Add current user message
+    messages.append({"role": "user", "content": request_body.message})
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,  # type: ignore[arg-type]
+            max_tokens=800,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content or ""
+        return ChatRAGResponse(reply=reply, grounded=has_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Chat RAG OpenAI call failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to generate response — please try again",
+        )
 
 
 # Error handler

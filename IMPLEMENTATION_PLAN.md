@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (thirty-ninth update — P6a Dashboard Redesign done)
+Last updated: April 2026 (fortieth update — P6b Oracle Chat RAG done)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -19,9 +19,9 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
-| **P6 Final Push** | **3/5 (60%)** | **P6c, P6e, P6a DONE — Oracle Chat RAG, deployment docs remaining** |
+| **P6 Final Push** | **4/5 (80%)** | **P6c, P6e, P6a, P6b DONE — deployment docs remaining** |
 
-**Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -34,7 +34,7 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Goal:** Ship a viable, deployable MVP. This is the last set of work before the project is complete.
 
-**Execution order:** P6c ✓ → P6e ✓ → P6a ✓ → P6b → P6d
+**Execution order:** P6c ✓ → P6e ✓ → P6a ✓ → P6b ✓ → P6d
 
 ### P6c. Repo Cleanup — Remove Dead Code
 
@@ -87,28 +87,32 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Result:** ~1.5 viewport heights on desktop (down from ~3.5). Dashboard tests updated (12 tests, all passing).
 
-### P6b. Oracle Chat RAG — Data-Grounded Responses
+### P6b. Oracle Chat RAG — Data-Grounded Responses ✅
 
 **Problem:** ChatBot injects static context (top 6 standings, 5 matches) into GPT-4o-mini. No access to 2,191 historical matches. Hallucinates stats. Reference: SQL-Ball project (github.com/ThomasJButler/SQL-Ball).
 
 **Approach:** Lightweight DataFrame RAG (no ChromaDB needed for structured tabular data)
 
 **Files:**
-- [ ] `backend/app/api/main.py` — add `/chat/rag` POST endpoint
-- [ ] `frontend/src/components/ChatBot.svelte` — route through backend RAG
-- [ ] `frontend/api/chat.ts` — support RAG context passthrough
+- [x] `backend/app/api/rag.py` — NEW: intent parser, team name extractor, DataFrame query engine, RAG prompt builder
+- [x] `backend/app/api/main.py` — added `/chat/rag` POST endpoint with rate limiting and API key resolution
+- [x] `frontend/src/components/ChatBot.svelte` — routes through backend RAG with graceful fallback
+- [x] `backend/tests/test_rag.py` — NEW: 44 tests covering team extraction, intent parsing, queries, endpoint
+- [x] `frontend/src/components/ChatBot.test.ts` — 5 new tests for RAG detection, sending, fallback, UI state
 
 **Endpoint logic (`/chat/rag`):**
 1. Receive user message + conversation history
 2. Parse intent: extract team names, date ranges, stat types
 3. Query in-memory CSV DataFrame (already loaded by `FreeTierFeatureEngineer` — 2,191 matches)
 4. Build augmented system prompt with retrieved match data (max 20 rows as markdown table)
-5. Call OpenAI API server-side — use `OPENAI_API_KEY` env var if set, fall back to user-provided key from request header
-6. Stream response back
+5. Call OpenAI API server-side — use `OPENAI_API_KEY` env var if set, fall back to user-provided key from `X-OpenAI-Key` header
+6. Return JSON response (not streaming — simpler for MVP)
 
-**Query types:** H2H matchups, team season aggregates, best/worst by stat, recent form, draw/goal trends
+**Query types:** H2H matchups, team form, goal stats, draw trends, shots/corners/cards, season standings, prediction context
 
-**Fallback:** If backend unavailable or no relevant data, fall back to current static context behaviour
+**Fallback:** Frontend tries backend RAG first → Vercel proxy second → user-provided key third. Security banner hidden when using backend RAG (API key stays server-side).
+
+**Result:** 44 backend tests + 5 frontend tests (512 total), all passing. Server-side API key resolves the browser-exposed key security issue.
 
 ### P6d. Docker & Deployment Documentation
 

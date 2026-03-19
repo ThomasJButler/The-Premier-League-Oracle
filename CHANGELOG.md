@@ -2,6 +2,36 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — P6b: Oracle Chat RAG — data-grounded responses using CSV DataFrame
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.19`
+
+### New: DataFrame RAG query engine (backend/app/api/rag.py)
+- Intent parser extracts team names, query types (h2h, form, goals, draws, stats, season, prediction), date ranges, and stat types from natural language
+- Team name extraction with word-boundary checks, longest-first matching, alias support (Spurs → Tottenham, Gunners → Arsenal, Forest → Nott'm Forest, etc.)
+- DataFrame query functions: head-to-head records, recent form with W/D/L streaks, goal stats, draw trends, shots/corners/cards breakdowns, season standings table
+- RAG prompt builder produces grounded system prompts with relevant match data in markdown format
+- Initialised from `CSV_TO_API` mapping and `_ALIASES` dict in `free_tier_features.py`
+
+### New: /chat/rag endpoint (backend/app/api/main.py)
+- `POST /chat/rag` accepts message + conversation history, returns data-grounded GPT-4o-mini response
+- API key resolution: `OPENAI_API_KEY` env var (preferred) or `X-OpenAI-Key` request header (fallback)
+- Rate limiting (1 request per 3 seconds per IP), input validation (1–500 chars)
+- Response includes `grounded` flag indicating whether match data context was found
+- Fixes security issue: OpenAI API key no longer exposed in browser network tab
+
+### Updated: ChatBot.svelte — backend RAG with graceful fallback
+- Three-tier availability check: backend RAG → Vercel proxy → user-provided key
+- `sendViaBackendRAG()` posts to `/api/oracle/chat/rag` with conversation history
+- Falls back to `sendViaFallbackProxy()` if RAG endpoint returns an error
+- RAG indicator badge in header when backend is available
+- Security banner and API key form hidden when using backend RAG
+
+### Tests
+- **Backend:** 44 new tests in `test_rag.py` — team extraction (8), intent parsing (12), DataFrame queries (13), prompt builder (5), endpoint (6)
+- **Frontend:** 5 new tests in `ChatBot.test.ts` — RAG detection, RAG indicator, sending via RAG, fallback to proxy, security banner hidden
+- **Totals:** 512 Vitest tests (32 files), 130 pytest tests (4 files), all passing
+
 ## April 2026 — P6a: Dashboard redesign — reduce scrolling, fix empty charts, merge sections
 
 **Branch:** `v3.0-Development` | **Tag:** `v0.1.18`

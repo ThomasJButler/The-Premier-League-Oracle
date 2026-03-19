@@ -62,7 +62,8 @@ uvicorn app.api.main:app --reload --port 8000
 - `app.css` - Global styles with glassmorphism theme
 
 ### Backend Structure (`backend/app/`)
-- `api/main.py` - FastAPI server with prediction endpoints
+- `api/main.py` - FastAPI server with prediction + chat endpoints
+- `api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
 - `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
 - `data/football_data_collector.py` - Historical data collection
@@ -104,16 +105,16 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | **DONE** |
 | P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | **DONE** |
 | P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | **DONE** |
-| P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | Not started |
+| P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | **DONE** |
 | P6d | Docker & deployment documentation | Not started |
 
-**Active branches:** `v3.0-BackendMLTraining` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
+**Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 507 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
-- **Backend:** 86 pytest tests (3 files), all non-skip passing (7 skip without libomp)
+- **Frontend:** 512 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
+- **Backend:** 130 pytest tests (4 files), all non-skip passing (7 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
 - **Untested components (3):** Header, SidebarNav, Sidebar — layout/navigation only
 
