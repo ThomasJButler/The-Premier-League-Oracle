@@ -283,7 +283,7 @@ export class EloRatingSystem {
   processCompletedMatches(matches: Match[]): number {
     // Sort chronologically so ratings evolve in the correct order
     const sorted = [...matches]
-      .filter(m => m.result && m.status === 'FINISHED')
+      .filter(m => m.result && (m.status === 'FINISHED' || !m.status))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let processed = 0;
@@ -392,9 +392,12 @@ export class AdvancedMatchPredictor {
     const outcomes = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
     // 6. Calculate confidence based on model factors
-    const ratingReliability = 0.8; // How much we trust our ratings
+    // Strength of prediction — higher when one outcome dominates
+    const maxProb = Math.max(outcomes.homeWin, outcomes.draw, outcomes.awayWin);
+    const predictionClarity = Math.min(maxProb / 0.6, 1); // 1.0 when dominant outcome ≥ 60%
     const fatigueCertainty = homeRestDays >= 3 && awayRestDays >= 3 ? 0.9 : 0.7;
-    const confidence = (ratingReliability + fatigueCertainty) / 2;
+    const dataQuality = completed.length >= 20 ? 0.85 : 0.6 + (completed.length / 20) * 0.25;
+    const confidence = (predictionClarity * 0.4 + fatigueCertainty * 0.3 + dataQuality * 0.3);
 
     // 7. Value betting — derive fair odds from model probabilities (no hardcoded bookmaker odds)
     const fairOdds = {

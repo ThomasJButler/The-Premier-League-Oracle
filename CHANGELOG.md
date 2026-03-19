@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5x — prediction quality improvements
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5x — processCompletedMatches filter fix
+- `advancedPredictions.ts`: ELO `processCompletedMatches` now accepts matches with `undefined` status (not just `'FINISHED'`). Historical matches from CSV training data often lack status — these were silently skipped, leaving ELO ratings stale
+
+### P5x — Variable confidence scoring
+- `advancedPredictions.ts`: Replaced binary confidence score (0.85/0.75) with a variable calculation based on three factors:
+  - **Prediction clarity** (40%): how dominant the top outcome probability is (normalised against 0.6 threshold)
+  - **Fatigue certainty** (30%): whether both teams have adequate rest (≥3 days)
+  - **Data quality** (30%): how many completed matches are available (scales from 0.6 at 0 matches to 0.85 at 20+)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+
+---
+
 ## 30 March 2026 — P4g/P5x/P5u — .dockerignore, accessibility, spec corrections
 
 **Branch:** `v3.0-BackendMLTraining`

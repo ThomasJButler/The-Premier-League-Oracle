@@ -493,10 +493,10 @@ These are low-priority items deferred from completed priority tiers:
 - [x] **P5x:** `TopScorers.svelte:165`: Added `role="img"` and `aria-label` ("1st/2nd/3rd place") to medal emoji spans
 - [x] **P5x:** `ChatBot.svelte:353`: Privacy copy changed from "never sent to our servers" to "stored in your browser only"
 - [x] **P5x:** `Settings.svelte:292`: HTML comment changed from "API Provider Selection" to "Football-Data.org API Configuration" (visible heading was already correct)
-- [ ] **P5x:** `AdvancedMatchPredictor.predictMatch` confidence is effectively constant (returns 0.85 or 0.75) — should vary with actual model signal
-- [ ] **P5x:** `advancedPredictions.ts:processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on `Match` type — add fallback to check `m.score.fullTime` presence
+- [x] **P5x:** `AdvancedMatchPredictor.predictMatch` confidence now varies with 3 real signals: prediction clarity (max outcome probability), fatigue certainty (rest days), and data quality (completed matches count) — was binary 0.85/0.75
+- [x] **P5x:** `advancedPredictions.ts:processCompletedMatches` now also accepts matches with `!m.status` (undefined) alongside `'FINISHED'` — matches with valid results but no status are no longer silently skipped
 - [x] **P5x:** `betBuilder.ts:441`: Fixed corners selection text from 'Over 7.5 corners' to 'Over 8.5 corners' to match the `totalOver85` probability threshold
-- [ ] **P5x:** `Dockerfile:COPY config.yml .` references non-existent file — Docker build fails on clean clone. `EXPOSE 5000` is misleading (MLflow port, not the app)
+- [x] **P5x:** `Dockerfile` already fixed in P5am — stale `COPY config.yml` removed, misleading `EXPOSE 5000` removed
 
 ---
 

@@ -196,7 +196,7 @@ These specs are the single source of truth for requirements.
 - `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
 - ~~`betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded~~ **FIXED:** changed to 'Over 8.5 corners' to match the `totalOver85` probability used in confidence calculation
 - Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
-- `advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped
+- ~~`advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped~~ **FIXED:** now also accepts matches with `!m.status` (undefined)
 - ~~Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)~~ **FIXED:** `timedelta` import removed from `main.py` (P5s), `asyncio` import removed from `modern_oracle.py` (P5s). `main.py` still imports `asyncio` but it IS used (WebSocket handler line 566)
 - `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 - `SidebarNav.svelte` — extracted nav content component used by both desktop `<aside>` and mobile `<Sheet>` rendering paths to avoid 66 lines of template duplication
