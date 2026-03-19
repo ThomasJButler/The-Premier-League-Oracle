@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (thirty-seventh update — documentation sync and accuracy sweep)
+Last updated: March 2026 (thirty-eighth update — P6 Final Push added)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: Active Scope 100% Complete (Pro-tier deferred)
+## Project Status: Final Push (P6 — MVP Ship)
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -19,13 +19,105 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
+| **P6 Final Push** | **0/5 (0%)** | **URGENT — Dashboard redesign, Oracle Chat RAG, repo cleanup, deployment docs, MVP quality** |
 
 **Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
-**Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
+**Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
+
+---
+
+## URGENT — P6: Final Push (MVP Ship)
+
+**Goal:** Ship a viable, deployable MVP. This is the last set of work before the project is complete.
+
+**Execution order:** P6c → P6e → P6a → P6b → P6d
+
+### P6c. Repo Cleanup — Remove Dead Code
+
+**Files to DELETE:**
+- [ ] `backend/app/security/auth.py` (17.7 KB) — never imported by main.py
+- [ ] `backend/app/security/secrets.py` (20.3 KB) — never imported
+- [ ] `backend/app/security/validators.py` (20.0 KB) — never imported
+- [ ] `backend/app/security/__init__.py` — empty module init
+- [ ] `backend/environment.yml` — redundant with requirements.txt, conda not used in Docker/CI
+
+**Files to ARCHIVE (create `pro-tier-archive` branch first, then delete from main):**
+- [ ] `backend/app/features/advanced_engineering.py` — 63/150 methods return 0.0, Pro-tier only
+- [ ] `backend/app/models/xgboost_model.py` — Pro-tier wrapper, unused
+- [ ] `backend/app/models/lstm_predictor.py` — Pro-tier, untrained, requires torch
+- [ ] `backend/app/models/transformer_model.py` — Pro-tier, untrained, requires torch
+- [ ] `backend/app/models/modern_oracle.py` — Pro-tier ensemble orchestrator, ChromaDB/LangChain
+
+**Clean `main.py`:**
+- [ ] Remove imports of `ModernPremierLeagueOracle` and Pro-tier model init on startup
+- [ ] Remove Pro-tier endpoints: `/predict` (not `/predict/free`), `/predict/natural`, `/predict/batch`, `/models/performance`, `/features/importance`, `/betting/value`, `/websocket_predictions`
+- [ ] Remove `active_websockets` set and WebSocket handler
+- [ ] This removes startup warnings about missing torch/Redis/MLflow
+
+**Clean `requirements.txt`:**
+- [ ] Remove `websockets==13.1` (WebSocket handler removed)
+- [ ] Remove `redis==5.2.0` (not used by free-tier)
+- [ ] Remove commented Pro-tier section (lines 28-44) — files archived to branch
+- [ ] Add `openai` package (needed for `/chat/rag` in P6b)
+
+**Expected impact:** ~100KB dead code removed, cleaner startup, faster pip install
+
+### P6e. MVP Quality Pass
+
+- [ ] **Vite proxy for `/api/oracle/`** — Kelly Calculator suggested bets fail; check `vite.config.ts` proxy matches backend at `:8000`
+- [ ] **Chart.js 'fill' warnings** — register Filler plugin or remove `fill` from datasets (3 console warnings)
+- [ ] **422 errors on `/predict/free`** — 2 of 18 predictions returned 422; identify team name mismatches and add normalisation
+- [ ] **Standings form column empty** — show "—" when `Standing.form` is null in `StandingsTable.svelte`
+- [ ] **Prediction Accuracy chart x-axis** — "Feb 21" repeated 4 times; fix date formatting to show gameweek labels
+
+### P6a. Dashboard Redesign — Reduce Scrolling & Fix Charts
+
+**Problem:** 7 sections, ~3,300px on mobile. Hero and Stats Grid show overlapping metrics. "How We Predict" is static. Charts empty for new users.
+
+**File:** `frontend/src/components/Dashboard.svelte` (540 lines)
+
+- [ ] **Merge Hero + Stats Grid** — remove duplicate 4-card stats grid (Prediction Accuracy, Total Profit, Total Predictions, Bets Placed) since hero already shows same quick stats. Or replace hero quick stats with the detailed cards
+- [ ] **Collapse "How We Predict"** — move 5 methodology cards into collapsible `<details>` or info tooltip. Static weights (25%/30%/20%/10%/15%) aren't actionable dashboard content
+- [ ] **Fix charts for new users** — Profit/Loss chart: show "Place your first bet to track P&L" card instead of empty chart. Prediction Accuracy: improve fallback label clarity
+- [ ] **Merge Recent Predictions + Upcoming Matches** — combine into single "Activity" section with Predictions | Upcoming tabs
+
+**Target:** ~1.5 viewport heights on desktop (down from ~3.5)
+
+### P6b. Oracle Chat RAG — Data-Grounded Responses
+
+**Problem:** ChatBot injects static context (top 6 standings, 5 matches) into GPT-4o-mini. No access to 2,191 historical matches. Hallucinates stats. Reference: SQL-Ball project (github.com/ThomasJButler/SQL-Ball).
+
+**Approach:** Lightweight DataFrame RAG (no ChromaDB needed for structured tabular data)
+
+**Files:**
+- [ ] `backend/app/api/main.py` — add `/chat/rag` POST endpoint
+- [ ] `frontend/src/components/ChatBot.svelte` — route through backend RAG
+- [ ] `frontend/api/chat.ts` — support RAG context passthrough
+
+**Endpoint logic (`/chat/rag`):**
+1. Receive user message + conversation history
+2. Parse intent: extract team names, date ranges, stat types
+3. Query in-memory CSV DataFrame (already loaded by `FreeTierFeatureEngineer` — 2,191 matches)
+4. Build augmented system prompt with retrieved match data (max 20 rows as markdown table)
+5. Call OpenAI API server-side — use `OPENAI_API_KEY` env var if set, fall back to user-provided key from request header
+6. Stream response back
+
+**Query types:** H2H matchups, team season aggregates, best/worst by stat, recent form, draw/goal trends
+
+**Fallback:** If backend unavailable or no relevant data, fall back to current static context behaviour
+
+### P6d. Docker & Deployment Documentation
+
+- [ ] Create `DEPLOYMENT.md` with step-by-step instructions:
+  - **Frontend (Vercel):** Connect repo → set build/output → add env vars → deploy
+  - **Backend (Docker):** `docker-compose up --build` → set API keys → production host options (Railway, Fly.io, Render)
+  - **Environment variables table:** `OPENAI_API_KEY`, `FOOTBALL_DATA_API_KEY`, `VITE_BACKEND_URL`
+- [ ] Verify `backend/docker-compose.yml` works end-to-end
+- [ ] Document `vercel.json` configuration
 
 ---
 
@@ -133,7 +225,7 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 **Version pinning:**
 
 - [x] Fixed `requirements.txt` header from Python 3.13 to Python 3.11 (matching Dockerfile and CI)
-- [ ] `passlib==1.7.4` is incompatible with Python 3.13 — the `crypt` module was removed from stdlib in 3.13. (Only used by dead `auth.py` module, so low runtime risk)
+- [x] ~~`passlib==1.7.4` incompatible with Python 3.13~~ — RESOLVED: `auth.py` deleted as dead code, `passlib` already removed from requirements.txt (P6c)
 
 **Backend dead dependencies in `requirements.txt`:**
 
@@ -142,8 +234,8 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 
 **Backend missing dependencies in `requirements.txt`:**
 
-- [ ] Add `langchain-community` — `modern_oracle.py` imports it but package is separate from `langchain` and not listed. **Note:** `modern_oracle.py` is the Pro-tier model (entirely unused at runtime on the free tier); zero runtime risk until P3c is started
-- [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it. **Note:** `auth.py` is not imported by `main.py` and is completely unused at runtime; zero runtime risk until P3d is started
+- [x] ~~Add `langchain-community`~~ — RESOLVED: `modern_oracle.py` archived to `pro-tier-archive` branch (P6c)
+- [x] ~~Add `bcrypt`~~ — RESOLVED: `auth.py` deleted as dead code (P6c)
 - [x] Fix `main.py:590,594`: `/features/importance` endpoint accesses `oracle.lstm_model.model` and `oracle.transformer_model.model` without checking if they are not None — will `AttributeError` when torch missing
 
 ---
