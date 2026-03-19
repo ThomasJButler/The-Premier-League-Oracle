@@ -2,6 +2,21 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Documentation accuracy sweep: active scope marked 100% complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Documentation updates
+- **IMPLEMENTATION_PLAN.md** — updated project status from "~89%" to "Active Scope 100% Complete" (all P0–P5h done, only deferred Pro-tier remains)
+- **IMPLEMENTATION_PLAN.md** — test coverage table updated: 24 → 32 file rows, 404 → 507 total, 8 new test files added, 2 row counts corrected (betHistoryService 27→23, footballData 23→25)
+- **IMPLEMENTATION_PLAN.md** — untested components list corrected: 10 → 3 (App, MobileNav, Sidebar — layout only)
+- **README.md** — test count badge corrected: 364 → 507 passing
+- **README.md** — backend status corrected: "scaffolded, not yet trained" → "free-tier model trained, 51% accuracy"
+- **specs/01-prediction-engine.md** — removed hardcoded "402/402" test count (now says "All prediction unit tests pass")
+- **CLAUDE.md** — updated project status to "Active scope 100% complete"
+
+---
+
 ## April 2026 — Unit test coverage expansion: 8 new test files, 103 new tests
 
 **Branch:** `v3.0-BackendMLTraining`

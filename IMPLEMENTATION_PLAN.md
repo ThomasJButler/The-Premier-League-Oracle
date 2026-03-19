@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (thirty-sixth update — unit test coverage expansion)
+Last updated: April 2026 (thirty-seventh update — documentation sync and accuracy sweep)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~89% Complete
+## Project Status: Active Scope 100% Complete (Pro-tier deferred)
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -428,8 +428,8 @@ All feature specifications in `specs/`:
 | `betBuilder.test.ts` | 40 | Passing |
 | `value.test.ts` | 17 | Passing |
 | `advancedPredictions.test.ts` | 24 | Passing |
-| `betHistoryService.test.ts` | 27 | Passing |
-| `footballData.test.ts` | 23 | Passing |
+| `betHistoryService.test.ts` | 23 | Passing |
+| `footballData.test.ts` | 25 | Passing |
 | `kelly.test.ts` | 11 | Passing |
 | `types.test.ts` | 4 | Passing |
 | `predictionTracker.test.ts` | 22 | Passing |
@@ -449,11 +449,19 @@ All feature specifications in `specs/`:
 | `backendService.test.ts` | 11 | Passing |
 | `aiAnalysis.test.ts` | 23 | Passing |
 | `AccumulatorBuilder.test.ts` | 17 | Passing |
-| **Total** | **404** | **All passing** |
+| `SeasonStats.test.ts` | 13 | Passing |
+| `StandingsTable.test.ts` | 15 | Passing |
+| `TopScorers.test.ts` | 13 | Passing |
+| `Help.test.ts` | 13 | Passing |
+| `ApiSetupWizard.test.ts` | 13 | Passing |
+| `MatchList.test.ts` | 12 | Passing |
+| `LiveTicker.test.ts` | 12 | Passing |
+| `MatchEventToast.test.ts` | 12 | Passing |
+| **Total** | **507** | **All passing (32 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 
-**Untested components (10):** SeasonStats, StandingsTable, TopScorers, Help, App, ApiSetupWizard, MatchList, LiveTicker, MobileNav, Sidebar
+**Untested components (3):** App, MobileNav, Sidebar — layout/navigation components only
 
 ### Frontend (Playwright E2E)
 

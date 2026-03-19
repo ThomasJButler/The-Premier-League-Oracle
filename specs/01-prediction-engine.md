@@ -147,4 +147,4 @@ Ralph should run backtests with ±5% weight variations to optimise these values 
 - [x] Confidence reflects both model certainty and historical calibration — ensemble disagreement lowers confidence; `getCalibrationFactors()` in predictionTracker adjusts based on per-band historical accuracy
 - [x] AI analysis available as a configurable feature in Settings (`aiAnalysis.ts` created, wired into Settings)
 - [x] Backtest runner produces accuracy metrics for historical seasons (`frontend/src/lib/backtest.ts` — `BacktestRunner` class with accuracy, log loss, Brier score)
-- [x] All prediction unit tests pass — 402/402 passing (`npm run test:run`)
+- [x] All prediction unit tests pass (`npm run test:run`)

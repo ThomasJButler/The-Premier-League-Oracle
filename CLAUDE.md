@@ -101,7 +101,7 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~89% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Active scope 100% complete** — all 99/99 spec acceptance criteria met, all P0–P5h items done. Only deferred Pro-tier (P3a–d) and 3 minor items remain. See `IMPLEMENTATION_PLAN.md` for details (completed items archived to `CHANGELOG.md`)
 - **All 8 specs: 100% of active acceptance criteria met** (99/99). Pro-tier spec 08 Req 6 explicitly deferred.
 - **Free-tier ML model trained** — stacked OvR ensemble now trained alongside single XGBoost (51.0% accuracy baseline, model at `backend/models/xgboost_free_tier.joblib`). Ensemble uses 3 binary classifiers (H/D/A vs rest) with dedicated draw-class tuning + logistic regression meta-learner. `/predict/free` endpoint auto-uses ensemble when present. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
 - **Remaining work:** Deferred minor items (3), deferred Pro-tier (P3a–d)

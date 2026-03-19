@@ -62,5 +62,11 @@ backend/mlruns/
 # IDE
 .claude/settings.json
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Screenshots
+oracle-landing.png
+
 # Misc
 urgenttodo.txt
