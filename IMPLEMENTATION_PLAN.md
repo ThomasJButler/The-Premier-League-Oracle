@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-third update — ML improvements: class weights, calibration, feature selection)
+Last updated: 30 March 2026 (twenty-fourth update — draw-specific features, ML v2 improvements)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -14,7 +14,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 27/27 (100%) | ALL DONE — Docker fixed, CI coverage enforced, .env.example created |
-| P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
+| P3-Free ML Pipeline | DONE | 94 features (incl. 8 draw indicators), 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | ~47/49 (96%) | P5af backend paths, P5am Dockerfile non-root user |
@@ -113,7 +113,7 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 - [ ] **Hyperparameter tuning** — model stopped at iteration 48 (early stopping). Default XGBoost params may not be optimal. Grid search or Optuna over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`
 
 **Medium effort (likely significant impact):**
-- [ ] **Draw-specific features** — engineer features that correlate with draws: closeness in form, closeness in standings, low-scoring H2H history, defensive team matchups
+- [x] **Draw-specific features** — 8 new features added to `free_tier_features.py`: `form_closeness`, `standings_closeness`, `home_draw_rate`, `away_draw_rate`, `combined_defensive_strength`, `low_scoring_indicator`, `h2h_draw_tendency`, `draw_streak_proximity`
 - [ ] **Elo-based features** — feed the frontend Elo ratings (already computed) into the backend feature engineer as additional inputs
 - [ ] **Recency weighting** — weight recent seasons more heavily than older ones (PL meta changes over 5 seasons)
 

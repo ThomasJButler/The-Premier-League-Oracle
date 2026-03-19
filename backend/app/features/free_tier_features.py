@@ -1,7 +1,7 @@
 """
 Free-tier feature engineering for Premier League match prediction.
 
-Computes ~86 features from match data available on the Football-Data.org
+Computes ~94 features from match data available on the Football-Data.org
 free API tier + historical CSV data. No stubs — every feature computes
 a real value from the data (0.0 only when insufficient history exists).
 
@@ -162,6 +162,11 @@ class FreeTierFeatureEngineer:
         'home_shots_on_target_avg', 'away_shots_on_target_avg',
         'home_corners_avg', 'away_corners_avg',
         'home_yellows_avg', 'away_yellows_avg',
+        # Draw indicators (8) — target the model's weakest class
+        'form_closeness', 'standings_closeness',
+        'home_draw_rate', 'away_draw_rate',
+        'combined_defensive_strength', 'low_scoring_indicator',
+        'h2h_draw_tendency', 'draw_streak_proximity',
     ]
 
     def __init__(self, data: pd.DataFrame):
@@ -186,7 +191,7 @@ class FreeTierFeatureEngineer:
         match_date: Optional[datetime] = None,
     ) -> Dict[str, float]:
         """
-        Compute all ~86 features for a match prediction.
+        Compute all ~94 features for a match prediction.
 
         Only data strictly before *match_date* is used (no leakage).
         Returns a dict keyed by FEATURE_NAMES with float values.
@@ -207,6 +212,7 @@ class FreeTierFeatureEngineer:
         features.update(self._derived(home_team, away_team, pre_match))
         features.update(self._half_time(home_team, away_team, pre_match))
         features.update(self._match_stats(home_team, away_team, pre_match))
+        features.update(self._draw_indicators(home_team, away_team, pre_match))
 
         # Ensure every feature present; replace NaN with 0.0
         result: Dict[str, float] = {}
@@ -979,5 +985,92 @@ class FreeTierFeatureEngineer:
         f['away_corners_avg'] = _rolling_stat(away_team, 'home_corners', 'away_corners')
         f['home_yellows_avg'] = _rolling_stat(home_team, 'home_yellows', 'away_yellows')
         f['away_yellows_avg'] = _rolling_stat(away_team, 'home_yellows', 'away_yellows')
+
+        return f
+
+    def _draw_indicators(self, home_team: str, away_team: str,
+                         data: pd.DataFrame) -> Dict[str, float]:
+        """
+        8 features: explicit draw-prediction signals.
+
+        Draws are ~23% of PL outcomes but are the hardest to predict.
+        These features capture patterns that correlate with drawn matches:
+        evenly-matched teams, defensive setups, and historical draw tendencies.
+        """
+        f: Dict[str, float] = {}
+        hm = self._get_team_matches(home_team, data)
+        am = self._get_team_matches(away_team, data)
+
+        # 1. Form closeness: absolute difference in recent PPG (lower = more likely draw)
+        def _ppg(matches: pd.DataFrame, n: int = 10) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 1.0  # neutral default
+            pts = recent['team_result'].map({'W': 3, 'D': 1, 'L': 0})
+            return float(pts.mean())
+
+        h_ppg = _ppg(hm)
+        a_ppg = _ppg(am)
+        # Invert so higher = more likely draw (closer teams)
+        f['form_closeness'] = 1.0 / (1.0 + abs(h_ppg - a_ppg))
+
+        # 2. Standings closeness: inverse of position gap (higher = closer)
+        standings = self._get_standings(data)
+        h_pos = standings.get(home_team, {}).get('position', 10)
+        a_pos = standings.get(away_team, {}).get('position', 10)
+        f['standings_closeness'] = 1.0 / (1.0 + abs(h_pos - a_pos))
+
+        # 3-4. Draw rates: proportion of draws in recent matches per team
+        def _draw_rate(matches: pd.DataFrame, n: int = 15) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 0.0
+            return float((recent['team_result'] == 'D').mean())
+
+        f['home_draw_rate'] = _draw_rate(hm)
+        f['away_draw_rate'] = _draw_rate(am)
+
+        # 5. Combined defensive strength: average clean sheet rate (higher = more defensive)
+        def _cs_rate(matches: pd.DataFrame, n: int = 10) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 0.0
+            return float((recent['opponent_goals'] == 0).mean())
+
+        f['combined_defensive_strength'] = (_cs_rate(hm) + _cs_rate(am)) / 2.0
+
+        # 6. Low-scoring indicator: average total goals in recent matches (lower = more likely draw)
+        def _avg_total_goals(matches: pd.DataFrame, n: int = 10) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 2.5  # PL average
+            return float((recent['team_goals'] + recent['opponent_goals']).mean())
+
+        avg_goals = (_avg_total_goals(hm) + _avg_total_goals(am)) / 2.0
+        # Invert: lower total goals → higher draw probability
+        f['low_scoring_indicator'] = max(0.0, 3.0 - avg_goals)
+
+        # 7. H2H draw tendency: draw rate in head-to-head matches
+        h2h = self._get_h2h_matches(home_team, away_team, data)
+        if len(h2h) >= 2:
+            h2h_draws = 0
+            for _, row in h2h.iterrows():
+                if row.get('result') == 'D':
+                    h2h_draws += 1
+            f['h2h_draw_tendency'] = h2h_draws / len(h2h)
+        else:
+            f['h2h_draw_tendency'] = 0.0
+
+        # 8. Draw streak proximity: are either team on a sequence close to drawing?
+        #    (teams that recently drew are slightly more likely to draw again in close matchups)
+        def _recent_draw_count(matches: pd.DataFrame, n: int = 5) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 0.0
+            return float((recent['team_result'] == 'D').sum())
+
+        h_recent = _recent_draw_count(hm)
+        a_recent = _recent_draw_count(am)
+        f['draw_streak_proximity'] = (h_recent + a_recent) / 10.0  # normalise to 0-1 range
 
         return f

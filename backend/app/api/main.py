@@ -743,7 +743,7 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
     """
     Predict match outcome using the free-tier XGBoost model.
 
-    Uses ~86 features derived from match results, form, H2H, and contextual data.
+    Uses ~94 features derived from match results, form, H2H, draw indicators, and contextual data.
     No paid API data required.
     """
     # Rate limiting — extract real client IP from request

@@ -65,7 +65,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `api/main.py` - FastAPI server with prediction endpoints
 - `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
 - `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
-- `features/free_tier_features.py` - Free-tier feature engineering (86 features, standalone, fully functional)
+- `features/free_tier_features.py` - Free-tier feature engineering (94 features incl. 8 draw indicators, standalone, fully functional)
 - `train_free_tier.py` - Free-tier training script (XGBoost + LR baseline, chronological split)
 - `data/football_data_collector.py` - Historical data collection
 - `security/` - Auth, secrets, validators

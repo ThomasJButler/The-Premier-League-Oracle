@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — Draw-specific features (8 new features, 86→94 total)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Feature engineering (`free_tier_features.py`)
+- Added 8 draw-indicator features targeting the model's weakest prediction class (6.7% draw accuracy):
+  - `form_closeness` — inverse of PPG gap between teams (closer = more likely draw)
+  - `standings_closeness` — inverse of league position gap
+  - `home_draw_rate` / `away_draw_rate` — draw frequency in recent matches per team
+  - `combined_defensive_strength` — average clean sheet rate across both teams
+  - `low_scoring_indicator` — inverted average total goals (lower scoring = more draws)
+  - `h2h_draw_tendency` — draw rate in head-to-head history
+  - `draw_streak_proximity` — recent draw count for both teams
+- Feature count: 86 → 94 (all counts updated across codebase and tests)
+- Test updated: `test_feature_count_is_86` → `test_feature_count_is_94`
+
+---
+
 ## 30 March 2026 — ML v2: class weights, calibration, feature selection
 
 **Branch:** `v3.0-BackendMLTraining`

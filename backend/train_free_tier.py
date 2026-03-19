@@ -2,7 +2,7 @@
 """
 Free-tier ML training script for Premier League match prediction.
 
-Trains an XGBoost model (+ logistic regression baseline) on ~86 features
+Trains an XGBoost model (+ logistic regression baseline) on ~94 features
 derived from historical CSV data. No paid API data required.
 
 Usage:
