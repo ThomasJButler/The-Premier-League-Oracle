@@ -33,7 +33,8 @@
     isMoreOpen = false;
   }
 
-  function handleKeydown(e: any) {
+  // Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent — any is required here
+  function handleKeydown(e: any) {  // eslint-disable-line @typescript-eslint/no-explicit-any
     if (e.key === 'Escape' && isMoreOpen) isMoreOpen = false;
   }
 

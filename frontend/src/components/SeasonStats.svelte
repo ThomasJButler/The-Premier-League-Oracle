@@ -4,6 +4,7 @@
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
 
+  // Svelte 4 component constructor typing is limited — any is required for icon components
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type IconComponent = new (...args: any[]) => any;
 

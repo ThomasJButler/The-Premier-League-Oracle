@@ -1,5 +1,5 @@
 import { dataService } from '../services/dataService';
-import type { Match, Standing, MLPrediction } from '../types';
+import type { Match, Standing, MLPrediction, TeamForm } from '../types';
 import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
@@ -42,6 +42,28 @@ interface LeagueAverages {
   avgAwayGoals: number; // Average goals scored by away teams per match
   homeWinRate: number;  // Proportion of completed matches won by the home side
   teamStrengths: Map<string, TeamStrengths>;
+}
+
+// Return type of analyzeRecentForm()
+interface FormAnalysis {
+  homeFormScore: number;
+  awayFormScore: number;
+  homeFormString: string;
+  awayFormString: string;
+  probabilities: { homeWin: number; draw: number; awayWin: number };
+}
+
+// Return type of analyzeHeadToHead()
+interface H2HAnalysis {
+  totalMatches: number;
+  homeWins: number;
+  awayWins: number;
+  draws: number;
+  homeWinRate: number;
+  awayWinRate: number;
+  avgHomeGoals?: number;
+  avgAwayGoals?: number;
+  probabilities: { homeWin: number; draw: number; awayWin: number };
 }
 
 /**
@@ -489,7 +511,7 @@ export class OptimizedPredictor {
       dataService.getTeamForm(awayTeam, historicalMatches)
     ]);
 
-    const calculateFormScore = (form: any[]) => {
+    const calculateFormScore = (form: TeamForm[]) => {
       if (!form || form.length === 0) {
         // Return neutral form score when no form data available.
         // Previously this derived from ELO, which double-counted ELO's
@@ -511,7 +533,7 @@ export class OptimizedPredictor {
     const homeFormScore = calculateFormScore(homeForm);
     const awayFormScore = calculateFormScore(awayForm);
     
-    const formString = (form: any[]) => {
+    const formString = (form: TeamForm[]) => {
       if (!form || form.length === 0) {
         return '?????'; // No form data available
       }
@@ -781,8 +803,8 @@ export class OptimizedPredictor {
     homeExpected: number,
     awayExpected: number,
     predictedResult: 'H' | 'D' | 'A',
-    formAnalysis: any,
-    h2hAnalysis: any
+    formAnalysis: FormAnalysis,
+    h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
     let homeGoals = Math.round(homeExpected);
     let awayGoals = Math.round(awayExpected);
@@ -804,7 +826,7 @@ export class OptimizedPredictor {
     }
     
     // Consider H2H average goals
-    if (h2hAnalysis.totalMatches > 0) {
+    if (h2hAnalysis.totalMatches > 0 && h2hAnalysis.avgHomeGoals !== undefined && h2hAnalysis.avgAwayGoals !== undefined) {
       const h2hTotal = h2hAnalysis.avgHomeGoals + h2hAnalysis.avgAwayGoals;
       if (h2hTotal < 2.0) {
         // Low-scoring fixture historically

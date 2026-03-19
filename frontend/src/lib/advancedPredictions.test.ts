@@ -379,7 +379,10 @@ describe('Advanced Predictions Module', () => {
         expect(prediction.expectedAwayGoals).toBeLessThan(5);
       });
 
-      it('should identify value bets', async () => {
+      it('should return empty valueBets when no bookmaker odds are available', async () => {
+        // P5e: The production code explicitly returns [] because the model has no
+        // external bookmaker odds to compare against. This test documents that
+        // intentional behaviour and will catch regressions if the array shape changes.
         vi.mocked(dataService.getMatches).mockResolvedValue([]);
 
         const prediction = await AdvancedMatchPredictor.predictMatch(
@@ -388,14 +391,8 @@ describe('Advanced Predictions Module', () => {
           new Date('2025-08-25')
         );
 
-        // valueBets should always be a valid array
         expect(Array.isArray(prediction.valueBets)).toBe(true);
-        // When value bets are found, each must have valid structure
-        for (const bet of prediction.valueBets) {
-          expect(bet.expectedValue).toBeGreaterThan(0);
-          expect(bet.odds).toBeGreaterThan(1);
-          expect(['Home Win', 'Draw', 'Away Win']).toContain(bet.outcome);
-        }
+        expect(prediction.valueBets).toHaveLength(0);
       });
 
       it('should generate meaningful insights', async () => {

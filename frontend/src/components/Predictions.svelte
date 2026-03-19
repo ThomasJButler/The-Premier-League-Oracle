@@ -302,8 +302,8 @@
           fetchAiAnalysis(predictions[matchIndex]);
         }
 
-      } catch (error) {
-        // Error predicting match
+      } catch (err) {
+        console.warn(`Prediction failed for match ${matchIndex}:`, err);
         predictions[matchIndex].predictionStatus = 'error';
       }
 

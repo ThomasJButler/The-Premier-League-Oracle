@@ -53,7 +53,7 @@
       const rawScorers = await dataService.getTopScorers();
       
       // Transform data to consistent format
-      scorers = rawScorers.map((s: any, index: number) => ({
+      scorers = rawScorers.map((s, index) => ({
         position: index + 1,
         player: {
           id: s.player?.id || 0,
@@ -67,9 +67,9 @@
           name: s.team?.name || s.team?.shortName || 'Unknown',
           crest: s.team?.crest
         },
-        goals: s.goals || s.numberOfGoals || 0,
-        assists: s.assists ?? s.numberOfAssists ?? null,
-        penalties: s.penalties ?? s.penaltyGoals ?? null
+        goals: s.goals || 0,
+        assists: s.assists ?? null,
+        penalties: s.penalties ?? null
       }));
       
       if (scorers.length === 0) {

@@ -38,7 +38,6 @@ const STORAGE_PREFIX = 'ai_analysis_';
 const SETTINGS_KEY = 'ai_analysis_enabled';
 const SERVER_KEY_CHECK = 'ai_analysis_server_key';
 const API_KEY_STORAGE = 'openai_api_key';
-const MAX_CACHED_ANALYSES = 50;
 
 // --- Service ---
 

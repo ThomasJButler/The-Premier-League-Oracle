@@ -408,18 +408,21 @@ describe('OptimizedPredictor', () => {
 
       const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
 
+      // P5e: Assertions must always execute — no conditional guards
       expect(prediction.valueOdds).toBeDefined();
-      if (prediction.valueOdds) {
-        // Odds should be > 1.0 (decimal format)
-        expect(prediction.valueOdds.home).toBeGreaterThan(1.0);
-        expect(prediction.valueOdds.draw).toBeGreaterThan(1.0);
-        expect(prediction.valueOdds.away).toBeGreaterThan(1.0);
+      const odds = prediction.valueOdds!;
 
-        // More likely outcomes should have lower odds
-        if (prediction.predictedResult === 'H') {
-          expect(prediction.valueOdds.home).toBeLessThan(prediction.valueOdds.away);
-        }
-      }
+      // Odds should be > 1.0 (decimal format)
+      expect(odds.home).toBeGreaterThan(1.0);
+      expect(odds.draw).toBeGreaterThan(1.0);
+      expect(odds.away).toBeGreaterThan(1.0);
+
+      // The predicted outcome should have the lowest odds (highest probability)
+      const topProb = prediction.predictedResult === 'H' ? odds.home
+        : prediction.predictedResult === 'A' ? odds.away
+        : odds.draw;
+      const otherOdds = [odds.home, odds.draw, odds.away].filter(o => o !== topProb);
+      expect(topProb).toBeLessThanOrEqual(Math.min(...otherOdds));
     });
   });
 

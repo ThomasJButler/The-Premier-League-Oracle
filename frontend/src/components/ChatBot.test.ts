@@ -2,10 +2,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ChatBot from './ChatBot.svelte';
 
-// Mock DOMPurify
+// Mock DOMPurify — use a spy so we can verify sanitize() is actually called.
+// Returns input unchanged (sufficient for rendering tests) but allows assertion
+// that the sanitisation step is not bypassed.
+const mockSanitize = vi.fn((html: string, _config?: Record<string, unknown>) => html);
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: (html: string) => html
+    sanitize: (html: string, config?: Record<string, unknown>) => mockSanitize(html, config)
   }
 }));
 
@@ -64,6 +67,7 @@ async function typeMessage(text: string) {
 describe('ChatBot Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSanitize.mockClear();
     // Re-apply localStorage mock defaults (setup.ts mocks are cleared by clearAllMocks)
     vi.mocked(localStorage.getItem).mockReturnValue(null);
     // Default: the /api/chat GET (server key check) returns no server key
@@ -226,6 +230,13 @@ describe('ChatBot Component', () => {
       expect(screen.getByText('How is Arsenal doing?')).toBeInTheDocument();
       expect(screen.getByText('Arsenal look strong this season.')).toBeInTheDocument();
     });
+
+    // P5e: Verify DOMPurify.sanitize() was called with the API response content.
+    // If a future regression removes the sanitise step, this test will fail.
+    expect(mockSanitize).toHaveBeenCalledWith(
+      'Arsenal look strong this season.',
+      expect.any(Object) // allowlist config
+    );
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       '/api/chat',
