@@ -96,7 +96,7 @@ class TestBuildDataset:
     def test_output_shapes(self):
         """X and y should have consistent shapes."""
         df = _build_mini_dataset(40)
-        X, y, names = build_dataset(df)
+        X, y, names, _ = build_dataset(df)
         assert X.ndim == 2
         assert y.ndim == 1
         assert X.shape[0] == y.shape[0]
@@ -106,13 +106,13 @@ class TestBuildDataset:
     def test_labels_valid(self):
         """All labels should be in {0, 1, 2}."""
         df = _build_mini_dataset(40)
-        X, y, _ = build_dataset(df)
+        X, y, _, _ = build_dataset(df)
         assert set(np.unique(y)).issubset({0, 1, 2})
 
     def test_warmup_filter(self):
         """Matches before MIN_PRIOR_MATCHES should be skipped."""
         df = _build_mini_dataset(40)
-        X, y, _ = build_dataset(df)
+        X, y, _, _ = build_dataset(df)
         # Should have fewer samples than total matches
         assert len(X) < len(df)
         # Should skip at least MIN_PRIOR_MATCHES * n_teams matches
@@ -121,13 +121,13 @@ class TestBuildDataset:
     def test_no_nan_in_features(self):
         """Feature matrix should have no NaN values."""
         df = _build_mini_dataset(40)
-        X, y, _ = build_dataset(df)
+        X, y, _, _ = build_dataset(df)
         assert not np.any(np.isnan(X)), 'Feature matrix contains NaN values'
 
     def test_feature_names_match(self):
         """Returned feature names should match FEATURE_NAMES."""
         df = _build_mini_dataset(40)
-        _, _, names = build_dataset(df)
+        _, _, names, _ = build_dataset(df)
         assert names == FreeTierFeatureEngineer.FEATURE_NAMES
 
 

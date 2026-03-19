@@ -50,10 +50,23 @@
     datasets: [{
       label: 'Prediction Accuracy',
       data: [] as number[],
-      borderColor: '#4299e1',
+      borderColor: 'hsl(var(--primary))',
       tension: 0.4,
       fill: false
     }]
+  };
+
+  /** Chart scale options — uses CSS variables so they adapt to light/dark theme */
+  const themeScaleOptions = {
+    y: {
+      beginAtZero: true,
+      grid: { color: 'hsla(var(--muted-foreground) / 0.1)' },
+      ticks: { color: 'hsl(var(--muted-foreground))' }
+    },
+    x: {
+      grid: { display: false },
+      ticks: { color: 'hsl(var(--muted-foreground))' }
+    }
   };
 
   let upcomingPredictions = 0;
@@ -271,8 +284,8 @@
           datasets: [{
             label: 'Monthly Profit (£)',
             data,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderColor: 'hsl(var(--accent))',
+            backgroundColor: 'hsla(var(--accent) / 0.1)',
             tension: 0.4,
             fill: true,
           }]
@@ -280,17 +293,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(148, 163, 184, 0.1)' },
-              ticks: { color: '#94a3b8' }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { color: '#94a3b8' }
-            }
-          },
+          scales: themeScaleOptions,
           plugins: {
             legend: { display: false }
           }
@@ -427,7 +430,7 @@
     <Card class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
       <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
-        <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
+        <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: themeScaleOptions, plugins: { legend: { labels: { color: 'hsl(var(--muted-foreground))' } } } }} />
       </div>
     </Card>
     <Card class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">

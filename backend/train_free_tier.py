@@ -89,7 +89,7 @@ def load_data(csv_dir: str) -> pd.DataFrame:
 def build_dataset(
     df: pd.DataFrame,
     engineer: Optional[FreeTierFeatureEngineer] = None,
-) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+) -> Tuple[np.ndarray, np.ndarray, List[str], np.ndarray]:
     """
     Build feature matrix from historical matches.
 
@@ -100,6 +100,7 @@ def build_dataset(
         X: Feature matrix (n_samples, n_features)
         y: Labels (n_samples,) — 0=H, 1=D, 2=A
         feature_names: Ordered feature names
+        seasons: Season identifier per sample (for recency weighting)
     """
     if engineer is None:
         engineer = FreeTierFeatureEngineer(df)
@@ -107,6 +108,7 @@ def build_dataset(
     feature_names = FreeTierFeatureEngineer.FEATURE_NAMES
     X_rows: List[np.ndarray] = []
     y_rows: List[int] = []
+    season_rows: List[str] = []
     skipped = 0
 
     # Track how many matches each team has played (for warmup filter)
@@ -143,6 +145,7 @@ def build_dataset(
             feature_vec = np.array([features[name] for name in feature_names])
             X_rows.append(feature_vec)
             y_rows.append(LABEL_MAP[result])
+            season_rows.append(str(row.get('season', '')))
         except Exception as e:
             logger.warning('Failed to compute features for %s vs %s: %s', ht, at, e)
             skipped += 1
@@ -158,7 +161,8 @@ def build_dataset(
 
     X = np.array(X_rows)
     y = np.array(y_rows)
-    return X, y, feature_names
+    seasons = np.array(season_rows)
+    return X, y, feature_names, seasons
 
 
 def chronological_split(
@@ -177,23 +181,50 @@ def chronological_split(
 # Training
 # ---------------------------------------------------------------------------
 
-def compute_sample_weights(y: np.ndarray) -> np.ndarray:
+def compute_sample_weights(
+    y: np.ndarray,
+    seasons: Optional[np.ndarray] = None,
+    recency_decay: float = 0.85,
+) -> np.ndarray:
     """
-    Compute inverse-frequency sample weights to address class imbalance.
+    Compute combined sample weights: class balance × recency.
 
-    Draws are ~23% of PL data but equally important to predict. Without
-    weighting, XGBoost optimises for the majority classes (H/A) and
-    nearly ignores draws (6.7% draw accuracy in v1).
+    Class weighting: inverse-frequency so draws (~23%) get higher weight.
+    Recency weighting: recent seasons weighted more heavily. Each older
+    season decays by `recency_decay` (0.85 = 15% less per season).
+
+    The PL meta shifts over 5 seasons — tactics evolve, teams change
+    strength, rules get updated. A 2024/25 match is more predictive
+    of current outcomes than a 2020/21 match.
     """
+    # 1. Class imbalance weights
     classes, counts = np.unique(y, return_counts=True)
     total = len(y)
-    # Weight = total / (n_classes * count_for_class)
     class_weights = {c: total / (len(classes) * cnt) for c, cnt in zip(classes, counts)}
     weights = np.array([class_weights[label] for label in y])
     logger.info(
         'Class weights: %s',
         {LABEL_NAMES[c]: f'{w:.3f}' for c, w in class_weights.items()},
     )
+
+    # 2. Recency weights (if seasons provided)
+    if seasons is not None and len(seasons) > 0:
+        unique_seasons = sorted(set(seasons))
+        n_seasons = len(unique_seasons)
+        # Most recent season gets weight 1.0, each older season decays
+        season_weight_map = {}
+        for i, season in enumerate(unique_seasons):
+            age = n_seasons - 1 - i  # 0 for most recent
+            season_weight_map[season] = recency_decay ** age
+
+        recency_weights = np.array([season_weight_map.get(s, 1.0) for s in seasons])
+        weights = weights * recency_weights
+
+        logger.info(
+            'Recency weights: %s',
+            {s: f'{w:.3f}' for s, w in season_weight_map.items()},
+        )
+
     return weights
 
 
@@ -201,8 +232,9 @@ def train_xgboost(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
     feature_names: List[str],
+    seasons_train: Optional[np.ndarray] = None,
 ) -> dict:
-    """Train XGBoost model with early stopping and class weighting."""
+    """Train XGBoost model with early stopping, class weighting, and recency weighting."""
     import xgboost as xgb
 
     params = {
@@ -221,8 +253,8 @@ def train_xgboost(
         'verbosity': 0,
     }
 
-    # Compute sample weights to boost draw importance
-    sample_weights = compute_sample_weights(y_train)
+    # Compute sample weights: class balance × recency
+    sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
 
     dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
                          weight=sample_weights)
@@ -538,14 +570,16 @@ def main():
     # 2. Build feature matrix
     logger.info('Building feature matrix...')
     engineer = FreeTierFeatureEngineer(df)
-    X, y, feature_names = build_dataset(df, engineer)
+    X, y, feature_names, sample_seasons = build_dataset(df, engineer)
 
     if len(X) < 50:
         logger.error('Too few samples (%d) — need at least 50 to train', len(X))
         sys.exit(1)
 
-    # 3. Chronological split
+    # 3. Chronological split (also split seasons array for recency weighting)
     X_train, y_train, X_val, y_val = chronological_split(X, y, val_fraction=0.2)
+    split_idx = int(len(X) * 0.8)
+    seasons_train = sample_seasons[:split_idx]
     logger.info(
         'Split: %d training, %d validation (%.0f%%/%.0f%%)',
         len(X_train), len(X_val),
@@ -555,7 +589,8 @@ def main():
     # 4. First XGBoost pass (all features — to get importance scores)
     logger.info('Training XGBoost (first pass — all %d features)...', len(feature_names))
     import xgboost as xgb
-    xgb_result_v1 = train_xgboost(X_train, y_train, X_val, y_val, feature_names)
+    xgb_result_v1 = train_xgboost(X_train, y_train, X_val, y_val, feature_names,
+                                   seasons_train=seasons_train)
 
     # 5. Feature selection — drop low-importance features and retrain
     X_train_sel, X_val_sel, sel_feature_names = select_features(
@@ -566,7 +601,8 @@ def main():
 
     if len(sel_feature_names) < len(feature_names):
         logger.info('Retraining XGBoost with %d selected features...', len(sel_feature_names))
-        xgb_result = train_xgboost(X_train_sel, y_train, X_val_sel, y_val, sel_feature_names)
+        xgb_result = train_xgboost(X_train_sel, y_train, X_val_sel, y_val, sel_feature_names,
+                                   seasons_train=seasons_train)
         active_feature_names = sel_feature_names
         X_train_active, X_val_active = X_train_sel, X_val_sel
     else:

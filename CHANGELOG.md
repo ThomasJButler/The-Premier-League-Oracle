@@ -2,6 +2,20 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — Recency weighting, chart theme colours, dead code cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### ML pipeline (`train_free_tier.py`)
+- **Recency weighting:** `compute_sample_weights()` now combines class weights with season-based exponential decay (factor 0.85 per older season). `build_dataset()` returns season labels as a 4th return value. Most recent season gets full weight; oldest (~5 seasons back) gets ~0.44× — the Premier League meta shifts over time, so newer matches are more predictive
+- Test file updated for the 4th return value from `build_dataset()`
+
+### Frontend cleanup
+- **Chart.js theme-aware colours (P4e):** Dashboard charts now use CSS variables (`hsl(var(--primary))`, `hsl(var(--accent))`, `hsl(var(--muted-foreground))`) for dataset lines, fills, grid, and tick text — adapts to light/dark theme. BettingHistory already used CSS variables for scales
+- **Dead GET handler removed (P5g):** `vite.config.ts` had a dead GET handler for `/api/chat` that nothing called — the frontend already uses POST with empty messages for the server key probe. Removed the dead code and fixed stale test mocks in `ChatBot.test.ts`
+
+---
+
 ## 30 March 2026 — Draw-specific features (8 new features, 86→94 total)
 
 **Branch:** `v3.0-BackendMLTraining`

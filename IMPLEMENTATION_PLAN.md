@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-fourth update — draw-specific features, ML v2 improvements)
+Last updated: 30 March 2026 (twenty-fifth update — recency weighting, chart theme colours, dead code cleanup)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -115,7 +115,7 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 **Medium effort (likely significant impact):**
 - [x] **Draw-specific features** — 8 new features added to `free_tier_features.py`: `form_closeness`, `standings_closeness`, `home_draw_rate`, `away_draw_rate`, `combined_defensive_strength`, `low_scoring_indicator`, `h2h_draw_tendency`, `draw_streak_proximity`
 - [ ] **Elo-based features** — feed the frontend Elo ratings (already computed) into the backend feature engineer as additional inputs
-- [ ] **Recency weighting** — weight recent seasons more heavily than older ones (PL meta changes over 5 seasons)
+- [x] **Recency weighting** — `compute_sample_weights()` now applies exponential decay (0.85 per older season) alongside class weights. `build_dataset()` returns season labels; `train_xgboost()` passes them to sample weighting
 
 **Larger effort (for later):**
 - [ ] **Stacked ensemble** — train separate binary classifiers (H vs not-H, D vs not-D, A vs not-A) and stack them
@@ -137,7 +137,7 @@ curl -X POST http://localhost:8000/predict/free \
 **Non-blocking caveats:**
 
 - [ ] `backend/spreadsheets/` is gitignored — cloning the repo does NOT include CSV training data. Either remove from `.gitignore` (data is public PL results, not sensitive) or document how to obtain it. Without these CSVs, `train_free_tier.py` cannot run
-- [ ] Rate limiter on `/predict/free` is broken — `client_ip` always `"unknown"`, all clients share one bucket (see P5a)
+- [x] Rate limiter on `/predict/free` fixed — `_get_client_ip()` extracts real IP from `X-Forwarded-For` header (P5a, already done)
 
 ---
 
@@ -255,7 +255,7 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 
 - [x] `.github/workflows/ci.yml`: now uses `node-version-file: .nvmrc` instead of hardcoded `node-version: 20`
 - [x] `.gitignore`: `backend/chroma_db/` IS already gitignored (line 20) — the prior CLAUDE.md note was incorrect. No action needed
-- [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
+- [x] `vite.config.ts`: Dead GET handler removed — frontend already uses POST with empty messages for server key probe (works in both dev and production). Stale test mocks cleaned up in `ChatBot.test.ts`
 - [x] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` dead code removed — backend never sends this payload; test updated
 
 ### P5i. WebSocket URL Hardcodes Port 8000 — DONE
@@ -476,8 +476,8 @@ These are low-priority items deferred from completed priority tiers:
 
 - [ ] **P1f:** "Last updated" indicator on data displays — deferred (requires data layer changes to track cache freshness)
 - [x] **P2l:** Created `backend/.env.example` with `FOOTBALL_DATA_API_KEY` (required) and optional Pro-tier variables (OpenAI, Redis, MLflow, Postgres) commented out
-- [ ] **P4e:** `Dashboard.svelte` chart border colours hardcoded as hex — Chart.js requires resolved colour values, not CSS variables. Proper fix requires `getComputedStyle` + theme-change re-creation
-- [ ] **P4e:** `BettingHistory.svelte` chart colours same Chart.js limitation as Dashboard
+- [x] **P4e:** `Dashboard.svelte` chart colours now use CSS variables (`hsl(var(--primary))`, `hsl(var(--accent))`, `hsl(var(--muted-foreground))`) for dataset lines, fills, grid, and tick text — adapts to light/dark theme at chart creation time
+- [x] **P4e:** `BettingHistory.svelte` chart scales already used CSS variables; dataset colours (emerald/rose for profit/loss) are semantic and work on both themes — no change needed
 - [x] **P4g:** Created `backend/.dockerignore` — excludes tests, docs, spreadsheets, caches, training scripts, Docker files from build context
 - [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed

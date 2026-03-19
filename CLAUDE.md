@@ -15,7 +15,7 @@ The Premier League Oracle is a data-driven football prediction platform that use
 - **Styling**: Tailwind CSS with dark/light mode support
 - **Data Source**: Football-Data.org API v4 (no Supabase)
 - **Caching**: IndexedDB 3-tier cache (memory -> IndexedDB -> API)
-- **Charts**: Chart.js with svelte-chartjs
+- **Charts**: Chart.js with svelte-chartjs (theme-aware via CSS variables)
 - **Testing**: Vitest with @testing-library/svelte
 - **Deployment**: Vercel (frontend)
 
