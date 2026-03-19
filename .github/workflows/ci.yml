@@ -25,6 +25,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Type check
         run: npm run check
 
@@ -35,7 +38,7 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend tests
+    name: Backend checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,6 +55,12 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        run: ruff check
 
       - name: Run tests
         run: python -m pytest tests/ -v

@@ -14,21 +14,22 @@ Features:
 - Authentication support
 """
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from contextlib import asynccontextmanager
-import uvicorn
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from pydantic import BaseModel, Field
 import asyncio
 import json
 import logging
-from pathlib import Path
 import os
+from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
+
 import numpy as np
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 
 # Anchor all file paths to the backend/ directory, not the CWD.
 # main.py lives at backend/app/api/main.py → 3 levels up = backend/
@@ -66,7 +67,7 @@ except ImportError as e:
 
 # Free-tier feature engineer — lightweight, no heavy deps
 try:
-    from app.features.free_tier_features import FreeTierFeatureEngineer, CSV_TO_API, API_TO_CSV
+    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer
     FREE_TIER_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
@@ -94,11 +95,11 @@ active_websockets: set[WebSocket] = set()
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
-free_tier_metadata: Dict[str, Any] = {}  # Model metadata (version, features, etc.)
-free_tier_engineer: Optional[Any] = None  # FreeTierFeatureEngineer for live predictions
+free_tier_metadata: dict[str, Any] = {}  # Model metadata (version, features, etc.)
+free_tier_engineer: Any | None = None  # FreeTierFeatureEngineer for live predictions
 
 # In-memory rate limiter for /predict/free
-_rate_limit_store: Dict[str, List[float]] = {}
+_rate_limit_store: dict[str, list[float]] = {}
 RATE_LIMIT_MAX = 60  # requests per minute per IP
 RATE_LIMIT_WINDOW = 60.0  # seconds
 
@@ -113,7 +114,7 @@ class PredictionRequest(BaseModel):
     away_team: str = Field(..., description="Away team name")
     include_details: bool = Field(default=True, description="Include detailed analysis")
     use_cache: bool = Field(default=True, description="Use cached predictions if available")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -128,7 +129,7 @@ class PredictionRequest(BaseModel):
 class NaturalLanguageRequest(BaseModel):
     """Request model for natural language queries."""
     query: str = Field(..., description="Natural language query about football")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -140,26 +141,26 @@ class NaturalLanguageRequest(BaseModel):
 class PredictionResponse(BaseModel):
     """Response model for predictions."""
     match: str
-    prediction: Dict[str, float]
+    prediction: dict[str, float]
     confidence: float
     recommendation: str
-    betting_value: Optional[Dict[str, Any]] = None
-    individual_models: Optional[Dict[str, Any]] = None
-    similar_matches: Optional[List[Dict]] = None
+    betting_value: dict[str, Any] | None = None
+    individual_models: dict[str, Any] | None = None
+    similar_matches: list[dict] | None = None
     timestamp: str
 
 
 class TeamStatsRequest(BaseModel):
     """Request model for team statistics."""
     team_name: str
-    season: Optional[str] = None
+    season: str | None = None
     last_n_matches: int = Field(default=10, ge=1, le=38)
 
 
 class BatchPredictionRequest(BaseModel):
     """Request model for batch predictions."""
-    matches: List[Dict[str, str]] = Field(..., description="List of matches to predict")
-    
+    matches: list[dict[str, str]] = Field(..., description="List of matches to predict")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -177,7 +178,7 @@ async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
     # Startup
     global oracle, redis_client
-    
+
     logger.info("🚀 Starting Premier League Oracle API...")
 
     # Initialize Redis — optional, server starts without it
@@ -205,7 +206,7 @@ async def lifespan(app: FastAPI):
             oracle = None
     else:
         logger.warning("Oracle system not available — ML endpoints disabled")
-    
+
     # Oracle ensemble models (xgboost_model.pkl, lstm_model.pt, transformer_model.pt)
     # are not loaded — the frontend uses /predict/free which serves the free-tier
     # XGBoost model (xgboost_free_tier.joblib) loaded below. The /predict endpoint
@@ -285,12 +286,12 @@ async def lifespan(app: FastAPI):
     logger.info("Oracle API startup complete")
 
     yield
-    
+
     # Shutdown
     logger.info("🛑 Shutting down...")
     if redis_client is not None:
         await redis_client.close()
-    
+
     # Close WebSocket connections
     for ws in active_websockets:
         await ws.close()
@@ -346,7 +347,7 @@ async def predict_match(
     """
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     # Check cache if enabled
     if request.use_cache and redis_client:
         cache_key = f"prediction:{request.home_team}:{request.away_team}:{datetime.now().date()}"
@@ -354,7 +355,7 @@ async def predict_match(
         if cached:
             logger.info(f"Cache hit for {cache_key}")
             return JSONResponse(content=json.loads(cached))
-    
+
     try:
         # Make prediction
         result = oracle.predict_match_ensemble(
@@ -362,7 +363,7 @@ async def predict_match(
             request.away_team,
             use_mlflow=True
         )
-        
+
         # Format response
         response = PredictionResponse(
             match=f"{request.home_team} vs {request.away_team}",
@@ -374,7 +375,7 @@ async def predict_match(
             similar_matches=result.get('similar_matches') if request.include_details else None,
             timestamp=datetime.now().isoformat()
         )
-        
+
         # Cache result
         if redis_client:
             cache_key = f"prediction:{request.home_team}:{request.away_team}:{datetime.now().date()}"
@@ -383,9 +384,9 @@ async def predict_match(
                 3600,  # 1 hour TTL
                 json.dumps(response.model_dump())
             )
-        
+
         return response
-        
+
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -407,13 +408,13 @@ async def predict_natural_language(
     """
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     if not oracle.langchain_enabled:
         raise HTTPException(
             status_code=503,
             detail="Natural language features not available. OpenAI API key required."
         )
-    
+
     try:
         result = await oracle.predict_match_natural_language(request.query)
         return result
@@ -434,9 +435,9 @@ async def predict_batch(
     """
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     predictions = []
-    
+
     for match in request.matches:
         try:
             result = oracle.predict_match_ensemble(
@@ -444,7 +445,7 @@ async def predict_batch(
                 match['away_team'],
                 use_mlflow=False  # Don't track batch predictions
             )
-            
+
             predictions.append({
                 'match': f"{match['home_team']} vs {match['away_team']}",
                 'prediction': result['ensemble_prediction'],
@@ -455,7 +456,7 @@ async def predict_batch(
                 'match': f"{match['home_team']} vs {match['away_team']}",
                 'error': str(e)
             })
-    
+
     return {
         'predictions': predictions,
         'total': len(predictions),
@@ -472,7 +473,7 @@ async def get_team_stats(
     """Get detailed statistics for a specific team."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     try:
         form = oracle.data_collector.get_team_form(team_name, last_n_matches)
 
@@ -492,7 +493,7 @@ async def get_standings():
     """Get current Premier League standings."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     try:
         standings = oracle.data_collector.get_standings()
         # get_standings() returns a pd.DataFrame — convert to list of dicts
@@ -513,7 +514,7 @@ async def get_model_performance():
     """Get performance metrics for all models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     models_info = {
         'xgboost': {
             'trained': oracle.xgboost_model.model is not None,
@@ -620,13 +621,13 @@ async def get_feature_importance():
     """Get feature importance from the models."""
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     importance = {}
-    
+
     # XGBoost feature importance
     if oracle.xgboost_model.model:
         importance['xgboost'] = oracle.xgboost_model.get_top_features(20)
-    
+
     # LSTM feature importance (gradient-based)
     if oracle.lstm_model is not None and oracle.lstm_model.model:
         importance['lstm'] = oracle.lstm_model.get_feature_importance()
@@ -634,7 +635,7 @@ async def get_feature_importance():
     # Transformer attention weights
     if oracle.transformer_model is not None and oracle.transformer_model.model:
         importance['transformer'] = "Use /predict with explain=true for attention weights"
-    
+
     return {
         'feature_importance': importance,
         'total_features': 150,
@@ -654,13 +655,13 @@ async def calculate_betting_value(
     """
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     try:
         result = oracle.predict_match_ensemble(
             request.home_team,
             request.away_team
         )
-        
+
         return {
             'match': f"{request.home_team} vs {request.away_team}",
             'betting_value': result['betting_value'],
@@ -685,7 +686,7 @@ async def retrain_models(
     """
     if not oracle:
         raise HTTPException(status_code=503, detail="Oracle system not initialized")
-    
+
     # This would fetch latest data and retrain
     # For now, return mock response
     return {

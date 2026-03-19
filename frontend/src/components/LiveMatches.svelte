@@ -34,7 +34,7 @@
   // Auto-switch tab on initial load only — don't override explicit user clicks
   let hasAutoSwitched = false;
   $: if (!loading && !hasAutoSwitched && liveMatches.length === 0 && showSection === 'live') {
-    hasAutoSwitched = true;
+    hasAutoSwitched = true; // eslint-disable-line no-useless-assignment -- guards next reactive run
     showSection = recentMatches.length > 0 ? 'recent' : 'upcoming';
   }
 

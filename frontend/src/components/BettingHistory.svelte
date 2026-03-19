@@ -22,11 +22,11 @@
   let bets: StoredBet[] = [];
   let filterResult: 'all' | 'win' | 'loss' | 'pending' = 'all';
 
-  let totalWagered = tweened(0, { duration: 800, easing: cubicOut });
-  let totalProfitLoss = tweened(0, { duration: 1000, easing: cubicOut });
-  let roiTweened = tweened(0, { duration: 1200, easing: cubicOut });
-  let winRateTweened = tweened(0, { duration: 1000, easing: cubicOut });
-  let totalBetsTweened = tweened(0, { duration: 800, easing: cubicOut });
+  const totalWagered = tweened(0, { duration: 800, easing: cubicOut });
+  const totalProfitLoss = tweened(0, { duration: 1000, easing: cubicOut });
+  const roiTweened = tweened(0, { duration: 1200, easing: cubicOut });
+  const winRateTweened = tweened(0, { duration: 1000, easing: cubicOut });
+  const totalBetsTweened = tweened(0, { duration: 800, easing: cubicOut });
 
   let monthlyPerformance: ChartData<"bar", number[], string> = {
     labels: [],

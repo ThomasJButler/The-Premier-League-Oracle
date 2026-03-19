@@ -40,12 +40,12 @@
   let topPredictions: Array<{ match: string; confidence: number; prediction: string; wasCorrect: boolean | null }> = [];
   let loading = true;
   let error: string | null = null;
-  let overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });
-  let profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
-  let totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
-  let betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
+  const overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });
+  const profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
+  const totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
+  const betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
 
-  let recentPerformance: ChartData<"line", number[], string> = {
+  const recentPerformance: ChartData<"line", number[], string> = {
     labels: [] as string[],
     datasets: [{
       label: 'Prediction Accuracy',

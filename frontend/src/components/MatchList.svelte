@@ -89,11 +89,12 @@
         case 'team':
           comparison = a.home_team.localeCompare(b.home_team);
           break;
-        case 'status':
+        case 'status': {
           const aStatus = a.result ? 1 : 0;
           const bStatus = b.result ? 1 : 0;
           comparison = aStatus - bStatus;
           break;
+        }
       }
       
       return sortOrder === 'asc' ? comparison : -comparison;

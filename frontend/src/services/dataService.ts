@@ -113,7 +113,7 @@ class DataService {
       if (this.apiSource.available) {
         this.loadAllHistoricalSeasons();
       }
-    } catch (error) {
+    } catch (_error) {
       // Error checking API availability
       this.apiSource.available = false;
     }
@@ -153,7 +153,7 @@ class DataService {
   private async setCachedData<T>(storeName: string, key: string, data: T): Promise<void> {
     if (!this.useCache || !this.cacheDb) return;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const transaction = this.cacheDb!.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.put({
@@ -186,7 +186,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, season);
           return season;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching season from API
       }
     }
@@ -234,7 +234,7 @@ class DataService {
 
           return matches;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching matches from API
       }
     }
@@ -267,7 +267,7 @@ class DataService {
           await this.setCachedData('standings', cacheKey, standings);
           return standings;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching standings from API
       }
     }
@@ -291,7 +291,7 @@ class DataService {
           await this.setCachedData('scorers', cacheKey, scorers);
           return scorers;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching top scorers from API
       }
     }
@@ -316,8 +316,8 @@ class DataService {
           // Use the earlier year of the season (e.g. 2025 for 2025/26)
           const seasonYear = getSeasonYear();
           // Compute home/away splits from recent matches
-          let homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
-          let awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          const homeStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
+          const awayStats = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0 };
           let totalCleanSheets = 0;
           let totalFailedToScore = 0;
 
@@ -379,7 +379,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, stats);
           return stats;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching team stats from API
       }
     }
@@ -408,7 +408,7 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, teamForm);
           return teamForm;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching team form from API
       }
     }
@@ -435,7 +435,7 @@ class DataService {
           await this.setCachedData('matches', cacheKey, seasons);
           return seasons;
         }
-      } catch (error) {
+      } catch (_error) {
         // Error fetching seasons from API
       }
     }
@@ -478,7 +478,7 @@ class DataService {
           await this.setCachedData('matches', cacheKey, matches);
         }
         return matches;
-      } catch (error) {
+      } catch (_error) {
         // Error fetching live matches
       }
     }
@@ -568,7 +568,7 @@ class DataService {
           await this.setCachedData('matches', cacheKey, matches);
         }
         return matches;
-      } catch (error) {
+      } catch (_error) {
         // Error fetching historical matches
       }
     }

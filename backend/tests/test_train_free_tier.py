@@ -9,30 +9,26 @@ Validates:
 - Rolling cross-validation
 """
 
+import os
+import sys
+
 import numpy as np
 import pandas as pd
 import pytest
-import os
-import sys
-import tempfile
-import shutil
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.features.free_tier_features import FreeTierFeatureEngineer
 from train_free_tier import (
+    _per_class_accuracy,
     build_dataset,
     chronological_split,
     compute_recency_weights,
+    predict_with_ensemble,
     rolling_cross_validation,
     train_stacked_ensemble,
-    predict_with_ensemble,
-    _per_class_accuracy,
-    LABEL_MAP,
-    LABEL_NAMES,
-    MIN_PRIOR_MATCHES,
 )
 
+from app.features.free_tier_features import FreeTierFeatureEngineer
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -61,7 +57,7 @@ def _build_mini_dataset(n_matches: int = 30) -> pd.DataFrame:
     base = datetime(2024, 8, 17)
 
     idx = 0
-    for r in range(n_matches):
+    for _r in range(n_matches):
         home = teams[idx % len(teams)]
         away = teams[(idx + 1) % len(teams)]
         hg = (idx * 7 + 3) % 4
@@ -113,13 +109,13 @@ class TestBuildDataset:
     def test_labels_valid(self):
         """All labels should be in {0, 1, 2}."""
         df = _build_mini_dataset(40)
-        X, y, _, _ = build_dataset(df)
+        _X, y, _, _ = build_dataset(df)
         assert set(np.unique(y)).issubset({0, 1, 2})
 
     def test_warmup_filter(self):
         """Matches before MIN_PRIOR_MATCHES should be skipped."""
         df = _build_mini_dataset(40)
-        X, y, _, _ = build_dataset(df)
+        X, _y, _, _ = build_dataset(df)
         # Should have fewer samples than total matches
         assert len(X) < len(df)
         # Should skip at least MIN_PRIOR_MATCHES * n_teams matches
@@ -128,7 +124,7 @@ class TestBuildDataset:
     def test_no_nan_in_features(self):
         """Feature matrix should have no NaN values."""
         df = _build_mini_dataset(40)
-        X, y, _, _ = build_dataset(df)
+        X, _y, _, _ = build_dataset(df)
         assert not np.any(np.isnan(X)), 'Feature matrix contains NaN values'
 
     def test_feature_names_match(self):
@@ -148,7 +144,7 @@ class TestChronologicalSplit:
     def test_split_proportions(self):
         X = np.arange(100).reshape(100, 1)
         y = np.zeros(100)
-        X_train, y_train, X_val, y_val = chronological_split(X, y, 0.2)
+        X_train, _y_train, X_val, _y_val = chronological_split(X, y, 0.2)
         assert len(X_train) == 80
         assert len(X_val) == 20
 
@@ -162,7 +158,7 @@ class TestChronologicalSplit:
     def test_all_data_accounted(self):
         X = np.arange(100).reshape(100, 1)
         y = np.zeros(100)
-        X_train, y_train, X_val, y_val = chronological_split(X, y, 0.2)
+        X_train, _y_train, X_val, _y_val = chronological_split(X, y, 0.2)
         assert len(X_train) + len(X_val) == 100
 
 

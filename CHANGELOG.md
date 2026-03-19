@@ -2,6 +2,32 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — ESLint + ruff linting added to CI pipeline
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **ESLint for frontend** — flat config (`eslint.config.js`) with TypeScript, Svelte 4, and browser globals. Catches unused variables, unreachable code, constant binary expressions, self-comparison, and more. Svelte-specific rules downgraded to warnings where they're best-practice rather than bugs (e.g. `require-each-key`, `require-event-dispatcher-types`). shadcn UI components exempted from a11y/assignment rules due to intentional overlay patterns
+- **ruff for backend** — configured in `pyproject.toml` with pycodestyle, pyflakes, isort, pyupgrade, flake8-bugbear, and flake8-simplify rules. Pro-tier and dead security modules excluded from analysis. Auto-fixed 326 issues (import sorting, modern type annotations, whitespace)
+- **CI lint steps** — both `npm run lint` (frontend) and `ruff check` (backend) now run in the GitHub Actions pipeline before tests, catching regressions early
+- **`lint` and `lint:fix` scripts** added to `frontend/package.json`
+
+### Fixed
+
+- Unused catch `error` variables across `dataService.ts`, `advancedPredictions.ts`, `predictionTracker.ts` prefixed with `_` (14 instances)
+- Unused `Match` import removed from `predictionTracker.ts`
+- `MatchList.svelte` — lexical declarations in `case` block now properly scoped with braces
+- Backend: unused `API_TO_CSV` import removed from `main.py`, unused `n_classes` and `xgb_metrics_raw` variables cleaned up in `train_free_tier.py`, loop variables prefixed with `_` where unused
+- Auto-fixed `let` → `const` for 23 never-reassigned variables across frontend source
+
+### Changed
+
+- `IMPLEMENTATION_PLAN.md` cleaned up — 812 → 451 lines, all completed P5/P1/P2 subsections archived
+- Kelly 1.05 "bug" documentation corrected — `backtest.test.ts` expected value `0.525` confirmed mathematically correct (normalisation cancels `VALUE_ODDS_MARGIN`), not a bug
+
+---
+
 ## 2 April 2026 — Match event notifications, Spec 05 complete
 
 **Branch:** `v3.0-BackendMLTraining`

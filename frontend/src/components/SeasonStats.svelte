@@ -5,7 +5,7 @@
   import type { Match } from '../types';
 
   // Svelte 4 component constructor typing is limited — any is required for icon components
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   type IconComponent = new (...args: any[]) => any;
 
   interface SeasonStat {
@@ -202,7 +202,7 @@
     const completedMatches = matches.filter(m => m.result);
     
     // Clean sheets tracking
-    let cleanSheets: { [team: string]: number } = {};
+    const cleanSheets: { [team: string]: number } = {};
     completedMatches.forEach(match => {
       if (!cleanSheets[match.home_team]) cleanSheets[match.home_team] = 0;
       if (!cleanSheets[match.away_team]) cleanSheets[match.away_team] = 0;
@@ -244,7 +244,7 @@
       : -1; // Sentinel: -1 means no data available
     
     // Most goals in a single match
-    let highestScoringMatch = completedMatches.reduce((prev, curr) => {
+    const highestScoringMatch = completedMatches.reduce((prev, curr) => {
       const currGoals = (curr.home_goals || 0) + (curr.away_goals || 0);
       const prevGoals = (prev.home_goals || 0) + (prev.away_goals || 0);
       return currGoals > prevGoals ? curr : prev;
@@ -280,7 +280,7 @@
     const secondHalfGoals = totalGoals - firstHalfGoals;
     
     // Unbeaten runs
-    let currentUnbeaten = 0;
+    const currentUnbeaten = 0;
     let longestUnbeaten = 0;
     let unbeatenTeam = '';
     const teamUnbeaten: { [team: string]: number } = {};

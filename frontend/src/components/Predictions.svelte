@@ -49,7 +49,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  let totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
+  const totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;

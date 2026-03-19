@@ -9,24 +9,21 @@ Validates:
 - Graceful degradation when match stats columns are missing
 """
 
+import os
+import sys
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
-
-import sys
-import os
 
 # Add backend root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.features.free_tier_features import (
-    FreeTierFeatureEngineer,
     CSV_TO_API,
-    API_TO_CSV,
-    DERBIES,
+    FreeTierFeatureEngineer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test fixtures

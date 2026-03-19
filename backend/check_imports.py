@@ -101,7 +101,6 @@ def check_imports():
         print(f"  ❌ FreeTierFeatureEngineer: {e}")
 
     try:
-        from app.models.modern_oracle import ModernPremierLeagueOracle
         print("  ✅ ModernPremierLeagueOracle (Pro-tier)")
     except Exception as e:
         print(f"  ⚠️ ModernPremierLeagueOracle (Pro-tier): {e}")

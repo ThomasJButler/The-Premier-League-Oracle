@@ -19,12 +19,10 @@ Output:
 """
 
 import argparse
-import json
 import logging
 import os
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -91,8 +89,8 @@ def load_data(csv_dir: str) -> pd.DataFrame:
 
 def build_dataset(
     df: pd.DataFrame,
-    engineer: Optional[FreeTierFeatureEngineer] = None,
-) -> Tuple[np.ndarray, np.ndarray, List[str], np.ndarray]:
+    engineer: FreeTierFeatureEngineer | None = None,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
     """
     Build feature matrix from historical matches.
 
@@ -109,15 +107,15 @@ def build_dataset(
         engineer = FreeTierFeatureEngineer(df)
 
     feature_names = FreeTierFeatureEngineer.FEATURE_NAMES
-    X_rows: List[np.ndarray] = []
-    y_rows: List[int] = []
-    season_rows: List[str] = []
+    X_rows: list[np.ndarray] = []
+    y_rows: list[int] = []
+    season_rows: list[str] = []
     skipped = 0
 
     # Track how many matches each team has played (for warmup filter)
-    team_match_counts: Dict[str, int] = {}
+    team_match_counts: dict[str, int] = {}
 
-    for idx, row in df.iterrows():
+    for _idx, row in df.iterrows():
         ht = row['home_team']
         at = row['away_team']
 
@@ -170,7 +168,7 @@ def build_dataset(
 
 def chronological_split(
     X: np.ndarray, y: np.ndarray, val_fraction: float = 0.2,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Split data chronologically (no shuffling — prevents future leakage).
 
@@ -186,7 +184,7 @@ def chronological_split(
 
 def compute_sample_weights(
     y: np.ndarray,
-    seasons: Optional[np.ndarray] = None,
+    seasons: np.ndarray | None = None,
     recency_decay: float = 0.85,
 ) -> np.ndarray:
     """
@@ -232,9 +230,9 @@ def compute_sample_weights(
 
 
 def compute_recency_weights(
-    seasons: Optional[np.ndarray] = None,
+    seasons: np.ndarray | None = None,
     recency_decay: float = 0.85,
-) -> Optional[np.ndarray]:
+) -> np.ndarray | None:
     """
     Compute recency-only sample weights (no class balancing).
 
@@ -257,9 +255,9 @@ def compute_recency_weights(
 def train_xgboost(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: List[str],
-    seasons_train: Optional[np.ndarray] = None,
-    params_override: Optional[Dict] = None,
+    feature_names: list[str],
+    seasons_train: np.ndarray | None = None,
+    params_override: dict | None = None,
 ) -> dict:
     """Train XGBoost model with early stopping, class weighting, and recency weighting."""
     import xgboost as xgb
@@ -289,7 +287,7 @@ def train_xgboost(
                          weight=sample_weights)
     dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
 
-    evals_result: Dict = {}
+    evals_result: dict = {}
     model = xgb.train(
         params,
         dtrain,
@@ -324,10 +322,10 @@ def train_xgboost(
 def select_features(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray,
-    feature_names: List[str],
-    importance: Dict[str, float],
+    feature_names: list[str],
+    importance: dict[str, float],
     min_importance: float = 0.005,
-) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
     """
     Drop features with importance below threshold.
 
@@ -369,7 +367,7 @@ def select_features(
 
 def calibrate_probabilities(
     model, X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: List[str],
+    feature_names: list[str],
 ) -> dict:
     """
     Calibrate XGBoost probabilities using isotonic regression.
@@ -421,11 +419,11 @@ def calibrate_probabilities(
 def tune_hyperparameters(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: List[str],
-    seasons_train: Optional[np.ndarray] = None,
+    feature_names: list[str],
+    seasons_train: np.ndarray | None = None,
     n_trials: int = 25,
     seed: int = 42,
-) -> Dict:
+) -> dict:
     """
     Random search over XGBoost hyperparameters.
 
@@ -456,7 +454,7 @@ def tune_hyperparameters(
     dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
 
     best_score = float('inf')
-    best_params: Dict = {}
+    best_params: dict = {}
     results = []
 
     logger.info('Hyperparameter tuning: %d trials...', n_trials)
@@ -472,7 +470,7 @@ def tune_hyperparameters(
         for key, choices in search_space.items():
             params[key] = choices[rng.randint(len(choices))]
 
-        evals_result: Dict = {}
+        evals_result: dict = {}
         model = xgb.train(
             params,
             dtrain,
@@ -553,8 +551,8 @@ def train_logistic_baseline(
 def train_stacked_ensemble(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: List[str],
-    seasons_train: Optional[np.ndarray] = None,
+    feature_names: list[str],
+    seasons_train: np.ndarray | None = None,
 ) -> dict:
     """
     Train a stacked ensemble of 3 One-vs-Rest binary classifiers + meta-learner.
@@ -688,7 +686,7 @@ def train_stacked_ensemble(
             **config,
         }
 
-        evals_result: Dict = {}
+        evals_result: dict = {}
         dtrain = xgb.DMatrix(X_train, label=y_bin_full, feature_names=feature_names,
                              weight=recency_full)
         dval = xgb.DMatrix(X_val, label=y_bin_val, feature_names=feature_names)
@@ -729,7 +727,7 @@ def train_stacked_ensemble(
 def predict_with_ensemble(
     ensemble: dict,
     X: np.ndarray,
-    feature_names: List[str],
+    feature_names: list[str],
 ) -> np.ndarray:
     """
     Generate predictions from the stacked ensemble.
@@ -753,10 +751,12 @@ def predict_with_ensemble(
 
 def evaluate(
     y_true: np.ndarray, y_probs: np.ndarray, label: str = 'Model',
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute evaluation metrics."""
     from sklearn.metrics import (
-        accuracy_score, confusion_matrix, log_loss,
+        accuracy_score,
+        confusion_matrix,
+        log_loss,
     )
 
     y_pred = np.argmax(y_probs, axis=1)
@@ -764,7 +764,6 @@ def evaluate(
     logloss = log_loss(y_true, y_probs, labels=[0, 1, 2])
 
     # Brier score (multi-class: average squared error)
-    n_classes = y_probs.shape[1]
     y_onehot = np.zeros_like(y_probs)
     y_onehot[np.arange(len(y_true)), y_true] = 1
     brier = float(np.mean(np.sum((y_probs - y_onehot) ** 2, axis=1)))
@@ -809,7 +808,7 @@ def evaluate(
 
 def rolling_cross_validation(
     X: np.ndarray, y: np.ndarray,
-    feature_names: List[str],
+    feature_names: list[str],
     seasons: np.ndarray,
     min_train_seasons: int = 2,
 ) -> dict:
@@ -870,7 +869,7 @@ def rolling_cross_validation(
             len(X_train_fold), len(X_val_fold),
         )
 
-        fold_metrics: Dict[str, Dict] = {}
+        fold_metrics: dict[str, dict] = {}
 
         # --- XGBoost (with calibration) ---
         try:
@@ -964,7 +963,7 @@ def rolling_cross_validation(
 
     logger.info('\n=== Rolling CV Summary ===')
 
-    aggregate: Dict[str, Dict] = {}
+    aggregate: dict[str, dict] = {}
     for model_name in ('xgboost', 'lr', 'ensemble'):
         accs = [f['metrics'][model_name]['accuracy']
                 for f in fold_results if model_name in f['metrics']]
@@ -1000,7 +999,7 @@ def rolling_cross_validation(
     }
 
 
-def _per_class_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def _per_class_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     """Compute per-class accuracy from predictions."""
     from sklearn.metrics import confusion_matrix
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
@@ -1020,7 +1019,7 @@ def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
         import matplotlib.pyplot as plt
         from sklearn.calibration import calibration_curve
 
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        _fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         for i, (name, ax) in enumerate(zip(LABEL_NAMES, axes)):
             binary = (y_true == i).astype(int)
             if binary.sum() == 0:
@@ -1049,10 +1048,10 @@ def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
 # Model saving
 # ---------------------------------------------------------------------------
 
-def save_model(xgb_result: dict, feature_names: List[str],
-               metrics: Dict, training_info: Dict,
-               ensemble_result: Optional[dict] = None,
-               ensemble_metrics: Optional[Dict] = None,
+def save_model(xgb_result: dict, feature_names: list[str],
+               metrics: dict, training_info: dict,
+               ensemble_result: dict | None = None,
+               ensemble_metrics: dict | None = None,
                ) -> str:
     """Save trained model with metadata to joblib."""
     import joblib
@@ -1155,7 +1154,7 @@ def main():
     )
 
     # 4. Optional hyperparameter tuning
-    tuned_params: Optional[Dict] = None
+    tuned_params: dict | None = None
     if args.tune:
         logger.info('Running hyperparameter tuning (%d trials)...', args.tune_trials)
         tuned_params = tune_hyperparameters(
@@ -1193,7 +1192,7 @@ def main():
     # 6. Evaluate raw XGBoost
     dval = xgb.DMatrix(X_val_active, feature_names=active_feature_names)
     xgb_probs_raw = xgb_result['model'].predict(dval)
-    xgb_metrics_raw = evaluate(y_val, xgb_probs_raw, label='XGBoost (raw)')
+    evaluate(y_val, xgb_probs_raw, label='XGBoost (raw)')
 
     # 7. Probability calibration
     logger.info('Calibrating probabilities...')

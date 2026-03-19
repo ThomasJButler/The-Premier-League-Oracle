@@ -15,11 +15,11 @@ Data sources:
     - Standings and dates — free API + CSVs
 """
 
+import logging
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Team name normalisation: CSV short names <-> Football-Data.org API names
 # ---------------------------------------------------------------------------
 
-CSV_TO_API: Dict[str, str] = {
+CSV_TO_API: dict[str, str] = {
     'Arsenal': 'Arsenal FC',
     'Aston Villa': 'Aston Villa FC',
     'Bournemouth': 'AFC Bournemouth',
@@ -58,10 +58,10 @@ CSV_TO_API: Dict[str, str] = {
     'Wolves': 'Wolverhampton Wanderers FC',
 }
 
-API_TO_CSV: Dict[str, str] = {v: k for k, v in CSV_TO_API.items()}
+API_TO_CSV: dict[str, str] = {v: k for k, v in CSV_TO_API.items()}
 
 # Additional aliases for flexible lookup
-_ALIASES: Dict[str, str] = {
+_ALIASES: dict[str, str] = {
     'Manchester City': 'Man City',
     'Manchester United': 'Man United',
     'Nottingham Forest': "Nott'm Forest",
@@ -113,7 +113,7 @@ class FreeTierFeatureEngineer:
     degrade gracefully to 0.0 when missing.
     """
 
-    FEATURE_NAMES: List[str] = [
+    FEATURE_NAMES: list[str] = [
         # Basic stats (12)
         'home_goals_scored_avg', 'home_goals_conceded_avg',
         'away_goals_scored_avg', 'away_goals_conceded_avg',
@@ -192,8 +192,8 @@ class FreeTierFeatureEngineer:
         self,
         home_team: str,
         away_team: str,
-        match_date: Optional[datetime] = None,
-    ) -> Dict[str, float]:
+        match_date: datetime | None = None,
+    ) -> dict[str, float]:
         """
         Compute all ~99 features for a match prediction.
 
@@ -207,7 +207,7 @@ class FreeTierFeatureEngineer:
         else:
             pre_match = self.data
 
-        features: Dict[str, float] = {}
+        features: dict[str, float] = {}
         features.update(self._basic_stats(home_team, away_team, pre_match))
         features.update(self._form_momentum(home_team, away_team, pre_match))
         features.update(self._head_to_head(home_team, away_team, pre_match))
@@ -220,7 +220,7 @@ class FreeTierFeatureEngineer:
         features.update(self._elo_features(home_team, away_team, match_date))
 
         # Ensure every feature present; replace NaN with 0.0
-        result: Dict[str, float] = {}
+        result: dict[str, float] = {}
         for name in self.FEATURE_NAMES:
             val = features.get(name, 0.0)
             result[name] = 0.0 if (val is None or np.isnan(val)) else float(val)
@@ -279,7 +279,7 @@ class FreeTierFeatureEngineer:
         if not files:
             raise FileNotFoundError(f'No EPL*.csv files found in {csv_dir}')
 
-        frames: List[pd.DataFrame] = []
+        frames: list[pd.DataFrame] = []
         for f in files:
             df = pd.read_csv(f, encoding='utf-8-sig')
             # Extract season from filename (e.g. EPL20202021 -> 2020/21)
@@ -431,15 +431,13 @@ class FreeTierFeatureEngineer:
         results = matches['team_result'].values[::-1]  # most recent first
         streak = 0
         for r in results:
-            if condition == 'W' and r == 'W':
-                streak += 1
-            elif condition == 'unbeaten' and r in ('W', 'D'):
+            if (condition == 'W' and r == 'W') or (condition == 'unbeaten' and r in ('W', 'D')):
                 streak += 1
             else:
                 break
         return streak
 
-    def _get_season_start(self, match_date: Optional[datetime]) -> datetime:
+    def _get_season_start(self, match_date: datetime | None) -> datetime:
         """PL season starts in August."""
         if match_date is None:
             return datetime(2020, 8, 1)
@@ -448,8 +446,8 @@ class FreeTierFeatureEngineer:
         return datetime(match_date.year - 1, 8, 1)
 
     def _compute_standings(self, data: pd.DataFrame,
-                           match_date: Optional[datetime] = None,
-                           ) -> Dict[str, Dict]:
+                           match_date: datetime | None = None,
+                           ) -> dict[str, dict]:
         """
         Compute league table from current-season data before match_date.
 
@@ -458,7 +456,7 @@ class FreeTierFeatureEngineer:
         season_start = self._get_season_start(match_date)
         season_data = data[data['date'] >= pd.Timestamp(season_start)]
 
-        teams: Dict[str, Dict] = {}
+        teams: dict[str, dict] = {}
         for _, row in season_data.iterrows():
             ht = row['home_team']
             at = row['away_team']
@@ -500,9 +498,9 @@ class FreeTierFeatureEngineer:
     # ------------------------------------------------------------------
 
     def _basic_stats(self, home_team: str, away_team: str,
-                     data: pd.DataFrame) -> Dict[str, float]:
+                     data: pd.DataFrame) -> dict[str, float]:
         """12 features: goals, points, win rates, clean sheets, venue splits."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         hm = self._get_team_matches(home_team, data)
         am = self._get_team_matches(away_team, data)
@@ -533,9 +531,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _form_momentum(self, home_team: str, away_team: str,
-                       data: pd.DataFrame) -> Dict[str, float]:
+                       data: pd.DataFrame) -> dict[str, float]:
         """20 features: recent form, weighted form, momentum, streaks, volatility."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         hm = self._get_team_matches(home_team, data)
         am = self._get_team_matches(away_team, data)
@@ -597,9 +595,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _head_to_head(self, home_team: str, away_team: str,
-                      data: pd.DataFrame) -> Dict[str, float]:
+                      data: pd.DataFrame) -> dict[str, float]:
         """15 features: H2H record, goals, BTTS, recent form, dominance."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         h2h = self._get_h2h_matches(home_team, away_team, data)
         n = len(h2h)
@@ -680,9 +678,7 @@ class FreeTierFeatureEngineer:
         # Clean sheet rate in H2H (home_team keeping clean sheets)
         cs_count = 0
         for _, row in h2h.iterrows():
-            if row['home_team'] == home_team and row['away_goals'] == 0:
-                cs_count += 1
-            elif row['away_team'] == home_team and row['home_goals'] == 0:
+            if (row['home_team'] == home_team and row['away_goals'] == 0) or (row['away_team'] == home_team and row['home_goals'] == 0):
                 cs_count += 1
         f['h2h_home_clean_sheet_rate'] = cs_count / n
 
@@ -705,9 +701,9 @@ class FreeTierFeatureEngineer:
 
     def _contextual(self, home_team: str, away_team: str,
                     data: pd.DataFrame,
-                    match_date: Optional[datetime]) -> Dict[str, float]:
+                    match_date: datetime | None) -> dict[str, float]:
         """12 features: rest days, derby, congestion, position, season progress."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         # Rest days since last match
         def _rest_days(team: str) -> float:
@@ -769,9 +765,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _time_series(self, home_team: str, away_team: str,
-                     data: pd.DataFrame) -> Dict[str, float]:
+                     data: pd.DataFrame) -> dict[str, float]:
         """9 features: trends, consistency, monthly performance, mean reversion."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         def _trend(matches: pd.DataFrame, window: int) -> float:
             """Linear regression slope of points over last *window* matches."""
@@ -806,7 +802,7 @@ class FreeTierFeatureEngineer:
         f['away_consistency'] = _consistency(am)
 
         # Monthly performance: average PPG in this calendar month (historical)
-        def _monthly_perf(matches: pd.DataFrame, month: Optional[int]) -> float:
+        def _monthly_perf(matches: pd.DataFrame, month: int | None) -> float:
             if month is None or matches.empty:
                 return 0.0
             month_matches = matches[matches['date'].dt.month == month]
@@ -835,9 +831,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _derived(self, home_team: str, away_team: str,
-                 data: pd.DataFrame) -> Dict[str, float]:
+                 data: pd.DataFrame) -> dict[str, float]:
         """5 features: over 2.5 prob, BTTS prob, goal conversion, def efficiency."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         hm = self._get_team_matches(home_team, data)
         am = self._get_team_matches(away_team, data)
@@ -897,9 +893,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _half_time(self, home_team: str, away_team: str,
-                   data: pd.DataFrame) -> Dict[str, float]:
+                   data: pd.DataFrame) -> dict[str, float]:
         """5 features: half-time goals averages and form."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         has_ht = 'half_time_home_goals' in data.columns
 
@@ -954,9 +950,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _match_stats(self, home_team: str, away_team: str,
-                     data: pd.DataFrame) -> Dict[str, float]:
+                     data: pd.DataFrame) -> dict[str, float]:
         """8 features: rolling averages for shots, corners, yellow cards."""
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         def _rolling_stat(team: str, stat_home: str, stat_away: str,
                           n: int = 10) -> float:
@@ -995,8 +991,8 @@ class FreeTierFeatureEngineer:
 
     def _draw_indicators(self, home_team: str, away_team: str,
                          data: pd.DataFrame,
-                         match_date: Optional[datetime] = None,
-                         ) -> Dict[str, float]:
+                         match_date: datetime | None = None,
+                         ) -> dict[str, float]:
         """
         8 features: explicit draw-prediction signals.
 
@@ -1004,7 +1000,7 @@ class FreeTierFeatureEngineer:
         These features capture patterns that correlate with drawn matches:
         evenly-matched teams, defensive setups, and historical draw tendencies.
         """
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
         hm = self._get_team_matches(home_team, data)
         am = self._get_team_matches(away_team, data)
 
@@ -1091,7 +1087,7 @@ class FreeTierFeatureEngineer:
     _ELO_HOME = 65      # Home advantage in Elo points
     _ELO_DEFAULT = 1500 # Default rating for unseen teams
 
-    def _precompute_elo(self) -> Dict[int, Dict[str, float]]:
+    def _precompute_elo(self) -> dict[int, dict[str, float]]:
         """
         Walk the match DataFrame chronologically, maintaining running Elo
         ratings for every team. Store the *pre-match* ratings keyed by
@@ -1101,8 +1097,8 @@ class FreeTierFeatureEngineer:
             Dict mapping row index → {home_team: rating, away_team: rating}
             (ratings BEFORE the match was played).
         """
-        ratings: Dict[str, float] = {}   # team → current Elo
-        snapshot: Dict[int, Dict[str, float]] = {}
+        ratings: dict[str, float] = {}   # team → current Elo
+        snapshot: dict[int, dict[str, float]] = {}
 
         for idx, row in self.data.iterrows():
             ht = row['home_team']
@@ -1129,8 +1125,8 @@ class FreeTierFeatureEngineer:
         self,
         home_team: str,
         away_team: str,
-        match_date: Optional[datetime],
-    ) -> Dict[str, float]:
+        match_date: datetime | None,
+    ) -> dict[str, float]:
         """
         Return Elo-based features for a given match.
 
@@ -1138,7 +1134,7 @@ class FreeTierFeatureEngineer:
         ratings. For live inference (match_date in the future / not in data),
         uses the latest known ratings for each team.
         """
-        f: Dict[str, float] = {}
+        f: dict[str, float] = {}
 
         # Try to find the exact match in the precomputed snapshot
         home_elo = self._ELO_DEFAULT
@@ -1185,8 +1181,8 @@ class FreeTierFeatureEngineer:
         self,
         home_team: str,
         away_team: str,
-        before_date: Optional[datetime] = None,
-    ) -> Tuple[float, float]:
+        before_date: datetime | None = None,
+    ) -> tuple[float, float]:
         """
         Get the latest known Elo ratings, optionally only from matches
         before a given date (prevents future data leakage).

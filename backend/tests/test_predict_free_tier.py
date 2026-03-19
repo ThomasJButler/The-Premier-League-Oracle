@@ -10,11 +10,12 @@ Validates:
 - Existing /predict endpoint is unchanged
 """
 
+import os
+import sys
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
-import sys
-import os
-from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -27,7 +28,7 @@ except ImportError:
 
 # Import the app — will have free_tier_model = None by default
 if FASTAPI_AVAILABLE:
-    from app.api.main import app, _check_rate_limit, _rate_limit_store, _resolve_team_name, _get_client_ip
+    from app.api.main import _check_rate_limit, _get_client_ip, _rate_limit_store, _resolve_team_name, app
 
 
 @pytest.fixture

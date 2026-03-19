@@ -316,7 +316,7 @@ export class FatigueAnalyzer {
       if (teamMatches.length === 0) return 7; // Default rest days
       const lastMatch = new Date(teamMatches[0].date);
       return Math.floor((matchDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24));
-    } catch (error) {
+    } catch (_error) {
       // Error calculating rest days
       return 7;
     }
@@ -491,7 +491,7 @@ export class RefereeAnalyzer {
         avgPenalties: 0.2, // Placeholder - would need penalty data
         homeWinRate: homeWins / totalMatches
       };
-    } catch (error) {
+    } catch (_error) {
       // Error getting referee stats
       return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }

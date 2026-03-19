@@ -1,4 +1,3 @@
-import type { Match } from '../types';
 
 export interface StoredPrediction {
   id: string;
@@ -77,7 +76,7 @@ class PredictionTracker {
         const parsed = JSON.parse(stored);
         this.predictions = new Map(Object.entries(parsed));
       }
-    } catch (error) {
+    } catch (_error) {
       // Error loading predictions, using empty map
       this.predictions = new Map();
     }
@@ -88,7 +87,7 @@ class PredictionTracker {
     try {
       const toStore = Object.fromEntries(this.predictions);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
-    } catch (error) {
+    } catch (_error) {
       // Error saving predictions to localStorage
     }
   }

@@ -343,7 +343,7 @@ export class OptimizedPredictor {
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
       // Home win rate derived from actual completed matches (fallback 0.46 if no data)
       const leagueHomeWinRate = leagueAvgs.homeWinRate;
-      let adjustedProbabilities = { ...combinedProbabilities };
+      const adjustedProbabilities = { ...combinedProbabilities };
 
       if (referee) {
         try {
@@ -561,8 +561,8 @@ export class OptimizedPredictor {
     
     // Calculate win probabilities
     const totalMomentum = homeMomentum + awayMomentum;
-    let homeWinProb = (homeMomentum / totalMomentum) * (1 - drawProb);
-    let awayWinProb = (awayMomentum / totalMomentum) * (1 - drawProb);
+    const homeWinProb = (homeMomentum / totalMomentum) * (1 - drawProb);
+    const awayWinProb = (awayMomentum / totalMomentum) * (1 - drawProb);
     
     // Ensure probabilities sum to 1
     const total = homeWinProb + drawProb + awayWinProb;
