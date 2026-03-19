@@ -48,6 +48,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
   - ~~`predictions.ts` - Original weighted prediction model~~ **REMOVED** — production model is `optimizedPredictions.ts`
   - `betBuilder.ts` - Multi-market prediction generator
+  - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised, used by ChatBot + Predictions)
 - `services/` - Data and business logic:
   - `api/footballData.ts` - Football-Data.org API client with rate limiting
   - `dataService.ts` - Singleton data layer (cache + API)
@@ -101,7 +102,7 @@ These specs are the single source of truth for requirements.
 
 ### Current Focus Areas
 - **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
-- **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Improvement roadmap in IMPLEMENTATION_PLAN.md
+- **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Frontend now calls `/predict/free` endpoint. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
 - **Remaining work:** P2 partial (Docker, backend deps, CI), P5 hardening (rate limiter, test quality, type safety), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
@@ -109,7 +110,7 @@ These specs are the single source of truth for requirements.
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
 - shadcn-svelte: 5 components installed (Button, Card, Badge, Separator, Skeleton); Button wired in 5 components, Card wrapping 10 card-glass instances, Badge in 3 components (with `info`/`neutral` variants added). Orphaned `.btn-*`/`.badge-*` CSS removed from `app.css` (only `.btn-neon` kept). Remaining unwired: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar). `components.json` exists (enables `npx shadcn-svelte@latest add`)
-- Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
+- Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200. Oracle ensemble model loading removed from startup (no `xgboost_model.pkl`, `lstm_model.pt`, `transformer_model.pt`). Frontend uses `/predict/free` endpoint exclusively
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
@@ -180,15 +181,15 @@ These specs are the single source of truth for requirements.
 - No TODO/FIXME/HACK comments remain in the codebase (eighth audit, 25 March 2026)
 - Spec 06 (prediction tracking) is 100% complete — all 7/7 acceptance criteria met
 - Spec 07 (UI/UX) at ~75% — 3/5 shadcn components wired (Button, Card, Badge); remaining: Dialog (ApiSetupWizard modal), Sheet (mobile sidebar), dead code removal, form string computation
-- **Poisson maxGoals inconsistency (P5n):** 4 different values across codebase — `advancedPredictions.ts` fixed to 7, but `optimizedPredictions.ts:278` uses 5, `Predictions.svelte` uses 6, `value.ts:234` uses 10. Spec says 7. All three unfixed sites directly affect prediction probabilities
-- Three separate Poisson implementations exist: `advancedPredictions.ts` (PoissonPredictor class), `value.ts` (private static methods), `betBuilder.ts` (separate implementation). Should consolidate to one
-- `optimizedPredictions.ts:644`: `getStandingsProbabilities` no-data fallback uses `homeWin: 0.40` — inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (P5o, different location from the P5k H2H fix)
-- `backtest.ts`: snapshots/restores ELO ratings but NOT `processedMatchIds` — matches processed during backtest remain marked as processed, potentially blocking future live ELO updates (P5p)
-- `dataService.ts`/`footballData.ts`: live match query uses `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included, matches in extra time disappear from live view (P5q)
+- ~~**Poisson maxGoals inconsistency (P5n):** 4 different values across codebase — `advancedPredictions.ts` fixed to 7, but `optimizedPredictions.ts:278` uses 5, `Predictions.svelte` uses 6, `value.ts:234` uses 10. Spec says 7. All three unfixed sites directly affect prediction probabilities~~ **FIXED:** all four sites now use `maxGoals=7`. `optimizedPredictions.ts`, `Predictions.svelte`, and `value.ts` updated. Note: `value.ts` no longer has its own Poisson implementation — private methods removed, now imports `PoissonPredictor` from `advancedPredictions.ts`
+- ~~Three separate Poisson implementations exist: `advancedPredictions.ts` (PoissonPredictor class), `value.ts` (private static methods), `betBuilder.ts` (separate implementation). Should consolidate to one~~ **FIXED:** single Poisson implementation in `advancedPredictions.ts` (`PoissonPredictor`). `value.ts` private methods removed and replaced with imports from `advancedPredictions.ts`. `betBuilder.ts` already imported the shared class
+- ~~`optimizedPredictions.ts:644`: `getStandingsProbabilities` no-data fallback uses `homeWin: 0.40` — inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (P5o, different location from the P5k H2H fix)~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5o)
+- ~~`backtest.ts`: snapshots/restores ELO ratings but NOT `processedMatchIds` — matches processed during backtest remain marked as processed, potentially blocking future live ELO updates (P5p)~~ **FIXED:** `processedMatchIds` now included in snapshot/restore cycle (P5p)
+- ~~`dataService.ts`/`footballData.ts`: live match query uses `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included, matches in extra time disappear from live view (P5q)~~ **FIXED:** live match query now includes `IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT` (P5q)
 - `ApiSetupWizard.svelte`: no focus trap on open (WCAG 2.1 failure), no Escape key handler. Independent of Dialog shadcn migration (P5r)
 - `$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts` — shadcn components import the duplicate file. Both work but creates maintenance risk (P5s)
-- Dead exports confirmed: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()`, `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface — all exported but never imported anywhere (P5s)
-- `app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)
+- ~~Dead exports: `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface~~ **FIXED:** both removed (P5s). Note: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte:194`; incorrectly listed here previously
+- ~~`app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)~~ **FIXED:** all dead classes and the dead `@keyframes scroll` animation removed from `app.css` (P5s)
 - `footballData.ts`: no AbortController or timeout on fetch — hung API call blocks the rate-limit queue indefinitely (P5t)
 - `dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws (P5t)
 - `Predictions.svelte`: `catch (error)` variable shadows outer `let error` state variable (P5t)

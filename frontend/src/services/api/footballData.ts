@@ -480,7 +480,7 @@ class FootballDataAPI {
   
   // Get live matches (in play) — uses 60s cache for freshness
   public async getLiveMatches(): Promise<Match[]> {
-    const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED`;
+    const endpoint = `/competitions/${this.config.competitionId}/matches?status=IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT`;
     const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint, 60_000);
 
     if (!data) return [];

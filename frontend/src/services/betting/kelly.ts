@@ -228,10 +228,3 @@ export function calculateKelly(
     maxStakePercentage: kellyFraction
   });
 }
-
-export function isValueBet(ourProbability: number, bookmakerOdds: number): boolean {
-  const impliedProbability = 1 / bookmakerOdds;
-  const edge = ourProbability - impliedProbability;
-  const expectedValue = (ourProbability * bookmakerOdds) - 1;
-  return edge > 0.02 && expectedValue > 0;
-}

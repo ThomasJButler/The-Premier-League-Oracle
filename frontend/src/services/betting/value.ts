@@ -1,5 +1,5 @@
 import { KellyCalculator, type KellyCalculation } from './kelly';
-import { AdvancedMatchPredictor } from '../../lib/advancedPredictions';
+import { AdvancedMatchPredictor, PoissonPredictor } from '../../lib/advancedPredictions';
 
 export interface ValueBet {
   matchId: string;
@@ -231,10 +231,10 @@ export class ValueBettingEngine {
     type: 'over' | 'under'
   ): number {
     let probability = 0;
-    const maxGoals = 10;
+    const maxGoals = 7;
     
     for (let goals = 0; goals <= maxGoals; goals++) {
-      const poissonProb = this.poissonProbability(expectedGoals, goals);
+      const poissonProb = PoissonPredictor.poissonProbability(expectedGoals, goals);
       
       if (type === 'over' && goals > threshold) {
         probability += poissonProb;
@@ -254,24 +254,13 @@ export class ValueBettingEngine {
     expectedAwayGoals: number
   ): number {
     // Probability that home scores at least 1
-    const homeScoresProb = 1 - this.poissonProbability(expectedHomeGoals, 0);
+    const homeScoresProb = 1 - PoissonPredictor.poissonProbability(expectedHomeGoals, 0);
     // Probability that away scores at least 1
-    const awayScoresProb = 1 - this.poissonProbability(expectedAwayGoals, 0);
+    const awayScoresProb = 1 - PoissonPredictor.poissonProbability(expectedAwayGoals, 0);
     // Both teams score
     return homeScoresProb * awayScoresProb;
   }
   
-  /**
-   * Poisson probability calculation
-   */
-  private static poissonProbability(lambda: number, k: number): number {
-    return (Math.pow(lambda, k) * Math.exp(-lambda)) / this.factorial(k);
-  }
-  
-  private static factorial(n: number): number {
-    if (n <= 1) return 1;
-    return n * this.factorial(n - 1);
-  }
   
   /**
    * Generate warnings for a value bet

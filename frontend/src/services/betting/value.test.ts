@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ValueBettingEngine, type MarketOdds } from './value';
 
-// Mock the AdvancedMatchPredictor dependency
-vi.mock('../../lib/advancedPredictions', () => ({
-  AdvancedMatchPredictor: {
-    predictMatch: vi.fn()
-  }
-}));
+// Mock only AdvancedMatchPredictor — keep real PoissonPredictor for goals calculations
+vi.mock('../../lib/advancedPredictions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/advancedPredictions')>();
+  return {
+    ...actual,
+    AdvancedMatchPredictor: {
+      predictMatch: vi.fn()
+    }
+  };
+});
 
 import { AdvancedMatchPredictor } from '../../lib/advancedPredictions';
 

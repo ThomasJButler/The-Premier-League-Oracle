@@ -2,16 +2,6 @@ import { dataService } from '../services/dataService';
 import type { Match } from '../types';
 import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
-// Advanced team rating system using ELO
-export interface TeamRating {
-  team: string;
-  eloRating: number;
-  offensiveStrength: number;
-  defensiveStrength: number;
-  formRating: number; // Dynamic form based on recent performances
-  homeAdvantage: number; // Team-specific home advantage
-}
-
 // Poisson distribution for goal prediction
 export class PoissonPredictor {
   static factorial(n: number): number {
@@ -225,6 +215,16 @@ export class EloRatingSystem {
     const result: Record<string, number> = {};
     this.teamRatings.forEach((rating, team) => { result[team] = Math.round(rating); });
     return result;
+  }
+
+  /** Get a copy of all processed match IDs (for snapshotting before backtests). */
+  getProcessedMatchIds(): Set<string> {
+    return new Set(this.processedMatchIds);
+  }
+
+  /** Replace the processed match IDs set (for restoring after backtests). */
+  setProcessedMatchIds(ids: Set<string>): void {
+    this.processedMatchIds = new Set(ids);
   }
 
   calculateWinProbability(homeRating: number, awayRating: number): number {

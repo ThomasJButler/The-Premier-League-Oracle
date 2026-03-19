@@ -104,6 +104,7 @@ export class BacktestRunner {
   async run(onProgress?: BacktestProgressCallback): Promise<BacktestResult> {
     // Snapshot the shared ELO state so backtesting doesn't corrupt live ratings
     const eloSnapshot = sharedEloSystem.getAllRatings();
+    const processedIdsSnapshot = sharedEloSystem.getProcessedMatchIds();
 
     const predictions: BacktestPrediction[] = [];
     const total = this.matches.length;
@@ -157,6 +158,7 @@ export class BacktestRunner {
     for (const [team, rating] of Object.entries(eloSnapshot)) {
       sharedEloSystem.setTeamRating(team, rating);
     }
+    sharedEloSystem.setProcessedMatchIds(processedIdsSnapshot);
 
     return this.computeMetrics(predictions);
   }

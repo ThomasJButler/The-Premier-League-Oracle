@@ -273,8 +273,7 @@ export class OptimizedPredictor {
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
-        awayGoalsExpected,
-        5
+        awayGoalsExpected
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
@@ -641,7 +640,7 @@ export class OptimizedPredictor {
 
   private static getStandingsProbabilities(homePosition: number, awayPosition: number) {
     if (!homePosition || !awayPosition) {
-      return { homeWin: 0.40, draw: 0.30, awayWin: 0.30 };
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: 0.27, awayWin: 1 - DEFAULT_HOME_WIN_RATE - 0.27 };
     }
 
     const positionDiff = awayPosition - homePosition;

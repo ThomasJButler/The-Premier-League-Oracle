@@ -2,6 +2,38 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — P5 Hardening Batch: Poisson consistency, data integrity, dead code
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5n — Poisson maxGoals consistency (CRITICAL)
+- Fixed 3 inconsistent maxGoals values across the codebase to match spec-mandated cap of 7:
+  - `optimizedPredictions.ts:278` — was 5, now uses PoissonPredictor default (7)
+  - `Predictions.svelte` — was 6, now uses PoissonPredictor default (7)
+  - `value.ts:234` — was 10, now 7
+- Consolidated `value.ts` private Poisson implementation (duplicate `poissonProbability` and `factorial` methods) into shared `PoissonPredictor` from `advancedPredictions.ts`. Single source of truth for all Poisson calculations.
+
+### P5o — Standings fallback consistency
+- `getStandingsProbabilities` no-data fallback changed from hardcoded `0.40` to `DEFAULT_HOME_WIN_RATE` (0.46) with proportional draw/away split
+
+### P5p — Backtest ELO processedMatchIds leak
+- Added `getProcessedMatchIds()` and `setProcessedMatchIds()` to `EloRatingSystem`
+- `backtest.ts` now snapshots and restores `processedMatchIds` alongside ratings, preventing backtest runs from permanently marking matches as processed on the shared ELO system
+
+### P5q — Live match status filter
+- Added `EXTRA_TIME` and `PENALTY_SHOOTOUT` to live match query in `footballData.ts` — matches in extra time/penalties no longer disappear from the live view
+
+### P5s — Dead code cleanup (partial)
+- Removed dead standalone `isValueBet()` function from `kelly.ts` (the `KellyStake.isValueBet` property is unaffected)
+- Removed dead `TeamRating` interface from `advancedPredictions.ts`
+- Removed dead CSS classes `.match-card`, `.match-score`, `.chart-container` from `app.css`
+- Removed dead `@keyframes scroll` animation from `app.css` (overridden by LiveTicker local keyframes)
+- Corrected ninth audit finding: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte`
+
+### Test fixes
+- Updated `backtest.test.ts` mock to include `getProcessedMatchIds`/`setProcessedMatchIds`
+- Updated `value.test.ts` mock to preserve real `PoissonPredictor` via `importOriginal` pattern
+
 ## [Unreleased] - v3.0-BackendMLTraining Branch
 
 ### Ninth Planning Audit — 22 New Findings (26 March 2026)

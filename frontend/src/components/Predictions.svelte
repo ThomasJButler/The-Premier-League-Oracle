@@ -239,8 +239,7 @@
         // Calculate Poisson probabilities for additional analysis
         const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
           prediction.predictedHomeGoals,
-          prediction.predictedAwayGoals,
-          6
+          prediction.predictedAwayGoals
         );
         const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
