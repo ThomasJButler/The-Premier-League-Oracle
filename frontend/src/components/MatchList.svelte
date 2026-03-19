@@ -25,7 +25,7 @@
   let sortOrder: 'asc' | 'desc' = 'asc';
   let teams: string[] = [];
 
-  async function loadSeasons() {
+  export async function loadSeasons() {
     try {
       seasons = await dataService.getAllSeasons();
       if (seasons.length > 0) {
@@ -35,10 +35,11 @@
     } catch (err) {
       console.warn('Failed to load seasons:', err);
       error = 'Failed to load seasons. Please check your API key in Settings.';
+      loading = false;
     }
   }
 
-  async function loadMatches() {
+  export async function loadMatches() {
     loading = true;
     error = null;
     try {

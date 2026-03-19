@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (thirty-fifth update — twentieth audit resolved)
+Last updated: April 2026 (thirty-sixth update — unit test coverage expansion)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -20,7 +20,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 
-**Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)

@@ -38,7 +38,7 @@
     await loadTopScorers();
   });
   
-  async function loadTopScorers() {
+  export async function loadTopScorers() {
     try {
       loading = true;
       error = '';

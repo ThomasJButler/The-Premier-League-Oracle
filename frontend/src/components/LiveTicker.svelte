@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { get } from 'svelte/store';
   import { format } from 'date-fns';
   import {
     liveMatchesStore,
@@ -17,35 +16,37 @@
     priority: number; // lower = higher priority
   }
 
-  let tickerContent = '';
-  let hasLiveMatches = false;
+  // Reactive store subscriptions — rebuilt whenever any store changes
+  $: liveMatches = $liveMatchesStore;
+  $: recentMatches = $recentMatchesStore;
+  $: upcomingMatches = $upcomingMatchesStore;
+  $: matchEvents = $matchEventsStore;
+  $: hasLiveMatches = $hasLiveStore;
+
   let paused = false;
-  let unsubscribers: Array<() => void> = [];
+
+  // Rebuild ticker whenever any input store changes
+  $: tickerContent = buildTicker(liveMatches, recentMatches, upcomingMatches, matchEvents);
 
   onMount(() => {
     // Ensure the service is started (idempotent — no-op if already running)
     liveService.start();
-
-    // Subscribe to stores and rebuild ticker when data changes
-    const unsubLive = liveMatchesStore.subscribe(() => buildTicker());
-    const unsubRecent = recentMatchesStore.subscribe(() => buildTicker());
-    const unsubUpcoming = upcomingMatchesStore.subscribe(() => buildTicker());
-    const unsubEvents = matchEventsStore.subscribe(() => buildTicker());
-    const unsubHasLive = hasLiveStore.subscribe((v) => { hasLiveMatches = v; });
-
-    unsubscribers = [unsubLive, unsubRecent, unsubUpcoming, unsubEvents, unsubHasLive];
   });
 
   onDestroy(() => {
-    unsubscribers.forEach((unsub) => unsub());
+    liveService.stop();
   });
 
-  function buildTicker() {
+  function buildTicker(
+    live: typeof $liveMatchesStore,
+    recent: typeof $recentMatchesStore,
+    upcoming: typeof $upcomingMatchesStore,
+    events: typeof $matchEventsStore,
+  ): string {
     try {
       const items: TickerItem[] = [];
 
       // Priority 0: Match events (highest priority) — goals, status changes
-      const events = get(matchEventsStore);
       events.forEach((event) => {
         items.push({
           text: event.message,
@@ -55,8 +56,6 @@
       });
 
       // Priority 1: Live scores — from shared store
-      const live = get(liveMatchesStore);
-
       live.forEach((match) => {
         const minute = match.minute != null ? `${match.minute}'` :
                        match.status === 'PAUSED' ? 'HT' : '';
@@ -68,7 +67,6 @@
       });
 
       // Priority 2: Recent results (last 24h) — filter from wider 3-day store
-      const recent = get(recentMatchesStore);
       const oneDayAgo = Date.now() - 24 * 60 * 60_000;
       const recentToday = recent.filter((m) => new Date(m.date).getTime() > oneDayAgo);
 
@@ -83,7 +81,6 @@
       });
 
       // Priority 3: Upcoming fixtures (next 48h) — filter from wider 7-day store
-      const upcoming = get(upcomingMatchesStore);
       const twoDaysFromNow = Date.now() + 2 * 24 * 60 * 60_000;
       const soonUpcoming = upcoming.filter((m) => new Date(m.date).getTime() < twoDaysFromNow);
 
@@ -100,8 +97,7 @@
       items.sort((a, b) => a.priority - b.priority);
 
       if (items.length === 0) {
-        tickerContent = 'Premier League Oracle — No matches scheduled in the next 48 hours';
-        return;
+        return 'Premier League Oracle — No matches scheduled in the next 48 hours';
       }
 
       // Build ticker with type-appropriate icons
@@ -114,9 +110,9 @@
 
       const tickerTexts = items.map((item) => `${iconMap[item.type] || ''} ${item.text}`);
       // Duplicate for seamless CSS scroll loop
-      tickerContent = tickerTexts.join(' \u2022 ') + ' \u2022 ' + tickerTexts.join(' \u2022 ');
+      return tickerTexts.join(' \u2022 ') + ' \u2022 ' + tickerTexts.join(' \u2022 ');
     } catch {
-      tickerContent = 'Premier League Oracle — Live Predictions — Real-time Analysis';
+      return 'Premier League Oracle — Live Predictions — Real-time Analysis';
     }
   }
 </script>

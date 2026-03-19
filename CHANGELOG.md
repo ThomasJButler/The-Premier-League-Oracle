@@ -2,6 +2,34 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Unit test coverage expansion: 8 new test files, 103 new tests
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### New test files (8)
+- `StandingsTable.test.ts` (15 tests) — loading states, error handling, standings data, show all toggle, form badges, goal difference, ARIA
+- `TopScorers.test.ts` (13 tests) — loading, API errors, scorer table, medals, position badges, goals, null data handling, ARIA
+- `SeasonStats.test.ts` (13 tests) — loading skeletons, error state, stat cards, avg goals, biggest comeback, draw rate, streaks, extended analytics
+- `Help.test.ts` (13 tests) — navigation, section switching, aria-current, external links, mobile menu, ensemble weights
+- `MatchList.test.ts` (12 tests) — seasons, match loading, error states, filter controls, sort buttons, quick filters, scores/times
+- `LiveTicker.test.ts` (12 tests) — store subscriptions, live dot, ticker content, pause/resume, fallback text, ARIA
+- `ApiSetupWizard.test.ts` (13 tests) — wizard steps, navigation, API validation, error states, progress dots, close button
+- `MatchEventToast.test.ts` (12 tests) — event rendering, colour-coded borders, score lines, multiple events, ARIA, store clearing
+
+### Component changes
+- `StandingsTable.svelte` — exported `loadStandings()` for test access
+- `TopScorers.svelte` — exported `loadTopScorers()` for test access
+- `SeasonStats.svelte` — exported `loadSeasonStats()` for test access
+- `MatchList.svelte` — exported `loadSeasons()` and `loadMatches()` for test access; fixed missing `loading = false` in error path
+- `LiveTicker.svelte` — refactored from manual `store.subscribe()` to idiomatic `$:` reactive declarations (fixes test store propagation)
+
+### Totals
+- Frontend tests: 404 → 507 (+103 tests across 8 new files)
+- Test files: 24 → 32
+- Components with unit tests: 9 → 17 (3 remaining: Header, SidebarNav, Sidebar — layout only)
+
+---
+
 ## April 2026 — Twentieth audit: all 17 items resolved (P5h)
 
 **Branch:** `v3.0-BackendMLTraining`

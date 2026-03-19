@@ -17,7 +17,7 @@
     await loadStandings();
   });
   
-  async function loadStandings() {
+  export async function loadStandings() {
     try {
       loading = true;
       error = '';

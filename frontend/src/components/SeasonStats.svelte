@@ -22,7 +22,7 @@
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
 
-  async function loadSeasonStats() {
+  export async function loadSeasonStats() {
     try {
       loading = true;
       error = null;
