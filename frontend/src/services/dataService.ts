@@ -520,6 +520,18 @@ class DataService {
         await this.getHistoricalMatches(season);
       }
 
+      // Warm up ELO ratings from historical data — processCompletedMatches is
+      // idempotent (skips already-processed match IDs), so this is safe to call
+      // even if current-season matches have already been processed.
+      const allHistorical = await this.getAllHistoricalMatches();
+      const finished = allHistorical.filter(m => m.result !== null);
+      if (finished.length > 0) {
+        const processed = sharedEloSystem.processCompletedMatches(finished);
+        if (processed > 0) {
+          console.info(`ELO warm-up: processed ${processed} historical matches across ${DataService.HISTORICAL_SEASONS.length} seasons`);
+        }
+      }
+
       // Mark as loaded so we don't re-trigger until the TTL expires
       localStorage.setItem(DataService.SEASONS_LOADED_KEY, String(Date.now()));
     } catch (error) {

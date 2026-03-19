@@ -139,7 +139,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 ### Architecture Notes
 - `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection
 - `footballData.ts` `rateLimitedFetch()` uses promise-based request queue for serialised API access
-- `dataService.ts` progressively fetches seasons 2020-2024 in background on startup
+- `dataService.ts` progressively fetches seasons 2020-2024 in background on startup, then warm-starts ELO ratings from all cached historical matches (idempotent, runs once per 24h)
 - Single Poisson implementation in `advancedPredictions.ts` (`PoissonPredictor`) — shared by `value.ts` and `betBuilder.ts`
 - ELO home advantage is the single source of truth (form analysis no longer applies momentum adjustments)
 - `svelte-check` reports 0 errors, 0 warnings

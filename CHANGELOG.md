@@ -2,6 +2,18 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## March 2026 — ELO Historical Warm-up: 5-season data now feeds ELO system
+
+**Branch:** `v3.0-Development`
+
+### Fixed: ELO ratings cold-start gap
+- `loadAllHistoricalSeasons()` was pre-fetching 5 seasons (~2,191 matches) into IndexedDB but never feeding them into the ELO system
+- `getAllHistoricalMatches()` existed but was never called — historical data sat idle in cache
+- New users started with stale `SEED_RATINGS` and only accumulated ELO from current-season matches
+- **Fix:** After historical season loading completes, all cached matches are now passed to `sharedEloSystem.processCompletedMatches()` — ELO ratings are warm-started from real historical data
+- The warm-up is idempotent (skips already-processed match IDs) and runs at most once per 24h (existing TTL guard)
+- This significantly improves prediction quality for new users by replacing hand-tuned seed ratings with data-derived ELO values
+
 ## March 2026 — P6d: Docker & Deployment Documentation (MVP Complete)
 
 **Branch:** `v3.0-Development` | **Tag:** `v0.1.20`

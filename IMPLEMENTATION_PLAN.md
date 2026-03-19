@@ -427,7 +427,7 @@ Priority features to implement with real data:
 | Location | Problem | Priority |
 |----------|---------|----------|
 | `advancedPredictions.ts` | `avgPenalties: 0.2` — no penalty data from free API tier | Low |
-| `advancedPredictions.ts` | `SEED_RATINGS` — 25 teams with manually assigned ELO, not backcalculated. Includes relegated teams | Low |
+| `advancedPredictions.ts` | `SEED_RATINGS` — 20 teams with manually assigned ELO, not backcalculated. Mitigated: historical warm-up now processes 5 seasons of matches on first load, so seeds are only used briefly before being overwritten by real data | Low |
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
 | `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
 | `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) | Low |
