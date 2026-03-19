@@ -18,6 +18,8 @@
   import LiveMatches from './components/LiveMatches.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
   import ChatBot from './components/ChatBot.svelte';
+  import { dataService } from './services/dataService';
+  import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
@@ -85,10 +87,6 @@
     }
 
     hasApiKey = true;
-
-    // Refresh data services with new API key
-    const { dataService } = await import('./services/dataService');
-    const { footballDataAPI } = await import('./services/api/footballData');
 
     // Set the API key and clear any stale cached data
     footballDataAPI.setApiKey(event.detail.apiKey);
