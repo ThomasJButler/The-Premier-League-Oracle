@@ -6,9 +6,9 @@
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
 | Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
-| Free-tier feature engineering | 86 features, standalone, no heavy deps |
+| Free-tier feature engineering | 94 features, standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Scaffolded — explicitly deferred, not trained |
-| Backend tests | **62 tests across 3 files — all passing** |
+| Backend tests | **67 tests across 3 files — all passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -16,7 +16,7 @@
 
 ## What This Does
 
-The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with 86 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) are scaffolded but deferred.
+The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with 94 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) are scaffolded but deferred.
 
 The frontend connects exclusively to the `/predict/free` endpoint.
 
@@ -30,7 +30,7 @@ backend/
 │   ├── api/
 │   │   └── main.py                       # FastAPI server
 │   ├── features/
-│   │   ├── free_tier_features.py         # 86-feature pipeline (active)
+│   │   ├── free_tier_features.py         # 94-feature pipeline (active)
 │   │   └── advanced_engineering.py       # 150+ feature pipeline (Pro-tier, deferred — 63 methods return 0.0)
 │   ├── models/
 │   │   ├── xgboost_model.py              # XGBoost (Pro-tier wrapper, unused at runtime)
@@ -48,7 +48,7 @@ backend/
 ├── tests/
 │   ├── test_free_tier_features.py        # 39 feature engineering tests
 │   ├── test_train_free_tier.py           # 12 training pipeline tests
-│   └── test_predict_free_tier.py         # 11 API endpoint tests
+│   └── test_predict_free_tier.py         # 16 API endpoint tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
 ├── train_free_tier.py                    # Active training script
@@ -123,20 +123,47 @@ Returns model metadata: accuracy, feature count, training date.
 
 ## Training the Free-Tier Model
 
-The training script expects the CSV data in `backend/spreadsheets/KnowledgeFilesCSV/`. This directory is gitignored — you need to supply the CSVs manually.
+### CSV training data
+
+The training script expects season CSV files in `backend/spreadsheets/KnowledgeFilesCSV/`. This directory is gitignored — you need to supply the CSVs yourself.
+
+**Source:** The CSVs were originally exported from [Football-Data.co.uk](https://www.football-data.co.uk/englandm.php) (free, no account required). Each file covers one Premier League season.
+
+**Expected format:** One CSV per season, named like `PL_19_20.csv`, `PL_20_21.csv`, etc. Required columns:
+
+| Column | Description |
+|---|---|
+| `Date` | Match date (DD/MM/YYYY) |
+| `HomeTeam`, `AwayTeam` | Team short names (e.g. "Arsenal", "Man City") |
+| `FTHG`, `FTAG` | Full-time home/away goals |
+| `FTR` | Full-time result: H / D / A |
+| `HTHG`, `HTAG` | Half-time home/away goals |
+| `HTR` | Half-time result: H / D / A |
+| `HS`, `AS` | Home/away shots |
+| `HST`, `AST` | Home/away shots on target |
+| `HC`, `AC` | Home/away corners |
+| `HY`, `AY` | Home/away yellow cards |
+| `HR`, `AR` | Home/away red cards |
+| Various odds columns | B365H, B365D, B365A, etc. (optional — used for calibration if present) |
+
+The current dataset spans 5.75 seasons (~2,191 matches).
+
+### Running training
 
 ```bash
 cd backend
-python train_free_tier.py
+python train_free_tier.py                    # Standard training
+python train_free_tier.py --tune             # With hyperparameter tuning (25 trials)
+python train_free_tier.py --tune --tune-trials 50  # More tuning trials
 ```
 
-This runs an XGBoost model with a logistic regression baseline, using a chronological train/test split. The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
+This runs an XGBoost model with a logistic regression baseline, using a chronological train/validation split with recency-weighted samples (recent seasons weighted higher). The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
 
 Current result: **51.0% accuracy** (3-class: home win / draw / away win).
 
 ### Feature engineering
 
-`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 86 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier).
+`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 94 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier). The CSV training data is richer than the live API, providing shots, corners, and cards columns that feed additional features during training.
 
 ---
 
@@ -157,10 +184,10 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-62 tests across 3 files, all passing:
+67 tests across 3 files, all passing:
 - `test_free_tier_features.py` — 39 tests covering the feature engineering pipeline
 - `test_train_free_tier.py` — 12 tests covering the training script
-- `test_predict_free_tier.py` — 11 tests covering the `/predict/free` API endpoint
+- `test_predict_free_tier.py` — 16 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
@@ -169,10 +196,9 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 ## Known Limitations
 
 - `torch` is in `environment.yml` but not `requirements.txt` — LSTM/Transformer models non-functional via `pip install` alone
-- `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start as-is
+- `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — runs as a standalone container via `Dockerfile` but `docker-compose up` will fail
 - `app/security/` modules (`auth.py`, `secrets.py`, `validators.py`) are not imported by `main.py` — unused at runtime
-- CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it
-- Security modules (`auth.py`, `secrets.py`, `validators.py`) exist in `app/security/` but are not imported by `main.py` — unused at runtime
+- CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it (see [Training](#training-the-free-tier-model) for how to obtain it)
 - `advanced_engineering.py`: `_is_derby_match()` uses API-format team names but training CSVs use short names — derby detection always returns `0.0` during training
 
 ---

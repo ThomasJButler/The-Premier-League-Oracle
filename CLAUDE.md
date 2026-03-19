@@ -161,7 +161,7 @@ These specs are the single source of truth for requirements.
 - `backtest.test.ts:156-174` encodes the known Kelly 1.05 inflation bug as a correct expected value (`0.525`). Fixing P1l will break this test — update expected value to `0.50` alongside the fix
 - ~~`requirements.txt` missing `langchain-community` and `bcrypt`~~ **FIXED:** Dead security module deps removed entirely from `requirements.txt` (P2r) — `auth.py`, `secrets.py`, `validators.py` are unused at runtime
 - ~~`main.py:511-515`: `/features/importance` endpoint accesses `oracle.lstm_model.model` without checking if `lstm_model` is not None — will `AttributeError` when torch missing~~ **FIXED:** Added `is not None` guard for both `lstm_model` and `transformer_model` (P2r)
-- `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`
+- `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`. Source, format, and required columns documented in `backend/README.md`
 - MIT licensed for open-source collaboration
 - ~~`main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`~~ **FIXED:** `_get_client_ip()` extracts real IP from `X-Forwarded-For` header with `request.client.host` fallback (P5a)
 - ~~`LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken~~ **FIXED:** panels now have matching `id="panel-live"`, `id="panel-recent"`, `id="panel-upcoming"` attributes
@@ -234,5 +234,8 @@ These specs are the single source of truth for requirements.
 - ~~`betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types~~ **FIXED:** all four combo types ("Safe Builder", "Value Builder", "High Risk Builder", "Goals Galore") now apply `correlationAdjustment()` for consistent confidence calculations (P5al)
 - ~~`backend/Dockerfile`: No non-root user created — app runs as root inside container~~ **FIXED:** added `appuser` non-root user, removed stale `COPY config.yml`, removed misleading MLflow port (P5am)
 - ~~`backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI~~ **FIXED:** renamed to `backend/check_imports.py` so pytest no longer collects it as a passing test (P5an)
+- ~~`advanced_engineering.py`: `warnings.filterwarnings('ignore')` at module level silences all Python warnings globally~~ **FIXED:** removed along with unused `warnings` import
+- `main.py`: CORS now includes `allow_origin_regex=r"https://.*\.vercel\.app"` to cover Vercel production + preview deployments (in addition to localhost dev/preview origins)
+- `backend/README.md` updated — feature count 86→94, test count 62→67, CSV training data source documented with required columns, duplicate security-modules bullet removed
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

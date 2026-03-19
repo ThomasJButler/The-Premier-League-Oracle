@@ -2,6 +2,19 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — README docs, warnings cleanup, CORS
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Documentation
+- **`backend/README.md` updated:** Feature count 86→94, test count 62→67 (11→16 for API tests). CSV training data section expanded with source URL (Football-Data.co.uk), expected file naming convention, required columns table, and `--tune` CLI flags. Duplicate "security modules unused" bullet removed, docker-compose limitation clarified
+
+### Backend cleanup
+- **Global `warnings.filterwarnings('ignore')` removed from `advanced_engineering.py`:** This was silencing all Python warnings for the entire process, masking genuine issues from unrelated libraries. The `warnings` import (now unused) was also removed
+- **CORS origins expanded in `main.py`:** Added `allow_origin_regex=r"https://.*\.vercel\.app"` to cover Vercel production and preview deployment URLs. Localhost dev/preview origins unchanged
+
+---
+
 ## 30 March 2026 — Hyperparameter tuning, backend test quality
 
 **Branch:** `v3.0-BackendMLTraining`

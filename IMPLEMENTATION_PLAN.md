@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-sixth update — hyperparameter tuning, backend test quality)
+Last updated: 30 March 2026 (twenty-seventh update — README docs, warnings cleanup, CORS)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -138,7 +138,7 @@ curl -X POST http://localhost:8000/predict/free \
 
 **Non-blocking caveats:**
 
-- [ ] `backend/spreadsheets/` is gitignored — cloning the repo does NOT include CSV training data. Either remove from `.gitignore` (data is public PL results, not sensitive) or document how to obtain it. Without these CSVs, `train_free_tier.py` cannot run
+- [x] `backend/spreadsheets/` is gitignored — CSV training data documented in `backend/README.md` with source URL, file naming convention, and required columns (batch 16)
 - [x] Rate limiter on `/predict/free` fixed — `_get_client_ip()` extracts real IP from `X-Forwarded-For` header (P5a, already done)
 
 ---
@@ -522,7 +522,7 @@ Priority features to implement with real data:
 
 - [ ] `_is_derby_match()` uses Football-Data.org canonical names but CSV training data uses short names — derby detection always returns `0.0` during training
 - [ ] `_compute_league_positions()` builds cumulative all-time points rather than per-season — wrong for multi-season training
-- [ ] `warnings.filterwarnings('ignore')` at module level silences all Python warnings globally — makes debugging harder
+- [x] `warnings.filterwarnings('ignore')` removed — `warnings` import also removed (unused) (batch 16)
 
 **Constraint:** Football-Data.org free tier does not provide xG, shots, possession, cards, corners data — ~70 features will remain stubs unless a paid data source is added.
 
@@ -577,7 +577,7 @@ Priority features to implement with real data:
 - [ ] `main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details
 - [ ] `main.py` WebSocket handler missing `oracle` null guard — silent disconnect when deps missing
 - [ ] `main.py`: `response.dict()` deprecated in Pydantic v2 — should be `.model_dump()`
-- [ ] `main.py`: CORS only allows `localhost:5173` and `localhost:4173` — no production Vercel domain listed
+- [x] `main.py`: CORS — added `allow_origin_regex` for `*.vercel.app` to cover production + preview deployments (batch 16)
 - [ ] `main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if socket was never appended. Use `set.discard()`
 - [ ] `secrets.py`: Azure Key Vault imported but no provider class; hard imports `boto3`, `hvac`, `azure` with no guards
 - [ ] `secrets.py`: `SecureConfig.__init__` requires `DATABASE_URL` which doesn't exist
