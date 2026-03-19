@@ -291,9 +291,9 @@ The backend currently has 0% test coverage. The free-tier model introduces the f
 
 > Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
 
-- [x] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v` (39 tests)
-- [x] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v` (12 tests)
-- [x] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v` (11 tests)
+- [x] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v` (45 tests incl. Elo leakage)
+- [x] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v` (25 tests incl. rolling CV, 7 skip without libomp)
+- [x] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v` (16 tests)
 - [x] Tests run in CI without requiring a Football-Data.org API key
 
 ---

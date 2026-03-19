@@ -8,7 +8,7 @@
 | Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
 | Free-tier feature engineering | 99 features, standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Scaffolded — explicitly deferred, not trained |
-| Backend tests | **73 tests across 3 files — all passing** |
+| Backend tests | **86 tests across 3 files — all non-skip tests passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -46,8 +46,8 @@ backend/
 ├── models/
 │   └── xgboost_free_tier.joblib          # Trained free-tier model
 ├── tests/
-│   ├── test_free_tier_features.py        # 39 feature engineering tests
-│   ├── test_train_free_tier.py           # 12 training pipeline tests
+│   ├── test_free_tier_features.py        # 45 feature engineering tests (incl. Elo leakage)
+│   ├── test_train_free_tier.py           # 25 training pipeline tests (incl. rolling CV, ensemble)
 │   └── test_predict_free_tier.py         # 16 API endpoint tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
@@ -155,9 +155,11 @@ cd backend
 python train_free_tier.py                    # Standard training
 python train_free_tier.py --tune             # With hyperparameter tuning (25 trials)
 python train_free_tier.py --tune --tune-trials 50  # More tuning trials
+python train_free_tier.py --cv              # Rolling cross-validation across seasons
+python train_free_tier.py --cv --tune       # CV + tuning combined
 ```
 
-This runs an XGBoost model with a logistic regression baseline, using a chronological train/validation split with recency-weighted samples (recent seasons weighted higher). The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
+This trains an XGBoost model with a stacked OvR ensemble (3 binary classifiers + meta-learner for improved draw prediction) and a logistic regression baseline. Uses chronological train/validation split with recency-weighted samples (recent seasons weighted higher). The `--cv` flag runs expanding-window cross-validation before the final training for robust accuracy estimates across all seasons. The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
 
 Current result: **51.0% accuracy** (3-class: home win / draw / away win).
 
@@ -184,9 +186,9 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-73 tests across 3 files, all passing:
-- `test_free_tier_features.py` — 45 tests covering the feature engineering pipeline (incl. Elo ratings)
-- `test_train_free_tier.py` — 12 tests covering the training script
+86 tests across 3 files, all non-skip tests passing (7 skip without libomp/XGBoost):
+- `test_free_tier_features.py` — 45 tests covering the feature engineering pipeline (incl. Elo ratings and data leakage verification)
+- `test_train_free_tier.py` — 25 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection)
 - `test_predict_free_tier.py` — 16 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
@@ -196,7 +198,7 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 ## Known Limitations
 
 - `torch` is in `environment.yml` but not `requirements.txt` — LSTM/Transformer models non-functional via `pip install` alone
-- `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — runs as a standalone container via `Dockerfile` but `docker-compose up` will fail
+- `docker-compose.yml` stripped to just `oracle-api` service — Pro-tier services (Redis, MLflow, Postgres, Jupyter, Nginx) commented out
 - `app/security/` modules (`auth.py`, `secrets.py`, `validators.py`) are not imported by `main.py` — unused at runtime
 - CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it (see [Training](#training-the-free-tier-model) for how to obtain it)
 - `advanced_engineering.py`: `_is_derby_match()` uses API-format team names but training CSVs use short names — derby detection always returns `0.0` during training
