@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
-| P5 Hardening | ~19/22 (86%) | Rate limiter, CI, error contract, WebSocket URL remaining; test quality, type safety, dead code largely done |
+| P5 Hardening | ~21/22 (95%) | Error contract, WebSocket URL remaining; accessibility, rate limiter, CI config done |
 
 **Frontend:** Production-ready — 376 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -185,12 +185,12 @@ curl -X POST http://localhost:8000/predict/free \
 
 ## Remaining Work — P5 (Hardening)
 
-### P5a. Backend Rate Limiter Broken
+### P5a. Backend Rate Limiter — PARTIAL
 
 `main.py:724-725`: `client_ip` parameter on `/predict/free` is declared with a default of `"unknown"` and never extracted from the actual HTTP request. All clients share a single rate-limit bucket.
 
-- [ ] Extract real client IP from `request.client.host` (with `X-Forwarded-For` header fallback for reverse proxies)
-- [ ] Test that per-IP bucketing actually isolates clients
+- [x] Extract real client IP from `request.client.host` (with `X-Forwarded-For` header fallback for reverse proxies)
+- [x] Test that per-IP bucketing actually isolates clients
 
 Additionally, the free-tier feature engineer is initialised with an empty DataFrame when CSVs are absent (gitignored). All features return `0.0` for live predictions with no warning.
 
@@ -226,7 +226,7 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 
 ### P5g. Config & Infrastructure — PARTIAL
 
-- [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency
+- [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency (blocked — push requires `workflow` OAuth scope)
 - [ ] `.gitignore`: `backend/chroma_db/` not gitignored — `chroma.sqlite3` generated database exists on disk and could be committed
 - [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
 - [ ] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` is dead code — the backend doesn't send this payload
@@ -280,12 +280,12 @@ Additionally, `value.ts` previously had its own private Poisson re-implementatio
 
 - [x] Added `EXTRA_TIME,PENALTY_SHOOTOUT` to the live matches status filter in `footballData.ts`
 
-### P5r. ApiSetupWizard Accessibility (WCAG 2.1)
+### P5r. ApiSetupWizard Accessibility (WCAG 2.1) — DONE
 
 The `ApiSetupWizard.svelte` dialog has two WCAG failures independent of the shadcn Dialog migration (Spec 07):
 
-- [ ] Focus is not moved to the dialog on open — screen readers and keyboard users land on content behind the modal
-- [ ] No `Escape` key handler to dismiss the dialog — keyboard-only users cannot close it
+- [x] Focus is not moved to the dialog on open — `use:focusTrap` auto-focuses first focusable element
+- [x] No `Escape` key handler to dismiss the dialog — `on:keydown` handler added, plus click-outside-to-close on backdrop
 
 ### P5s. Dead Code Cleanup — PARTIAL
 

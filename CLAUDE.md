@@ -163,7 +163,7 @@ These specs are the single source of truth for requirements.
 - `main.py:511-515`: `/features/importance` accesses `oracle.lstm_model.model` without None guard — `AttributeError` when torch is unavailable
 - `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`
 - MIT licensed for open-source collaboration
-- `main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`, all clients share one bucket. Needs `request.client.host` extraction
+- ~~`main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`~~ **FIXED:** `_get_client_ip()` extracts real IP from `X-Forwarded-For` header with `request.client.host` fallback (P5a)
 - `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken
 - ~~`ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged~~ **FIXED:** mock now uses spy, test verifies `sanitize()` is called with response content (P5e)
 - ~~`betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`~~ **FIXED:** `normaliseTeamName()` now converts `&` to `and`
@@ -186,7 +186,7 @@ These specs are the single source of truth for requirements.
 - ~~`optimizedPredictions.ts:644`: `getStandingsProbabilities` no-data fallback uses `homeWin: 0.40` — inconsistent with `DEFAULT_HOME_WIN_RATE = 0.46` (P5o, different location from the P5k H2H fix)~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5o)
 - ~~`backtest.ts`: snapshots/restores ELO ratings but NOT `processedMatchIds` — matches processed during backtest remain marked as processed, potentially blocking future live ELO updates (P5p)~~ **FIXED:** `processedMatchIds` now included in snapshot/restore cycle (P5p)
 - ~~`dataService.ts`/`footballData.ts`: live match query uses `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included, matches in extra time disappear from live view (P5q)~~ **FIXED:** live match query now includes `IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT` (P5q)
-- `ApiSetupWizard.svelte`: no focus trap on open (WCAG 2.1 failure), no Escape key handler. Independent of Dialog shadcn migration (P5r)
+- ~~`ApiSetupWizard.svelte`: no focus trap on open (WCAG 2.1 failure), no Escape key handler~~ **FIXED:** `use:focusTrap` wired, Escape key handler added, click-outside-to-close on backdrop, focus restored on unmount (P5r)
 - ~~`$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts`~~ **FIXED:** duplicate deleted, all 10 shadcn component imports updated to `$lib/utils` (P5s)
 - ~~Dead exports: `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface~~ **FIXED:** both removed (P5s). Note: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte:194`; incorrectly listed here previously
 - ~~`app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)~~ **FIXED:** all dead classes and the dead `@keyframes scroll` animation removed from `app.css` (P5s)

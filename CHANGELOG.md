@@ -2,6 +2,30 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — P5 Hardening Batch 3: Accessibility, rate limiter, CI
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.78`
+
+### P5r — ApiSetupWizard WCAG 2.1 accessibility
+- Wired `use:focusTrap` Svelte action — focus trapped within dialog, auto-focuses first element on mount
+- Added `Escape` key handler to dismiss the wizard
+- Added click-outside-to-close on the backdrop overlay
+- Restores focus to the previously active element on unmount
+
+### P5a — Backend rate limiter IP extraction
+- Added `_get_client_ip()` helper extracting real client IP from `X-Forwarded-For` header (for reverse proxies) with `request.client.host` fallback
+- Renamed `client_ip: str = "unknown"` parameter to proper `Request` injection — all clients no longer share a single bucket
+
+### P5g — CI config (partial)
+- Created `.nvmrc` at repo root (Node 20) — single source of truth for Node version
+- CI `node-version-file: .nvmrc` change prepared but push blocked by OAuth `workflow` scope
+
+### Stats
+- Frontend: 376 Vitest tests passing, 0 type errors
+- P5 progress: 86% → 95% (21/22 items done)
+
+---
+
 ## 19 March 2026 — P5 Hardening Batch 2: Type safety, test quality, resilience
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.77`
