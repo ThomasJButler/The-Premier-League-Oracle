@@ -209,9 +209,9 @@ These specs are the single source of truth for requirements.
 - **Sixteenth audit (29 March 2026) — 23 new items discovered:**
 - `App.svelte:79`: `hasApiKey = true` set unconditionally on wizard dismiss — even when no key entered. App attempts data load without a key (P1g)
 - `app.css:376-387`: Dead `.live-ticker` and `.ticker-content` global rules — `.ticker-content` references deleted `@keyframes scroll`. Both overridden by LiveTicker local styles (P5w)
-- `Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` undefined — silently no hover effect (P5x)
-- `Dashboard.svelte:87`: `dark:text-primary-light` undefined — icon renders wrong colour in dark mode (P5x)
-- `MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` only defined locally in `Predictions.svelte` — animations never run in those components (P5x)
+- ~~`Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` undefined~~ **SEVENTEENTH AUDIT CORRECTION:** `glow-primary-sm` IS defined in `tailwind.config.js:69` under `boxShadow` — this class works correctly. False positive removed from P5x
+- `Dashboard.svelte:87`: `dark:text-primary-light` undefined — icon renders wrong colour in dark mode (P5x). Only surviving P5x item
+- ~~`MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` only defined locally in `Predictions.svelte`~~ **SEVENTEENTH AUDIT CORRECTION:** `animate-fade-in` IS defined globally in `tailwind.config.js:78` (maps to `fadeIn` keyframe, opacity 0→1). Both components' animations work. Predictions.svelte has a local version that additionally translates Y — cosmetic difference, not a bug. False positive removed from P5x
 - `SeasonStats.svelte:374`: Division by `totalGoals` produces `NaN%` when no goals scored (P5y)
 - `renderMarkdown.ts`: Numbered lists wrap `<li class="list-decimal">` in `<ul>` instead of `<ol>` — semantic HTML error (P5z)
 - `optimizedPredictions.ts`: Home advantage double-counted — ELO adds 65 points AND form adds `*1.1`/`*0.9` momentum (P5aa)
@@ -225,5 +225,14 @@ These specs are the single source of truth for requirements.
 - Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `liveService.test.ts` passes because WS handler is broken; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
 - CI gaps: No coverage enforcement, no linting step, no E2E tests in pipeline (P2n extensions)
 - Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)
+- **Seventeenth audit (29 March 2026) — P5x corrections + 7 new items:**
+- **P5x CORRECTED:** `hover:shadow-glow-primary-sm` IS defined in `tailwind.config.js:69` (false positive). `animate-fade-in` IS defined globally in `tailwind.config.js:78` (false positive). Only `dark:text-primary-light` remains as a real P5x bug
+- `App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind generates `animate-fade-in` (kebab-case). Overlay animation broken (P5ah)
+- `Help.svelte`: Uses `prose prose-slate dark:prose-invert` classes (6 instances) and local `@apply .prose h2/h3/h4` rules, but `@tailwindcss/typography` is NOT installed. All typography styling silently non-functional (P5ai)
+- `Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state (P5aj)
+- Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()` (P5ak)
+- `betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types ("Value Builder" and "Goals Galore") — "Safe Builder" and "High Risk Builder" skip correlation (P5al)
+- `backend/Dockerfile`: No non-root user created — app runs as root inside container (P5am)
+- `backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI (P5an)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

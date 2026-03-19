@@ -1,25 +1,25 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 29 March 2026 (sixteenth update — comprehensive parallel audit, 23 new items discovered)
+Last updated: 29 March 2026 (seventeenth update — corrections + 7 new items from deep parallel audit)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~82% Complete
+## Project Status: ~80% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
 | Priority | Status | Notes |
 |----------|--------|-------|
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
-| P1 High Priority | 16/17 (94%) | 1 new: wizard dismiss sets hasApiKey unconditionally |
-| P2 Next Sprint | 22/27 (81%) | 3 new: requirements.txt httpx, .gitignore gaps, environment.yml stale |
+| P1 High Priority | 16/17 (94%) | 1 remaining: wizard dismiss sets hasApiKey unconditionally |
+| P2 Next Sprint | 22/27 (81%) | 5 open: httpx, .gitignore gaps, environment.yml stale, Docker, CI gaps |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~28/44 (64%) | 12 new items: CSS bugs, fade-in inconsistency, NaN guard, dead global CSS, test quality, renderMarkdown semantics, home advantage double-count, backtest localStorage noise, HT priors, fatigue congestion dead branch, backend path fragility, spinner inconsistency |
+| P5 Hardening | ~28/49 (57%) | 2 false-positive P5x items corrected; 7 new items from seventeenth audit (animate-fadeIn typo, typography plugin, aria-expanded, dead service methods, correlation inconsistency, Dockerfile root user, test_setup.py) |
 
-**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors — 5 new bugs found (CSS/logic)
+**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors — 2 P5x false positives corrected, 2 new CSS bugs found
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -358,13 +358,11 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [ ] Remove `.live-ticker` and `.ticker-content` global rules from `app.css`
 
-### P5x. Frontend CSS/Class Bugs
+### P5x. Frontend CSS/Class Bugs — CORRECTED
 
-Three undefined CSS classes silently produce no visual effect:
+**Seventeenth audit correction:** `hover:shadow-glow-primary-sm` IS defined in `tailwind.config.js:69` (`boxShadow.glow-primary-sm`) — false positive removed. `animate-fade-in` IS defined globally in `tailwind.config.js:78` (`fade-in` animation with `fadeIn` keyframe) — BettingHistory and MatchList animations DO work (opacity-only, vs Predictions.svelte's local version which adds translateY). Only 1 real bug remains:
 
-- [ ] `Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` — undefined Tailwind utility, hover effect does not work
-- [ ] `Dashboard.svelte:87`: `dark:text-primary-light` — undefined token, icon renders wrong colour in dark mode
-- [ ] `MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` class used but only defined locally in `Predictions.svelte` — animations never run in those two components. Either move the keyframe to `app.css` or give each component its own local definition
+- [ ] `Dashboard.svelte:87`: `dark:text-primary-light` — undefined token, icon renders wrong colour in dark mode. No `primary-light` colour key exists in the Tailwind config (only `primary.DEFAULT` and `primary.foreground`)
 
 ### P5y. SeasonStats NaN Guard
 
@@ -428,6 +426,53 @@ Three different spinner implementations exist across components (none use the `s
 
 - [ ] Consolidate spinners to a single pattern or shared component
 - [ ] Migrate remaining raw `<button>` elements to shadcn `<Button>` where appropriate (StandingsTable, TopScorers, LiveMatches, MatchList refresh/retry/filter buttons)
+
+### P5ah. App.svelte animate-fadeIn Typo
+
+`App.svelte:113`: Uses `animate-fadeIn` (camelCase) but Tailwind generates `animate-fade-in` (kebab-case). The overlay div appears and disappears via conditional rendering, but the intended fade animation never runs.
+
+- [ ] Change `animate-fadeIn` to `animate-fade-in`
+
+### P5ai. Help.svelte Typography Plugin Missing
+
+`Help.svelte` uses `prose prose-slate dark:prose-invert` classes in 6 wrapper `<div>` elements, and has local `@apply .prose h2/h3/h4` rules in its `<style>` block. However, `@tailwindcss/typography` is not installed as a dependency or listed in `tailwind.config.js` plugins. All prose styling is silently non-functional — headings, lists, and body text render with default browser styles rather than the Tailwind typography system.
+
+- [ ] Install `@tailwindcss/typography` (`npm install -D @tailwindcss/typography`)
+- [ ] Add `require('@tailwindcss/typography')` to `tailwind.config.js` plugins array
+
+### P5aj. Header.svelte Missing aria-expanded
+
+`Header.svelte`: The sidebar toggle button (hamburger menu) has `aria-label="Toggle menu"` but no `aria-expanded` attribute. Screen reader users cannot determine whether the sidebar is currently open or closed.
+
+- [ ] Add `aria-expanded={isSidebarOpen}` to the sidebar toggle button (requires passing `isOpen` prop from App.svelte)
+
+### P5ak. Dead Service Methods
+
+Several exported service methods are never called from any component or test:
+
+- [ ] `backendService.predictBatch()` — fully implemented but no consumer exists
+- [ ] `backendService.getTeamStats()` — fully implemented but no consumer exists
+- [ ] `backendService.headers(includeAuth=true)` — the bearer-token branch is never reached (all callers use `this.headers()` without arguments)
+- [ ] `KellyCalculator.simulate()` — Monte Carlo simulation with `Math.random()`, never called from any component or test
+- [ ] `aiAnalysis.invalidateServerKeyCache()` — public method, no caller exists
+
+### P5al. betBuilder correlationAdjustment Inconsistency
+
+`betBuilder.ts`: `correlationAdjustment()` applies correlation multipliers (1.15, 1.10, 0.85) to improve combo probability accuracy by accounting for market dependencies. It is applied to "Value Builder" and "Goals Galore" combos but NOT to "Safe Builder" or "High Risk Builder" combos — producing less accurate combined odds for those two combo types.
+
+- [ ] Apply `correlationAdjustment()` consistently to all four combo generators, or document why only specific combos use it
+
+### P5am. Dockerfile Runs as Root
+
+`backend/Dockerfile` creates no non-root user. The application runs as root inside the container, which is a security concern for production deployments.
+
+- [ ] Add a non-root user (e.g. `RUN adduser --disabled-password appuser`) and `USER appuser` directive
+
+### P5an. test_setup.py False Confidence
+
+`backend/test_setup.py` defines `test_imports()` which prints import status but makes zero assertions. pytest collects it and reports it as "passed" regardless of whether imports actually succeeded — providing false confidence in CI output.
+
+- [ ] Either add proper assertions that fail when critical imports are missing, or rename to a non-test file (e.g. `check_imports.py`) so pytest does not collect it
 
 ---
 

@@ -2,6 +2,33 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 29 March 2026 — Seventeenth audit: P5x corrections + 7 new items from deep parallel analysis
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Deep parallel audit using 7 Opus/Sonnet subagents cross-referencing all specs, frontend lib/services/components, backend Python code, config/infrastructure, and stub hunting against `tailwind.config.js` definitions.
+
+### P5x false-positive corrections
+- **`hover:shadow-glow-primary-sm`** — IS defined in `tailwind.config.js:69` under `boxShadow.glow-primary-sm`. Dashboard hover effect works correctly. Removed from P5x
+- **`animate-fade-in` in BettingHistory/MatchList** — IS defined globally in `tailwind.config.js:78` (maps to `fadeIn` keyframe, opacity 0→1). Both components' animations work. Predictions.svelte has a local version that also translates Y — cosmetic difference, not a bug. Removed from P5x
+- Only surviving P5x item: `dark:text-primary-light` (genuinely undefined token)
+
+### Newly discovered items (7)
+- **P5ah** `App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind uses kebab-case `animate-fade-in`. Overlay fade animation broken
+- **P5ai** `Help.svelte`: `@tailwindcss/typography` not installed — `prose` classes (6 instances) and local `@apply .prose h2/h3/h4` rules all silently non-functional
+- **P5aj** `Header.svelte`: sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state
+- **P5ak** Dead service methods: `backendService.predictBatch()`, `backendService.getTeamStats()`, `headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()`
+- **P5al** `betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types — inconsistent correlation handling
+- **P5am** `Dockerfile` runs as root — no non-root user created
+- **P5an** `test_setup.py` makes zero assertions — always passes in pytest, false confidence in CI
+
+### Stats
+- Project completion: ~82% → ~80% (2 false positives removed, 7 new items added; net +5 open items)
+- P5 hardening: ~28/44 → ~28/49 (57%)
+
+---
+
 ## 29 March 2026 — Sixteenth audit: 23 new items discovered via comprehensive parallel analysis
 
 **Branch:** `v3.0-BackendMLTraining`
