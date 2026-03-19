@@ -6,6 +6,16 @@ All notable changes to The Premier League Oracle are documented here.
 
 **Branch:** `v3.0-Development`
 
+### Improved: Backtester now uses multi-season historical data
+- Previously limited to ~38 matches from `getMatches({ recent: true, days: 365 })`
+- Now calls `getAllHistoricalMatches()` which returns up to ~2,000+ matches across 5 cached seasons (2020–2024)
+- Falls back to current season if no historical data is cached yet
+- Dramatically improves statistical reliability of accuracy, log loss, and Brier score metrics
+
+### Removed: 300ms artificial delay from prediction batch
+- `predictGameweek` had a `setTimeout(300)` per match "to show animation" — wasting ~3 seconds per 10-match gameweek
+- The async `predictMatch` calls naturally yield to the UI between iterations, so the processing spinner renders correctly without the delay
+
 ### Fixed: calculateKelly parameter mismatch (kelly.ts / Predictions.svelte)
 - `calculateKelly()` wrapper mapped its 4th argument to `maxStakePercentage` (a stake ceiling), but `Predictions.svelte` passed `prediction.confidence` (0.5–0.9) there — meaning confidence had no effect on stake sizing (the 25% `MAX_KELLY` hard cap always took priority)
 - The actual `confidenceLevel` (which scales the recommended stake) silently defaulted to 0.6 for all predictions regardless of model confidence

@@ -115,8 +115,12 @@
     backtestTotal = 0;
 
     try {
-      // Fetch completed matches from the current season
-      const allMatches = await dataService.getMatches({ recent: true, days: 365 });
+      // Fetch completed matches across all cached historical seasons (2020–2024)
+      // for a statistically robust backtest — falls back to current season if no history cached
+      let allMatches = await dataService.getAllHistoricalMatches();
+      if (allMatches.length === 0) {
+        allMatches = await dataService.getMatches({ recent: true, days: 365 });
+      }
       const completedMatches = allMatches.filter(m => m.result);
 
       if (completedMatches.length < 5) {
@@ -219,9 +223,6 @@
       predictions = [...predictions];
       
       try {
-        // Add small delay to show animation
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
         // Use optimized predictor for better accuracy
         const optimizedPrediction = await OptimizedPredictor.predictMatch(
           match.home_team,

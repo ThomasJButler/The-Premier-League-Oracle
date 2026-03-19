@@ -443,7 +443,6 @@ Priority features to implement with real data:
 | `betBuilder.ts` | `homeCleanSheet` prediction threshold 0.3 — no empirical basis | Low |
 | `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated margin | Low |
-| `Predictions.svelte` | 300ms artificial delay in `predictGameweek` — cosmetic fake loading | Low |
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
 
