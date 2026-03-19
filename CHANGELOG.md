@@ -2,6 +2,37 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — P2r/P2s/P5a: Backend runtime crash fix, dead deps cleanup, data guards
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.81`
+
+### P2r — `/features/importance` runtime crash fix
+- Added `is not None` guard for `oracle.lstm_model` and `oracle.transformer_model` in the `/features/importance` endpoint — previously raised `AttributeError` when torch was unavailable (the normal free-tier scenario)
+
+### P2r — requirements.txt dead dependency cleanup
+- Removed 14 dead packages from `requirements.txt`: `python-jose`, `passlib`, `cryptography`, `python-dotenv`, `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity`, `sqlalchemy`, `mlflow`, `optuna`, `chromadb`, `langchain`, `langchain-openai`
+- These were only used by security modules (`auth.py`, `secrets.py`, `validators.py`) that are never imported by `main.py`, or by the disabled Pro-tier oracle (`modern_oracle.py`)
+- Also removed `shap` (only used in inactive `xgboost_model.py`) and `scipy` (indirect dep, installed automatically by sklearn)
+- Fixed Python version header from 3.13 to 3.11 (matching Dockerfile and CI)
+- Net saving: ~30MB+ of install time and Docker image size
+
+### P2s — LSTM synthetic training data guard
+- `LSTMPredictor.train()` now raises `ValueError` when called with empty data instead of proceeding silently
+- `__main__` demo block clearly labelled as synthetic data — not a real training run
+
+### P5a — CSV-absent warning
+- When `backend/spreadsheets/KnowledgeFilesCSV/` is not found at startup, the free-tier feature engineer now logs a clear warning explaining that all features will return 0.0
+- Previously failed silently with no indication why predictions were empty
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Backend: Python syntax verified; CI will run 62 pytest tests
+- P2 progress: 83% → 92% (20/24 → 22/24)
+- P5 progress: 96% → 97% (27/28 → 28/29)
+- Overall: ~82% → ~84%
+
+---
+
 ## 19 March 2026 — P5 Hardening Batch 5: Backend CI pipeline, spec consistency, stale docs
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.80`

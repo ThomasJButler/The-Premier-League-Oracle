@@ -257,6 +257,12 @@ async def lifespan(app: FastAPI):
                     logger.info("Free-tier engineer loaded with %d historical matches", len(csv_data))
                 except Exception as csv_err:
                     logger.warning("Could not load CSV data for free-tier: %s", csv_err)
+            else:
+                logger.warning(
+                    "CSV training data not found at %s — free-tier features will return 0.0 for all matches. "
+                    "Place CSV files in backend/spreadsheets/KnowledgeFilesCSV/ or see IMPLEMENTATION_PLAN.md",
+                    csv_dir,
+                )
 
         except Exception as e:
             logger.warning(f"Could not load free-tier model: {e}")
@@ -587,11 +593,11 @@ async def get_feature_importance():
         importance['xgboost'] = oracle.xgboost_model.get_top_features(20)
     
     # LSTM feature importance (gradient-based)
-    if oracle.lstm_model.model:
+    if oracle.lstm_model is not None and oracle.lstm_model.model:
         importance['lstm'] = oracle.lstm_model.get_feature_importance()
-    
+
     # Transformer attention weights
-    if oracle.transformer_model.model:
+    if oracle.transformer_model is not None and oracle.transformer_model.model:
         importance['transformer'] = "Use /predict with explain=true for attention weights"
     
     return {

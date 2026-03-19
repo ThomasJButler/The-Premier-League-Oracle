@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (twelfth update — P5c done, P5g node-version fixed, spec body text synced)
+Last updated: 19 March 2026 (thirteenth update — P2r/P2s items done, P5a CSV warning done)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~82% Complete
+## Project Status: ~84% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -13,11 +13,11 @@ Active branch: `v3.0-BackendMLTraining`
 |----------|--------|-------|
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 16/16 (100%) | All frontend bugs, security, data layer fixes |
-| P2 Next Sprint | 20/24 (83%) | 4 partial — Docker, backend deps, CI gaps |
+| P2 Next Sprint | 22/24 (92%) | 2 partial — Docker, CI gaps; backend deps cleaned |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
-| P5 Hardening | ~27/28 (96%) | Backend CI done, node-version fixed; Playwright E2E in CI, vite proxy production gap remaining |
+| P5 Hardening | ~28/29 (97%) | Backend CI done, node-version fixed, CSV warning logged; Playwright E2E in CI, vite proxy production gap remaining |
 
 **Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -160,26 +160,26 @@ curl -X POST http://localhost:8000/predict/free \
 
 ### P2r. Config & Infrastructure — PARTIAL
 
-**Version pinning (remaining):**
+**Version pinning:**
 
-- [ ] Fix Python version mismatch: `requirements.txt` says 3.13, `Dockerfile` uses 3.11, `environment.yml` uses 3.11 — align all to one version
+- [x] Fixed `requirements.txt` header from Python 3.13 to Python 3.11 (matching Dockerfile and CI)
 - [ ] `passlib==1.7.4` is incompatible with Python 3.13 — the `crypt` module was removed from stdlib in 3.13. (Only used by dead `auth.py` module, so low runtime risk)
 
 **Backend dead dependencies in `requirements.txt`:**
 
-- [ ] Remove or mark as optional: `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity` — heavy deps (~30MB+) for `secrets.py` which is never imported by `main.py`
-- [ ] Remove `sqlalchemy` — only imported by unused `auth.py`
+- [x] Removed dead security deps (`python-jose`, `passlib`, `cryptography`, `boto3`, `hvac`, `azure-keyvault-secrets`, `azure-identity`, `sqlalchemy`) and unused Pro-tier deps (`mlflow`, `optuna`, `chromadb`, `langchain*`, `python-dotenv`) from `requirements.txt` — ~30MB+ install saved
 - [ ] Add `pyyaml` and `httpx` if needed (present in `environment.yml` but missing from `requirements.txt`)
 
 **Backend missing dependencies in `requirements.txt`:**
 
 - [ ] Add `langchain-community` — `modern_oracle.py` imports it but package is separate from `langchain` and not listed
 - [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it
-- [ ] `main.py:511-515`: `/features/importance` endpoint accesses `oracle.lstm_model.model` without checking if `lstm_model` is not None — will `AttributeError` when torch missing
+- [x] Fix `main.py:590,594`: `/features/importance` endpoint accesses `oracle.lstm_model.model` and `oracle.transformer_model.model` without checking if they are not None — will `AttributeError` when torch missing
 
-### P2s. LSTM Synthetic Training Data
+### P2s. LSTM Synthetic Training Data — DONE
 
-- [ ] `lstm_predictor.py:537-540` generates entirely synthetic training data using `np.random.randn` (features) and `np.random.randint` (labels) when training without real data. Add: guard that raises `ValueError("No real training data provided")` instead of falling back to random data
+- [x] `lstm_predictor.py` `train()` now raises `ValueError` when called with empty data instead of proceeding silently
+- [x] `__main__` demo block clearly labelled as synthetic data — not real training
 
 ---
 
@@ -194,7 +194,7 @@ curl -X POST http://localhost:8000/predict/free \
 
 Additionally, the free-tier feature engineer is initialised with an empty DataFrame when CSVs are absent (gitignored). All features return `0.0` for live predictions with no warning.
 
-- [ ] Log a clear warning when CSV data is unavailable and the engineer is running on empty data
+- [x] Log a clear warning when CSV data is unavailable and the engineer is running on empty data
 - [ ] Document how to obtain the CSV training data in the README or a setup script
 
 ### P5c. Backend CI Pipeline — DONE
@@ -379,7 +379,7 @@ Priority features to implement with real data:
 - [ ] Fix `modern_oracle.py`: `train_all_models` uses random val split — data leakage from future matches
 - [ ] Fix `modern_oracle.py`: `predict_match_natural_language()` calls `self.agent_executor.run()` synchronously in `async` method — blocks event loop
 - [ ] Fix `modern_oracle.py`: LangChain `create_react_agent` prompt missing `{tools}` and `{tool_names}` variables
-- [ ] Fix `lstm_predictor.py:537-540`: synthetic `np.random` fallback training data (also covered by P2s)
+- [x] Fix `lstm_predictor.py:537-540`: synthetic `np.random` fallback training data — `ValueError` raised instead (P2s DONE)
 - [ ] Fix `lstm_predictor.py` + `transformer_model.py`: `torch.load()` without `weights_only=True` — PyTorch 2.0+ security warning
 - [ ] Fix `xgboost_model.py`: `_optimize_hyperparameters()` imports `optuna` unconditionally, bypassing `OPTUNA_AVAILABLE` guard
 - [ ] Fix `xgboost_model.py`: `predict_single_match()` passes feature dict → DataFrame without ensuring column ordering matches `self.feature_names`
@@ -479,10 +479,10 @@ Priority features to implement with real data:
 | `main.py` | CORS only allows localhost — no production origin | P3d |
 | `main.py` | WebSocket loop has no null-guard for oracle=None | P3c |
 | `main.py` | `response.dict()` deprecated (Pydantic v2) | P3d |
-| `main.py` | `/features/importance` doesn't guard against None LSTM/Transformer | P2r |
+| ~~`main.py`~~ | ~~`/features/importance` doesn't guard against None LSTM/Transformer~~ | ~~P2r~~ DONE |
 | `main.py` | `total_features` hardcoded to `150`, not dynamically counted | Low |
-| `main.py` | `client_ip` always `"unknown"` — rate limiter non-functional | P5a |
-| `main.py` | Free-tier engineer init with empty DataFrame when CSVs absent | P5a |
+| ~~`main.py`~~ | ~~`client_ip` always `"unknown"` — rate limiter non-functional~~ | ~~P5a~~ DONE |
+| ~~`main.py`~~ | ~~Free-tier engineer init with empty DataFrame when CSVs absent — no warning logged~~ | ~~P5a~~ DONE |
 | `lstm_predictor.py` | `prepare_sequences` calls `scaler.fit_transform` on inference data | P3c |
 | `transformer_model.py` | Same `scaler.fit_transform` during inference bug | P3c |
 | `xgboost_model.py` | `_optimize_hyperparameters` wrong param for `xgb.train` | P3c |
@@ -490,14 +490,14 @@ Priority features to implement with real data:
 | `football_data_collector.py` | `get_team_form()` mixed `'H'`/`'A'` and `'W'`/`'L'` values | P3b |
 | `requirements.txt` | Missing `torch` — LSTM/Transformer non-functional via pip | P3d |
 | `requirements.txt` | `python-jose` + `passlib` unmaintained since 2022 | P3d |
-| `lstm_predictor.py` | Synthetic `np.random` training data fallback | P2s |
+| ~~`lstm_predictor.py`~~ | ~~Synthetic `np.random` training data fallback — raises `ValueError` instead~~ | ~~P2s~~ DONE |
 | `modern_oracle.py` | LangChain ReAct prompt missing required variables | P3c |
 | `modern_oracle.py` | Blocking `agent_executor.run()` in async method | P3c |
 | `advanced_engineering.py` | `_is_derby_match()` API names vs CSV short names — always `0.0` | P3a |
 | `advanced_engineering.py` | `_compute_league_positions()` cumulative all-time, not per-season | P3a |
 | `validators.py` | `html.escape()` corrupts `Brighton & Hove Albion` | P3d |
-| `requirements.txt` | `boto3`, `hvac`, `azure-*`, `sqlalchemy` — heavy dead deps | P2r |
-| `requirements.txt` | `passlib==1.7.4` incompatible with Python 3.13 | P2r |
+| ~~`requirements.txt`~~ | ~~`boto3`, `hvac`, `azure-*`, `sqlalchemy`, `python-jose`, `passlib`, `mlflow`, `optuna`, `chromadb`, `langchain*`, `python-dotenv` — heavy dead/unused deps~~ | ~~P2r~~ DONE |
+| ~~`requirements.txt`~~ | ~~header declared Python 3.13 (mismatching Dockerfile/CI 3.11)~~ | ~~P2r~~ DONE |
 | `requirements.txt` | Missing `langchain-community` | P2r |
 | `requirements.txt` | Missing `bcrypt` | P2r |
 
@@ -515,7 +515,7 @@ All feature specifications in `specs/`:
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — remaining: Dialog (Req 5), Sheet (Req 8), form strings from real data, dead code. **Markers: 13/17** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — remaining: Dialog (Req 5), Sheet (Req 8), dead code. Form strings confirmed computed from real match data at runtime (not hardcoded). **Markers: 13/17** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---
