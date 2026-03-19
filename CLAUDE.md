@@ -109,12 +109,12 @@ These specs are the single source of truth for requirements.
 
 ### Important Notes
 - `frontend/src/` is the active codebase (old `src/` directory has been removed)
-- shadcn-svelte: 7 components installed (Button, Card, Badge, Separator, Skeleton, Dialog, Sheet); all wired — Button in 5 components, Card wrapping 10 card-glass instances, Badge in 3 components (with `info`/`neutral` variants added), Dialog in ApiSetupWizard, Sheet in Sidebar mobile view. SidebarNav.svelte extracted for desktop/mobile reuse. Remaining unwired: none. `components.json` exists (enables `npx shadcn-svelte@latest add`)
+- shadcn-svelte: 7 components installed (Button, Card, Badge, Separator, Skeleton, Dialog, Sheet); all wired — Button in 9 components, Card wrapping 10 card-glass instances, Badge in 3 components (with `info`/`neutral` variants added), Dialog in ApiSetupWizard, Sheet in Sidebar mobile view. SidebarNav.svelte extracted for desktop/mobile reuse. Remaining unwired: none. `components.json` exists (enables `npx shadcn-svelte@latest add`)
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200. Oracle ensemble model loading removed from startup (no `xgboost_model.pkl`, `lstm_model.pt`, `transformer_model.pt`). Frontend uses `/predict/free` endpoint exclusively
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
-- Frontend has 373 Vitest tests across 23 test files, all passing (was 384 — 11 tests removed with dead service methods in P5ak)
+- Frontend has 369 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -170,7 +170,7 @@ These specs are the single source of truth for requirements.
 - ~~`frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)~~ **FIXED:** pinned to `^20.17.0`
 - ~~`.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed~~ **FIXED:** `backend/chroma_db/` is already listed in `.gitignore` at line 20
 - ~~Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)~~ **FIXED:** all 5 specs synced (P5b done 26 March 2026)
-- ~~`liveService.ts:235`: WebSocket URL hardcodes port `8000` — will silently fail in production deployments where backend is not on same hostname:8000. Polling fallback masks the failure~~ **FIXED:** WebSocket URL now uses `VITE_BACKEND_WS_URL` env var with fallback to `hostname:8000`. Dead `data.liveMatches` handler also removed
+- ~~`liveService.ts:235`: WebSocket URL hardcodes port `8000`~~ **FIXED then REMOVED:** WebSocket infrastructure removed entirely in P5v — liveService is now polling-only
 - ~~Season year calculation `getMonth() >= 6` duplicated in 3 places~~ **FIXED:** extracted `getSeasonYear()` and `SEASON_START_MONTH` to `lib/utils.ts` (P5j)
 - ~~`optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46`~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5k)
 - ~~`dataService.ts:98-101`: empty if/else branches with comment-only bodies~~ **FIXED:** collapsed (P5l)
@@ -202,7 +202,7 @@ These specs are the single source of truth for requirements.
 - `SidebarNav.svelte` — extracted nav content component used by both desktop `<aside>` and mobile `<Sheet>` rendering paths to avoid 66 lines of template duplication
 - ~~`SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118~~ **FIXED:** dead variable removed (P5s)
 - ~~`LiveMatches.svelte:85-90`: `getMinute()` only computed elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` showed empty minute string~~ **FIXED:** `getMinute()` now handles all live statuses — `EXTRA_TIME` shows elapsed minutes (or "ET"), `PENALTY_SHOOTOUT` shows "PEN" (P5u)
-- `liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely — the connection exists but delivers no data to any store. Dead infrastructure until the backend sends a payload the frontend needs
+- ~~`liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely~~ **FIXED:** All WebSocket infrastructure removed from liveService (P5v) — service is now polling-only with adaptive intervals
 - `value.ts`: `MarketOdds.bttsNo` — investigated and confirmed NOT dead. Actively used by ValueBets.svelte UI as a validation gate for BTTS market scanning
 - ~~`ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial~~ **FIXED:** removed (P5s)
 - Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
@@ -224,7 +224,7 @@ These specs are the single source of truth for requirements.
 - ~~`environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r~~ **FIXED:** removed dead security deps, moved Pro-tier deps to commented section (P2v)
 - Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `liveService.test.ts` passes because WS handler is broken; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
 - CI gaps: No coverage enforcement, no linting step, no E2E tests in pipeline (P2n extensions)
-- Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)
+- ~~Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)~~ **FIXED:** Dead `spinner-branded` CSS removed, full-page spinners standardised to `h-12 w-12`, Retry/Refresh/Export buttons migrated to shadcn `<Button>` in 5 components
 - **Seventeenth audit (29 March 2026) — P5x corrections + 7 new items:**
 - **P5x CORRECTED:** `hover:shadow-glow-primary-sm` IS defined in `tailwind.config.js:69` (false positive). `animate-fade-in` IS defined globally in `tailwind.config.js:78` (false positive). Only `dark:text-primary-light` remains as a real P5x bug
 - ~~`App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind generates `animate-fade-in` (kebab-case)~~ **FIXED:** changed to `animate-fade-in` (P5ah)

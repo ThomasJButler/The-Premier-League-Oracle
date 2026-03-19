@@ -6,6 +6,7 @@
   import { getTeamLogo } from '../utils/teamLogos';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
   import { Badge } from '$lib/components/ui/badge';
+  import { Button } from '$lib/components/ui/button';
   import { getSeasonYear } from '../lib/utils';
 
   let matches: Match[] = [];
@@ -255,27 +256,24 @@
   {/if}
 
   {#if loading}
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
       <p class="font-medium">{error}</p>
-      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={loadMatches}>Retry</button>
+      <Button class="mt-4" on:click={loadMatches}>Retry</Button>
     </div>
   {:else if filteredMatches.length === 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 text-center">
       <p class="text-muted-foreground">No matches found with the current filters.</p>
-      <button 
-        class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        on:click={() => {
+      <Button class="mt-4" on:click={() => {
           filterStatus = 'all';
           filterTeam = '';
           handleFilterChange();
-        }}
-      >
+        }}>
         Clear Filters
-      </button>
+      </Button>
     </div>
   {:else}
     <div class="space-y-4">

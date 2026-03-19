@@ -344,11 +344,10 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [x] Extended `getMinute()` to handle all live statuses: `EXTRA_TIME` shows elapsed minutes (or "ET" fallback), `PENALTY_SHOOTOUT` shows "PEN"
 
-### P5v. WebSocket onmessage No-Op
+### P5v. WebSocket onmessage No-Op — DONE
 
-`liveService.ts:244-249`: The WebSocket `onmessage` handler parses incoming JSON but discards it entirely — the connection is established but delivers no data to any Svelte store. This makes the entire WebSocket infrastructure dead weight (the WS connection costs a network socket but provides no value).
-
-- [ ] Either wire parsed data into the appropriate store, or remove the WebSocket connection until the backend sends payload that the frontend needs. Currently the backend only sends prediction probability updates which nothing consumes
+- [x] Removed ALL WebSocket infrastructure from `liveService.ts`: `ws` field, `wsReconnectAttempts`, `wsReconnectTimer`, `connectWebSocket()`, `disconnectWebSocket()`, `attemptReconnect()`, `isWebSocketConnected()`, `isBackendEnabled()`, `backendService` import, WS constants. Service is now a clean polling-only architecture
+- [x] Removed 4 WebSocket tests from `liveService.test.ts` and cleaned up `backendService` + `localStorage` mocks (11 tests remain, down from 16)
 
 ### P5w. Dead Global CSS Rules — DONE
 
@@ -403,7 +402,7 @@ Investigation confirmed this is not a real issue. Backtest calls `predictMatch()
 Several test files have assertions that pass when they shouldn't:
 
 - [ ] `backtest.test.ts:154-178`: Expected value `0.525` encodes the Kelly 1.05 inflation bug — actively prevents fixing the bug. Update to `0.50` when P1l is fixed
-- [ ] `liveService.test.ts:287-300`: WS test passes BECAUSE the handler discards data — test should assert data reaches the store (or be removed until P5v is resolved)
+- [x] `liveService.test.ts`: WS tests removed as part of P5v — all WebSocket infrastructure removed from liveService
 - [ ] `value.test.ts`: Three tests assert only `Array.isArray(result)` — should also assert `result.length > 0` and check element shape
 - [ ] `test_free_tier_features.py`: H2H test conditionally skips assertions when `h2h_total_matches == 0`; basic stats test uses weak `or` assertion
 - [ ] `test_predict_free_tier.py`: No happy-path test for `/predict/free` with a loaded model; no test for `_get_client_ip()` X-Forwarded-For extraction
@@ -415,12 +414,12 @@ Several test files have assertions that pass when they shouldn't:
 - [x] Added `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` constant — anchors all file paths to the `backend/` directory regardless of CWD
 - [x] Updated model path (`models/xgboost_free_tier.joblib`) and CSV path (`spreadsheets/KnowledgeFilesCSV/`) to use `BACKEND_ROOT`
 
-### P5ag. Spinner and Button Inconsistency
+### P5ag. Spinner and Button Inconsistency — DONE
 
-Three different spinner implementations exist across components (none use the `spinner-branded` class from `app.css`). Multiple components use raw `<button>` instead of the shadcn `<Button>` component for the same category of actions (refresh, retry, filter).
-
-- [ ] Consolidate spinners to a single pattern or shared component
-- [ ] Migrate remaining raw `<button>` elements to shadcn `<Button>` where appropriate (StandingsTable, TopScorers, LiveMatches, MatchList refresh/retry/filter buttons)
+- [x] Removed dead `spinner-branded` CSS class and its `@keyframes spin` from `app.css` (never used — all components use Tailwind's `animate-spin`)
+- [x] Standardised all full-page loading spinners to consistent `h-12 w-12` with `py-12` wrapper (was h-16/h-64 in MatchList and Predictions)
+- [x] Migrated Retry/Refresh/Export buttons in MatchList, Predictions, StandingsTable, TopScorers, BettingHistory from raw `<button>` to shadcn `<Button>` with appropriate variants (default, ghost, secondary, destructive)
+- [x] Remaining raw `<button>` elements (tabs, nav items, toggles, link-style CTAs) are intentionally kept — they need custom styling that doesn't map to Button variants
 
 ### P5ah. App.svelte animate-fadeIn Typo — DONE
 

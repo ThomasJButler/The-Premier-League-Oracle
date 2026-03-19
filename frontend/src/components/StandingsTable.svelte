@@ -6,6 +6,7 @@
   import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
   import { getSeasonLabel } from '../lib/utils';
+  import { Button } from '$lib/components/ui/button';
 
   let standings: Standing[] = [];
   let loading = true;
@@ -110,13 +111,9 @@
         </div>
       </div>
       
-      <button
-        on:click={loadStandings}
-        disabled={loading}
-        class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -127,12 +124,7 @@
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
       <p>{error}</p>
-      <button 
-        on:click={loadStandings}
-        class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-      >
-        Try Again
-      </button>
+      <Button variant="destructive" class="mt-4" on:click={loadStandings}>Try Again</Button>
     </div>
   {:else if standings.length > 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">

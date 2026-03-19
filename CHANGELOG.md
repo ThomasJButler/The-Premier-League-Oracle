@@ -2,6 +2,26 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5v/P5ag — WebSocket removal, spinner and button cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5v — Dead WebSocket infrastructure removed
+- Removed ALL WebSocket code from `liveService.ts`: `ws` field, `wsReconnectAttempts`, `wsReconnectTimer`, `connectWebSocket()`, `disconnectWebSocket()`, `attemptReconnect()`, `isWebSocketConnected()`, `isBackendEnabled()`, WS constants, `backendService` import
+- Service is now a clean polling-only architecture with adaptive intervals (30s live, 5min matchday, 30min idle)
+- Removed 4 WebSocket tests and mock infrastructure from `liveService.test.ts` (16 → 11 tests)
+
+### P5ag — Spinner and button consistency
+- Removed dead `spinner-branded` CSS class and `@keyframes spin` from `app.css` (never used — all components use Tailwind `animate-spin`)
+- Standardised all 5 full-page loading spinners to consistent `h-12 w-12` with `py-12` wrapper (was `h-16 w-16` with `h-64` in MatchList and Predictions)
+- Migrated Retry/Refresh/Export buttons from raw `<button>` to shadcn `<Button>` in: MatchList, Predictions, StandingsTable, TopScorers, BettingHistory
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing)
+- shadcn `<Button>` now used in 9 components (was 5)
+
+---
+
 ## 30 March 2026 — P5af/P5am — backend path robustness, Dockerfile security
 
 **Branch:** `v3.0-BackendMLTraining`

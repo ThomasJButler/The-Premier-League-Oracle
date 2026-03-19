@@ -13,48 +13,6 @@ vi.mock('./dataService', () => ({
   },
 }));
 
-// Mock backendService
-const mockIsAvailable = vi.fn(() => Promise.resolve(false));
-
-vi.mock('./backendService', () => ({
-  backendService: {
-    isAvailable: () => mockIsAvailable(),
-  },
-}));
-
-// Mock localStorage
-const localStorageMock: Record<string, string> = {};
-vi.stubGlobal('localStorage', {
-  getItem: vi.fn((key: string) => localStorageMock[key] ?? null),
-  setItem: vi.fn((key: string, val: string) => { localStorageMock[key] = val; }),
-  removeItem: vi.fn((key: string) => { delete localStorageMock[key]; }),
-});
-
-// Mock WebSocket — not available in jsdom
-// Tracks created instances so tests can simulate incoming messages.
-let lastWebSocket: MockWebSocket | null = null;
-
-class MockWebSocket {
-  static OPEN = 1;
-  static CLOSED = 3;
-  readyState = MockWebSocket.OPEN;
-  onopen: (() => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  onclose: (() => void) | null = null;
-  close = vi.fn(() => { this.readyState = MockWebSocket.CLOSED; });
-
-  constructor() {
-    lastWebSocket = this;
-  }
-
-  /** Simulate the server sending a message through the WebSocket */
-  simulateMessage(payload: unknown): void {
-    this.onmessage?.({ data: JSON.stringify(payload) });
-  }
-}
-
-vi.stubGlobal('WebSocket', MockWebSocket);
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
   return {
@@ -91,9 +49,6 @@ describe('LiveService', () => {
     vi.clearAllMocks();
     mockGetLiveMatches.mockResolvedValue([]);
     mockGetMatches.mockResolvedValue([]);
-    mockIsAvailable.mockResolvedValue(false);
-    Object.keys(localStorageMock).forEach((k) => delete localStorageMock[k]);
-    lastWebSocket = null;
 
     // Reset stores to empty
     liveMatchesStore.set([]);
@@ -253,50 +208,6 @@ describe('LiveService', () => {
     liveService.stop();
 
     expect(liveService.isRunning()).toBe(false);
-  });
-
-  // ---------------------------------------------------------------------------
-  // WebSocket
-  // ---------------------------------------------------------------------------
-
-  it('should not connect WebSocket when use_backend is not set', async () => {
-    await liveService.start();
-
-    expect(liveService.isWebSocketConnected()).toBe(false);
-  });
-
-  it('should not connect WebSocket when backend is unavailable', async () => {
-    localStorageMock['use_backend'] = 'true';
-    mockIsAvailable.mockResolvedValue(false);
-
-    await liveService.start();
-
-    expect(liveService.isWebSocketConnected()).toBe(false);
-  });
-
-  it('should attempt WebSocket when backend is enabled and available', async () => {
-    localStorageMock['use_backend'] = 'true';
-    mockIsAvailable.mockResolvedValue(true);
-
-    await liveService.start();
-
-    // WebSocket constructor was called (mock always reports OPEN)
-    expect(liveService.isWebSocketConnected()).toBe(true);
-  });
-
-  it('should handle WebSocket messages without crashing', async () => {
-    localStorageMock['use_backend'] = 'true';
-    mockIsAvailable.mockResolvedValue(true);
-
-    await liveService.start();
-    expect(lastWebSocket).not.toBeNull();
-
-    // WebSocket receives a valid JSON message — should parse without error
-    lastWebSocket!.simulateMessage({ predictions: { home: 0.5, draw: 0.3, away: 0.2 } });
-
-    // Live store is only updated by polling, not WebSocket (backend sends predictions, not live matches)
-    const storeValue = get(liveMatchesStore);
-    expect(storeValue).toHaveLength(0);
   });
 
   // ---------------------------------------------------------------------------

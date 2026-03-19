@@ -15,6 +15,7 @@
   import { TrendingUp, TrendingDown, Download, PoundSterling, Minus, Trophy, Percent } from 'lucide-svelte';
   import { formatDistanceToNow } from 'date-fns';
   import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
+  import { Button } from '$lib/components/ui/button';
 
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
@@ -286,9 +287,9 @@
           <option value="loss">Losses</option>
           <option value="pending">Pending</option>
         </select>
-        <button class="px-3 py-1 text-sm rounded-lg font-medium transition-colors bg-muted text-foreground hover:bg-muted/80 flex items-center" on:click={handleExport}>
+        <Button variant="secondary" size="sm" on:click={handleExport}>
           <Download class="w-4 h-4 mr-1" /> Export
-        </button>
+        </Button>
       </div>
     </div>
 

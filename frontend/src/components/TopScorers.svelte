@@ -4,6 +4,7 @@
   import { dataService } from '../services/dataService';
   import { fade, fly } from 'svelte/transition';
   import { getSeasonLabel } from '../lib/utils';
+  import { Button } from '$lib/components/ui/button';
 
   interface Scorer {
     position?: number;
@@ -117,13 +118,9 @@
           <p class="text-sm text-muted-foreground">Premier League {getSeasonLabel()} Season</p>
         </div>
       </div>
-      <button 
-        on:click={loadTopScorers}
-        class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-        disabled={loading}
-      >
+      <Button variant="ghost" size="sm" on:click={loadTopScorers} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -134,12 +131,7 @@
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">
       <p class="text-destructive">{error}</p>
-      <button 
-        on:click={loadTopScorers}
-        class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-      >
-        Try Again
-      </button>
+      <Button class="mt-4" on:click={loadTopScorers}>Try Again</Button>
     </div>
   {:else if scorers.length > 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">

@@ -597,13 +597,13 @@
   {/if}
 
   {#if loading}
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
       <p class="font-medium">{error}</p>
-      <button class="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</button>
+      <Button class="mt-4" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</Button>
     </div>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

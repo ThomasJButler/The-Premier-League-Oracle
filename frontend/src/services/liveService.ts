@@ -1,7 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Match } from '../types';
 import { dataService } from './dataService';
-import { backendService } from './backendService';
 import { subDays, addDays, isAfter, isBefore } from 'date-fns';
 
 // ---------------------------------------------------------------------------
@@ -32,27 +31,20 @@ const MATCHDAY_POLL_MS = 5 * 60_000; // 5min on match days with no live games
 const IDLE_POLL_MS = 30 * 60_000; // 30min otherwise
 const MAX_EMPTY_POLLS = 3; // Back off after 3 consecutive empty polls
 
-const WS_RECONNECT_BASE_MS = 5_000; // Base delay between WS reconnects
-const WS_MAX_RECONNECTS = 5; // Give up after this many failures
-
 // ---------------------------------------------------------------------------
-// LiveService — singleton that owns the polling loop and WebSocket
+// LiveService — singleton that owns the polling loop
 // ---------------------------------------------------------------------------
 
 class LiveService {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private ws: WebSocket | null = null;
   private consecutiveEmptyPolls = 0;
   private running = false;
-  private wsReconnectAttempts = 0;
-  private wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Start the live data service.
    *
    * 1. Performs an immediate poll to populate stores.
-   * 2. Optionally connects WebSocket if the backend is available.
-   * 3. Starts the adaptive polling loop.
+   * 2. Starts the adaptive polling loop.
    *
    * Safe to call multiple times — subsequent calls are no-ops.
    */
@@ -63,24 +55,11 @@ class LiveService {
     // Initial data fetch
     await this.poll();
 
-    // Try WebSocket when backend is enabled and available
-    const useBackend = this.isBackendEnabled();
-    if (useBackend) {
-      try {
-        const available = await backendService.isAvailable();
-        if (available) {
-          this.connectWebSocket();
-        }
-      } catch {
-        // Backend unavailable — polling only
-      }
-    }
-
-    // Always poll for live scores (backend WS sends predictions, not scores)
+    // Always poll for live scores
     this.scheduleNextPoll();
   }
 
-  /** Stop the service — cleans up all timers and connections. */
+  /** Stop the service — cleans up all timers. */
   stop(): void {
     this.running = false;
 
@@ -88,12 +67,6 @@ class LiveService {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-    if (this.wsReconnectTimer) {
-      clearTimeout(this.wsReconnectTimer);
-      this.wsReconnectTimer = null;
-    }
-
-    this.disconnectWebSocket();
   }
 
   /** Force an immediate refresh (e.g. when user clicks "Refresh"). */
@@ -108,11 +81,6 @@ class LiveService {
   /** Whether the service is currently active. */
   isRunning(): boolean {
     return this.running;
-  }
-
-  /** Whether the WebSocket is currently connected. */
-  isWebSocketConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
   // -------------------------------------------------------------------------
@@ -205,91 +173,6 @@ class LiveService {
       // Re-evaluate interval after each poll (adaptive)
       this.scheduleNextPoll();
     }, interval);
-  }
-
-  // -------------------------------------------------------------------------
-  // WebSocket
-  // -------------------------------------------------------------------------
-
-  /** Check whether the user has opted in to the ML backend. */
-  private isBackendEnabled(): boolean {
-    try {
-      return localStorage.getItem('use_backend') === 'true';
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Open a WebSocket to the backend for real-time prediction updates.
-   *
-   * The backend's /ws/predictions endpoint pushes updated prediction probabilities.
-   * The URL is configurable via `VITE_BACKEND_WS_URL` (e.g. `wss://api.example.com`)
-   * and defaults to the current hostname on port 8000 for local development.
-   */
-  private connectWebSocket(): void {
-    if (this.ws) return;
-
-    try {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const defaultWsBase = `${wsProtocol}//${window.location.hostname}:8000`;
-      const wsBase = import.meta.env.VITE_BACKEND_WS_URL || defaultWsBase;
-      const wsUrl = `${wsBase}/ws/predictions`;
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        this.wsReconnectAttempts = 0;
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          JSON.parse(event.data);
-          // Backend currently sends prediction probability updates.
-          // Future versions may include additional payload types.
-        } catch {
-          // Malformed JSON — ignore
-        }
-      };
-
-      this.ws.onerror = () => {
-        this.disconnectWebSocket();
-        this.attemptReconnect();
-      };
-
-      this.ws.onclose = () => {
-        this.ws = null;
-        if (this.running) {
-          this.attemptReconnect();
-        }
-      };
-    } catch {
-      // WebSocket construction failed — polling continues
-    }
-  }
-
-  /** Cleanly close the WebSocket connection. */
-  private disconnectWebSocket(): void {
-    if (this.ws) {
-      try {
-        this.ws.close();
-      } catch {
-        // Already closed or errored
-      }
-      this.ws = null;
-    }
-  }
-
-  /** Exponential reconnect with capped attempts. */
-  private attemptReconnect(): void {
-    if (!this.running) return;
-    if (this.wsReconnectAttempts >= WS_MAX_RECONNECTS) return;
-
-    this.wsReconnectAttempts++;
-    const delay = WS_RECONNECT_BASE_MS * this.wsReconnectAttempts;
-
-    this.wsReconnectTimer = setTimeout(() => {
-      this.connectWebSocket();
-    }, delay);
   }
 }
 
