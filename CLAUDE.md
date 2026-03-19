@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
-- Frontend has 375 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
+- Frontend has 376 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -165,7 +165,7 @@ These specs are the single source of truth for requirements.
 - MIT licensed for open-source collaboration
 - `main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`, all clients share one bucket. Needs `request.client.host` extraction
 - `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken
-- `ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged — XSS regression from P1j fix would be invisible to tests
+- ~~`ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged~~ **FIXED:** mock now uses spy, test verifies `sanitize()` is called with response content (P5e)
 - ~~`betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`~~ **FIXED:** `normaliseTeamName()` now converts `&` to `and`
 - ~~`frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)~~ **FIXED:** pinned to `^20.17.0`
 - `.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed
@@ -187,12 +187,12 @@ These specs are the single source of truth for requirements.
 - ~~`backtest.ts`: snapshots/restores ELO ratings but NOT `processedMatchIds` — matches processed during backtest remain marked as processed, potentially blocking future live ELO updates (P5p)~~ **FIXED:** `processedMatchIds` now included in snapshot/restore cycle (P5p)
 - ~~`dataService.ts`/`footballData.ts`: live match query uses `IN_PLAY,PAUSED` only — `EXTRA_TIME` and `PENALTY_SHOOTOUT` statuses not included, matches in extra time disappear from live view (P5q)~~ **FIXED:** live match query now includes `IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT` (P5q)
 - `ApiSetupWizard.svelte`: no focus trap on open (WCAG 2.1 failure), no Escape key handler. Independent of Dialog shadcn migration (P5r)
-- `$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts` — shadcn components import the duplicate file. Both work but creates maintenance risk (P5s)
+- ~~`$lib/utils/cn.ts` duplicates `cn()` from `$lib/utils.ts`~~ **FIXED:** duplicate deleted, all 10 shadcn component imports updated to `$lib/utils` (P5s)
 - ~~Dead exports: `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface~~ **FIXED:** both removed (P5s). Note: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte:194`; incorrectly listed here previously
 - ~~`app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)~~ **FIXED:** all dead classes and the dead `@keyframes scroll` animation removed from `app.css` (P5s)
-- `footballData.ts`: no AbortController or timeout on fetch — hung API call blocks the rate-limit queue indefinitely (P5t)
+- ~~`footballData.ts`: no AbortController or timeout on fetch~~ **FIXED:** AbortController with 15s timeout added to `rateLimitedFetch()` (P5t)
 - `dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws (P5t)
-- `Predictions.svelte`: `catch (error)` variable shadows outer `let error` state variable (P5t)
+- ~~`Predictions.svelte`: `catch (error)` variable shadows outer `let error`~~ **FIXED:** renamed to `catch (err)` (P5t)
 - `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
 - `betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded — not derived from the calculated `corners` predictions object
 - Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
