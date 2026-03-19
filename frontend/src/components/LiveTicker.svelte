@@ -6,6 +6,7 @@
     liveMatchesStore,
     recentMatchesStore,
     upcomingMatchesStore,
+    matchEventsStore,
     hasLiveMatches as hasLiveStore,
     liveService,
   } from '../services/liveService';
@@ -29,9 +30,10 @@
     const unsubLive = liveMatchesStore.subscribe(() => buildTicker());
     const unsubRecent = recentMatchesStore.subscribe(() => buildTicker());
     const unsubUpcoming = upcomingMatchesStore.subscribe(() => buildTicker());
+    const unsubEvents = matchEventsStore.subscribe(() => buildTicker());
     const unsubHasLive = hasLiveStore.subscribe((v) => { hasLiveMatches = v; });
 
-    unsubscribers = [unsubLive, unsubRecent, unsubUpcoming, unsubHasLive];
+    unsubscribers = [unsubLive, unsubRecent, unsubUpcoming, unsubEvents, unsubHasLive];
   });
 
   onDestroy(() => {
@@ -42,7 +44,17 @@
     try {
       const items: TickerItem[] = [];
 
-      // Priority 1: Live scores (highest priority) — from shared store
+      // Priority 0: Match events (highest priority) — goals, status changes
+      const events = get(matchEventsStore);
+      events.forEach((event) => {
+        items.push({
+          text: event.message,
+          type: 'update',
+          priority: -1,
+        });
+      });
+
+      // Priority 1: Live scores — from shared store
       const live = get(liveMatchesStore);
 
       live.forEach((match) => {

@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (thirtieth update — rolling CV, ELO leakage fix)
+Last updated: 2 April 2026 (thirty-first update — Spec 05 Req 9 match event notifications)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 49/49 (100%) | ALL DONE |
 
-**Frontend:** 389 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 402 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -739,7 +739,7 @@ All feature specifications in `specs/`:
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | **100% — ALL 8/8 criteria met.** Progressive 5-season bulk loader added (Req 5), rate-limit queue serialises concurrent callers (Req 7), backend proxy done since P2b (Req 8). **Markers: 8/8** |
 | `specs/03-backend-integration.md` | Python ML backend connection | **100% — ALL 8/8 criteria met.** Historical data command documented in AGENTS.md (Req 6). WebSocket criterion was previously marked done but WS infrastructure was removed (P5v) — polling-only architecture now satisfies the live data requirement via the existing `/live` endpoint. **Markers: 8/8** |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | **100% — ALL 12/12 criteria met.** AccumulatorBuilder.svelte added with cross-match accumulator building, Track Bet integration, 17 tests. **Markers: 12/12** |
-| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~88% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q), minute display for ET/PEN fixed (P5u). **Markers: 9/10** |
+| `specs/05-live-data.md` | Live scores, smart polling, WebSocket | **100% — ALL 10/10 criteria met.** Match event notifications via polling-diff (Req 9). Extra-time/penalty status filter fixed (P5q), minute display for ET/PEN fixed (P5u). **Markers: 10/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~98% — all 17 structural criteria met; 5 new CSS/class bugs found in sixteenth audit (P5x). **Markers: 17/17 structural** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
@@ -784,11 +784,11 @@ All feature specifications in `specs/`:
 | `dataService.test.ts` | 8 | Passing |
 | `Settings.test.ts` | 16 | Passing |
 | `LiveMatches.test.ts` | 9 | Passing |
-| `liveService.test.ts` | 14 | Passing |
+| `liveService.test.ts` | 24 | Passing |
 | `backendService.test.ts` | 11 | Passing |
 | `aiAnalysis.test.ts` | 23 | Passing |
 | `AccumulatorBuilder.test.ts` | 17 | Passing |
-| **Total** | **389** | **All passing** |
+| **Total** | **402** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

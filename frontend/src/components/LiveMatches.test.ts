@@ -21,10 +21,13 @@ vi.mock('../services/liveService', async () => {
   const hasLiveMatches = derived(liveMatchesStore, ($m) => $m.length > 0);
   const pollLabel = writable('every 30 seconds');
 
+  const matchEventsStore = writable<import('../types').MatchEvent[]>([]);
+
   return {
     liveMatchesStore,
     recentMatchesStore,
     upcomingMatchesStore,
+    matchEventsStore,
     hasLiveMatches,
     pollLabel,
     liveService: {
@@ -45,6 +48,7 @@ vi.mock('date-fns', () => ({
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({
   scale: () => ({ duration: 0 }),
+  fly: () => ({ duration: 0 }),
 }));
 
 // Mock team logos

@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 86 backend tests across 3 files (45 feature engineering incl. Elo leakage, 25 training pipeline incl. rolling CV + stacked ensemble + recency weights, 16 API endpoints) — all non-skip tests pass (7 skip without libomp). ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
-- Frontend has 389 Vitest tests across 24 test files, all passing
+- Frontend has 402 Vitest tests across 24 test files, all passing
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 9 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets, AccumulatorBuilder) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -174,6 +174,7 @@ These specs are the single source of truth for requirements.
 - ~~`.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed~~ **FIXED:** `backend/chroma_db/` is already listed in `.gitignore` at line 20
 - ~~Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)~~ **FIXED:** all 5 specs synced (P5b done 26 March 2026)
 - ~~`liveService.ts:235`: WebSocket URL hardcodes port `8000`~~ **FIXED then REMOVED:** WebSocket infrastructure removed entirely in P5v — liveService is now polling-only
+- `liveService.ts` now implements **polling-diff match event detection** — `matchEventsStore` (writable) compares consecutive poll snapshots to detect goals and status changes. `MatchEventToast.svelte` renders colour-coded toast notifications (green=goals, amber=half-time, blue=full-time, red=extra time/penalties). `LiveTicker.svelte` surfaces events at highest priority. Events auto-expire after 30s. `MatchEvent` and `MatchEventType` types in `types/index.ts`. Spec 05 now 100% complete (10/10 criteria)
 - ~~Season year calculation `getMonth() >= 6` duplicated in 3 places~~ **FIXED:** extracted `getSeasonYear()` and `SEASON_START_MONTH` to `lib/utils.ts` (P5j)
 - ~~`optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46`~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5k)
 - ~~`dataService.ts:98-101`: empty if/else branches with comment-only bodies~~ **FIXED:** collapsed (P5l)
@@ -229,7 +230,7 @@ These specs are the single source of truth for requirements.
 - ~~`requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI~~ **FIXED:** added httpx==0.27.2 to requirements.txt (P2t)
 - ~~`.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered~~ **FIXED:** added *.joblib and frontend/.env.local/.env.production.local patterns (P2u)
 - ~~`environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r~~ **FIXED:** removed dead security deps, moved Pro-tier deps to commented section (P2v)
-- Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `liveService.test.ts` passes because WS handler is broken; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
+- Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
 - ~~CI gaps: No coverage enforcement, no linting step, no E2E tests in pipeline~~ **PARTIAL FIX:** CI now runs `test:coverage` with enforced thresholds (60/65/65/60); `httpx` ad-hoc install removed from backend CI (now in requirements.txt). Linting and E2E still not in pipeline (P2n)
 - ~~Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)~~ **FIXED:** Dead `spinner-branded` CSS removed, full-page spinners standardised to `h-12 w-12`, Retry/Refresh/Export buttons migrated to shadcn `<Button>` in 5 components
 - **Seventeenth audit (29 March 2026) — P5x corrections + 7 new items:**

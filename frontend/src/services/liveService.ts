@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { Match } from '../types';
+import type { Match, MatchEvent } from '../types';
 import { dataService } from './dataService';
 import { subDays, addDays, isAfter, isBefore } from 'date-fns';
 
@@ -22,6 +22,9 @@ export const hasLiveMatches = derived(liveMatchesStore, ($m) => $m.length > 0);
 /** Reactive poll interval label for display in the UI */
 export const pollLabel = writable<string>('every 30 seconds');
 
+/** Recent match events detected by polling-diff (goals, status changes) */
+export const matchEventsStore = writable<MatchEvent[]>([]);
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -30,6 +33,14 @@ const LIVE_POLL_MS = 30_000; // 30s when matches are live
 const MATCHDAY_POLL_MS = 5 * 60_000; // 5min on match days with no live games
 const IDLE_POLL_MS = 30 * 60_000; // 30min otherwise
 const MAX_EMPTY_POLLS = 3; // Back off after 3 consecutive empty polls
+const EVENT_EXPIRY_MS = 30_000; // Events auto-expire after 30s
+
+/** Snapshot of a match's state for diffing between polls */
+interface MatchSnapshot {
+  homeGoals: number | null;
+  awayGoals: number | null;
+  status: string | undefined;
+}
 
 // ---------------------------------------------------------------------------
 // LiveService — singleton that owns the polling loop
@@ -39,6 +50,7 @@ class LiveService {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private consecutiveEmptyPolls = 0;
   private running = false;
+  private previousStates = new Map<string, MatchSnapshot>();
 
   /**
    * Start the live data service.
@@ -59,9 +71,11 @@ class LiveService {
     this.scheduleNextPoll();
   }
 
-  /** Stop the service — cleans up all timers. */
+  /** Stop the service — cleans up all timers and event diff state. */
   stop(): void {
     this.running = false;
+    this.previousStates.clear();
+    this.consecutiveEmptyPolls = 0;
 
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -104,6 +118,9 @@ class LiveService {
       } else {
         this.consecutiveEmptyPolls = 0;
       }
+
+      // Detect events by diffing against previous poll snapshot
+      this.detectEvents(live);
 
       liveMatchesStore.set(live);
 
@@ -173,6 +190,189 @@ class LiveService {
       // Re-evaluate interval after each poll (adaptive)
       this.scheduleNextPoll();
     }, interval);
+  }
+
+  // -------------------------------------------------------------------------
+  // Match event detection (polling-diff)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Compare current live matches against previous poll snapshot to detect
+   * goals and status changes. Since Football-Data.org free tier provides no
+   * per-match events API, we infer events from score/status diffs.
+   */
+  private detectEvents(currentMatches: Match[]): void {
+    const now = Date.now();
+    const newEvents: MatchEvent[] = [];
+
+    for (const match of currentMatches) {
+      const prev = this.previousStates.get(match.id);
+      const homeGoals = match.home_goals;
+      const awayGoals = match.away_goals;
+      const status = match.status;
+
+      if (prev) {
+        // Detect goals — score increased since last poll
+        const prevHome = prev.homeGoals ?? 0;
+        const prevAway = prev.awayGoals ?? 0;
+        const currHome = homeGoals ?? 0;
+        const currAway = awayGoals ?? 0;
+
+        if (currHome > prevHome) {
+          const goalsScored = currHome - prevHome;
+          for (let i = 0; i < goalsScored; i++) {
+            newEvents.push({
+              id: `goal-${match.id}-h-${currHome - i}-${now}`,
+              matchId: match.id,
+              type: 'goal',
+              team: match.home_team,
+              homeTeam: match.home_team,
+              awayTeam: match.away_team,
+              score: `${currHome}-${currAway}`,
+              message: `⚽ GOAL! ${match.home_team} score — ${match.home_team} ${currHome}-${currAway} ${match.away_team}`,
+              timestamp: now,
+            });
+          }
+        }
+
+        if (currAway > prevAway) {
+          const goalsScored = currAway - prevAway;
+          for (let i = 0; i < goalsScored; i++) {
+            newEvents.push({
+              id: `goal-${match.id}-a-${currAway - i}-${now}`,
+              matchId: match.id,
+              type: 'goal',
+              team: match.away_team,
+              homeTeam: match.home_team,
+              awayTeam: match.away_team,
+              score: `${currHome}-${currAway}`,
+              message: `⚽ GOAL! ${match.away_team} score — ${match.home_team} ${currHome}-${currAway} ${match.away_team}`,
+              timestamp: now,
+            });
+          }
+        }
+
+        // Detect status transitions
+        if (status !== prev.status) {
+          const statusEvent = this.buildStatusEvent(match, prev.status, now);
+          if (statusEvent) newEvents.push(statusEvent);
+        }
+      } else if (status === 'IN_PLAY') {
+        // First time seeing this match live — it just kicked off
+        newEvents.push({
+          id: `kickoff-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'kickoff',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          message: `🟢 Kick-off! ${match.home_team} vs ${match.away_team}`,
+          timestamp: now,
+        });
+      }
+
+      // Update snapshot for next poll
+      this.previousStates.set(match.id, { homeGoals, awayGoals, status });
+    }
+
+    if (newEvents.length > 0) {
+      // Merge new events with existing, then prune expired
+      matchEventsStore.update((existing) => {
+        const merged = [...existing, ...newEvents];
+        return merged.filter((e) => now - e.timestamp < EVENT_EXPIRY_MS);
+      });
+    } else {
+      // Still prune expired events each poll
+      matchEventsStore.update((existing) =>
+        existing.filter((e) => now - e.timestamp < EVENT_EXPIRY_MS),
+      );
+    }
+  }
+
+  /**
+   * Build a status-change event from a known transition.
+   * Returns null for transitions we don't surface to the user.
+   */
+  private buildStatusEvent(
+    match: Match,
+    previousStatus: string | undefined,
+    now: number,
+  ): MatchEvent | null {
+    const label = `${match.home_team} vs ${match.away_team}`;
+    const score =
+      match.home_goals != null && match.away_goals != null
+        ? `${match.home_goals}-${match.away_goals}`
+        : undefined;
+
+    switch (match.status) {
+      case 'IN_PLAY':
+        if (previousStatus === 'PAUSED') {
+          return {
+            id: `second_half-${match.id}-${now}`,
+            matchId: match.id,
+            type: 'second_half',
+            homeTeam: match.home_team,
+            awayTeam: match.away_team,
+            score,
+            message: `▶️ Second half underway — ${label}`,
+            timestamp: now,
+          };
+        }
+        return {
+          id: `kickoff-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'kickoff',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          message: `🟢 Kick-off! ${label}`,
+          timestamp: now,
+        };
+      case 'PAUSED':
+        return {
+          id: `half_time-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'half_time',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          score,
+          message: `⏸️ Half-time — ${label} ${score ?? ''}`,
+          timestamp: now,
+        };
+      case 'FINISHED':
+        return {
+          id: `full_time-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'full_time',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          score,
+          message: `🏁 Full-time — ${label} ${score ?? ''}`,
+          timestamp: now,
+        };
+      case 'EXTRA_TIME':
+        return {
+          id: `extra_time-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'extra_time',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          score,
+          message: `⏱️ Extra time — ${label} ${score ?? ''}`,
+          timestamp: now,
+        };
+      case 'PENALTY_SHOOTOUT':
+        return {
+          id: `penalties-${match.id}-${now}`,
+          matchId: match.id,
+          type: 'penalties',
+          homeTeam: match.home_team,
+          awayTeam: match.away_team,
+          score,
+          message: `🎯 Penalty shootout — ${label}`,
+          timestamp: now,
+        };
+      default:
+        return null;
+    }
   }
 }
 

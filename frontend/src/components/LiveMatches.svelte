@@ -12,6 +12,7 @@
     pollLabel,
     liveService,
   } from '../services/liveService';
+  import MatchEventToast from './MatchEventToast.svelte';
 
   // Subscribe to shared stores — $store syntax gives reactive values
   $: liveMatches = $liveMatchesStore;
@@ -111,6 +112,9 @@
     }
   }
 </script>
+
+<!-- Match event notifications (goals, status changes) — fixed-position toasts -->
+<MatchEventToast />
 
 <div class="max-w-7xl mx-auto">
   <!-- Header -->

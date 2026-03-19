@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import type { Match } from '../types';
+import type { Match, MatchEvent } from '../types';
 
 // Mock dataService
 const mockGetLiveMatches = vi.fn(() => Promise.resolve([] as Match[]));
@@ -38,6 +38,7 @@ import {
   liveMatchesStore,
   recentMatchesStore,
   upcomingMatchesStore,
+  matchEventsStore,
   hasLiveMatches,
   pollLabel,
   liveService,
@@ -54,6 +55,7 @@ describe('LiveService', () => {
     liveMatchesStore.set([]);
     recentMatchesStore.set([]);
     upcomingMatchesStore.set([]);
+    matchEventsStore.set([]);
     pollLabel.set('every 30 seconds');
 
     // Ensure service is stopped between tests
@@ -222,5 +224,267 @@ describe('LiveService', () => {
 
     liveMatchesStore.set([]);
     expect(get(hasLiveMatches)).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Match event detection (polling-diff)
+  // ---------------------------------------------------------------------------
+
+  describe('match event detection', () => {
+    it('should detect a home team goal between polls', async () => {
+      // First poll: match at 0-0
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      // Second poll: home team scores, now 1-0
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('goal');
+      expect(events[0].team).toBe('Arsenal'); // home_team from makeMatch default
+      expect(events[0].score).toBe('1-0');
+      expect(events[0].message).toContain('GOAL');
+    });
+
+    it('should detect an away team goal between polls', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 1 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('goal');
+      expect(events[0].team).toBe('Liverpool'); // away_team from makeMatch default
+      expect(events[0].score).toBe('0-1');
+    });
+
+    it('should detect multiple goals scored between polls', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      // Two goals scored between polls (home 2, away 1)
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 2, away_goals: 1 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      // 2 home goals + 1 away goal = 3 events
+      expect(events).toHaveLength(3);
+      const goalEvents = events.filter((e: MatchEvent) => e.type === 'goal');
+      expect(goalEvents).toHaveLength(3);
+      expect(goalEvents.filter((e: MatchEvent) => e.team === 'Arsenal')).toHaveLength(2);
+      expect(goalEvents.filter((e: MatchEvent) => e.team === 'Liverpool')).toHaveLength(1);
+    });
+
+    it('should detect kickoff for a newly appearing live match', async () => {
+      // First poll: no live matches
+      mockGetLiveMatches.mockResolvedValue([]);
+      await liveService.start();
+
+      // Second poll: match just kicked off
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('kickoff');
+      expect(events[0].message).toContain('Kick-off');
+    });
+
+    it('should detect half-time status change', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'PAUSED', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('half_time');
+      expect(events[0].score).toBe('1-0');
+      expect(events[0].message).toContain('Half-time');
+    });
+
+    it('should detect second half restart', async () => {
+      // Match at half-time
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'PAUSED', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.start();
+
+      // Second half begins
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('second_half');
+      expect(events[0].message).toContain('Second half');
+    });
+
+    it('should detect full-time', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 2, away_goals: 1 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'FINISHED', home_goals: 2, away_goals: 1 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('full_time');
+      expect(events[0].score).toBe('2-1');
+      expect(events[0].message).toContain('Full-time');
+    });
+
+    it('should detect extra time', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 1 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'EXTRA_TIME', home_goals: 1, away_goals: 1 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('extra_time');
+      expect(events[0].message).toContain('Extra time');
+    });
+
+    it('should detect penalty shootout', async () => {
+      // Start with EXTRA_TIME — no kickoff event emitted (only IN_PLAY triggers kickoff)
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'EXTRA_TIME', home_goals: 2, away_goals: 2 }),
+      ]);
+      await liveService.start();
+
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'PENALTY_SHOOTOUT', home_goals: 2, away_goals: 2 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('penalties');
+      expect(events[0].message).toContain('Penalty shootout');
+    });
+
+    it('should not emit spurious events on first poll for in-progress matches', async () => {
+      // First poll sees a match already at 2-1 — should only emit kickoff, not goals
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 2, away_goals: 1 }),
+      ]);
+      await liveService.start();
+
+      const events = get(matchEventsStore);
+      // Should see a kickoff event, not 3 goal events
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('kickoff');
+    });
+
+    it('should prune expired events', async () => {
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      // Goal scored
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+      expect(get(matchEventsStore)).toHaveLength(1);
+
+      // Advance time past expiry (30s)
+      vi.advanceTimersByTime(31_000);
+
+      // Another poll with no changes — should prune expired events
+      await liveService.refresh();
+      expect(get(matchEventsStore)).toHaveLength(0);
+    });
+
+    it('should handle goal and status change in same poll', async () => {
+      // Match at 1-0 in play
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff event from first poll
+
+      // Goal scored AND half-time whistle in same poll interval
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', status: 'PAUSED', home_goals: 2, away_goals: 0 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(2);
+      const types = events.map((e: MatchEvent) => e.type);
+      expect(types).toContain('goal');
+      expect(types).toContain('half_time');
+    });
+
+    it('should track events across multiple matches independently', async () => {
+      // Two matches in play
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', home_team: 'Arsenal', away_team: 'Chelsea', status: 'IN_PLAY', home_goals: 0, away_goals: 0 }),
+        makeMatch({ id: 'm2', home_team: 'Spurs', away_team: 'Liverpool', status: 'IN_PLAY', home_goals: 1, away_goals: 1 }),
+      ]);
+      await liveService.start();
+      matchEventsStore.set([]); // clear kickoff events from first poll
+
+      // Arsenal scores, Spurs match goes to half-time
+      mockGetLiveMatches.mockResolvedValue([
+        makeMatch({ id: 'm1', home_team: 'Arsenal', away_team: 'Chelsea', status: 'IN_PLAY', home_goals: 1, away_goals: 0 }),
+        makeMatch({ id: 'm2', home_team: 'Spurs', away_team: 'Liverpool', status: 'PAUSED', home_goals: 1, away_goals: 1 }),
+      ]);
+      await liveService.refresh();
+
+      const events = get(matchEventsStore);
+      expect(events).toHaveLength(2);
+
+      const arsenalGoal = events.find((e: MatchEvent) => e.matchId === 'm1');
+      expect(arsenalGoal?.type).toBe('goal');
+      expect(arsenalGoal?.team).toBe('Arsenal');
+
+      const spursHT = events.find((e: MatchEvent) => e.matchId === 'm2');
+      expect(spursHT?.type).toBe('half_time');
+    });
   });
 });

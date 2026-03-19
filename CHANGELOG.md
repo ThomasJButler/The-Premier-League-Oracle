@@ -2,6 +2,27 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 2 April 2026 — Match event notifications, Spec 05 complete
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Added
+
+- **Match event detection via polling-diff** — `liveService.ts` now compares consecutive poll snapshots to detect goals and status changes (kickoff, half-time, second half, full-time, extra time, penalties). Since Football-Data.org free tier provides no per-match events API, events are inferred from score/status diffs between polls. Events auto-expire after 30 seconds
+- **`MatchEventToast.svelte`** — colour-coded toast notification component with fly transition (slides in from right). Green border for goals, amber for half-time, blue for full-time, red for extra time/penalties. ARIA `role="status"` and `aria-live="polite"` for accessibility
+- **`matchEventsStore`** — new Svelte writable store in liveService for reactive event propagation
+- **`MatchEvent` and `MatchEventType` types** added to `types/index.ts`
+- **LiveTicker integration** — match events surfaced at highest priority (priority -1) in the scrolling ticker
+- **13 new tests** in `liveService.test.ts` covering goal detection (home/away/multiple), kickoff, half-time, second half, full-time, extra time, penalties, event expiry, simultaneous goal+status, and multi-match independence
+- **Spec 05 (Live Data) now 100% complete** — all 10/10 acceptance criteria met (was 9/10, missing match event notifications)
+
+### Changed
+
+- `.gitignore` consolidated — duplicate `.env` entries merged, `frontend/.env*.local` glob replaces individual entries, added `backend/models/*.png`, `*.pyo`, `.pytest_cache/`, `backend/.coverage`, `backend/htmlcov/`, `.DS_Store`
+- Frontend test count: 389 → 402 Vitest tests (liveService.test.ts: 11 → 24)
+
+---
+
 ## 2 April 2026 — AccumulatorBuilder, Spec 04 complete
 
 **Branch:** `v3.0-BackendMLTraining`
