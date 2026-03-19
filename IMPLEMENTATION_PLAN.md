@@ -478,7 +478,7 @@ These are low-priority items deferred from completed priority tiers:
 - [ ] **P2l:** No `backend/.env.example` exists — create a template for required backend environment variables (deferred — backend not deployed to Vercel)
 - [ ] **P4e:** `Dashboard.svelte` chart border colours hardcoded as hex — Chart.js requires resolved colour values, not CSS variables. Proper fix requires `getComputedStyle` + theme-change re-creation
 - [ ] **P4e:** `BettingHistory.svelte` chart colours same Chart.js limitation as Dashboard
-- [ ] **P4g:** No `backend/.dockerignore` — test files, docs, spreadsheets (~100MB+ CSVs) all included in Docker build context
+- [x] **P4g:** Created `backend/.dockerignore` — excludes tests, docs, spreadsheets, caches, training scripts, Docker files from build context
 - [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed
 - [ ] **P5u:** `SeasonStats.svelte`: "Most Cards" stat uses `Calendar` icon — wrong icon for a disciplinary stat, should be `AlertTriangle` or similar
@@ -487,10 +487,10 @@ These are low-priority items deferred from completed priority tiers:
 - [x] **P5u:** `Settings.svelte`: Added `refreshTimer` variable and `onDestroy` cleanup — setTimeout no longer fires after component unmounts
 - [x] **P5u:** `ApiSetupWizard.svelte`: Changed close button `aria-label` from "Skip setup wizard" to "Close setup wizard"
 - [x] **P5u:** `BettingHistory.svelte`: Already guarded — `app.css` has global `@media (prefers-reduced-motion: reduce)` that kills all animations
-- [ ] **P5u:** `Spec 02` status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
-- [ ] **P5x:** `Dashboard.svelte:436`: Profit/Loss `<canvas>` has no `role="img"` or `aria-label` (accessibility gap)
-- [ ] **P5x:** `Help.svelte:39`: Mobile menu `<nav>` has no `id`/`aria-controls` linking to the toggle button
-- [ ] **P5x:** `TopScorers.svelte:165`: Medal emoji `<span>` elements lack `aria-label`
+- [x] **P5u:** Spec 02 status updated — "Backend ML proxy: NOT DONE" corrected to DONE (proxy configured at `vite.config.ts:120` since P2b)
+- [x] **P5x:** `Dashboard.svelte:436`: Already accessible — `<canvas>` is wrapped in `<div role="img" aria-label="...">` (correct Chart.js pattern)
+- [x] **P5x:** `Help.svelte:39`: Added `id="help-nav"` to `<nav>` and `aria-controls="help-nav"` to toggle button
+- [x] **P5x:** `TopScorers.svelte:165`: Added `role="img"` and `aria-label` ("1st/2nd/3rd place") to medal emoji spans
 - [x] **P5x:** `ChatBot.svelte:353`: Privacy copy changed from "never sent to our servers" to "stored in your browser only"
 - [x] **P5x:** `Settings.svelte:292`: HTML comment changed from "API Provider Selection" to "Football-Data.org API Configuration" (visible heading was already correct)
 - [ ] **P5x:** `AdvancedMatchPredictor.predictMatch` confidence is effectively constant (returns 0.85 or 0.75) — should vary with actual model signal

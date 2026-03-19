@@ -154,7 +154,7 @@
             >
               <td class="py-3 px-4">
                 {#if index < 3}
-                  <span class="text-xl">{getPositionIcon(index + 1)}</span>
+                  <span class="text-xl" role="img" aria-label="{index === 0 ? '1st' : index === 1 ? '2nd' : '3rd'} place">{getPositionIcon(index + 1)}</span>
                 {:else}
                   <span class="inline-flex w-8 h-8 items-center justify-center bg-gradient-to-br {getPositionColor(index + 1)} rounded-full text-white font-bold text-sm">{index + 1}</span>
                 {/if}

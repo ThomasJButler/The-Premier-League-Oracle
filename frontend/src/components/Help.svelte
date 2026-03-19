@@ -25,6 +25,7 @@
           class="sm:hidden p-2 rounded-lg hover:bg-muted"
           on:click={() => showMobileMenu = !showMobileMenu}
           aria-expanded={showMobileMenu}
+          aria-controls="help-nav"
           aria-label="Toggle documentation menu"
         >
           <ChevronRight class="w-5 h-5 transition-transform {showMobileMenu ? 'rotate-90' : ''}" />
@@ -36,7 +37,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Navigation -->
-      <nav class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
+      <nav id="help-nav" class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
         <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 sticky top-24">
           <h2 class="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
             Documentation

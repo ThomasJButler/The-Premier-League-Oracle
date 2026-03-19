@@ -205,7 +205,7 @@ These specs are the single source of truth for requirements.
 - ~~`liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely~~ **FIXED:** All WebSocket infrastructure removed from liveService (P5v) — service is now polling-only with adaptive intervals
 - `value.ts`: `MarketOdds.bttsNo` — investigated and confirmed NOT dead. Actively used by ValueBets.svelte UI as a validation gate for BTTS market scanning
 - ~~`ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial~~ **FIXED:** removed (P5s)
-- Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
+- ~~Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b~~ **FIXED:** spec status corrected to DONE
 - **Sixteenth audit (29 March 2026) — 23 new items discovered:**
 - ~~`App.svelte:79`: `hasApiKey = true` set unconditionally on wizard dismiss — even when no key entered~~ **FIXED:** `handleApiSetupComplete` now early-returns when `apiKey` is empty (P1g)
 - ~~`app.css:376-387`: Dead `.live-ticker` and `.ticker-content` global rules~~ **FIXED:** removed dead ticker CSS rules from app.css (P5w)

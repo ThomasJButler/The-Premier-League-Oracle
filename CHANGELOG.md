@@ -2,6 +2,22 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P4g/P5x/P5u — .dockerignore, accessibility, spec corrections
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P4g — Backend .dockerignore created
+- Excludes tests, docs, spreadsheets (~100MB+ CSVs), caches, training scripts, and Docker files from build context — dramatically faster builds
+
+### P5x — Accessibility fixes
+- `Help.svelte`: Added `id="help-nav"` and `aria-controls` linking toggle button to nav
+- `TopScorers.svelte`: Added `role="img"` and `aria-label` ("1st/2nd/3rd place") to medal emoji spans
+
+### P5u — Spec corrections
+- Spec 02: Updated "Backend ML proxy: NOT DONE" to DONE — proxy exists at `vite.config.ts:120` since P2b
+
+---
+
 ## 30 March 2026 — P5ae/P5u/P5x — test quality, accessibility, content fixes
 
 **Branch:** `v3.0-BackendMLTraining`
