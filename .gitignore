@@ -40,6 +40,8 @@ frontend/test-results/
 # Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
+.claude-run/
+scripts/
 
 # Python
 **/__pycache__/
