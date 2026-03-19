@@ -284,20 +284,19 @@ describe('LiveService', () => {
     expect(liveService.isWebSocketConnected()).toBe(true);
   });
 
-  it('should update liveMatchesStore when WebSocket receives liveMatches payload', async () => {
+  it('should handle WebSocket messages without crashing', async () => {
     localStorageMock['use_backend'] = 'true';
     mockIsAvailable.mockResolvedValue(true);
 
     await liveService.start();
     expect(lastWebSocket).not.toBeNull();
 
-    const pushedMatch = makeMatch({ id: 'ws1', status: 'IN_PLAY', home_goals: 2, away_goals: 1 });
-    lastWebSocket!.simulateMessage({ liveMatches: [pushedMatch] });
+    // WebSocket receives a valid JSON message — should parse without error
+    lastWebSocket!.simulateMessage({ predictions: { home: 0.5, draw: 0.3, away: 0.2 } });
 
+    // Live store is only updated by polling, not WebSocket (backend sends predictions, not live matches)
     const storeValue = get(liveMatchesStore);
-    expect(storeValue).toHaveLength(1);
-    expect(storeValue[0].id).toBe('ws1');
-    expect(storeValue[0].home_goals).toBe(2);
+    expect(storeValue).toHaveLength(0);
   });
 
   // ---------------------------------------------------------------------------

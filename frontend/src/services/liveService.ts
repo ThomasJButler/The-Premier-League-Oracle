@@ -221,18 +221,20 @@ class LiveService {
   }
 
   /**
-   * Open a WebSocket to the backend for real-time updates.
+   * Open a WebSocket to the backend for real-time prediction updates.
    *
-   * The backend's /ws/predictions endpoint sends prediction probability updates.
-   * If a future backend version sends { liveMatches: Match[] }, we'll consume
-   * that too and can reduce polling frequency.
+   * The backend's /ws/predictions endpoint pushes updated prediction probabilities.
+   * The URL is configurable via `VITE_BACKEND_WS_URL` (e.g. `wss://api.example.com`)
+   * and defaults to the current hostname on port 8000 for local development.
    */
   private connectWebSocket(): void {
     if (this.ws) return;
 
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/predictions`;
+      const defaultWsBase = `${wsProtocol}//${window.location.hostname}:8000`;
+      const wsBase = import.meta.env.VITE_BACKEND_WS_URL || defaultWsBase;
+      const wsUrl = `${wsBase}/ws/predictions`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -241,13 +243,9 @@ class LiveService {
 
       this.ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-
-          // Future: backend may push live match data directly
-          if (data.liveMatches && Array.isArray(data.liveMatches)) {
-            liveMatchesStore.set(data.liveMatches);
-            pollLabel.set(this.getPollLabel());
-          }
+          JSON.parse(event.data);
+          // Backend currently sends prediction probability updates.
+          // Future versions may include additional payload types.
         } catch {
           // Malformed JSON — ignore
         }

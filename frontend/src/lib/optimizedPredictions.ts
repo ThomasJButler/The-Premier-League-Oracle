@@ -3,6 +3,7 @@ import type { Match, Standing, MLPrediction, TeamForm } from '../types';
 import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
+import { predictionTracker } from '../services/predictionTracker';
 import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
 
 export interface EnhancedPredictionModel {
@@ -378,12 +379,21 @@ export class OptimizedPredictor {
       const poissonTopOutcome = this.getTopOutcome(poissonProbs.homeWin, poissonProbs.draw, poissonProbs.awayWin);
       const modelsDisagree = eloTopOutcome !== poissonTopOutcome;
 
-      const confidence = this.calculateConfidence(
+      const rawConfidence = this.calculateConfidence(
         adjustedProbabilities,
         prediction.result,
         fatigueFactor,
         modelsDisagree
       );
+
+      // Apply historical calibration — adjust confidence based on past accuracy
+      // per confidence band (Spec 01 Req 5). If the model has been overconfident
+      // in a given band, the factor < 1 brings future confidence down.
+      const calibration = predictionTracker.getCalibrationFactors();
+      const bandFactor = rawConfidence > 0.7 ? calibration.highBand
+        : rawConfidence >= 0.5 ? calibration.mediumBand
+        : calibration.lowBand;
+      const confidence = Math.max(0.25, Math.min(0.95, rawConfidence * bandFactor));
 
       if (modelsDisagree) {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);

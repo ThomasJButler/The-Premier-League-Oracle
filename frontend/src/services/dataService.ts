@@ -10,6 +10,21 @@ interface DataSource {
   available: boolean;
 }
 
+/**
+ * Singleton data layer — the only public interface to Football-Data.org and IndexedDB cache.
+ *
+ * Error contract (two tiers):
+ *
+ * **Throws** — essential data the UI cannot function without:
+ *   `getCurrentSeason()`, `getMatches()`, `getStandings()`, `getTopScorers()`
+ *   Callers must wrap these in try/catch and show an appropriate error state.
+ *
+ * **Returns empty** — supplementary data the UI can degrade without:
+ *   `getTeamForm() → []`, `getLiveMatches() → []`, `getAllSeasons() → []`,
+ *   `getHistoricalMatches() → []` (collections return empty array)
+ *   `getTeamStats() → null` (single-object lookup returns null)
+ *   Callers should provide fallback content when these return empty/null.
+ */
 class DataService {
   private apiSource: DataSource = { type: 'api', available: false };
   private useCache: boolean = true;
