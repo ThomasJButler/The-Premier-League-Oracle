@@ -550,9 +550,10 @@ export class OptimizedPredictor {
       return form.slice(0, 5).map(m => m.result || '?').join('');
     };
 
-    // Calculate form-based probabilities with more variation
-    const homeMomentum = homeFormScore * 1.1; // Home advantage in form
-    const awayMomentum = awayFormScore * 0.9;
+    // Calculate form-based probabilities — no home bias here as ELO already
+    // accounts for home advantage via HOME_ADVANTAGE (65 ELO points)
+    const homeMomentum = homeFormScore;
+    const awayMomentum = awayFormScore;
     
     // Add variance based on form difference
     const formDiff = Math.abs(homeMomentum - awayMomentum);

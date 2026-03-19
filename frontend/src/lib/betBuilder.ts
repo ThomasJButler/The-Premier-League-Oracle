@@ -345,11 +345,10 @@ export class BetBuilderPredictor {
    */
   private static calculateHalfTimeResult(fullTimeResult: BetBuilderPrediction['matchResult']) {
     const ftBias = 0.4; // 40 % correlation with full-time
-    // Prior: draws much more common at half-time
-    const priorHome = 0.25;
-    const priorDraw = 0.45;
-    const priorAway = 0.25;
-    // Note: prior doesn't sum to 0.95 not 1.0, but the normalisation below fixes that
+    // Prior: draws much more common at half-time (real PL HT distribution)
+    const priorHome = 0.26;
+    const priorDraw = 0.46;
+    const priorAway = 0.28;
 
     let homeWinProb = fullTimeResult.homeWinProb * ftBias + priorHome * (1 - ftBias);
     let drawProb    = fullTimeResult.drawProb    * ftBias + priorDraw * (1 - ftBias);

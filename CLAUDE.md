@@ -214,9 +214,9 @@ These specs are the single source of truth for requirements.
 - ~~`MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` only defined locally in `Predictions.svelte`~~ **SEVENTEENTH AUDIT CORRECTION:** `animate-fade-in` IS defined globally in `tailwind.config.js:78` (maps to `fadeIn` keyframe, opacity 0→1). Both components' animations work. Predictions.svelte has a local version that additionally translates Y — cosmetic difference, not a bug. False positive removed from P5x
 - ~~`SeasonStats.svelte:374`: Division by `totalGoals` produces `NaN%` when no goals scored~~ **FIXED:** guarded with `totalGoals > 0`, displays "N/A" fallback (P5y)
 - ~~`renderMarkdown.ts`: Numbered lists wrap `<li class="list-decimal">` in `<ul>` instead of `<ol>`~~ **FIXED:** bullet items now wrapped in `<ul>`, numbered items in `<ol>` (P5z)
-- `optimizedPredictions.ts`: Home advantage double-counted — ELO adds 65 points AND form adds `*1.1`/`*0.9` momentum (P5aa)
+- ~~`optimizedPredictions.ts`: Home advantage double-counted — ELO adds 65 points AND form adds `*1.1`/`*0.9` momentum~~ **FIXED:** removed `*1.1`/`*0.9` momentum adjustments from `analyzeRecentForm()` — ELO `HOME_ADVANTAGE` is the single source of truth (P5aa)
 - `backtest.ts`: ELO `saveToStorage()` fires on every match during backtest — ~300+ unnecessary localStorage writes (P5ab)
-- `betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation (P5ac)
+- ~~`betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation~~ **FIXED:** corrected to 0.26 + 0.46 + 0.28 = 1.0 (P5ac)
 - `advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)
 - `main.py`: Model/CSV paths resolve relative to CWD, not `__file__` — server fails silently when started from non-`backend/` directory (P5af)
 - `requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI (P2t)
@@ -228,8 +228,8 @@ These specs are the single source of truth for requirements.
 - **Seventeenth audit (29 March 2026) — P5x corrections + 7 new items:**
 - **P5x CORRECTED:** `hover:shadow-glow-primary-sm` IS defined in `tailwind.config.js:69` (false positive). `animate-fade-in` IS defined globally in `tailwind.config.js:78` (false positive). Only `dark:text-primary-light` remains as a real P5x bug
 - ~~`App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind generates `animate-fade-in` (kebab-case)~~ **FIXED:** changed to `animate-fade-in` (P5ah)
-- `Help.svelte`: Uses `prose prose-slate dark:prose-invert` classes (6 instances) and local `@apply .prose h2/h3/h4` rules, but `@tailwindcss/typography` is NOT installed. All typography styling silently non-functional (P5ai)
-- `Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state (P5aj)
+- ~~`Help.svelte`: Uses `prose prose-slate dark:prose-invert` classes (6 instances) and local `@apply .prose h2/h3/h4` rules, but `@tailwindcss/typography` is NOT installed. All typography styling silently non-functional~~ **FIXED:** installed `@tailwindcss/typography` and added to `tailwind.config.js` plugins (P5ai)
+- ~~`Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state~~ **FIXED:** added `aria-expanded={isSidebarOpen}` with prop from App.svelte (P5aj)
 - Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()` (P5ak)
 - `betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types ("Value Builder" and "Goals Galore") — "Safe Builder" and "High Risk Builder" skip correlation (P5al)
 - `backend/Dockerfile`: No non-root user created — app runs as root inside container (P5am)

@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~32/49 (65%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
+| P5 Hardening | ~36/49 (73%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
 
 **Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -368,7 +368,7 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [x] Bullet list items now wrapped in `<ul>`, numbered list items wrapped in `<ol>` — correct semantic HTML for screen reader list navigation
 
-### P5aa. Home Advantage Double-Counting
+### P5aa. Home Advantage Double-Counting — DONE
 
 The prediction ensemble applies home advantage twice:
 1. ELO model: `HOME_ADVANTAGE = 65` ELO points added in `EloRatingSystem.calculateWinProbability()`
@@ -376,7 +376,7 @@ The prediction ensemble applies home advantage twice:
 
 This systematically inflates home win probabilities. The fix is to remove the 10% form bias (the ELO home advantage is the correct one).
 
-- [ ] Remove `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` — ELO already accounts for home advantage
+- [x] Removed `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` — ELO already accounts for home advantage
 
 ### P5ab. Backtest localStorage Noise
 
@@ -384,11 +384,11 @@ This systematically inflates home win probabilities. The fix is to remove the 10
 
 - [ ] Add a `suppressStorage` flag to `EloRatingSystem.updateRatings()` or skip `saveToStorage()` during backtest runs
 
-### P5ac. betBuilder Half-Time Prior Bias
+### P5ac. betBuilder Half-Time Prior Bias — DONE
 
 `betBuilder.ts:calculateHalfTimeResult()`: The HT result priors sum to 0.95, not 1.0 (`priorHome=0.25 + priorDraw=0.45 + priorAway=0.25`). Normalisation corrects the output, but the missing 5% introduces a small systematic bias.
 
-- [ ] Correct priors to sum to 1.0 (e.g. `0.26 + 0.46 + 0.28`, matching real PL HT distributions)
+- [x] Corrected priors to 0.26 + 0.46 + 0.28 = 1.0, matching real PL HT distributions
 
 ### P5ad. FatigueAnalyzer Congestion Branch Dead
 
@@ -423,18 +423,18 @@ Three different spinner implementations exist across components (none use the `s
 
 - [x] Changed `animate-fadeIn` to `animate-fade-in` — page transition overlay now fades correctly
 
-### P5ai. Help.svelte Typography Plugin Missing
+### P5ai. Help.svelte Typography Plugin Missing — DONE
 
 `Help.svelte` uses `prose prose-slate dark:prose-invert` classes in 6 wrapper `<div>` elements, and has local `@apply .prose h2/h3/h4` rules in its `<style>` block. However, `@tailwindcss/typography` is not installed as a dependency or listed in `tailwind.config.js` plugins. All prose styling is silently non-functional — headings, lists, and body text render with default browser styles rather than the Tailwind typography system.
 
-- [ ] Install `@tailwindcss/typography` (`npm install -D @tailwindcss/typography`)
-- [ ] Add `require('@tailwindcss/typography')` to `tailwind.config.js` plugins array
+- [x] Install `@tailwindcss/typography` (`npm install -D @tailwindcss/typography`)
+- [x] Add `require('@tailwindcss/typography')` to `tailwind.config.js` plugins array
 
-### P5aj. Header.svelte Missing aria-expanded
+### P5aj. Header.svelte Missing aria-expanded — DONE
 
 `Header.svelte`: The sidebar toggle button (hamburger menu) has `aria-label="Toggle menu"` but no `aria-expanded` attribute. Screen reader users cannot determine whether the sidebar is currently open or closed.
 
-- [ ] Add `aria-expanded={isSidebarOpen}` to the sidebar toggle button (requires passing `isOpen` prop from App.svelte)
+- [x] Added aria-expanded={isSidebarOpen} to sidebar toggle button, with isSidebarOpen prop passed from App.svelte
 
 ### P5ak. Dead Service Methods
 

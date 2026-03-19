@@ -2,6 +2,27 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5aa/P5ac/P5ai/P5aj — prediction quality, typography, accessibility
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5aa — Home advantage double-counting removed
+- Removed `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` in `optimizedPredictions.ts` — ELO's `HOME_ADVANTAGE` (65 points) is the single source of truth for home advantage
+
+### P5ac — HT priors corrected
+- Fixed half-time result priors from 0.25 + 0.45 + 0.25 = 0.95 to 0.26 + 0.46 + 0.28 = 1.0, matching real PL half-time distributions
+
+### P5ai — Typography plugin installed
+- Installed `@tailwindcss/typography` and added to `tailwind.config.js` — Help.svelte's `prose` classes now functional
+
+### P5aj — Sidebar toggle aria-expanded
+- Added `aria-expanded={isSidebarOpen}` to Header sidebar toggle button, with `isSidebarOpen` prop passed from App.svelte
+
+### Stats
+- P5 Hardening: ~36/49 (73%)
+
+---
+
 ## 30 March 2026 — P1g wizard dismiss bug fixed, P5ah/P5w/P5y/P5z resolved
 
 **Branch:** `v3.0-BackendMLTraining`
