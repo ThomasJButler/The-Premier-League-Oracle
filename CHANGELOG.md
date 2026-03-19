@@ -2,6 +2,35 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 1 April 2026 — Progressive data loader, rate-limit queue, stale file cleanup
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Spec 02 (Data Pipeline) — now 100% complete
+
+- **Progressive 5-season loader:** `dataService.loadAllHistoricalSeasons()` fetches seasons 2020–2024 sequentially in the background on startup. Skips already-cached seasons (24h IndexedDB TTL). Uses `historical_seasons_loaded` localStorage flag to avoid re-triggering on every page load
+- **`getAllHistoricalMatches()` public method:** Returns all cached historical data for backtesting and ELO initialisation
+- **Rate-limit queue fix:** `footballData.ts:rateLimitedFetch()` now uses a promise-based request queue — concurrent callers are serialised so the 6-second gap between API calls is guaranteed (was a race condition where simultaneous calls could both fire)
+
+### Backend hardening
+
+- **WebSocket null guards (P5ao):** `main.py` WebSocket handler now checks `oracle is None` at connection time (closes with 1008 + error JSON), validates `match` field before `.split()`, and catches prediction errors in the inner loop (reports as JSON instead of silently disconnecting)
+
+### Stale file cleanup (P5ap)
+
+- **`backend/train.py`** removed — superseded by `train_free_tier.py`, produced deleted `xgboost_model.pkl`
+- **`backend/setup.sh`** removed — stale setup script with outdated Pro-tier env vars and broken download stub
+- **`.vscode/launch.json`** removed — debug config pointed to wrong port (8080 instead of 5173)
+- **Root `node_modules/`** removed — accidental artefact from running vitest from project root
+
+### Other improvements
+
+- **`check_imports.py` modernised (P5aq):** Now checks free-tier deps (joblib, httpx, pandas, numpy) and `FreeTierFeatureEngineer` module, with clear "Required" vs "Optional (Pro-tier)" sections
+- **Spec inconsistencies fixed:** Spec 02 backend proxy checkbox updated (was `[ ]`, now `[x]`); Specs 03 and 05 WebSocket criteria corrected to reflect P5v removal (now polling-only)
+- **Spec 08 feature counts updated** to match current state (99 features)
+
+---
+
 ## 31 March 2026 — Poisson lambda from real per-team stats (Spec 01 complete)
 
 **Branch:** `v3.0-BackendMLTraining`

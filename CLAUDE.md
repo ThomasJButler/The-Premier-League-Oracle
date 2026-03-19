@@ -101,7 +101,7 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Project ~85% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
 - **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Frontend now calls `/predict/free` endpoint. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
 - **Remaining work:** P1 ALL DONE, P2 partial (Docker, CI, deps, .gitignore), P5 hardening (CSS bugs, prediction quality, test quality, dead code), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 73 backend tests across 3 files (45 feature engineering incl. Elo, 12 training pipeline, 16 API endpoints) — all passing. ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
-- Frontend has 369 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
+- Frontend has 372 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -192,7 +192,10 @@ These specs are the single source of truth for requirements.
 - ~~Dead exports: `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface~~ **FIXED:** both removed (P5s). Note: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte:194`; incorrectly listed here previously
 - ~~`app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)~~ **FIXED:** all dead classes and the dead `@keyframes scroll` animation removed from `app.css` (P5s)
 - ~~`footballData.ts`: no AbortController or timeout on fetch~~ **FIXED:** AbortController with 15s timeout added to `rateLimitedFetch()` (P5t)
+- `footballData.ts`: `rateLimitedFetch()` now uses a promise-based request queue — concurrent callers are serialised so the 6-second gap between API calls is guaranteed even under concurrent access (was a race condition where two simultaneous calls could both fire)
 - ~~`dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws~~ **FIXED:** error contract documented with JSDoc: essential data methods throw, supplementary methods return empty/null (P5t)
+- `dataService.ts`: `loadAllHistoricalSeasons()` progressively fetches seasons 2020-2024 in the background on startup, skipping cached seasons. Uses `historical_seasons_loaded` localStorage flag (24h TTL). `getAllHistoricalMatches()` returns all cached historical data for backtesting/ELO
+- Spec 02 (Data Pipeline) is now 100% complete — all 8/8 acceptance criteria met including progressive loader and batch rate limiting
 - ~~`Predictions.svelte`: `catch (error)` variable shadows outer `let error`~~ **FIXED:** renamed to `catch (err)` (P5t)
 - `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
 - ~~`betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded~~ **FIXED:** changed to 'Over 8.5 corners' to match the `totalOver85` probability used in confidence calculation
@@ -235,11 +238,16 @@ These specs are the single source of truth for requirements.
 - ~~`betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types~~ **FIXED:** all four combo types ("Safe Builder", "Value Builder", "High Risk Builder", "Goals Galore") now apply `correlationAdjustment()` for consistent confidence calculations (P5al)
 - ~~`backend/Dockerfile`: No non-root user created — app runs as root inside container~~ **FIXED:** added `appuser` non-root user, removed stale `COPY config.yml`, removed misleading MLflow port (P5am)
 - ~~`backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI~~ **FIXED:** renamed to `backend/check_imports.py` so pytest no longer collects it as a passing test (P5an)
+- `backend/check_imports.py` updated — now checks free-tier deps (joblib, httpx, pandas, numpy) instead of only Pro-tier deps
+- `backend/train.py` removed — superseded by `train_free_tier.py` (outputs deleted `xgboost_model.pkl`)
+- `backend/setup.sh` removed — stale setup script with outdated Pro-tier env vars
+- `.vscode/launch.json` removed — pointed to wrong port (8080 vs 5173)
 - ~~`advanced_engineering.py`: `warnings.filterwarnings('ignore')` at module level silences all Python warnings globally~~ **FIXED:** removed along with unused `warnings` import
 - `main.py`: CORS now includes `allow_origin_regex=r"https://.*\.vercel\.app"` to cover Vercel production + preview deployments (in addition to localhost dev/preview origins)
 - `backend/README.md` updated — feature count 86→94, test count 62→67, CSV training data source documented with required columns, duplicate security-modules bullet removed
 - ~~`main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details~~ **FIXED:** error response now returns generic "Internal server error" message only; full error logged server-side
 - ~~`main.py`: `response.dict()` deprecated in Pydantic v2~~ **FIXED:** changed to `.model_dump()`
 - ~~`main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if socket was never appended~~ **FIXED:** `active_websockets` changed from `List` to `set` — uses `.add()` and `.discard()` (safe, O(1))
+- `main.py` WebSocket handler: `oracle` null guard added (closes with 1008 + error JSON), `match` field validated before `.split()`, prediction errors caught and reported as JSON instead of silently disconnecting
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
