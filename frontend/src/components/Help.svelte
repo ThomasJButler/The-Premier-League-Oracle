@@ -512,16 +512,3 @@
   </div>
 </div>
 
-<style>
-  .prose h2 {
-    @apply text-2xl sm:text-3xl;
-  }
-
-  .prose h3 {
-    @apply text-lg sm:text-xl;
-  }
-
-  .prose h4 {
-    @apply text-base sm:text-lg;
-  }
-</style>

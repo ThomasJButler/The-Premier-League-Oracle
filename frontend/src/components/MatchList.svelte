@@ -226,7 +226,7 @@
         
         <!-- Quick Actions -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-foreground">Quick Filters</label>
+          <span class="text-sm font-medium text-foreground">Quick Filters</span>
           <div class="flex gap-2">
             <button
               on:click={() => {
