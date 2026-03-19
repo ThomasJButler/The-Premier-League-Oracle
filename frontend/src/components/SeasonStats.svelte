@@ -175,7 +175,7 @@
       {
         label: 'Most Cards',
         value: hasCardData ? `${mostCards} cards` : 'N/A',
-        icon: Calendar,
+        icon: AlertTriangle,
         color: 'from-red-500 to-pink-500',
         description: hasCardData && mostCardsMatch.home_team
           ? `${mostCardsMatch.home_team} vs ${mostCardsMatch.away_team}`

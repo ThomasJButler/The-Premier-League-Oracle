@@ -2,6 +2,31 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P2o/P2l/P2n/P5u — Docker, CI, and polish
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P2o — Docker compose cleanup
+- Stripped `docker-compose.yml` to just the working `oracle-api` service — Redis, MLflow, Postgres, Jupyter, Nginx all commented out as optional Pro-tier services
+- Removed broken `./data`, `./logs` bind mounts and the nginx service (no `nginx.conf` exists)
+
+### P2l — Backend .env.example
+- Created `backend/.env.example` documenting `FOOTBALL_DATA_API_KEY` (required) and optional Pro-tier variables (OpenAI, Redis, MLflow, Postgres)
+
+### P2n — CI coverage enforcement
+- CI now runs `npm run test:coverage` instead of `npm run test:run` — coverage thresholds enforced at 60/65/65/60 (statements/branches/functions/lines)
+- Previous aspirational thresholds (80/75/80/80) lowered to match reality — acts as a ratchet preventing regression
+- Removed ad-hoc `httpx` from backend CI install (already in `requirements.txt` since P2t)
+
+### P5u — SeasonStats icon fix
+- "Most Cards" stat icon changed from `Calendar` (schedule icon) to `AlertTriangle` (disciplinary icon)
+
+### Stats
+- Frontend: 369 tests across 23 files (all passing), coverage enforced
+- P2 tier: 27/27 (100%) complete
+
+---
+
 ## 30 March 2026 — P5x — prediction quality improvements
 
 **Branch:** `v3.0-BackendMLTraining`
