@@ -18,10 +18,11 @@
 
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Calculator, AlertTriangle, TrendingUp, Zap, RefreshCw } from 'lucide-svelte';
+  import { Calculator, AlertTriangle, TrendingUp, Zap, RefreshCw, BookmarkPlus, Check } from 'lucide-svelte';
   import { KellyCalculator } from '../../services/betting/kelly';
   import { dataService } from '../../services/dataService';
   import { OptimizedPredictor, type EnhancedPredictionModel } from '../../lib/optimizedPredictions';
+  import { betHistoryService } from '../../services/betting/betHistoryService';
   import { fade } from 'svelte/transition';
   import { getTeamLogo } from '../../utils/teamLogos';
 
@@ -35,7 +36,27 @@
   let suggestionsLoading = false;
   let suggestionsError: string | null = null;
   let confidenceThreshold = 65; // percentage, spec says >= 65%
-  let showSuggestions = true;
+  let trackedBets: Set<string> = new Set();
+
+  function trackBet(suggestion: KellySuggestion) {
+    const selection = suggestion.predictedResult === 'H' ? 'home'
+      : suggestion.predictedResult === 'A' ? 'away' : 'draw';
+
+    betHistoryService.storeBet({
+      matchId: suggestion.matchId,
+      matchDate: suggestion.date,
+      homeTeam: suggestion.homeTeam,
+      awayTeam: suggestion.awayTeam,
+      market: 'match_result',
+      selection,
+      odds: suggestion.bookmakerOdds,
+      stake: suggestion.stake,
+      kellyFraction: suggestion.kelly.halfKelly,
+      confidence: suggestion.confidence
+    });
+
+    trackedBets = new Set([...trackedBets, suggestion.matchId]);
+  }
 
   /**
    * Load upcoming matches, predict each, and generate Kelly suggestions.
@@ -77,23 +98,19 @@
         // Filter: confidence must meet threshold
         if (confidencePercent < confidenceThreshold) continue;
 
-        // Use the probability for the predicted outcome
-        // Extract from valueOdds (margin = 1.05) or fall back to confidence
-        let prob: number;
+        // Kelly compares OUR model's probability against the bookmaker's odds.
+        // ourProbability = model confidence; bookmakerOdds = valueOdds for the outcome.
+        // Edge exists when confidence > implied probability (1/odds).
+        const prob = prediction.confidence;
         let odds: number;
 
         if (prediction.valueOdds) {
-          const oddsForOutcome =
-            prediction.predictedResult === 'H' ? prediction.valueOdds.home
-              : prediction.predictedResult === 'A' ? prediction.valueOdds.away
-                : prediction.valueOdds.draw;
-
-          // Reverse the margin: probability = margin / odds
-          prob = 1.05 / oddsForOutcome;
-          odds = oddsForOutcome;
+          odds = prediction.predictedResult === 'H' ? prediction.valueOdds.home
+            : prediction.predictedResult === 'A' ? prediction.valueOdds.away
+              : prediction.valueOdds.draw;
         } else {
-          prob = prediction.confidence;
-          odds = (1 / prob) * 1.05; // Estimate fair odds with 5% margin
+          // No external odds available — no edge can be detected
+          odds = 1 / prob;
         }
 
         // Compute Kelly
@@ -199,6 +216,7 @@
         disabled={suggestionsLoading}
         class="p-2 rounded-lg hover:bg-muted transition-colors"
         title="Refresh suggestions"
+        aria-label="Refresh suggestions"
       >
         <RefreshCw class="w-4 h-4 text-muted-foreground {suggestionsLoading ? 'animate-spin' : ''}" />
       </button>
@@ -218,7 +236,7 @@
         max="90"
         step="5"
         class="w-full accent-primary"
-        on:change={loadSuggestions}
+        on:input={loadSuggestions}
       />
       <div class="flex justify-between text-xs text-muted-foreground mt-0.5">
         <span>More bets</span>
@@ -286,6 +304,22 @@
             {#if suggestion.insights.length > 0}
               <p class="text-xs text-muted-foreground mt-1.5 truncate">{suggestion.insights[0]}</p>
             {/if}
+
+            <!-- Track Bet button -->
+            <div class="mt-2 pt-2 border-t border-border/30">
+              {#if trackedBets.has(suggestion.matchId)}
+                <span class="inline-flex items-center gap-1 text-xs text-emerald-500">
+                  <Check class="w-3.5 h-3.5" /> Tracked
+                </span>
+              {:else}
+                <button
+                  class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  on:click={() => trackBet(suggestion)}
+                >
+                  <BookmarkPlus class="w-3.5 h-3.5" /> Track Bet
+                </button>
+              {/if}
+            </div>
           </div>
         {/each}
       </div>
@@ -364,7 +398,7 @@
 
     <!-- Results -->
     {#if calculation}
-      <div class="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 p-5" data-testid="kelly-results" transition:fade>
+      <div class="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 p-5" data-testid="kelly-results" transition:fade aria-live="polite" aria-label="Kelly calculation results">
         <!-- Primary result -->
         <div class="text-center mb-4 pb-4 border-b border-border/30">
           <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Stake Amount</p>
@@ -394,7 +428,7 @@
 
         <!-- Edge indicator -->
         <div class="mt-4 pt-3 border-t border-border/30 flex justify-between text-xs text-muted-foreground">
-          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{(calculation.edgePercentage * 100).toFixed(1)}%</span></span>
+          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{calculation.edgePercentage.toFixed(1)}%</span></span>
           <span>{calculation.isValueBet ? '✓ Value bet' : '✗ No value'}</span>
         </div>
 

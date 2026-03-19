@@ -23,6 +23,9 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { TrendingUp, Users, Target, BarChart2, Trophy } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
   ChartJS.register(
     Title,
     Tooltip,
@@ -34,24 +37,36 @@
   );
 
   let recentMatches: Match[] = [];
-  let predictionAccuracy: number[] = [];
-  let topPredictions: any[] = [];
+  let topPredictions: Array<{ match: string; confidence: number; prediction: string; wasCorrect: boolean | null }> = [];
   let loading = true;
   let error: string | null = null;
-  let overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });
-  let profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
-  let totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
-  let betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
+  const overallAccuracy = tweened(0, { duration: 1500, easing: cubicOut });
+  const profitMargin = tweened(0, { duration: 1800, easing: cubicOut });
+  const totalPredictions = tweened(0, { duration: 1200, easing: cubicOut });
+  const betsPlaced = tweened(0, { duration: 1400, easing: cubicOut });
 
-  let recentPerformance: ChartData<"line", number[], string> = {
+  const recentPerformance: ChartData<"line", number[], string> = {
     labels: [] as string[],
     datasets: [{
       label: 'Prediction Accuracy',
       data: [] as number[],
-      borderColor: '#4299e1',
+      borderColor: 'hsl(var(--primary))',
       tension: 0.4,
       fill: false
     }]
+  };
+
+  /** Chart scale options — uses CSS variables so they adapt to light/dark theme */
+  const themeScaleOptions = {
+    y: {
+      beginAtZero: true,
+      grid: { color: 'hsla(var(--muted-foreground) / 0.1)' },
+      ticks: { color: 'hsl(var(--muted-foreground))' }
+    },
+    x: {
+      grid: { display: false },
+      ticks: { color: 'hsl(var(--muted-foreground))' }
+    }
   };
 
   let upcomingPredictions = 0;
@@ -82,7 +97,7 @@
       value: `${$overallAccuracy.toFixed(1)}%`,
       change: accuracyChange,
       icon: Target,
-      color: 'text-primary dark:text-primary-light',
+      color: 'text-primary',
       bgColor: 'bg-primary/10 dark:bg-primary/20'
     },
     {
@@ -113,6 +128,7 @@
 
   export async function refresh() {
     await loadDashboardData();
+    initProfitChart();
   }
   
   async function loadDashboardData() {
@@ -120,8 +136,6 @@
       loading = true;
       error = null;
       
-      // Data provider is Football-Data.org (configured in Settings)
-
       // Get recent and upcoming matches from API
       const [recent, upcoming] = await Promise.all([
         dataService.getMatches({ recent: true, days: 30 }),
@@ -271,8 +285,8 @@
           datasets: [{
             label: 'Monthly Profit (£)',
             data,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderColor: 'hsl(var(--accent))',
+            backgroundColor: 'hsla(var(--accent) / 0.1)',
             tension: 0.4,
             fill: true,
           }]
@@ -280,17 +294,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(148, 163, 184, 0.1)' },
-              ticks: { color: '#94a3b8' }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { color: '#94a3b8' }
-            }
-          },
+          scales: themeScaleOptions,
           plugins: {
             legend: { display: false }
           }
@@ -300,27 +304,38 @@
   }
 
   onMount(() => {
-    loadDashboardData().then(() => {
-      // Initialise profit chart after data is loaded
-      initProfitChart();
-    });
-
     // Initialise date/time
     updateDateTime();
-
-    // Update time every second
     const timeInterval = setInterval(updateDateTime, 1000);
 
-    // Auto-retry if there's an error
-    const retryInterval = setInterval(() => {
-      if (error && !loading) {
-        loadDashboardData();
-      }
-    }, 5000);
+    // Auto-retry with exponential backoff (max 3 attempts)
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function scheduleRetry() {
+      if (retryCount >= MAX_RETRIES || !error || loading) return;
+      const delay = 5000 * Math.pow(2, retryCount); // 5s, 10s, 20s
+      retryTimeout = setTimeout(() => {
+        if (error && !loading) {
+          retryCount++;
+          loadDashboardData().then(() => {
+            initProfitChart();
+            if (error) scheduleRetry();
+          });
+        }
+      }, delay);
+    }
+
+    // Initial load
+    loadDashboardData().then(() => {
+      initProfitChart();
+      if (error) scheduleRetry();
+    });
 
     return () => {
       clearInterval(timeInterval);
-      clearInterval(retryInterval);
+      if (retryTimeout) clearTimeout(retryTimeout);
       if (profitChartInstance) {
         profitChartInstance.destroy();
         profitChartInstance = null;
@@ -331,24 +346,24 @@
 
 <div class="space-y-6">
   <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-white animate-slide-in-up">
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-white to-blue-50 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-slate-900 dark:text-white animate-slide-in-up">
     <!-- Decorative elements -->
-    <div class="absolute inset-0 dot-pattern opacity-[0.03]"></div>
-    <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/10 rounded-full blur-3xl"></div>
-    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-slate-800/40 rounded-full blur-3xl"></div>
+    <div class="absolute inset-0 dot-pattern opacity-[0.03] dark:opacity-[0.03]"></div>
+    <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/5 dark:bg-emerald-400/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-blue-200/30 dark:bg-slate-800/40 rounded-full blur-3xl"></div>
 
     <div class="relative z-10">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full live-pulse"></div>
-        <span class="text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
-        <span class="text-white/50 text-xs ml-auto hidden sm:inline">
+        <div class="w-2.5 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full live-pulse"></div>
+        <span class="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
+        <span class="text-slate-400 dark:text-white/50 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
       <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2 tracking-tight">
         Premier League Oracle
       </h1>
-      <p class="text-white/60 text-sm sm:text-base mb-6 max-w-xl">
+      <p class="text-slate-500 dark:text-white/60 text-sm sm:text-base mb-6 max-w-xl">
         Statistical predictions using a five-component ensemble: ELO, Poisson, Form, H2H, and Standings
       </p>
 
@@ -360,9 +375,9 @@
           { value: upcomingPredictions, label: 'Upcoming' },
           { value: recentMatches.length, label: 'Matches' },
         ] as stat, i}
-          <div class="text-center p-3 bg-white/[0.07] rounded-lg border border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
+          <div class="text-center p-3 bg-slate-900/[0.04] dark:bg-white/[0.07] rounded-lg border border-slate-200 dark:border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
             <div class="text-xl sm:text-2xl font-display font-bold">{stat.value}</div>
-            <div class="text-xs text-white/40 mt-0.5">{stat.label}</div>
+            <div class="text-xs text-slate-400 dark:text-white/40 mt-0.5">{stat.label}</div>
           </div>
         {/each}
       </div>
@@ -373,27 +388,27 @@
   {#if loading}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each Array(4) as _, i}
-        <div class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
+        <Card class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
           <div class="skeleton w-10 h-10 rounded-lg mb-3"></div>
           <div class="skeleton h-3 w-20 mb-2"></div>
           <div class="skeleton h-7 w-28 mb-2"></div>
           <div class="skeleton h-3 w-16"></div>
-        </div>
+        </Card>
       {/each}
     </div>
   {:else if error}
-    <div class="card-glass p-8 text-center border-destructive/20 animate-stagger">
+    <Card class="card-glass p-8 text-center border-destructive/20 animate-stagger">
       <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
         <Target class="w-6 h-6 text-destructive" />
       </div>
       <p class="text-destructive font-medium mb-1">{error}</p>
       <p class="text-sm text-muted-foreground mb-4">Check your API connection or try again</p>
-      <button on:click={loadDashboardData} class="btn btn-primary">Retry</button>
-    </div>
+      <Button on:click={loadDashboardData}>Retry</Button>
+    </Card>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
       {#each stats as stat, i}
-        <div
+        <Card
           class="card-glass p-5 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
           style="animation-delay: {400 + i * 100}ms"
           data-testid="stat-card"
@@ -406,29 +421,29 @@
           </div>
           <div class="text-2xl font-display font-bold text-foreground">{stat.value}</div>
           <div class="text-xs text-muted-foreground mt-1">{stat.change}</div>
-        </div>
+        </Card>
       {/each}
     </div>
   {/if}
 
   <!-- Charts Row -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
-      <div class="h-48 sm:h-56">
-        <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false }} />
+      <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
+        <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: themeScaleOptions, plugins: { legend: { labels: { color: 'hsl(var(--muted-foreground))' } } } }} />
       </div>
-    </div>
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
+    </Card>
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
-      <div class="h-48 sm:h-56">
+      <div class="h-48 sm:h-56" role="img" aria-label="Bar chart showing monthly profit and loss from tracked bets">
         <canvas bind:this={profitChartCanvas}></canvas>
       </div>
-    </div>
+    </Card>
   </div>
 
   <!-- How We Predict -->
-  <div class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
+  <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
     <h3 class="text-sm font-display font-semibold text-foreground mb-4 flex items-center gap-2">
       <Target class="w-4 h-4 text-accent" />
       How We Predict
@@ -456,11 +471,11 @@
         current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
       </p>
     </div>
-  </div>
+  </Card>
 
   <!-- Recent Predictions + Upcoming Matches -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
+    <Card class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Recent Predictions</h3>
       {#if loading}
         <div class="space-y-3">
@@ -491,19 +506,19 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs text-muted-foreground">{prediction.confidence}%</span>
                 {#if prediction.wasCorrect !== null}
-                  <span class="badge {prediction.wasCorrect ? 'badge-success' : 'badge-error'}">
+                  <Badge variant={prediction.wasCorrect ? 'success' : 'destructive'}>
                     {prediction.wasCorrect ? 'Correct' : 'Incorrect'}
-                  </span>
+                  </Badge>
                 {:else}
-                  <span class="badge badge-neutral">Pending</span>
+                  <Badge variant="neutral">Pending</Badge>
                 {/if}
               </div>
             </li>
           {/each}
         </ul>
       {/if}
-    </div>
-    <div class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
+    </Card>
+    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
       <h3 class="text-sm font-display font-semibold text-foreground mb-4">Upcoming Matches</h3>
       <ul class="space-y-3">
         {#each realMatchData.slice(0, 5) as match}
@@ -518,7 +533,7 @@
           <li class="text-sm text-muted-foreground">No upcoming matches</li>
         {/if}
       </ul>
-      <button class="btn btn-secondary btn-sm mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</button>
-    </div>
+      <Button variant="secondary" size="sm" class="mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</Button>
+    </Card>
   </div>
 </div>

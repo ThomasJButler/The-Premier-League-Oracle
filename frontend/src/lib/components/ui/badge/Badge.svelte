@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from '$lib/utils/cn';
+  import { cn } from '$lib/utils';
   import type { BadgeVariant } from './index';
 
   let className: string = '';
@@ -13,6 +13,8 @@
     outline: 'text-foreground',
     success: 'border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
     warning: 'border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    info: 'border-transparent bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
+    neutral: 'bg-muted text-muted-foreground border-border',
   };
 </script>
 

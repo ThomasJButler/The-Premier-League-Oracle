@@ -233,9 +233,9 @@ If our model is 70% accurate:
 - **Random guessing**: ~33% (picking randomly between H/D/A)
 - **Always picking home win**: ~46%
 - **Expert humans**: 60-65%
-- **Our model**: 68-72% 🎯
+- **Good ML models**: 65-72%
 
-So yes, we're better than experts!
+A well-trained model can beat expert humans, but it takes real data and careful tuning to get there.
 
 ### Why Not 100%?
 Football is unpredictable! 
@@ -357,17 +357,16 @@ Why might away teams with high possession win MORE?
 
 ## 🚀 Next Steps
 
-1. **Run Your First Prediction**
-   - See `tutorials/01_first_prediction.py`
-   
-2. **Understand Features**
-   - See `tutorials/02_understanding_features.py`
-   
-3. **Learn How Training Works**
-   - See `tutorials/03_model_training.py`
+1. **Explore the Backend Code**
+   - See `backend/app/models/` for the ML model implementations
+   - See `backend/app/features/` for the feature engineering pipeline
 
-4. **Try Making Changes**
-   - Add a new feature
+2. **Try the Frontend**
+   - Run `cd frontend && npm run dev` to launch the prediction dashboard
+   - Explore the prediction engine in `frontend/src/lib/optimizedPredictions.ts`
+
+3. **Try Making Changes**
+   - Add a new feature to the prediction model
    - Adjust the model parameters
    - Test on different matches
 

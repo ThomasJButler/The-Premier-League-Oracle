@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search } from 'lucide-svelte';
+  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
+  import { focusTrap } from '$lib/utils';
 
   export let currentView: string;
 
@@ -21,6 +22,7 @@
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
     { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
@@ -32,9 +34,16 @@
     isMoreOpen = false;
   }
 
+  // Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent — any is required here
+  function handleKeydown(e: any) {   
+    if (e.key === 'Escape' && isMoreOpen) isMoreOpen = false;
+  }
+
   // Check if current view is in the "more" menu
   $: isMoreActive = moreItems.some(item => item.view === currentView);
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <!-- More menu overlay -->
 {#if isMoreOpen}
@@ -44,7 +53,7 @@
     aria-label="Close menu"
     tabindex="-1"
   ></button>
-  <div class="fixed bottom-16 left-0 right-0 z-50 px-4 pb-2 animate-slide-in-up">
+  <div class="fixed bottom-16 left-0 right-0 z-50 px-4 pb-2 animate-slide-in-up" use:focusTrap>
     <div class="bg-card border border-border rounded-xl shadow-xl p-3">
       <div class="flex items-center justify-between mb-2 px-1">
         <span class="text-sm font-display font-semibold text-foreground">More</span>
@@ -88,6 +97,7 @@
       class="mobile-nav-item {isMoreActive ? 'mobile-nav-item-active' : ''}"
       on:click={() => isMoreOpen = !isMoreOpen}
       aria-label="More options"
+      aria-expanded={isMoreOpen}
     >
       <MoreHorizontal class="w-5 h-5 mb-1" />
       <span>More</span>

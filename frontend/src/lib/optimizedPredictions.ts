@@ -1,6 +1,10 @@
 import { dataService } from '../services/dataService';
-import type { Match, Standing } from '../types';
+import type { Match, Standing, MLPrediction, TeamForm } from '../types';
+import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
+import { backendService } from '../services/backendService';
+import { predictionTracker } from '../services/predictionTracker';
+import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE } from './constants';
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -15,6 +19,7 @@ export interface EnhancedPredictionModel {
     form: number;
     h2h: number;
     standings: number;
+    ml?: number;
   };
   insights: string[];
   valueOdds?: {
@@ -36,7 +41,30 @@ interface TeamStrengths {
 interface LeagueAverages {
   avgHomeGoals: number; // Average goals scored by home teams per match
   avgAwayGoals: number; // Average goals scored by away teams per match
+  homeWinRate: number;  // Proportion of completed matches won by the home side
   teamStrengths: Map<string, TeamStrengths>;
+}
+
+// Return type of analyzeRecentForm()
+interface FormAnalysis {
+  homeFormScore: number;
+  awayFormScore: number;
+  homeFormString: string;
+  awayFormString: string;
+  probabilities: { homeWin: number; draw: number; awayWin: number };
+}
+
+// Return type of analyzeHeadToHead()
+interface H2HAnalysis {
+  totalMatches: number;
+  homeWins: number;
+  awayWins: number;
+  draws: number;
+  homeWinRate: number;
+  awayWinRate: number;
+  avgHomeGoals?: number;
+  avgAwayGoals?: number;
+  probabilities: { homeWin: number; draw: number; awayWin: number };
 }
 
 /**
@@ -52,6 +80,13 @@ const MODEL_WEIGHTS = {
   standings: 0.15
 } as const;
 
+/**
+ * When the ML backend contributes to the ensemble, it gets this weight and
+ * the TypeScript model weights are scaled down proportionally. A 30% ML weight
+ * means the Python models contribute nearly a third of the final prediction.
+ */
+const ML_BACKEND_WEIGHT = 0.30;
+
 export class OptimizedPredictor {
   // Use the shared ELO system — single source of truth for team ratings
   private static eloSystem = sharedEloSystem;
@@ -64,7 +99,7 @@ export class OptimizedPredictor {
     const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
 
     if (completed.length === 0) {
-      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, teamStrengths: new Map() };
+      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
     }
 
     // League totals
@@ -98,6 +133,7 @@ export class OptimizedPredictor {
 
     const avgHomeGoals = totalHomeGoals / completed.length;
     const avgAwayGoals = totalAwayGoals / completed.length;
+    const homeWinRate = completed.filter(m => m.result === 'H').length / completed.length;
 
     // Compute per-team strengths relative to league average
     const teamStrengths = new Map<string, TeamStrengths>();
@@ -123,7 +159,7 @@ export class OptimizedPredictor {
       });
     }
 
-    return { avgHomeGoals, avgAwayGoals, teamStrengths };
+    return { avgHomeGoals, avgAwayGoals, homeWinRate, teamStrengths };
   }
 
   /**
@@ -174,22 +210,32 @@ export class OptimizedPredictor {
     homeTeam: string,
     awayTeam: string,
     historicalMatches?: Match[],
-    referee?: string | null
+    referee?: string | null,
+    matchDate?: string
   ): Promise<EnhancedPredictionModel> {
     const insights: string[] = [];
     
     try {
       // 1. Get current standings and team positions
+      // In backtest mode (historicalMatches provided), skip dataService.getStandings()
+      // to avoid both stale data and per-match API overhead. ELO-derived positions are
+      // a better proxy for historical standings anyway.
       let standings: Standing[] = [];
       let homePosition = 0;
       let awayPosition = 0;
-      
-      try {
-        standings = await dataService.getStandings();
-        homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
-        awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
-      } catch (error) {
-        // Use ELO-derived positions as fallback
+
+      if (!historicalMatches) {
+        try {
+          standings = await dataService.getStandings();
+          homePosition = standings.findIndex(s => s.team.name === homeTeam) + 1;
+          awayPosition = standings.findIndex(s => s.team.name === awayTeam) + 1;
+        } catch {
+          // Falls through to ELO-derived positions below
+        }
+      }
+
+      if (!homePosition || !awayPosition) {
+        // Use ELO-derived positions as fallback (or primary in backtest mode)
         const allRatings = this.eloSystem.getAllRatings();
         const sortedTeams = Object.entries(allRatings).sort((a, b) => b[1] - a[1]);
         homePosition = sortedTeams.findIndex(([team]) => team === homeTeam) + 1;
@@ -219,16 +265,25 @@ export class OptimizedPredictor {
         awayElo
       );
 
-      // 4. Calculate fatigue factor (needed before Poisson lambdas)
-      const fatigueFactor = await this.calculateFatigueFactor(homeTeam, awayTeam);
-
-      // 5. Calculate Poisson predictions using Dixon-Coles lambdas
-      let allMatches: Match[] = [];
-      try {
-        allMatches = await dataService.getMatches();
-      } catch {
-        // No match data available — lambdas will use fallback path
+      // 4. Fetch match data once — used for fatigue, Poisson, standings, referee
+      let allMatches: Match[] = historicalMatches ?? [];
+      if (!historicalMatches) {
+        try {
+          allMatches = await dataService.getMatches();
+        } catch {
+          // No match data available — fallback paths will handle empty array
+        }
       }
+
+      // 5. Calculate fatigue factor (needed before Poisson lambdas)
+      // When backtesting with pre-fetched data, derive rest days locally
+      // to avoid hitting dataService on every iteration.
+      const asOfDate = matchDate ? new Date(matchDate) : undefined;
+      const fatigueFactor = historicalMatches
+        ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches, asOfDate)
+        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches);
+
+      // 6. Calculate Poisson predictions using Dixon-Coles lambdas
       const leagueAvgs = this.computeLeagueAverages(allMatches);
       const rawLambdas =
         this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
@@ -241,18 +296,31 @@ export class OptimizedPredictor {
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
-        awayGoalsExpected,
-        5
+        awayGoalsExpected
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
-      // 6. Analyze recent form
-      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam);
+      // 6. Analyze recent form (pass historical matches to avoid dataService calls in backtest)
+      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, historicalMatches);
 
       // 7. Head-to-head analysis
       const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
       
-      // 8. Combine all models with weighted approach
+      // 8. Attempt ML backend prediction (parallel — started earlier or fetched now)
+      let mlPrediction: MLPrediction | null = null;
+      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') === 'true') {
+        try {
+          mlPrediction = await backendService.predictMatch(homeTeam, awayTeam);
+          insights.push('ML backend prediction incorporated into ensemble');
+        } catch (err) {
+          if (!(err instanceof BackendUnavailableError)) {
+            console.warn('ML backend prediction failed:', err);
+          }
+          // Silent fallback — TypeScript ensemble handles it alone
+        }
+      }
+
+      // 9. Combine all models with weighted approach
       // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)
       const ratingDiffAbs = Math.abs(homeElo - awayElo);
       const eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600);
@@ -261,22 +329,26 @@ export class OptimizedPredictor {
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
-      const combinedProbabilities = this.combineModels({
-        elo: eloProbs,
-        poisson: poissonProbs,
-        form: formAnalysis.probabilities,
-        h2h: h2hAnalysis.probabilities,
-        standings: this.getStandingsProbabilities(homePosition, awayPosition)
-      });
+      const combinedProbabilities = this.combineModels(
+        {
+          elo: eloProbs,
+          poisson: poissonProbs,
+          form: formAnalysis.probabilities,
+          h2h: h2hAnalysis.probabilities,
+          standings: this.getStandingsProbabilities(homePosition, awayPosition)
+        },
+        mlPrediction
+      );
 
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
-      const LEAGUE_AVG_HOME_WIN_RATE = 0.46;
-      let adjustedProbabilities = { ...combinedProbabilities };
+      // Home win rate derived from actual completed matches (fallback 0.46 if no data)
+      const leagueHomeWinRate = leagueAvgs.homeWinRate;
+      const adjustedProbabilities = { ...combinedProbabilities };
 
       if (referee) {
         try {
           const refereeStats = await RefereeAnalyzer.getRefereeStats(referee);
-          const homeWinBias = refereeStats.homeWinRate - LEAGUE_AVG_HOME_WIN_RATE;
+          const homeWinBias = refereeStats.homeWinRate - leagueHomeWinRate;
           // Clamp adjustment to ±3%
           const adjustment = Math.max(-0.03, Math.min(0.03, homeWinBias));
 
@@ -291,7 +363,7 @@ export class OptimizedPredictor {
             adjustedProbabilities.awayWin /= total;
 
             const direction = adjustment > 0 ? 'favours home' : 'favours away';
-            insights.push(`Referee ${referee} ${direction} (${(refereeStats.homeWinRate * 100).toFixed(0)}% home win rate vs ${(LEAGUE_AVG_HOME_WIN_RATE * 100).toFixed(0)}% avg)`);
+            insights.push(`Referee ${referee} ${direction} (${(refereeStats.homeWinRate * 100).toFixed(0)}% home win rate vs ${(leagueHomeWinRate * 100).toFixed(0)}% avg)`);
           }
         } catch {
           // Referee data unavailable — skip adjustment
@@ -307,12 +379,21 @@ export class OptimizedPredictor {
       const poissonTopOutcome = this.getTopOutcome(poissonProbs.homeWin, poissonProbs.draw, poissonProbs.awayWin);
       const modelsDisagree = eloTopOutcome !== poissonTopOutcome;
 
-      const confidence = this.calculateConfidence(
+      const rawConfidence = this.calculateConfidence(
         adjustedProbabilities,
         prediction.result,
         fatigueFactor,
         modelsDisagree
       );
+
+      // Apply historical calibration — adjust confidence based on past accuracy
+      // per confidence band (Spec 01 Req 5). If the model has been overconfident
+      // in a given band, the factor < 1 brings future confidence down.
+      const calibration = predictionTracker.getCalibrationFactors();
+      const bandFactor = rawConfidence > 0.7 ? calibration.highBand
+        : rawConfidence >= 0.5 ? calibration.mediumBand
+        : calibration.lowBand;
+      const confidence = Math.max(0.25, Math.min(0.95, rawConfidence * bandFactor));
 
       if (modelsDisagree) {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
@@ -360,6 +441,17 @@ export class OptimizedPredictor {
       // Calculate value odds
       const valueOdds = this.calculateValueOdds(adjustedProbabilities);
 
+      // Report the effective weights used in this prediction
+      const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
+      const effectiveWeights: EnhancedPredictionModel['modelWeights'] = {
+        elo: MODEL_WEIGHTS.elo * tsScale,
+        poisson: MODEL_WEIGHTS.poisson * tsScale,
+        form: MODEL_WEIGHTS.form * tsScale,
+        h2h: MODEL_WEIGHTS.h2h * tsScale,
+        standings: MODEL_WEIGHTS.standings * tsScale,
+        ...(mlPrediction ? { ml: ML_BACKEND_WEIGHT } : {}),
+      };
+
       return {
         predictedResult: prediction.result,
         confidence,
@@ -367,13 +459,13 @@ export class OptimizedPredictor {
         predictedAwayGoals: predictedGoals.away,
         homeForm: formAnalysis.homeFormString,
         awayForm: formAnalysis.awayFormString,
-        modelWeights: { ...MODEL_WEIGHTS },
+        modelWeights: effectiveWeights,
         insights,
         valueOdds
       };
 
     } catch (error) {
-      // Error in optimized prediction, using fallback
+      console.warn('OptimizedPredictor.predictMatch failed, using fallback:', error);
       // Fallback to simple prediction — still report the real weights for consistency
       return {
         predictedResult: 'D',
@@ -389,7 +481,7 @@ export class OptimizedPredictor {
     }
   }
 
-  private static async getEnhancedTeamStats(team: string, standings: Standing[]) {
+  private static getEnhancedTeamStats(team: string, standings: Standing[]) {
     const standing = standings.find(s => s.team.name === team);
 
     if (!standing) {
@@ -408,8 +500,7 @@ export class OptimizedPredictor {
         avgGoalsConceded: Math.max(0.5, avgGoalsConceded),
         pointsPerGame: Math.max(0.3, Math.min(3, pointsPerGame)),
         cleanSheetRate: Math.max(0.1, Math.min(0.5, 0.3 + relativeStrength * 0.1)),
-        winRate: Math.max(0.1, Math.min(0.8, winRate)),
-        form: '?????' // No form data available — will be computed from match results
+        winRate: Math.max(0.1, Math.min(0.8, winRate))
       };
     }
 
@@ -420,18 +511,17 @@ export class OptimizedPredictor {
       avgGoalsConceded: standing.goalsAgainst / gamesPlayed,
       pointsPerGame: standing.points / gamesPlayed,
       cleanSheetRate: Math.exp(-(standing.goalsAgainst / gamesPlayed)), // Poisson P(0 goals conceded)
-      winRate: standing.won / gamesPlayed,
-      form: standing.form
+      winRate: standing.won / gamesPlayed
     };
   }
 
-  private static async analyzeRecentForm(homeTeam: string, awayTeam: string) {
+  private static async analyzeRecentForm(homeTeam: string, awayTeam: string, historicalMatches?: Match[]) {
     const [homeForm, awayForm] = await Promise.all([
-      dataService.getTeamForm(homeTeam),
-      dataService.getTeamForm(awayTeam)
+      dataService.getTeamForm(homeTeam, historicalMatches),
+      dataService.getTeamForm(awayTeam, historicalMatches)
     ]);
 
-    const calculateFormScore = (form: any[], isHome: boolean = false) => {
+    const calculateFormScore = (form: TeamForm[]) => {
       if (!form || form.length === 0) {
         // Return neutral form score when no form data available.
         // Previously this derived from ELO, which double-counted ELO's
@@ -450,19 +540,20 @@ export class OptimizedPredictor {
       return Math.max(0.1, Math.min(0.9, score)); // Ensure reasonable bounds
     };
 
-    const homeFormScore = calculateFormScore(homeForm, true);
-    const awayFormScore = calculateFormScore(awayForm, false);
+    const homeFormScore = calculateFormScore(homeForm);
+    const awayFormScore = calculateFormScore(awayForm);
     
-    const formString = (form: any[], team: string) => {
+    const formString = (form: TeamForm[]) => {
       if (!form || form.length === 0) {
         return '?????'; // No form data available
       }
       return form.slice(0, 5).map(m => m.result || '?').join('');
     };
 
-    // Calculate form-based probabilities with more variation
-    const homeMomentum = homeFormScore * 1.1; // Home advantage in form
-    const awayMomentum = awayFormScore * 0.9;
+    // Calculate form-based probabilities — no home bias here as ELO already
+    // accounts for home advantage via HOME_ADVANTAGE (65 ELO points)
+    const homeMomentum = homeFormScore;
+    const awayMomentum = awayFormScore;
     
     // Add variance based on form difference
     const formDiff = Math.abs(homeMomentum - awayMomentum);
@@ -470,8 +561,8 @@ export class OptimizedPredictor {
     
     // Calculate win probabilities
     const totalMomentum = homeMomentum + awayMomentum;
-    let homeWinProb = (homeMomentum / totalMomentum) * (1 - drawProb);
-    let awayWinProb = (awayMomentum / totalMomentum) * (1 - drawProb);
+    const homeWinProb = (homeMomentum / totalMomentum) * (1 - drawProb);
+    const awayWinProb = (awayMomentum / totalMomentum) * (1 - drawProb);
     
     // Ensure probabilities sum to 1
     const total = homeWinProb + drawProb + awayWinProb;
@@ -479,8 +570,8 @@ export class OptimizedPredictor {
     return {
       homeFormScore,
       awayFormScore,
-      homeFormString: formString(homeForm, homeTeam),
-      awayFormString: formString(awayForm, awayTeam),
+      homeFormString: formString(homeForm),
+      awayFormString: formString(awayForm),
       probabilities: {
         homeWin: homeWinProb / total,
         draw: drawProb / total,
@@ -498,18 +589,20 @@ export class OptimizedPredictor {
     ).slice(0, 10); // Last 10 H2H matches
 
     if (h2hMatches.length === 0) {
-      // No H2H data — use slight home advantage as default (consistent rates and probabilities)
+      // No H2H data — use league-average home advantage (consistent with ensemble priors)
+      const awayRate = (1 - DEFAULT_HOME_WIN_RATE) * 0.55; // ~0.297
+      const drawRate = 1 - DEFAULT_HOME_WIN_RATE - awayRate; // ~0.263
       return {
         totalMatches: 0,
         homeWins: 0,
         awayWins: 0,
         draws: 0,
-        homeWinRate: 0.40,
-        awayWinRate: 0.30,
+        homeWinRate: DEFAULT_HOME_WIN_RATE,
+        awayWinRate: awayRate,
         probabilities: {
-          homeWin: 0.40,
-          draw: 0.30,
-          awayWin: 0.30
+          homeWin: DEFAULT_HOME_WIN_RATE,
+          draw: drawRate,
+          awayWin: awayRate
         }
       };
     }
@@ -549,37 +642,38 @@ export class OptimizedPredictor {
       avgHomeGoals: homeGoals / h2hMatches.length,
       avgAwayGoals: awayGoals / h2hMatches.length,
       probabilities: {
-        homeWin: (homeWins / total) * 0.8 + 0.1,
-        draw: (draws / total) * 0.8 + 0.1,
-        awayWin: (awayWins / total) * 0.8 + 0.1
+        // Shrink towards uniform (1/3) to avoid overfitting small H2H samples
+        homeWin: (homeWins / total) * 0.7 + 0.1,
+        draw: (draws / total) * 0.7 + 0.1,
+        awayWin: (awayWins / total) * 0.7 + 0.1
       }
     };
   }
 
-  private static async calculateFatigueFactor(homeTeam: string, awayTeam: string) {
-    const now = new Date();
-    const [homeRestDays, awayRestDays] = await Promise.all([
-      FatigueAnalyzer.calculateRestDays(homeTeam, now),
-      FatigueAnalyzer.calculateRestDays(awayTeam, now)
-    ]);
-
-    // Less rest → more fatigue → lower multiplier (min 0.85 to avoid extreme swings)
-    const restToFatigue = (days: number) => {
-      if (days >= 6) return 1.0;   // Fully rested
-      if (days >= 4) return 0.97;  // Normal schedule
-      if (days >= 3) return 0.93;  // Tight turnaround
-      return 0.88;                 // Midweek congestion
+  /**
+   * Calculate fatigue from pre-fetched match data (backtest mode).
+   * Avoids hitting dataService — derives rest days directly from the match list.
+   */
+  private static calculateFatigueFromMatches(
+    homeTeam: string, awayTeam: string, matches: Match[], asOfDate?: Date
+  ): { homeFatigue: number; awayFatigue: number } {
+    const ref = asOfDate ?? new Date();
+    const restDaysFor = (team: string): number => {
+      const teamMatches = matches
+        .filter(m => (m.home_team === team || m.away_team === team) && new Date(m.date) < ref)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      if (teamMatches.length === 0) return 7;
+      return Math.floor((ref.getTime() - new Date(teamMatches[0].date).getTime()) / (1000 * 60 * 60 * 24));
     };
-
     return {
-      homeFatigue: restToFatigue(homeRestDays),
-      awayFatigue: restToFatigue(awayRestDays)
+      homeFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(homeTeam)),
+      awayFatigue: FatigueAnalyzer.getFatigueMultiplier(restDaysFor(awayTeam))
     };
   }
 
   private static getStandingsProbabilities(homePosition: number, awayPosition: number) {
     if (!homePosition || !awayPosition) {
-      return { homeWin: 0.40, draw: 0.30, awayWin: 0.30 };
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: DEFAULT_DRAW_RATE, awayWin: 1 - DEFAULT_HOME_WIN_RATE - DEFAULT_DRAW_RATE };
     }
 
     const positionDiff = awayPosition - homePosition;
@@ -604,37 +698,57 @@ export class OptimizedPredictor {
     };
   }
 
-  private static combineModels(models: {
-    elo: { home: number; draw: number; away: number };
-    poisson: { homeWin: number; draw: number; awayWin: number };
-    form: { homeWin: number; draw: number; awayWin: number };
-    h2h: { homeWin: number; draw: number; awayWin: number };
-    standings: { homeWin: number; draw: number; awayWin: number };
-  }) {
+  /**
+   * Combine all sub-models into a single probability distribution.
+   *
+   * When an ML backend prediction is available, it joins the ensemble with its
+   * own weight (ML_BACKEND_WEIGHT). The TypeScript model weights are scaled down
+   * proportionally so they still sum to (1 - ML_BACKEND_WEIGHT).
+   */
+  private static combineModels(
+    models: {
+      elo: { home: number; draw: number; away: number };
+      poisson: { homeWin: number; draw: number; awayWin: number };
+      form: { homeWin: number; draw: number; awayWin: number };
+      h2h: { homeWin: number; draw: number; awayWin: number };
+      standings: { homeWin: number; draw: number; awayWin: number };
+    },
+    mlPrediction?: MLPrediction | null
+  ) {
+    // When the ML backend is contributing, scale TS weights down proportionally
+    const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
+
     const homeWin =
-      models.elo.home * MODEL_WEIGHTS.elo +
-      models.poisson.homeWin * MODEL_WEIGHTS.poisson +
-      models.form.homeWin * MODEL_WEIGHTS.form +
-      models.h2h.homeWin * MODEL_WEIGHTS.h2h +
-      models.standings.homeWin * MODEL_WEIGHTS.standings;
+      models.elo.home * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.homeWin * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.homeWin * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.homeWin * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.homeWin * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.home * ML_BACKEND_WEIGHT : 0);
 
     const draw =
-      models.elo.draw * MODEL_WEIGHTS.elo +
-      models.poisson.draw * MODEL_WEIGHTS.poisson +
-      models.form.draw * MODEL_WEIGHTS.form +
-      models.h2h.draw * MODEL_WEIGHTS.h2h +
-      models.standings.draw * MODEL_WEIGHTS.standings;
+      models.elo.draw * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.draw * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.draw * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.draw * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.draw * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.draw * ML_BACKEND_WEIGHT : 0);
 
     const awayWin =
-      models.elo.away * MODEL_WEIGHTS.elo +
-      models.poisson.awayWin * MODEL_WEIGHTS.poisson +
-      models.form.awayWin * MODEL_WEIGHTS.form +
-      models.h2h.awayWin * MODEL_WEIGHTS.h2h +
-      models.standings.awayWin * MODEL_WEIGHTS.standings;
+      models.elo.away * MODEL_WEIGHTS.elo * tsScale +
+      models.poisson.awayWin * MODEL_WEIGHTS.poisson * tsScale +
+      models.form.awayWin * MODEL_WEIGHTS.form * tsScale +
+      models.h2h.awayWin * MODEL_WEIGHTS.h2h * tsScale +
+      models.standings.awayWin * MODEL_WEIGHTS.standings * tsScale +
+      (mlPrediction ? mlPrediction.prediction.away * ML_BACKEND_WEIGHT : 0);
 
-    // Normalize to ensure sum equals 1
+    // Normalise to ensure sum equals 1 — guard against all-zero edge case
     const total = homeWin + draw + awayWin;
-    
+
+    if (total === 0) {
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: DEFAULT_DRAW_RATE, awayWin: 1 - DEFAULT_HOME_WIN_RATE - DEFAULT_DRAW_RATE };
+    }
+
     return {
       homeWin: homeWin / total,
       draw: draw / total,
@@ -704,8 +818,8 @@ export class OptimizedPredictor {
     homeExpected: number,
     awayExpected: number,
     predictedResult: 'H' | 'D' | 'A',
-    formAnalysis: any,
-    h2hAnalysis: any
+    formAnalysis: FormAnalysis,
+    h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
     let homeGoals = Math.round(homeExpected);
     let awayGoals = Math.round(awayExpected);
@@ -727,7 +841,7 @@ export class OptimizedPredictor {
     }
     
     // Consider H2H average goals
-    if (h2hAnalysis.totalMatches > 0) {
+    if (h2hAnalysis.totalMatches > 0 && h2hAnalysis.avgHomeGoals !== undefined && h2hAnalysis.avgAwayGoals !== undefined) {
       const h2hTotal = h2hAnalysis.avgHomeGoals + h2hAnalysis.avgAwayGoals;
       if (h2hTotal < 2.0) {
         // Low-scoring fixture historically
@@ -749,14 +863,11 @@ export class OptimizedPredictor {
   }
 
   private static calculateValueOdds(probabilities: { homeWin: number; draw: number; awayWin: number }) {
-    // Convert probabilities to decimal odds
-    // Add small margin for bookmaker edge
-    const margin = 1.05;
-    
+    // Convert probabilities to decimal odds with bookmaker margin
     return {
-      home: probabilities.homeWin > 0 ? (1 / probabilities.homeWin) * margin : 10.0,
-      draw: probabilities.draw > 0 ? (1 / probabilities.draw) * margin : 4.0,
-      away: probabilities.awayWin > 0 ? (1 / probabilities.awayWin) * margin : 10.0
+      home: probabilities.homeWin > 0 ? (1 / probabilities.homeWin) * VALUE_ODDS_MARGIN : 10.0,
+      draw: probabilities.draw > 0 ? (1 / probabilities.draw) * VALUE_ODDS_MARGIN : 4.0,
+      away: probabilities.awayWin > 0 ? (1 / probabilities.awayWin) * VALUE_ODDS_MARGIN : 10.0
     };
   }
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from '$lib/utils/cn';
+  import { cn } from '$lib/utils';
   import type { ButtonVariant, ButtonSize } from './index';
   import { createEventDispatcher } from 'svelte';
 

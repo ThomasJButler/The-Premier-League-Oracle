@@ -16,7 +16,8 @@ vi.mock('./advancedPredictions', () => ({
 
 vi.mock('../services/dataService', () => ({
   dataService: {
-    getTeamStats: vi.fn()
+    getTeamStats: vi.fn(),
+    getMatches: vi.fn()
   }
 }));
 
@@ -86,6 +87,8 @@ function mockTeamStats(overrides: Record<string, any> = {}) {
 describe('BetBuilderPredictor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return empty match array (falls back to hardcoded league averages)
+    vi.mocked(dataService.getMatches).mockResolvedValue([]);
   });
 
   describe('generateBetBuilder', () => {
@@ -419,10 +422,10 @@ describe('BetBuilderPredictor', () => {
         ['Liverpool', 'Everton'],
         ['Chelsea', 'Arsenal'],
         ['Chelsea', 'Tottenham Hotspur'],
-        ['Wolverhampton Wanderers', 'West Bromwich Albion'],
         ['Nottingham Forest', 'Leicester City'],
-        ['Newcastle United', 'Sunderland'],
-        ['Aston Villa', 'Birmingham City']
+        ['Newcastle United', 'Everton'],
+        ['Aston Villa', 'Wolverhampton Wanderers'],
+        ['Crystal Palace', 'Brighton and Hove Albion']
       ];
 
       for (const [home, away] of rivalries) {
@@ -497,12 +500,12 @@ describe('BetBuilderPredictor', () => {
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // Priors: home=0.25, draw=0.45, away=0.25 (sum=0.95, normalisation required)
-      // FT homeWin=0.60: raw = 0.60*0.4 + 0.25*0.6 = 0.39
-      // FT draw=0.20:    raw = 0.20*0.4 + 0.45*0.6 = 0.35
-      // FT away=0.20:    raw = 0.20*0.4 + 0.25*0.6 = 0.23
-      // total = 0.97, homeWinProb = 0.39/0.97 ≈ 0.4021
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4021, 2);
+      // Priors: home=0.26, draw=0.46, away=0.28 (sum=1.0)
+      // FT homeWin=0.60: raw = 0.60*0.4 + 0.26*0.6 = 0.396
+      // FT draw=0.20:    raw = 0.20*0.4 + 0.46*0.6 = 0.356
+      // FT away=0.20:    raw = 0.20*0.4 + 0.28*0.6 = 0.248
+      // total = 1.0, homeWinProb = 0.396/1.0 = 0.396
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.396, 2);
       // And sum to 1
       const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
       expect(sum).toBeCloseTo(1.0, 6);

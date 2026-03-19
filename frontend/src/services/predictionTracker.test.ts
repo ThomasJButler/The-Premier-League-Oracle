@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PredictionTracker, type StoredPrediction, type AccuracyStats } from './predictionTracker';
+import { PredictionTracker, type StoredPrediction, type AccuracyStats, type CalibrationFactors } from './predictionTracker';
 
 describe('PredictionTracker Service', () => {
   let tracker: PredictionTracker;
@@ -397,59 +397,132 @@ describe('PredictionTracker Service', () => {
       expect(allPredictions[0].matchId).toBe('newmatch');
     });
 
-    it('should export and import predictions correctly', () => {
-      // Add some predictions
-      tracker.storePrediction(
-        'export1',
-        'Arsenal',
-        'Chelsea',
-        {
-          predictedResult: 'H',
-          predictedHomeGoals: 2,
-          predictedAwayGoals: 1,
-          confidence: 0.72
-        },
-        '2025-08-15'
-      );
+  });
 
-      tracker.storePrediction(
-        'export2',
-        'Liverpool',
-        'Man City',
-        {
-          predictedResult: 'D',
-          predictedHomeGoals: 2,
-          predictedAwayGoals: 2,
-          confidence: 0.55
-        },
-        '2025-08-20'
-      );
-
-      // Export
-      const exported = tracker.exportPredictions();
-      expect(exported).toBeDefined();
-      
-      // Create new tracker and import
-      const newTracker = new PredictionTracker();
-      const importSuccess = newTracker.importPredictions(exported);
-      
-      expect(importSuccess).toBe(true);
-      
-      const imported = newTracker.getRecentPredictions(10);
-      expect(imported).toHaveLength(2);
-      expect(imported.find(p => p.matchId === 'export1')).toBeDefined();
-      expect(imported.find(p => p.matchId === 'export2')).toBeDefined();
+  describe('Calibration Factors', () => {
+    it('should return 1.0 for all bands with insufficient data', () => {
+      // No predictions at all
+      const factors = tracker.getCalibrationFactors();
+      expect(factors.highBand).toBe(1.0);
+      expect(factors.mediumBand).toBe(1.0);
+      expect(factors.lowBand).toBe(1.0);
     });
 
-    it('should handle invalid import data', () => {
-      const result1 = tracker.importPredictions('invalid json');
-      expect(result1).toBe(false);
-      
-      const result2 = tracker.importPredictions('{"not": "an array"}');
-      expect(result2).toBe(false);
-      
-      const result3 = tracker.importPredictions('null');
-      expect(result3).toBe(false);
+    it('should return 1.0 when fewer than 10 predictions per band', () => {
+      // Add 5 high-confidence predictions (below the 10-sample threshold)
+      for (let i = 0; i < 5; i++) {
+        tracker.storePrediction(
+          `cal_m${i}`, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.8 },
+          new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(`cal_m${i}`, 'H', 2, 1);
+      }
+
+      const factors = tracker.getCalibrationFactors();
+      expect(factors.highBand).toBe(1.0); // < 10 samples
+    });
+
+    it('should compute calibration factor for overconfident model', () => {
+      // 12 high-confidence predictions (avg confidence ~0.80), only 9 correct (75% accuracy)
+      // Factor should be ~0.75/0.80 = ~0.9375
+      for (let i = 0; i < 12; i++) {
+        const matchId = `cal_high_${i}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.80 },
+          new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+        );
+        // 9 correct, 3 wrong
+        tracker.updateWithResult(matchId, i < 9 ? 'H' : 'A', 2, 1);
+      }
+
+      const factors = tracker.getCalibrationFactors();
+      // 0.75 accuracy / 0.80 avg confidence = 0.9375
+      expect(factors.highBand).toBeCloseTo(0.9375, 3);
+      // Other bands should be 1.0 (no data)
+      expect(factors.mediumBand).toBe(1.0);
+      expect(factors.lowBand).toBe(1.0);
+    });
+
+    it('should compute calibration factor for underconfident model', () => {
+      // 10 medium-confidence predictions (avg confidence ~0.60), all correct (100% accuracy)
+      // Factor should be 1.0/0.60 = ~1.667, clamped to 1.5
+      for (let i = 0; i < 10; i++) {
+        const matchId = `cal_med_${i}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.60 },
+          new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(matchId, 'H', 2, 1); // All correct
+      }
+
+      const factors = tracker.getCalibrationFactors();
+      // Raw 1.667 clamped to 1.5
+      expect(factors.mediumBand).toBe(1.5);
+    });
+
+    it('should clamp extremely low calibration factors', () => {
+      // 10 low-confidence predictions, none correct — factor would be 0/0.40 = 0, clamped to 0.5
+      for (let i = 0; i < 10; i++) {
+        const matchId = `cal_low_${i}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.40 },
+          new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(matchId, 'A', 0, 2); // All wrong
+      }
+
+      const factors = tracker.getCalibrationFactors();
+      expect(factors.lowBand).toBe(0.5); // Clamped from 0
+    });
+
+    it('should compute independent factors for each band', () => {
+      const now = Date.now();
+      let idx = 0;
+
+      // High band: 10 predictions at 0.80 confidence, 8 correct → factor = 1.0
+      for (let i = 0; i < 10; i++, idx++) {
+        const matchId = `cal_multi_${idx}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.80 },
+          new Date(now - idx * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(matchId, i < 8 ? 'H' : 'A', 2, 1);
+      }
+
+      // Medium band: 10 predictions at 0.60 confidence, 6 correct → factor = 1.0
+      for (let i = 0; i < 10; i++, idx++) {
+        const matchId = `cal_multi_${idx}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.60 },
+          new Date(now - idx * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(matchId, i < 6 ? 'H' : 'A', 2, 1);
+      }
+
+      // Low band: 10 predictions at 0.40 confidence, 2 correct → factor = 0.5
+      for (let i = 0; i < 10; i++, idx++) {
+        const matchId = `cal_multi_${idx}`;
+        tracker.storePrediction(
+          matchId, 'Team A', 'Team B',
+          { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.40 },
+          new Date(now - idx * 24 * 60 * 60 * 1000).toISOString()
+        );
+        tracker.updateWithResult(matchId, i < 2 ? 'H' : 'A', 2, 1);
+      }
+
+      const factors = tracker.getCalibrationFactors();
+      // High: 0.8 accuracy / 0.8 confidence = 1.0
+      expect(factors.highBand).toBeCloseTo(1.0, 3);
+      // Medium: 0.6 accuracy / 0.6 confidence = 1.0
+      expect(factors.mediumBand).toBeCloseTo(1.0, 3);
+      // Low: 0.2 accuracy / 0.4 confidence = 0.5
+      expect(factors.lowBand).toBeCloseTo(0.5, 3);
     });
   });
 

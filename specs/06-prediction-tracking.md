@@ -14,9 +14,9 @@ The following items from this spec have been **implemented**:
 - **Requirement 4 (Accuracy breakdown panel):** DONE. `Predictions.svelte` displays a collapsible accuracy panel with per-outcome accuracy (Home/Draw/Away), per-confidence band accuracy (High/Medium/Low), rolling last-10 accuracy, exact score accuracy, and current/best streaks. Uses `predictionTracker.getAccuracyStats()`.
 - **Requirement 6 (Prediction store on generate):** DONE. `Predictions.svelte` calls `predictionTracker.storePrediction()` for every prediction in the batch prediction loop, including the gameweek number.
 
-The following items **remain unimplemented**:
+All items from this spec are now **fully implemented**:
 
-- **Requirement 5 (Gameweek history):** PARTIALLY DONE. `predictionTracker` has `getAccuracyByGameweek()` and `Dashboard.svelte` uses it for the accuracy trend chart. However, a dedicated `gameweek_accuracy` localStorage key as described in the spec is not used — accuracy is derived on the fly from stored predictions that include a `matchday` field.
+- **Requirement 5 (Gameweek history):** DONE. `predictionTracker.getAccuracyByGameweek()` derives per-gameweek accuracy from stored predictions with a `matchday` field. `Dashboard.svelte` uses it for the accuracy trend chart. Implementation differs from the spec's `gameweek_accuracy` localStorage key approach — accuracy is derived on the fly rather than stored separately, which avoids staleness issues.
 
 ---
 
@@ -97,6 +97,8 @@ interface GameweekAccuracy {
 ```
 
 Store in localStorage under key `gameweek_accuracy`. The Dashboard's "accuracy over time" chart should use this data.
+
+> **Implementation note:** The actual implementation derives per-gameweek accuracy on the fly from stored predictions using the `matchday` field, rather than maintaining a separate `gameweek_accuracy` localStorage key. This avoids staleness issues when predictions are reconciled after the fact.
 
 ---
 

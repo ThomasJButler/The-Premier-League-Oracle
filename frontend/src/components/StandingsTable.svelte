@@ -1,30 +1,23 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Trophy, TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { Trophy, Minus, ChevronUp, ChevronDown } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
   import type { Standing } from '../types';
-  import { fade, fly } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { getTeamLogo } from '../utils/teamLogos';
-  
+  import { getSeasonLabel } from '../lib/utils';
+  import { Button } from '$lib/components/ui/button';
+
   let standings: Standing[] = [];
   let loading = true;
   let error = '';
   let showFullTable = false;
-
-  // Derive current season label from date (July onwards = new season)
-  function getSeasonLabel(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (month >= 6) return `${year}/${(year + 1).toString().slice(-2)}`;
-    return `${year - 1}/${year.toString().slice(-2)}`;
-  }
   
   onMount(async () => {
     await loadStandings();
   });
   
-  async function loadStandings() {
+  export async function loadStandings() {
     try {
       loading = true;
       error = '';
@@ -41,15 +34,15 @@
       if (!standings || standings.length === 0) {
         error = 'No standings data available. The season may not have started yet.';
       }
-    } catch (err: any) {
-      if (err.message?.includes('API key')) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('API key')) {
         error = 'Please configure your Football-Data.org API key in Settings to view standings.';
-      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+      } else if (message.includes('403') || message.includes('401')) {
         error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
       } else {
         error = 'Failed to load standings. Please check your internet connection and try again.';
       }
-      // Error loading standings
     } finally {
       loading = false;
     }
@@ -118,13 +111,9 @@
         </div>
       </div>
       
-      <button
-        on:click={loadStandings}
-        disabled={loading}
-        class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
         {loading ? 'Refreshing...' : 'Refresh'}
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -135,12 +124,7 @@
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
       <p>{error}</p>
-      <button 
-        on:click={loadStandings}
-        class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-      >
-        Try Again
-      </button>
+      <Button variant="destructive" class="mt-4" on:click={loadStandings}>Try Again</Button>
     </div>
   {:else if standings.length > 0}
     <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
@@ -164,19 +148,19 @@
       
       <!-- Table -->
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full" aria-label="Premier League standings">
           <thead class="bg-muted border-b border-border">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Pos</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Position">Pos</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">P</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">W</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">D</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">L</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GF</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GA</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">GD</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Pts</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Played">P</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Won">W</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Drawn">D</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Lost">L</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals for">GF</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell"><abbr title="Goals against">GA</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Goal difference">GD</abbr></th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"><abbr title="Points">Pts</abbr></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Form</th>
             </tr>
           </thead>
@@ -191,10 +175,9 @@
                     <span class="text-sm font-bold {getPositionBadge(team.position)} px-2 py-1 rounded">
                       {team.position}
                     </span>
-                    {#if i < 5}
-                      {@const movement = getMovementIcon(team)}
-                      <svelte:component this={movement.icon} class="w-3 h-3 {movement.color}" />
-                    {/if}
+                    <span title="Based on recent form, not actual position change">
+                      <svelte:component this={getMovementIcon(team).icon} class="w-3 h-3 {getMovementIcon(team).color}" />
+                    </span>
                   </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
@@ -261,6 +244,7 @@
           <button
             on:click={() => showFullTable = !showFullTable}
             class="w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            aria-expanded={showFullTable}
           >
             {showFullTable ? 'Show Less' : `Show All ${standings.length} Teams`}
           </button>

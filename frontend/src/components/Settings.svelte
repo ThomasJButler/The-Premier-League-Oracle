@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Key, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Sparkles, Heart } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
-  import { onMount } from 'svelte';
+  import { backendService } from '../services/backendService';
+  import { aiAnalysisService } from '../services/aiAnalysis';
+  import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
-  
+
   const dispatch = createEventDispatcher();
-  
+
   // API Key
   let footballDataKey = '';
   
@@ -17,17 +20,18 @@
   let testing = false;
   let testResult: { success: boolean; message: string } | null = null;
   let isRefreshing = false;
-  
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onDestroy(() => {
+    if (refreshTimer) clearTimeout(refreshTimer);
+  });
+
   // Favourite team
   let favouriteTeam = '';
-  const plTeams = [
-    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
-    'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
-    'Leicester City', 'Liverpool', 'Manchester City', 'Manchester United',
-    'Newcastle United', 'Nottingham Forest', 'Southampton', 'Tottenham',
-    'West Ham United', 'Wolverhampton'
-  ];
+  let plTeams: string[] = [];
 
+  // Team brand colours for the favourite-team picker — update each season
+  // when promotion/relegation changes the PL squad.
   const teamColors: Record<string, string> = {
     'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
     'Brentford': '#FF0000', 'Brighton': '#0057B8', 'Chelsea': '#034694',
@@ -50,6 +54,65 @@
     }
   }
 
+  // AI Analysis
+  let aiAnalysisEnabled = false;
+  let aiKeyAvailable: boolean | null = null;
+
+  function toggleAiAnalysis() {
+    aiAnalysisEnabled = !aiAnalysisEnabled;
+    aiAnalysisService.setEnabled(aiAnalysisEnabled);
+  }
+
+  function clearAiCache() {
+    aiAnalysisService.clearCache();
+    testResult = {
+      success: true,
+      message: 'AI analysis cache cleared'
+    };
+  }
+
+  // ML Backend
+  let useBackend = false;
+  let backendAvailable: boolean | null = null; // null = not checked yet
+  let checkingBackend = false;
+  let oracleApiToken = '';
+
+  function toggleBackend() {
+    useBackend = !useBackend;
+    localStorage.setItem('use_backend', useBackend ? 'true' : 'false');
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
+    } else {
+      backendAvailable = null;
+    }
+  }
+
+  async function checkBackendStatus() {
+    checkingBackend = true;
+    backendService.invalidateCache();
+    try {
+      backendAvailable = await backendService.isAvailable();
+    } catch {
+      backendAvailable = false;
+    } finally {
+      checkingBackend = false;
+    }
+  }
+
+  function saveOracleToken() {
+    const trimmed = oracleApiToken.trim();
+    if (trimmed) {
+      localStorage.setItem('oracle_api_token', trimmed);
+    } else {
+      localStorage.removeItem('oracle_api_token');
+    }
+    backendService.invalidateCache();
+    if (useBackend) {
+      checkBackendStatus();
+    }
+  }
+
   // Cache management
   let cacheSize = '0 MB';
   let lastSync = 'Never';
@@ -64,25 +127,17 @@
       if (isConnected) {
         testResult = {
           success: true,
-          message: `Successfully connected! Refreshing dashboard in 5 seconds...`
+          message: `Successfully connected! Refreshing data in 5 seconds...`
         };
         apiConnected = true;
         isRefreshing = true;
-        
-        // API is connected
-        
-        // Add 5-second delay before refresh
-        setTimeout(async () => {
-          // Clear cache to force fresh data
+
+        // Clear stale cache and refresh data services with the new key
+        refreshTimer = setTimeout(async () => {
           await dataService.clearCache();
-          
-          // Trigger dashboard refresh
+          await dataService.refreshApiConfiguration();
           dispatch('apiConfigured');
-          
-          // Force page reload after a brief delay to ensure all components refresh
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
+          isRefreshing = false;
         }, 5000);
       } else {
         testResult = {
@@ -103,9 +158,9 @@
   }
   
   function saveFootballDataKey() {
-    if (footballDataKey.trim()) {
-      footballDataAPI.setApiKey(footballDataKey);
-      localStorage.setItem('football_data_api_key', footballDataKey);
+    const trimmedKey = footballDataKey.trim();
+    if (trimmedKey) {
+      footballDataAPI.setApiKey(trimmedKey);
       testConnection();
     }
   }
@@ -140,7 +195,7 @@
     }
   }
   
-  onMount(() => {
+  onMount(async () => {
     // Load saved settings
     const savedFootballDataKey = localStorage.getItem('football_data_api_key');
     
@@ -170,17 +225,56 @@
       favouriteTeam = savedTeam;
     }
 
-    // Estimate real localStorage usage by summing key + value byte lengths
-    let totalBytes = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
-        totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
-      }
+    // Load AI analysis settings
+    aiAnalysisEnabled = aiAnalysisService.isEnabled();
+    aiAnalysisService.hasApiKey().then(available => {
+      aiKeyAvailable = available;
+    }).catch(() => {
+      aiKeyAvailable = false;
+    });
+
+    // Load ML backend settings
+    useBackend = localStorage.getItem('use_backend') === 'true';
+    const savedToken = localStorage.getItem('oracle_api_token');
+    if (savedToken) {
+      oracleApiToken = savedToken;
     }
-    // Each JS character is 2 bytes in UTF-16 (localStorage encoding)
-    const totalMB = (totalBytes * 2) / (1024 * 1024);
-    cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+    if (useBackend) {
+      checkBackendStatus();
+    }
+
+    // Estimate total storage usage (IndexedDB + localStorage + Cache API)
+    if (navigator.storage?.estimate) {
+      try {
+        const { usage } = await navigator.storage.estimate();
+        if (usage) {
+          const totalMB = usage / (1024 * 1024);
+          cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+        }
+      } catch {
+        cacheSize = 'Unknown';
+      }
+    } else {
+      // Fallback: measure localStorage only (older browsers)
+      let totalBytes = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) totalBytes += key.length + (localStorage.getItem(key)?.length ?? 0);
+      }
+      const totalMB = (totalBytes * 2) / (1024 * 1024);
+      cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
+    }
+
+    // Load team list from current standings (no hardcoded season list)
+    try {
+      const standings = await dataService.getStandings();
+      if (standings.length > 0) {
+        plTeams = standings.map(s => s.team.name).sort();
+      }
+    } catch {
+      // API unavailable — fall back to the static team list from the colour map
+      plTeams = Object.keys(teamColors).sort();
+    }
   });
 </script>
 
@@ -200,7 +294,7 @@
     </div>
   </div>
   
-  <!-- API Provider Selection -->
+  <!-- Football-Data.org API Configuration -->
   <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
     <h2 class="text-lg font-bold font-display text-foreground mb-4">Football-Data.org API Configuration</h2>
     
@@ -223,27 +317,28 @@
         
         <div class="space-y-3">
           <div>
-            <label class="block text-sm font-medium text-foreground mb-1">
+            <label for="football-data-key" class="block text-sm font-medium text-foreground mb-1">
               API Key
             </label>
             <div class="flex space-x-2">
               <input
+                id="football-data-key"
                 type="password"
                 bind:value={footballDataKey}
                 placeholder="Enter your Football-Data.org key"
                 class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
               />
-              <button
+              <Button
                 on:click={saveFootballDataKey}
                 disabled={!footballDataKey.trim() || testing}
-                class="btn btn-sm btn-primary disabled:opacity-50"
+                size="sm"
               >
                 {#if testing}
                   <RefreshCw class="w-4 h-4 animate-spin" />
                 {:else}
                   Connect
                 {/if}
-              </button>
+              </Button>
             </div>
           </div>
           
@@ -330,6 +425,8 @@
         ></div>
       {/if}
       <select
+        id="favourite-team"
+        aria-label="Favourite team"
         bind:value={favouriteTeam}
         on:change={() => setFavouriteTeam(favouriteTeam)}
         class="flex-1 max-w-xs px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
@@ -340,6 +437,173 @@
         {/each}
       </select>
     </div>
+  </div>
+
+  <!-- ML Backend -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Cpu class="w-5 h-5 text-primary" />
+      <span>ML Backend</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Connect to the Python ML backend for enhanced predictions using XGBoost, LSTM, and Transformer models. When disabled, predictions use the built-in TypeScript ensemble.
+    </p>
+
+    <!-- Toggle -->
+    <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Use ML Backend</p>
+        <p class="text-xs text-muted-foreground">Route predictions through the Python backend when available</p>
+      </div>
+      <button
+        on:click={toggleBackend}
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {useBackend ? 'bg-primary' : 'bg-muted-foreground/30'}"
+        role="switch"
+        aria-checked={useBackend}
+        aria-label="Use ML backend"
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {useBackend ? 'translate-x-6' : 'translate-x-1'}"
+        ></span>
+      </button>
+    </div>
+
+    {#if useBackend}
+      <!-- Connection Status -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">Backend Status</p>
+          <p class="text-xs text-muted-foreground">
+            {#if checkingBackend}
+              Checking connection…
+            {:else if backendAvailable === true}
+              Connected and healthy
+            {:else if backendAvailable === false}
+              Unreachable — predictions will use TypeScript ensemble
+            {:else}
+              Not checked yet
+            {/if}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if checkingBackend}
+            <RefreshCw class="w-4 h-4 animate-spin text-amber-500" />
+          {:else if backendAvailable === true}
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          {:else if backendAvailable === false}
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          {:else}
+            <span class="w-3 h-3 rounded-full bg-muted-foreground/30"></span>
+          {/if}
+          <Button
+            on:click={checkBackendStatus}
+            disabled={checkingBackend}
+            variant="secondary"
+            size="sm"
+          >
+            Test
+          </Button>
+        </div>
+      </div>
+
+      <!-- API Token -->
+      <div class="p-3 bg-muted rounded-lg" transition:fade>
+        <label for="oracle-api-token" class="block text-sm font-medium text-foreground mb-1">
+          API Token <span class="text-xs text-muted-foreground font-normal">(optional)</span>
+        </label>
+        <div class="flex space-x-2">
+          <input
+            id="oracle-api-token"
+            type="password"
+            bind:value={oracleApiToken}
+            placeholder="Bearer token for authenticated endpoints"
+            class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-muted"
+          />
+          <Button
+            on:click={saveOracleToken}
+            variant="secondary"
+            size="sm"
+          >
+            Save
+          </Button>
+        </div>
+        <p class="text-xs text-muted-foreground mt-1">
+          Only needed if your backend requires authentication.
+        </p>
+      </div>
+    {/if}
+  </div>
+
+  <!-- AI Match Analysis -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Sparkles class="w-5 h-5 text-primary" />
+      <span>AI Match Analysis</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Add AI-powered qualitative analysis to match predictions. Uses the same OpenAI key as Oracle Chat. Analyses are cached for 24 hours per match.
+    </p>
+
+    <!-- Toggle -->
+    <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Enable AI Analysis</p>
+        <p class="text-xs text-muted-foreground">Show AI-generated match narratives on prediction cards</p>
+      </div>
+      <button
+        on:click={toggleAiAnalysis}
+        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {aiAnalysisEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+        role="switch"
+        aria-checked={aiAnalysisEnabled}
+        aria-label="Enable AI match analysis"
+      >
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {aiAnalysisEnabled ? 'translate-x-6' : 'translate-x-1'}"
+        ></span>
+      </button>
+    </div>
+
+    {#if aiAnalysisEnabled}
+      <!-- API Key Status -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">API Key Status</p>
+          <p class="text-xs text-muted-foreground">
+            {#if aiKeyAvailable === null}
+              Checking…
+            {:else if aiKeyAvailable}
+              Ready — using {localStorage.getItem('openai_api_key') ? 'your OpenAI key' : 'server-side key'}
+            {:else}
+              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY
+            {/if}
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          {#if aiKeyAvailable === null}
+            <RefreshCw class="w-4 h-4 animate-spin text-amber-500" />
+          {:else if aiKeyAvailable}
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          {:else}
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Clear AI Cache -->
+      <div class="flex items-center justify-between p-3 bg-muted rounded-lg" transition:fade>
+        <div>
+          <p class="text-sm font-medium text-foreground">Analysis Cache</p>
+          <p class="text-xs text-muted-foreground">Clear cached analyses to fetch fresh ones</p>
+        </div>
+        <Button
+          on:click={clearAiCache}
+          variant="secondary"
+          size="sm"
+        >
+          Clear
+        </Button>
+      </div>
+    {/if}
   </div>
 
   <!-- Cache Management -->
@@ -355,12 +619,13 @@
           <p class="text-sm font-medium text-foreground">Cache Size</p>
           <p class="text-xs text-muted-foreground">{cacheSize}</p>
         </div>
-        <button
+        <Button
           on:click={clearCache}
-          class="btn btn-sm btn-secondary"
+          variant="secondary"
+          size="sm"
         >
           Clear Cache
-        </button>
+        </Button>
       </div>
       
       <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -368,17 +633,17 @@
           <p class="text-sm font-medium text-foreground">Last Sync</p>
           <p class="text-xs text-muted-foreground">{lastSync}</p>
         </div>
-        <button
+        <Button
           on:click={syncData}
           disabled={testing}
-          class="btn btn-sm btn-primary disabled:opacity-50"
+          size="sm"
         >
           {#if testing}
             <RefreshCw class="w-4 h-4 animate-spin" />
           {:else}
             Sync Now
           {/if}
-        </button>
+        </Button>
       </div>
     </div>
   </div>

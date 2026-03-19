@@ -8,7 +8,6 @@ vi.mock('./predictionTracker', () => ({
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
-      resultAccuracy: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,
@@ -23,6 +22,20 @@ vi.mock('./predictionTracker', () => ({
     getRecentPredictions: vi.fn(() => []),
     updateWithResult: vi.fn(),
     cleanOldPredictions: vi.fn()
+  }
+}));
+
+// Mock betHistoryService
+vi.mock('./betting/betHistoryService', () => ({
+  betHistoryService: {
+    resolveMatchBets: vi.fn()
+  }
+}));
+
+// Mock sharedEloSystem
+vi.mock('../lib/advancedPredictions', () => ({
+  sharedEloSystem: {
+    processCompletedMatches: vi.fn(() => 0)
   }
 }));
 
@@ -186,18 +199,11 @@ describe('DataService', () => {
       expect(standings).toEqual(mockStandings);
     });
 
-    it('should return empty array on error', async () => {
+    it('should throw when API returns no data', async () => {
       const { footballDataAPI } = await import('./api/footballData');
       vi.mocked(footballDataAPI.getStandings).mockResolvedValueOnce([]);
 
-      try {
-        const standings = await dataService.getStandings();
-        // If it doesn't throw, standings should be empty or the error message
-        expect(standings).toEqual([]);
-      } catch (error) {
-        // getStandings throws when no data available
-        expect(error).toBeDefined();
-      }
+      await expect(dataService.getStandings()).rejects.toThrow('No data source available for standings');
     });
   });
 
@@ -212,26 +218,4 @@ describe('DataService', () => {
     });
   });
 
-  describe('Data source management', () => {
-    it('should get current status', () => {
-      const status = dataService.getStatus();
-
-      expect(status).toHaveProperty('primarySource');
-      expect(status).toHaveProperty('fallbackSource');
-      expect(status.primarySource).toHaveProperty('type');
-      expect(status.primarySource).toHaveProperty('available');
-    });
-  });
-
-  describe('Prediction accuracy', () => {
-    it('should return prediction accuracy', async () => {
-      const accuracy = await dataService.getPredictionAccuracy('2024');
-
-      expect(accuracy).toHaveProperty('total');
-      expect(accuracy).toHaveProperty('correct');
-      expect(accuracy).toHaveProperty('accuracy');
-      expect(accuracy.accuracy).toBeGreaterThanOrEqual(0);
-      expect(accuracy.accuracy).toBeLessThanOrEqual(1);
-    });
-  });
 });

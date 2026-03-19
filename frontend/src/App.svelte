@@ -10,6 +10,7 @@
   import SeasonStats from './components/SeasonStats.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
   import ValueBets from './components/betting/ValueBets.svelte';
+  import AccumulatorBuilder from './components/betting/AccumulatorBuilder.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
@@ -17,10 +18,14 @@
   import LiveMatches from './components/LiveMatches.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
   import ChatBot from './components/ChatBot.svelte';
+  import { dataService } from './services/dataService';
+  import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  let currentView = 'Dashboard'; // Default view
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+
+  let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
   let isTransitioning = false;
   let showApiSetup = false;
@@ -28,11 +33,12 @@
   let dashboardComponent: Dashboard;
   
   function navigate(event: CustomEvent<{ view: string }>) {
-    if (event.detail.view === currentView) return;
-    
+    const view = event.detail.view as ViewName;
+    if (view === currentView) return;
+
     isTransitioning = true;
     setTimeout(() => {
-      currentView = event.detail.view;
+      currentView = view;
       setTimeout(() => {
         isTransitioning = false;
       }, 50);
@@ -73,21 +79,20 @@
   }
 
   async function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
-    hasApiKey = true;
     showApiSetup = false;
-    
-    // Refresh data services with new API key
-    const { dataService } = await import('./services/dataService');
-    const { footballDataAPI } = await import('./services/api/footballData');
-    
-    // Set the API key in the Football Data API
+
+    // Only mark as having an API key if one was actually provided
+    if (!event.detail.apiKey) {
+      return;
+    }
+
+    hasApiKey = true;
+
+    // Set the API key and clear any stale cached data
     footballDataAPI.setApiKey(event.detail.apiKey);
-    
-    // Refresh data source availability
+    await dataService.clearCache();
     await dataService.refreshApiConfiguration();
-    
-    // API key setup completed successfully
-    
+
     // Refresh dashboard if it's currently loaded
     if (currentView === 'Dashboard' && dashboardComponent) {
       setTimeout(() => {
@@ -102,13 +107,13 @@
   <Sidebar bind:isOpen={isSidebarOpen} currentView={currentView} on:navigate={navigate} on:closeSidebar={() => isSidebarOpen = false} />
 
   <div class="flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ease-in-out {isSidebarOpen ? 'lg:ml-64' : ''}">
-    <Header toggleSidebar={toggleSidebar} />
+    <Header toggleSidebar={toggleSidebar} {isSidebarOpen} />
     <LiveTicker />
 
-    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative">
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative" aria-label="Premier League Oracle content">
       <!-- Page transition overlay -->
       {#if isTransitioning}
-        <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
+        <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fade-in"></div>
       {/if}
       
       <!-- Page content with smooth transitions -->
@@ -123,6 +128,8 @@
           <KellyCalculator />
         {:else if currentView === 'Value Bets'}
           <ValueBets />
+        {:else if currentView === 'Accumulators'}
+          <AccumulatorBuilder />
         {:else if currentView === 'Betting History'}
           <BettingHistory />
         {:else if currentView === 'Season Stats'}

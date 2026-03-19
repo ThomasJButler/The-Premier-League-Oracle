@@ -13,10 +13,11 @@ The following items from this spec have been **implemented**:
 - **Requirement 3 (LiveMatches component):** DONE. `LiveMatches.svelte` calls `dataService.getLiveMatches()` on mount. Displays live match cards with team names, logos, score, match minute, half-time score, and status badges (LIVE/HALF TIME/EXTRA TIME/PENALTIES with pulse animation). Shows a "No Live Matches" empty state with next kickoff countdown. Also displays tabbed views for recent (3 days) and upcoming (7 days) matches.
 - **Requirement 7 (Graceful empty state):** DONE. Shows next kickoff countdown with `formatDistanceToNow`.
 
-The following items **remain unimplemented**:
+The following items were **completed after initial implementation**:
 
-- **Requirement 4 (LiveTicker enhancement):** Not verified whether `LiveTicker.svelte` shows live scores with pulsing indicator.
-- **Requirement 5 (WebSocket / LiveService):** `liveService.ts` does not exist. No WebSocket integration.
+- **Requirement 4 (LiveTicker enhancement):** DONE. `LiveTicker.svelte` shows live scores with pulsing indicator and match events at highest priority.
+- **Requirement 5 (WebSocket / LiveService):** DONE (then simplified). `liveService.ts` created (P3f) with shared Svelte stores. WebSocket infrastructure was later removed in P5v — `liveService` is now polling-only with adaptive intervals. `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to shared stores.
+- **Requirement 9 (Match event notifications):** DONE. `matchEventsStore` detects goals and status changes by diffing consecutive poll snapshots. `MatchEventToast.svelte` renders colour-coded toast notifications (fly transition, auto-expire 30s). `LiveTicker.svelte` surfaces events at highest priority (-1). 13 tests cover goal detection, multi-goal, kickoff, half-time, second half, full-time, extra time, penalties, expiry, and multi-match independence.
 
 ---
 
@@ -25,8 +26,10 @@ The following items **remain unimplemented**:
 | Component | Status |
 |-----------|--------|
 | `frontend/src/components/LiveMatches.svelte` | Fully implemented — fetches live data, smart polling, match cards, empty state with countdown |
-| `frontend/src/components/LiveTicker.svelte` | Fetches upcoming/recent matches — live score integration not verified |
+| `frontend/src/components/LiveTicker.svelte` | Fully implemented — live scores, recent results, upcoming fixtures, match events at highest priority |
+| `frontend/src/components/MatchEventToast.svelte` | Fully implemented — colour-coded toast notifications for goals and status changes (fly transition, auto-expire 30s) |
 | `frontend/src/services/dataService.ts` | `getLiveMatches()` implemented with 60s cache |
+| `frontend/src/services/liveService.ts` | Fully implemented — shared Svelte stores, polling-only with adaptive intervals (WebSocket removed in P5v) |
 
 ---
 
@@ -71,7 +74,7 @@ function getPollingInterval(): number {
 - If live matches are found, maintain 60s polling
 - If 3 consecutive polls return empty, back off to 5-minute intervals
 
-> **Implementation note:** The actual implementation uses 30s polling when live matches exist, which is more aggressive than this spec.
+> **Implementation note:** The actual implementation uses 30s polling when live matches exist (more aggressive than this spec's 60s). The `dataService.getLiveMatches()` cache TTL is 60s, so effective real API calls are at most once per minute.
 
 ---
 
@@ -89,7 +92,7 @@ Match card fields from Football-Data.org LIVE response:
 - `homeTeam.name`, `awayTeam.name`
 - `score.fullTime.home`, `score.fullTime.away`
 - `score.halfTime.home`, `score.halfTime.away`
-- `status` — one of: LIVE, IN_PLAY, PAUSED, FINISHED
+- `status` — one of: LIVE, IN_PLAY, PAUSED, EXTRA_TIME, PENALTY_SHOOTOUT, FINISHED (extra time/penalties added in P5q)
 - `minute` — current match minute (if available)
 
 ---
@@ -110,11 +113,14 @@ Ticker item format:
 
 ---
 
-## Requirement 5: WebSocket Integration (Backend)
+## ~~Requirement 5: WebSocket Integration (Backend)~~ — SUPERSEDED (P5v)
 
-When the Python backend is running, `LiveService` uses WebSocket instead of polling:
+> **Note (P5v):** WebSocket infrastructure was entirely removed from the frontend. `liveService.ts` is now polling-only with adaptive intervals. Match event detection uses polling-diff: `matchEventsStore` compares consecutive poll snapshots to detect goals and status changes. `MatchEventToast.svelte` renders colour-coded toast notifications (green=goals, amber=half-time, blue=full-time, red=extra time/penalties). Events auto-expire after 30s. `LiveTicker.svelte` surfaces events at highest priority.
+
+The original design (shown below for historical reference) called for WebSocket when the backend was running:
 
 ```typescript
+// HISTORICAL — no longer implemented in the frontend
 // frontend/src/services/liveService.ts
 import { writable } from 'svelte/store'
 
@@ -133,10 +139,11 @@ class LiveService {
   }
 
   private connectWebSocket() {
-    this.ws = new WebSocket('ws://localhost:8000/ws')
+    const wsBase = import.meta.env.VITE_BACKEND_WS_URL ?? `ws://${location.hostname}:8000`
+    this.ws = new WebSocket(`${wsBase}/ws/predictions`)
     this.ws.onmessage = ({ data }) => {
-      const { liveMatches } = JSON.parse(data)
-      liveMatchesStore.set(liveMatches)
+      const parsed = JSON.parse(data)
+      liveMatchesStore.set(parsed.matches ?? [])
     }
     this.ws.onerror = () => this.startPolling()  // fallback
   }
@@ -159,16 +166,19 @@ class LiveService {
 export const liveService = new LiveService()
 ```
 
-`LiveMatches.svelte` and `LiveTicker.svelte` subscribe to `liveMatchesStore` rather than managing their own fetching.
-
 ---
 
 ## Acceptance Criteria
+
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
 
 - [x] `liveMatches = []` populated from API (not hardcoded) in `LiveMatches.svelte`
 - [x] `dataService.getLiveMatches()` fetches from Football-Data.org LIVE endpoint
 - [x] Smart polling manager adjusts interval based on live state (30s/5min/30min with adaptive backoff)
 - [x] LiveMatches shows real scores with current minute when in play
-- [ ] LiveTicker shows live scores with pulsing indicator, falls back to upcoming fixtures
-- [ ] `LiveService` uses WebSocket when backend available, polling otherwise
+- [x] `liveService.ts` created with shared Svelte stores (`liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches`, `pollLabel`) (P3f)
+- [x] ~~`LiveService` uses WebSocket when backend available~~ WebSocket infrastructure removed in P5v — `liveService` is now polling-only with adaptive intervals. Shared stores remain and are updated via polling
+- [x] `LiveMatches.svelte` and `LiveTicker.svelte` refactored to subscribe to shared stores (P3f)
 - [x] Graceful empty state with next fixture countdown
+- [x] Match event notifications (goals, status changes) via polling-diff — `matchEventsStore` detects score/status changes between polls, `MatchEventToast.svelte` renders toast notifications, `LiveTicker.svelte` surfaces events at highest priority. 13 tests added
+- [x] LiveTicker shows live scores with pulsing indicator inline (ticker item format not verified)

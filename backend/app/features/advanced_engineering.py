@@ -24,8 +24,6 @@ from datetime import datetime, timedelta
 import logging
 from scipy import stats
 from sklearn.preprocessing import StandardScaler
-import warnings
-warnings.filterwarnings('ignore')
 
 logger = logging.getLogger(__name__)
 

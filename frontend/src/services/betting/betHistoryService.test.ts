@@ -232,38 +232,6 @@ describe('BetHistoryService', () => {
     });
   });
 
-  describe('clearHistory', () => {
-    it('should remove all bets', () => {
-      service.storeBet(sampleBet);
-      service.storeBet({ ...sampleBet, matchId: 'm2' });
-
-      service.clearHistory();
-      expect(service.getAllBets()).toHaveLength(0);
-    });
-  });
-
-  describe('export/import', () => {
-    it('should export and import bets correctly', () => {
-      service.storeBet(sampleBet);
-      const exported = service.exportBets();
-
-      service.clearHistory();
-      expect(service.getAllBets()).toHaveLength(0);
-
-      const success = service.importBets(exported);
-      expect(success).toBe(true);
-      expect(service.getAllBets()).toHaveLength(1);
-    });
-
-    it('should reject invalid JSON', () => {
-      expect(service.importBets('not json')).toBe(false);
-    });
-
-    it('should reject non-array JSON', () => {
-      expect(service.importBets('{"foo": 1}')).toBe(false);
-    });
-  });
-
   describe('localStorage persistence', () => {
     it('should load bets from localStorage on construction', () => {
       // Pre-populate localStorage

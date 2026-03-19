@@ -3,6 +3,7 @@
   import { isDarkMode } from '../stores/theme';
 
   export let toggleSidebar: () => void;
+  export let isSidebarOpen = false;
 </script>
 
 <header class="header-container">
@@ -11,6 +12,7 @@
       on:click={toggleSidebar}
       class="p-2 rounded-lg hover:bg-muted transition-colors"
       aria-label="Toggle menu"
+      aria-expanded={isSidebarOpen}
     >
       <Menu class="w-5 h-5 text-muted-foreground" />
     </button>

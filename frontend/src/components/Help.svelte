@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Book, HelpCircle, TrendingUp, Shield, Zap, ExternalLink, ChevronRight, Home } from 'lucide-svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   
   let selectedSection = 'getting-started';
   let showMobileMenu = false;
@@ -24,6 +24,9 @@
         <button
           class="sm:hidden p-2 rounded-lg hover:bg-muted"
           on:click={() => showMobileMenu = !showMobileMenu}
+          aria-expanded={showMobileMenu}
+          aria-controls="help-nav"
+          aria-label="Toggle documentation menu"
         >
           <ChevronRight class="w-5 h-5 transition-transform {showMobileMenu ? 'rotate-90' : ''}" />
         </button>
@@ -34,7 +37,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <!-- Sidebar Navigation -->
-      <nav class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
+      <nav id="help-nav" class="lg:col-span-1 {showMobileMenu ? 'block' : 'hidden'} sm:block">
         <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 sticky top-24">
           <h2 class="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
             Documentation
@@ -44,9 +47,10 @@
               <li>
                 <button
                   class="w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-all
-                    {selectedSection === section.id 
-                      ? 'bg-primary/10 text-primary font-medium' 
+                    {selectedSection === section.id
+                      ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted'}"
+                  aria-current={selectedSection === section.id ? 'true' : undefined}
                   on:click={() => {
                     selectedSection = section.id;
                     showMobileMenu = false;
@@ -98,12 +102,12 @@
               <h3 class="text-xl font-semibold mb-4">Dashboard Overview</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div class="p-4 bg-muted rounded-lg">
-                  <h4 class="font-semibold mb-2">📊 Live Standings</h4>
-                  <p class="text-sm">Current Premier League table with points, goals, and form indicators.</p>
+                  <h4 class="font-semibold mb-2">📊 Overview Stats</h4>
+                  <p class="text-sm">Overall prediction accuracy, recent results, and performance at a glance.</p>
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">⚽ Upcoming Fixtures</h4>
-                  <p class="text-sm">Next matches with AI-powered predictions and confidence levels.</p>
+                  <p class="text-sm">Next matches with model-driven predictions and confidence levels.</p>
                 </div>
                 <div class="p-4 bg-muted rounded-lg">
                   <h4 class="font-semibold mb-2">📈 Team Stats</h4>
@@ -292,7 +296,7 @@
               <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🎯 The Golden Rules</h3>
                 <ol class="space-y-3">
-                  <li><strong>1. Consensus is Key:</strong> When all five models agree, accuracy jumps to 75-85%</li>
+                  <li><strong>1. Consensus is Key:</strong> When all five models agree, predictions tend to be most reliable — check the Predictions accuracy panel to see how your own results track</li>
                   <li><strong>2. Context Matters:</strong> Always check team news, injuries, and motivation</li>
                   <li><strong>3. Value Over Volume:</strong> Better to skip than force a prediction</li>
                   <li><strong>4. Track Everything:</strong> Learn from both wins and losses</li>
@@ -305,27 +309,28 @@
               <div class="grid gap-4 mb-8">
                 <div class="p-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
                   <h4 class="font-semibold mb-2">The Fatigue Factor</h4>
-                  <p class="text-sm">Teams playing their 3rd match in 7 days see a 15% drop in win probability. Target them with opposing bets.</p>
+                  <p class="text-sm">Teams with congested fixtures (3+ matches in 7 days) can underperform. Our model includes a fatigue component, but always check the schedule yourself.</p>
                 </div>
-                
+
                 <div class="p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20">
-                  <h4 class="font-semibold mb-2">The Bounce-Back Effect</h4>
-                  <p class="text-sm">Teams typically overperform after heavy defeats (3+ goals). Back them against weaker opposition.</p>
+                  <h4 class="font-semibold mb-2">Fixture Difficulty</h4>
+                  <p class="text-sm">Cross-reference model confidence with the opposition's current form and league position. High confidence against a top-6 side deserves more scrutiny than against a relegation candidate.</p>
                 </div>
-                
+
                 <div class="p-4 border-l-4 border-teal-500 bg-teal-50 dark:bg-teal-900/20">
-                  <h4 class="font-semibold mb-2">New Manager Bounce</h4>
-                  <p class="text-sm">First 5 games show +15% win rate improvement. Fade after game 10 when reality sets in.</p>
+                  <h4 class="font-semibold mb-2">Use the Backtest</h4>
+                  <p class="text-sm">Run the model backtest on completed matches to see how the prediction engine actually performs — real data beats intuition.</p>
                 </div>
               </div>
 
               <h3 class="text-xl font-semibold mb-4">Kelly Criterion Calculator</h3>
               <div class="p-6 bg-muted rounded-xl">
-                <p class="mb-4">Use our Kelly Calculator to determine optimal stake sizes:</p>
+                <p class="mb-4">The app uses <strong>Half-Kelly</strong> staking — halving the full Kelly recommendation for a safer risk profile:</p>
                 <div class="bg-card p-4 rounded-lg font-mono text-sm">
-                  Stake % = (Probability × Odds - 1) / (Odds - 1)
+                  Full Kelly = (Probability × Odds - 1) / (Odds - 1)<br/>
+                  Recommended Stake = Full Kelly ÷ 2
                 </div>
-                <p class="text-sm mt-4 text-amber-600">⚠️ Never bet more than 25% of Kelly recommendation for safety.</p>
+                <p class="text-sm mt-4 text-muted-foreground">Half-Kelly reduces variance significantly while retaining most of the theoretical edge.</p>
               </div>
             </div>
 
@@ -338,7 +343,7 @@
                   <h3 class="font-bold text-lg mb-3">📊 Dashboard</h3>
                   <p class="text-sm mb-3">Your command center for all Premier League data and predictions.</p>
                   <ul class="text-sm space-y-1">
-                    <li>• Live standings</li>
+                    <li>• Prediction accuracy stats</li>
                     <li>• Upcoming fixtures</li>
                     <li>• Recent results</li>
                     <li>• Team performance metrics</li>
@@ -361,9 +366,9 @@
                   <p class="text-sm mb-3">Optimize your stake sizes using the Kelly Criterion formula.</p>
                   <ul class="text-sm space-y-1">
                     <li>• Input odds and probability</li>
-                    <li>• Get recommended stake</li>
-                    <li>• Adjust for risk tolerance</li>
-                    <li>• Track bankroll growth</li>
+                    <li>• Get Half-Kelly recommended stake</li>
+                    <li>• Auto-suggested bets from predictions</li>
+                    <li>• Track placed bets in Betting History</li>
                   </ul>
                 </div>
                 
@@ -374,7 +379,7 @@
                     <li>• Automatic value detection</li>
                     <li>• Expected ROI calculation</li>
                     <li>• Risk assessment</li>
-                    <li>• Historical performance</li>
+                    <li>• Track placed bets</li>
                   </ul>
                 </div>
                 
@@ -384,8 +389,8 @@
                   <ul class="text-sm space-y-1">
                     <li>• Natural language queries</li>
                     <li>• Statistical explanations</li>
-                    <li>• Trend analysis</li>
-                    <li>• Custom recommendations</li>
+                    <li>• Match-specific analysis</li>
+                    <li>• Prediction context and reasoning</li>
                   </ul>
                 </div>
                 
@@ -395,7 +400,7 @@
                   <ul class="text-sm space-y-1">
                     <li>• Bottom navigation bar</li>
                     <li>• Touch-optimised controls</li>
-                    <li>• Offline data caching</li>
+                    <li>• IndexedDB data caching</li>
                     <li>• Responsive layouts</li>
                   </ul>
                 </div>
@@ -428,7 +433,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">All data comes directly from Football-Data.org, bypassing our servers.</p>
+                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your OpenAI key out of the browser.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">
@@ -486,17 +491,17 @@
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Does it work offline?</h3>
-                  <p>The app caches recent data for offline viewing, but requires an internet connection for live updates and new predictions.</p>
+                  <p>The app caches recent data in your browser (IndexedDB) to reduce API calls and improve loading speed, but requires an internet connection for live updates and new predictions. There is no full offline mode.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
-                  <p>Yes — the Betting History page has a CSV export button for your tracked bets. You can also copy data from tables directly.</p>
+                  <p>Yes — the Betting History page has a JSON export button for your tracked bets.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Will you add other leagues?</h3>
-                  <p>We're focusing on perfecting Premier League predictions first. Other leagues are on our roadmap for future versions.</p>
+                  <p>The app is focused exclusively on the Premier League. There are no current plans to add other leagues.</p>
                 </div>
               </div>
             </div>
@@ -507,16 +512,3 @@
   </div>
 </div>
 
-<style>
-  .prose h2 {
-    @apply text-2xl sm:text-3xl;
-  }
-
-  .prose h3 {
-    @apply text-lg sm:text-xl;
-  }
-
-  .prose h4 {
-    @apply text-base sm:text-lg;
-  }
-</style>

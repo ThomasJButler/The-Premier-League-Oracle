@@ -99,7 +99,7 @@ export interface Prediction {
   confidence_score: number;
   predicted_home_goals: number;
   predicted_away_goals: number;
-  was_correct: boolean;
+  was_correct?: boolean;
   prediction_date: string;
   created_at: string;
 }
@@ -122,7 +122,7 @@ export interface Standing {
     crest: string;
   };
   playedGames: number;
-  form: string;
+  form: string | null;
   won: number;
   draw: number;
   lost: number;
@@ -130,4 +130,78 @@ export interface Standing {
   goalsFor: number;
   goalsAgainst: number;
   goalDifference: number;
+}
+
+// --- Match Event Notifications (spec 05, req 9) ---
+
+/** Types of events detected by diffing consecutive live match polls */
+export type MatchEventType =
+  | 'goal'
+  | 'kickoff'
+  | 'half_time'
+  | 'second_half'
+  | 'full_time'
+  | 'extra_time'
+  | 'penalties';
+
+/**
+ * A match event detected by comparing consecutive poll snapshots.
+ * Since Football-Data.org free tier provides no per-match events API,
+ * we infer events from score and status changes between polls.
+ */
+export interface MatchEvent {
+  id: string;
+  matchId: string;
+  type: MatchEventType;
+  /** Which team scored (for goal events only) */
+  team?: string;
+  homeTeam: string;
+  awayTeam: string;
+  /** Current scoreline, e.g. "2-1" */
+  score?: string;
+  /** Human-readable event description */
+  message: string;
+  /** Unix timestamp (ms) when the event was detected */
+  timestamp: number;
+}
+
+// --- Backend ML Integration Types (spec 03) ---
+
+/** Response from the Python ML backend's POST /predict endpoint */
+export interface MLPrediction {
+  match: string;
+  prediction: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  confidence: number;
+  recommendation: string;
+  betting_value?: Record<string, unknown>;
+  individual_models?: Record<string, { home: number; draw: number; away: number }>;
+  similar_matches?: Record<string, unknown>[];
+  timestamp: string;
+}
+
+/** Response from the Python ML backend's POST /predict/batch endpoint */
+export interface MLBatchResponse {
+  predictions: Array<MLPrediction | { match: string; error: string }>;
+  total: number;
+  timestamp: string;
+}
+
+/** Response from the Python ML backend's GET /health endpoint */
+export interface MLHealthResponse {
+  status: string;
+  timestamp: string;
+  models_loaded: boolean;
+  redis_connected: boolean;
+}
+
+/** Thrown when the backend is unavailable or returns an error */
+export class BackendUnavailableError extends Error {
+  constructor(message = 'Backend ML service is unavailable') {
+    super(message);
+    this.name = 'BackendUnavailableError';
+  }
 }

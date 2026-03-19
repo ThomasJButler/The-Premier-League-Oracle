@@ -10,18 +10,18 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 | Component | Status | Notes |
 | --------- | ------ | ----- |
-| `xgboost_model.py` | Architecture complete | Real training, SHAP, Optuna, save/load |
-| `lstm_predictor.py` | Architecture complete | `get_feature_importance()` returns `np.random.random()` (stub) |
-| `transformer_model.py` | Architecture complete | Save/load only stores 2 of 8 params; `val_accuracy` UnboundLocalError |
-| `modern_oracle.py` | Orchestrator exists | `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
-| `advanced_engineering.py` | 150 features declared | 49 methods return hardcoded `0.0` (no data from free API) |
-| `train.py` | Runnable | Trains XGBoost on all 150 features (including 49 zero-columns) |
-| `football_data_collector.py` | Partial | `get_head_to_head()` stub; `get_team_form()` result-flip bug |
-| `models/xgboost_model.pkl` | Exists on disk | Trained on noisy feature set (49 zero-value columns) |
-| LSTM/Transformer models | No saved artefacts | Untrained |
-| Backend tests | 0% coverage | `test_setup.py` only checks imports |
+| `free_tier_features.py` | **Complete** | 99 features (incl. 8 draw + 5 Elo), standalone class |
+| `train_free_tier.py` | **Complete** | XGBoost + stacked OvR ensemble + LR baseline, rolling CV via `--cv` |
+| `xgboost_free_tier.joblib` | **Trained** | 51.0% accuracy, saved with metadata |
+| `main.py` — `/predict/free` | **Complete** | Auto-uses ensemble when present, input validation, rate limiting |
+| `xgboost_model.py` | Architecture complete | Pro-tier — deferred |
+| `lstm_predictor.py` | Architecture complete | Pro-tier — `get_feature_importance()` returns `np.random.random()` (stub) |
+| `transformer_model.py` | Architecture complete | Pro-tier — save/load only stores 2 of 8 params |
+| `modern_oracle.py` | Orchestrator exists | Pro-tier — `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
+| `advanced_engineering.py` | 150 features declared | Pro-tier — 63 methods return hardcoded `0.0` (no data from free API) |
+| Backend tests | **86 tests** | 45 features, 25 training pipeline, 16 API endpoints |
 
-**Training data:** 2,197 matches across 6 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
+**Training data:** 2,191 matches across ~5.75 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
 
 **Free API constraint:** Football-Data.org free tier provides match results, standings, and team info only. No xG, shots, possession, cards, corners, or player data. This permanently limits ~70 features at inference time.
 
@@ -31,7 +31,7 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 ```
 Tier 1: Free (active development)
-  Features:     ~73 (results, form, standings, H2H, contextual, time series)
+  Features:     99 (results, form, standings, H2H, contextual, time series, draw indicators, Elo)
   Model:        XGBoost
   Training:     train_free_tier.py → xgboost_free_tier.joblib
   Endpoint:     POST /predict/free
@@ -45,7 +45,7 @@ Tier 2: Pro (future, when paid API available)
   Data source:  Football-Data.org Pro tier + CSV history
 ```
 
-The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeatureEngineer` via composition, calling only the methods that return real computed data.
+The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone class — it does not wrap `AdvancedFeatureEngineer`, as that class has 63 stub methods that would pollute feature vectors. All free-tier features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -56,11 +56,11 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeat
 **New file:** `backend/app/features/free_tier_features.py`
 
 `FreeTierFeatureEngineer` class that:
-- Wraps `AdvancedFeatureEngineer` internally (composition, not subclassing)
-- `create_features(home_team, away_team, match_date)` returns a dict of ~83 features
+- Is a standalone class (does not wrap `AdvancedFeatureEngineer`)
+- `create_features(home_team, away_team, match_date)` returns a dict of 99 features
 - Class-level `FEATURE_NAMES` list for validation and documentation
 - Team name normalisation dict mapping CSV short names (e.g. "Man United") to API canonical names (e.g. "Manchester United FC")
-- Never calls any of the 49 stub methods that require Pro API data
+- Never calls any of the 63 stub methods that require Pro API data
 
 **Feature groups:**
 
@@ -77,11 +77,15 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeat
 
 **Acceptance criteria:**
 
-- [ ] `create_features()` returns exactly `FEATURE_NAMES` keys
-- [ ] No feature returns `0.0` when given sufficient match history (i.e. no stubs leak through)
-- [ ] Features use only pre-match data (no leakage from the match being predicted)
-- [ ] Team name normalisation handles both CSV and API formats
-- [ ] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `create_features()` returns exactly `FEATURE_NAMES` keys
+- [x] No feature returns `0.0` when given sufficient match history (i.e. no stubs leak through)
+- [x] Features use only pre-match data (no leakage from the match being predicted)
+- [x] Team name normalisation handles both CSV and API formats
+- [x] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
+
+Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 99 features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -132,16 +136,18 @@ python train_free_tier.py --test     # Also evaluate on held-out 2025/26 data
 
 **Acceptance criteria:**
 
-- [ ] Training completes without errors on the existing CSV dataset
-- [ ] Data quality checks run and log results (dropped rows, class distribution, season counts)
-- [ ] Chronological split verified (all validation dates strictly after all training dates)
-- [ ] Logistic regression baseline trained and accuracy compared to XGBoost
-- [ ] Model file saved to `backend/models/xgboost_free_tier.joblib` with metadata
-- [ ] Per-class accuracy printed (Home, Draw, Away separately)
-- [ ] Confusion matrix, Brier score, and per-class AUC-ROC printed
-- [ ] Calibration curve saved as PNG
-- [ ] `--test` flag evaluates on 2025/26 held-out data
-- [ ] No dependency on paid API data or features that return `0.0`
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] Training completes without errors on the existing CSV dataset
+- [x] Data quality checks run and log results (dropped rows, class distribution, season counts)
+- [x] Chronological split verified (all validation dates strictly after all training dates)
+- [x] Logistic regression baseline trained and accuracy compared to XGBoost
+- [x] Model file saved to `backend/models/xgboost_free_tier.joblib` with metadata
+- [x] Per-class accuracy printed (Home, Draw, Away separately)
+- [x] Confusion matrix, Brier score, and per-class AUC-ROC printed
+- [x] Calibration curve saved as PNG (best-effort — skips gracefully if matplotlib unavailable)
+- [x] `--test` flag evaluates on 2025/26 held-out data
+- [x] No dependency on paid API data or features that return `0.0`
 
 ---
 
@@ -198,11 +204,13 @@ Returns model metadata: version, training date, feature count, validation accura
 
 **Acceptance criteria:**
 
-- [ ] `/predict/free` returns valid probabilities summing to ~1.0
-- [ ] `/predict/free` returns 422 for invalid team names
-- [ ] `/predict/free` returns 503 when model is not loaded
-- [ ] `/models/free-tier/info` returns training metadata
-- [ ] Existing `/predict` endpoint (full Oracle) is completely unchanged
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `/predict/free` returns valid probabilities summing to ~1.0
+- [x] `/predict/free` returns 422 for invalid team names
+- [x] `/predict/free` returns 503 when model is not loaded
+- [x] `/models/free-tier/info` returns training metadata
+- [x] Existing `/predict` endpoint (full Oracle) is completely unchanged
 
 ---
 
@@ -220,15 +228,17 @@ Team name allowlist on `/predict/free`. Accept current Premier League teams plus
 
 The existing `validators.py` has a `VALID_TEAMS` set but it's outdated (2023/24 clubs) and entirely unused at runtime. The free-tier endpoint should use its own inline validation rather than depending on the broken validator module.
 
-#### 4c. Error sanitisation
+#### 4c. Error sanitisation — FIXED
 
-New endpoints must return generic error messages, never raw `str(exc)` or stack traces. The existing global exception handler in `main.py` (line 582-593) leaks internal error strings — do not replicate this pattern.
+New endpoints must return generic error messages, never raw `str(exc)` or stack traces.
+
+> **Note:** The global exception handler in `main.py` was fixed — it now returns a generic "Internal server error" message and logs the full error server-side. The `str(exc)` leak no longer exists.
 
 ```python
-# Good
+# Good (current pattern)
 {"error": "Prediction failed", "request_id": "abc123"}
 
-# Bad (current pattern in main.py)
+# Bad (old pattern, now fixed)
 {"detail": "KeyError: 'home_goals_scored_avg'"}
 ```
 
@@ -242,17 +252,19 @@ When loading the model file at startup, validate that it contains the expected m
 
 **Acceptance criteria:**
 
-- [ ] `backend/.env` added to `.gitignore`
-- [ ] Invalid team names return 422, not 500
-- [ ] Error responses contain no stack traces or internal paths
-- [ ] Rate limiting returns 429 after 60 requests/minute from the same IP
-- [ ] Malformed model file causes startup failure with clear error message
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] `backend/.env` added to `.gitignore`
+- [x] Invalid team names return 422, not 500
+- [x] Error responses contain no stack traces or internal paths
+- [x] Rate limiting returns 429 after 60 requests/minute from the same IP — fixed in P5a: `_get_client_ip()` extracts real IP from `X-Forwarded-For` header
+- [x] Malformed model file causes startup failure with clear error message
 
 ---
 
 ### 5. Testing (Priority: High)
 
-The backend currently has 0% test coverage. The free-tier model introduces the first real tests.
+The backend has 86 tests across 3 files covering free-tier features, training pipeline, and API endpoints.
 
 #### `backend/tests/test_free_tier_features.py`
 
@@ -279,10 +291,12 @@ The backend currently has 0% test coverage. The free-tier model introduces the f
 
 **Acceptance criteria:**
 
-- [ ] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v`
-- [ ] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v`
-- [ ] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v`
-- [ ] Tests run in CI without requiring a Football-Data.org API key
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
+- [x] All feature tests pass: `python -m pytest tests/test_free_tier_features.py -v` (45 tests incl. Elo leakage)
+- [x] All training tests pass: `python -m pytest tests/test_train_free_tier.py -v` (25 tests incl. rolling CV, 7 skip without libomp)
+- [x] All API tests pass: `python -m pytest tests/test_predict_free_tier.py -v` (16 tests)
+- [x] Tests run in CI without requiring a Football-Data.org API key
 
 ---
 
@@ -292,7 +306,7 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 
 #### 6a. Feature engineering fixes
 
-- Implement the 49 stubbed methods in `advanced_engineering.py` that have real data from the Pro API (xG, shots, possession, cards, corners)
+- Implement the 63 stubbed methods in `advanced_engineering.py` that have real data from the Pro API (xG, shots, possession, cards, corners)
 - Remove methods that require data sources beyond Football-Data.org (weather, betting odds, player injuries) or honestly document them as permanently stubbed
 - Fix `football_data_collector.py`: `get_head_to_head()` returns empty DataFrame; `get_team_form()` has result-flip bug
 
@@ -308,7 +322,7 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 
 #### 6c. Full training pipeline
 
-- Update `train.py` to orchestrate: data collection → feature engineering → XGBoost + LSTM + Transformer training → ensemble weight optimisation → evaluation
+- Create a new Pro-tier training script to orchestrate: data collection → feature engineering → XGBoost + LSTM + Transformer training → ensemble weight optimisation → evaluation (the old `train.py` was removed)
 - Train/val/test splits: 2020-2023 train, 2024 validation, 2025 test
 - Wire `/admin/retrain` endpoint (currently returns mock response)
 
@@ -332,8 +346,8 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 | `backend/tests/test_predict_free_tier.py` | Create | High |
 | `.gitignore` | Modify (add `backend/.env`) | High |
 | `backend/app/features/advanced_engineering.py` | No change (free tier) | — |
-| `backend/train.py` | No change (free tier) | — |
-| `backend/app/models/xgboost_model.py` | No change (reused) | — |
+| ~~`backend/train.py`~~ | **Removed** — superseded by `train_free_tier.py` (outputs deleted `xgboost_model.pkl`) | — |
+| `backend/app/models/xgboost_model.py` | Architecture file still present (Pro-tier). The old `xgboost_model.pkl` artefact was deleted — free-tier uses `xgboost_free_tier.joblib` | — |
 
 ---
 

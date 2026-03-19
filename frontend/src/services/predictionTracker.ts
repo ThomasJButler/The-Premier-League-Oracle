@@ -1,4 +1,3 @@
-import type { Match } from '../types';
 
 export interface StoredPrediction {
   id: string;
@@ -29,7 +28,6 @@ export interface AccuracyStats {
   totalPredictions: number;
   correctPredictions: number;
   accuracy: number;
-  resultAccuracy: number; // W/D/L accuracy
   scoreAccuracy: number; // Exact score accuracy
   highConfidenceAccuracy: number; // Accuracy when confidence > 70%
   mediumConfidenceAccuracy: number; // Accuracy when confidence 50-70%
@@ -45,11 +43,25 @@ export interface AccuracyStats {
   };
 }
 
+/**
+ * Calibration factors per confidence band.
+ *
+ * Each factor = (actual accuracy in band) / (average stated confidence in band).
+ * A factor < 1 means the model is overconfident; > 1 means underconfident.
+ * Applied as a multiplier to raw confidence scores so future predictions
+ * reflect historical reliability. Defaults to 1.0 when insufficient data.
+ */
+export interface CalibrationFactors {
+  highBand: number;   // Multiplier for confidence > 0.7
+  mediumBand: number; // Multiplier for confidence 0.5–0.7
+  lowBand: number;    // Multiplier for confidence < 0.5
+}
+
 class PredictionTracker {
   private readonly STORAGE_KEY = 'pl_oracle_predictions';
+  /** Minimum settled predictions per band before calibration applies */
+  private static readonly MIN_CALIBRATION_SAMPLES = 10;
   private predictions: Map<string, StoredPrediction>;
-  private static idCounter = 0;
-
   constructor() {
     this.predictions = new Map();
     this.loadPredictions();
@@ -64,7 +76,7 @@ class PredictionTracker {
         const parsed = JSON.parse(stored);
         this.predictions = new Map(Object.entries(parsed));
       }
-    } catch (error) {
+    } catch (_error) {
       // Error loading predictions, using empty map
       this.predictions = new Map();
     }
@@ -75,7 +87,7 @@ class PredictionTracker {
     try {
       const toStore = Object.fromEntries(this.predictions);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
-    } catch (error) {
+    } catch (_error) {
       // Error saving predictions to localStorage
     }
   }
@@ -94,8 +106,7 @@ class PredictionTracker {
     matchDate: string,
     matchday?: number
   ): void {
-    PredictionTracker.idCounter++;
-    const id = `${matchId}_${Date.now()}_${PredictionTracker.idCounter}`;
+    const id = `${matchId}_${crypto.randomUUID()}`;
     const storedPrediction: StoredPrediction = {
       id,
       matchId,
@@ -157,10 +168,6 @@ class PredictionTracker {
     const totalPredictions = relevantPredictions.length;
     const accuracy = (correctPredictions / totalPredictions) * 100;
 
-    // Calculate result accuracy (W/D/L)
-    const resultCorrect = relevantPredictions.filter(p => p.predictedResult === p.actualResult).length;
-    const resultAccuracy = (resultCorrect / totalPredictions) * 100;
-
     // Calculate exact score accuracy
     const scoreCorrect = relevantPredictions.filter(p => 
       p.predictedHomeGoals === p.actualHomeGoals && 
@@ -202,7 +209,6 @@ class PredictionTracker {
       totalPredictions,
       correctPredictions,
       accuracy,
-      resultAccuracy,
       scoreAccuracy,
       highConfidenceAccuracy,
       mediumConfidenceAccuracy,
@@ -242,6 +248,46 @@ class PredictionTracker {
           accuracy: (correct / preds.length) * 100
         };
       });
+  }
+
+  /**
+   * Compute per-band calibration factors from historical prediction accuracy.
+   *
+   * For each confidence band (high/medium/low), the factor is:
+   *   actual_accuracy / average_stated_confidence
+   *
+   * Example: if predictions with ~80% confidence are correct 72% of the time,
+   * the high-band factor is 0.72 / 0.80 = 0.9. Multiplying future raw
+   * confidence by 0.9 produces more honest probability estimates.
+   *
+   * Returns 1.0 for any band with fewer than MIN_CALIBRATION_SAMPLES settled
+   * predictions — not enough data to calibrate reliably.
+   */
+  public getCalibrationFactors(): CalibrationFactors {
+    const settled = Array.from(this.predictions.values())
+      .filter(p => p.actualResult !== undefined);
+
+    const computeFactor = (preds: StoredPrediction[]): number => {
+      if (preds.length < PredictionTracker.MIN_CALIBRATION_SAMPLES) return 1.0;
+
+      const avgConfidence = preds.reduce((sum, p) => sum + p.confidence, 0) / preds.length;
+      if (avgConfidence === 0) return 1.0;
+
+      const actualAccuracy = preds.filter(p => p.isCorrect).length / preds.length;
+
+      // Clamp to [0.5, 1.5] to prevent extreme swings from small or noisy samples
+      return Math.max(0.5, Math.min(1.5, actualAccuracy / avgConfidence));
+    };
+
+    const highConf = settled.filter(p => p.confidence > 0.7);
+    const medConf = settled.filter(p => p.confidence >= 0.5 && p.confidence <= 0.7);
+    const lowConf = settled.filter(p => p.confidence < 0.5);
+
+    return {
+      highBand: computeFactor(highConf),
+      mediumBand: computeFactor(medConf),
+      lowBand: computeFactor(lowConf)
+    };
   }
 
   // Calculate prediction streaks
@@ -314,7 +360,6 @@ class PredictionTracker {
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
-      resultAccuracy: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,
@@ -327,30 +372,6 @@ class PredictionTracker {
     };
   }
 
-  // Export predictions for analysis
-  public exportPredictions(): string {
-    const data = Array.from(this.predictions.values());
-    return JSON.stringify(data, null, 2);
-  }
-
-  // Import predictions (for testing or migration)
-  public importPredictions(jsonData: string): boolean {
-    try {
-      const data = JSON.parse(jsonData);
-      if (Array.isArray(data)) {
-        data.forEach(pred => {
-          if (pred.id && pred.matchId) {
-            this.predictions.set(pred.id, pred);
-          }
-        });
-        this.savePredictions();
-        return true;
-      }
-    } catch (error) {
-      // Error importing predictions from JSON data
-    }
-    return false;
-  }
 }
 
 // Export singleton instance

@@ -104,7 +104,7 @@ vi.mock('lucide-svelte', () => {
     TrendingUp: stub,
     TrendingDown: stub,
     Download: stub,
-    DollarSign: stub,
+    PoundSterling: stub,
     Minus: stub,
     Trophy: stub,
     Percent: stub,

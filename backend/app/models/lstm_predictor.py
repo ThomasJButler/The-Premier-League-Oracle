@@ -249,8 +249,11 @@ class LSTMPredictor:
         Returns:
             Training history and metrics
         """
+        if len(X_train) == 0:
+            raise ValueError("No real training data provided — refusing to train on empty data")
+
         logger.info(f"Training LSTM with {len(X_train)} samples")
-        
+
         # Store feature names
         self.feature_names = list(X_train.columns)
         
@@ -523,16 +526,16 @@ class LSTMPredictor:
         return {name: np.random.random() for name in self.feature_names}
 
 
-# Example usage
+# Demo only — uses synthetic data to verify model architecture.
+# For real training, use train_free_tier.py or the Pro-tier pipeline.
 if __name__ == "__main__":
-    print("🧠 LSTM Football Predictor Demo\n")
+    print("🧠 LSTM Football Predictor Demo (SYNTHETIC DATA — not a real model)\n")
     print("=" * 50)
-    
-    # Create sample data
+
+    # Synthetic data to test architecture — NOT for real predictions
     n_samples = 1000
     n_features = 150
-    
-    # Random features (in practice, use real features)
+
     X_train = pd.DataFrame(
         np.random.randn(n_samples, n_features),
         columns=[f'feature_{i}' for i in range(n_features)]

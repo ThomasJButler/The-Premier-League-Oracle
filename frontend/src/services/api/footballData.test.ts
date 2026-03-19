@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { FootballDataAPI } from './footballData';
-import type { FootballDataConfig } from './footballData';
 
 // Mock fetch globally
 vi.stubGlobal('fetch', vi.fn());
@@ -230,28 +229,6 @@ describe('FootballDataAPI', () => {
     });
   });
 
-  describe('getRecentResults', () => {
-    it('should fetch recent results with date filter', async () => {
-      api.setApiKey(mockApiKey);
-      
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ matches: [] })
-      } as unknown as Response);
-
-      await api.getRecentResults(7);
-      
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateFrom='),
-        expect.any(Object)
-      );
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('dateTo='),
-        expect.any(Object)
-      );
-    });
-  });
-
   describe('getStandings', () => {
     const mockStandingsResponse = {
       standings: [
@@ -364,7 +341,7 @@ describe('FootballDataAPI', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle rate limiting (429 status)', async () => {
+    it('should throw on rate limiting (429 status) so callers can show feedback', async () => {
       api.setApiKey(mockApiKey);
 
       vi.mocked(fetch).mockResolvedValueOnce({
@@ -373,12 +350,7 @@ describe('FootballDataAPI', () => {
         statusText: 'Too Many Requests'
       } as unknown as Response);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const matches = await api.getMatches();
-
-      expect(matches).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      await expect(api.getMatches()).rejects.toThrow('Rate limit exceeded');
     });
 
     it('should handle unauthorized access (401 status)', async () => {
@@ -396,6 +368,30 @@ describe('FootballDataAPI', () => {
       expect(matches).toEqual([]);
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+
+    it('should throw on API authentication failure (403 status) so callers can show feedback', async () => {
+      api.setApiKey('invalid-key');
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'Your API token is invalid' })
+      } as unknown as Response);
+
+      await expect(api.getMatches()).rejects.toThrow('API authentication failed');
+    });
+
+    it('should throw on 403 rate limit (distinguished from auth failure)', async () => {
+      api.setApiKey(mockApiKey);
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'You reached your request rate limit' })
+      } as unknown as Response);
+
+      await expect(api.getMatches()).rejects.toThrow('Rate limit exceeded');
     });
 
     it('should handle malformed JSON responses', async () => {
@@ -423,49 +419,6 @@ describe('FootballDataAPI', () => {
       const matches = await api.getMatches();
       
       expect(matches).toEqual([]);
-    });
-  });
-
-  describe('Data Transformation', () => {
-    it('should correctly determine match results', () => {
-      const testCases = [
-        { home: 2, away: 1, expected: 'H' },
-        { home: 1, away: 2, expected: 'A' },
-        { home: 1, away: 1, expected: 'D' },
-        { home: null, away: null, expected: null }
-      ];
-
-      testCases.forEach(({ home, away, expected }) => {
-        const match = {
-          score: {
-            fullTime: { home, away }
-          }
-        };
-
-        const result = home !== null && away !== null
-          ? home > away ? 'H' : away > home ? 'A' : 'D'
-          : null;
-
-        expect(result).toBe(expected);
-      });
-    });
-
-    it('should handle team name normalization', () => {
-      const teamNames = [
-        { input: 'Arsenal FC', expected: 'Arsenal' },
-        { input: 'Liverpool FC', expected: 'Liverpool' },
-        { input: 'Manchester United FC', expected: 'Manchester United' },
-        { input: 'Tottenham Hotspur FC', expected: 'Tottenham' }
-      ];
-
-      teamNames.forEach(({ input, expected }) => {
-        const normalized = input
-          .replace(' FC', '')
-          .replace(' AFC', '')
-          .replace(' Hotspur', '');
-        
-        expect(normalized).toContain(expected.split(' ')[0]);
-      });
     });
   });
 

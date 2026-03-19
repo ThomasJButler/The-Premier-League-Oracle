@@ -2,6 +2,7 @@
 
 - **Frontend:** `cd frontend && npm install && npm run dev` (localhost:5173)
 - **Backend:** `cd backend && docker-compose up` or `uvicorn app.api.main:app --reload --port 8000`
+- **Historical data**: `python -m app.data.football_data_collector --seasons 2020,2021,2022,2023,2024` (run before training)
 
 ## Validation
 

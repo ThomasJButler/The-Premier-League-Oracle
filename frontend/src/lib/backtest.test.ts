@@ -15,8 +15,11 @@ vi.mock('./optimizedPredictions', () => ({
 vi.mock('./advancedPredictions', () => ({
   sharedEloSystem: {
     getAllRatings: vi.fn(() => ({ 'Arsenal': 1800, 'Liverpool': 1780 })),
-    setTeamRating: vi.fn()
-  }
+    setTeamRating: vi.fn(),
+    getProcessedMatchIds: vi.fn(() => new Set<string>()),
+    setProcessedMatchIds: vi.fn()
+  },
+  EloRatingSystem: { DEFAULT_RATING: 1500 }
 }));
 
 const mockPredictMatch = vi.mocked(OptimizedPredictor.predictMatch);
@@ -365,7 +368,8 @@ describe('BacktestRunner', () => {
       'Arsenal',
       'Liverpool',
       expect.any(Array),
-      'Anthony Taylor'
+      'Anthony Taylor',
+      '2025-01-01T15:00:00Z'
     );
   });
 

@@ -15,11 +15,12 @@ The following items from this spec have been **implemented**:
 - **`getMatchesBySeason(seasonId)`:** DONE. Helper method that extracts the year from a season string and delegates to `getHistoricalMatches()`.
 - **3-tier cache:** DONE. Memory-level caching is handled via IndexedDB TTL checks; API fallback is in place.
 
-The following items **remain unimplemented or partially done**:
+All items from this spec are now **fully implemented**:
 
-- **5 seasons of historical data loading:** The method exists but there is no progressive loader that fetches all 5 seasons on first use with rate-limiting between requests.
-- **Supabase removal:** Most Supabase code has been removed, but the checklist below should be verified for completeness.
-- **Backend proxy:** Not yet configured in `vite.config.ts`.
+- **5 seasons of historical data loading:** DONE. `loadAllHistoricalSeasons()` in `dataService.ts` progressively fetches seasons 2020–2024 with rate-limited spacing, caching in IndexedDB.
+- **Supabase removal:** DONE. All Supabase code removed, verified 19 March 2026. Checklist below fully checked off.
+- **Football-Data.org proxy:** DONE. `/api/football-data` proxy configured in `vite.config.ts` for local development. In production, the frontend calls Football-Data.org directly (they send `Access-Control-Allow-Origin: *`).
+- **Backend ML proxy:** DONE. `/api/oracle` → `http://localhost:8000` proxy configured in `vite.config.ts` since P2b (backend service integration).
 
 ---
 
@@ -42,7 +43,7 @@ The following items **remain unimplemented or partially done**:
 |----------|------|----------|
 | `GET /competitions/PL/matches?status=SCHEDULED` | Upcoming fixtures | 30 min |
 | `GET /competitions/PL/matches?status=FINISHED` | Completed results | 1 hour |
-| `GET /competitions/PL/matches?status=LIVE` | Live scores | 60 sec |
+| `GET /competitions/PL/matches?status=IN_PLAY,PAUSED,EXTRA_TIME,PENALTY_SHOOTOUT` | Live scores | 60 sec |
 | `GET /competitions/PL/standings` | League table | 1 hour |
 | `GET /competitions/PL/scorers` | Top scorers | 6 hours |
 | `GET /competitions/PL/matches?season=YYYY` | Historical season | 24 hours |
@@ -64,7 +65,7 @@ Component → DataService
               ↓
            Memory cache (Map)   → instant, cleared on page reload
               ↓ miss
-           IndexedDB cache      → 5 min TTL (most data), 60s TTL (live)
+           IndexedDB cache      → 24h TTL (historical), 30min TTL (team-recent), 60s TTL (live)
               ↓ miss
            Football-Data.org API
 ```
@@ -82,11 +83,12 @@ Component → DataService
 **Requirement:** Load and cache the last 5 completed Premier League seasons for use by the prediction engine backtester and ELO initialiser.
 
 Seasons to fetch:
-- 2020 (2020-21 season)
-- 2021 (2021-22 season)
-- 2022 (2022-23 season)
-- 2023 (2023-24 season)
-- 2024 (2024-25 season — in progress)
+- 2020 (2020/21 season — complete)
+- 2021 (2021/22 season — complete)
+- 2022 (2022/23 season — complete)
+- 2023 (2023/24 season — complete)
+- 2024 (2024/25 season — complete)
+- 2025 (2025/26 season — current/in progress)
 
 **Implementation:**
 - Add `dataService.getHistoricalMatches(season: number): Promise<Match[]>` method
@@ -158,15 +160,15 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 
 ---
 
-## Supabase Removal Checklist
+## Supabase Removal Checklist — ALL DONE (19 March 2026)
 
-- [ ] Delete `frontend/src/services/predictionPersistence.ts`
-- [ ] Remove `@supabase/supabase-js` from `frontend/package.json` dependencies
-- [ ] Remove Supabase import from `frontend/src/components/Predictions.svelte` (already done)
-- [ ] Remove commented Supabase import from `frontend/src/components/BettingHistory.svelte`
-- [ ] Delete `supabase/` directory at project root
-- [ ] Delete `SUPABASE_SETUP_GUIDE.md` at project root
-- [ ] Remove `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `.env.example`
+- [x] Delete `frontend/src/services/predictionPersistence.ts` — file does not exist
+- [x] Remove `@supabase/supabase-js` from `frontend/package.json` dependencies — not present
+- [x] Remove Supabase import from `frontend/src/components/Predictions.svelte` — no imports remain
+- [x] Remove commented Supabase import from `frontend/src/components/BettingHistory.svelte` — no imports remain
+- [x] Delete `supabase/` directory at project root — directory does not exist
+- [x] Delete `SUPABASE_SETUP_GUIDE.md` at project root — file does not exist
+- [x] Remove `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `.env.example` — removed
 
 ---
 
@@ -176,7 +178,7 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 - [x] `getLiveMatches()` method returns real data (empty array when no live matches)
 - [x] `getHistoricalMatches(season)` fetches and caches season data
 - [x] `getTeamRecentMatches()` implemented and delegates to `footballDataAPI.getTeamMatches()`
-- [ ] Progressive 5-season loader with rate limiting (method exists, bulk loader does not)
-- [ ] All Supabase code removed
-- [ ] Rate limiting respected (queue requests, 6s minimum spacing for batch fetches)
-- [ ] Backend proxy configured in `vite.config.ts`
+- [x] Progressive 5-season loader with rate limiting — `loadAllHistoricalSeasons()` in `dataService.ts` fetches seasons 2020–2024 sequentially with rate-limited spacing, caches in IndexedDB, skips already-cached seasons
+- [x] All Supabase code removed
+- [x] Rate limiting respected — `footballData.ts` uses a proper request queue ensuring 6s minimum spacing between API calls (even under concurrent callers)
+- [x] Backend proxy configured in `vite.config.ts` — `/api/oracle` → `http://localhost:8000` since P2b

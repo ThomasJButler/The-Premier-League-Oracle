@@ -4,30 +4,37 @@
   import { dataService } from '../services/dataService';
   import type { Match } from '../types';
 
+  // Svelte 4 component constructor typing is limited — any is required for icon components
+   
+  type IconComponent = new (...args: any[]) => any;
+
   interface SeasonStat {
     label: string;
     value: string | number;
-    icon: any;
+    icon: IconComponent;
     color: string;
     description: string;
   }
 
   let loading = true;
+  let error: string | null = null;
   let matches: Match[] = [];
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
 
-  async function loadSeasonStats() {
+  export async function loadSeasonStats() {
     try {
       loading = true;
+      error = null;
       matches = await dataService.getCurrentSeasonMatches();
-      
+
       if (matches.length > 0) {
         stats = calculateInterestingStats(matches);
         additionalStats = calculateAdditionalStats(matches);
       }
-    } catch (error) {
-      // Error loading season stats
+    } catch (err) {
+      console.warn('Failed to load season stats:', err);
+      error = 'Unable to load season statistics. Please check your API key in Settings.';
     } finally {
       loading = false;
     }
@@ -86,7 +93,6 @@
     }
 
     // Find longest winning streak
-    let currentStreak = 0;
     let longestStreak = 0;
     let streakTeam = '';
     const teamResults: { [team: string]: string[] } = {};
@@ -169,7 +175,7 @@
       {
         label: 'Most Cards',
         value: hasCardData ? `${mostCards} cards` : 'N/A',
-        icon: Calendar,
+        icon: AlertTriangle,
         color: 'from-red-500 to-pink-500',
         description: hasCardData && mostCardsMatch.home_team
           ? `${mostCardsMatch.home_team} vs ${mostCardsMatch.away_team}`
@@ -196,7 +202,7 @@
     const completedMatches = matches.filter(m => m.result);
     
     // Clean sheets tracking
-    let cleanSheets: { [team: string]: number } = {};
+    const cleanSheets: { [team: string]: number } = {};
     completedMatches.forEach(match => {
       if (!cleanSheets[match.home_team]) cleanSheets[match.home_team] = 0;
       if (!cleanSheets[match.away_team]) cleanSheets[match.away_team] = 0;
@@ -238,13 +244,15 @@
       : -1; // Sentinel: -1 means no data available
     
     // Most goals in a single match
-    let highestScoringMatch = completedMatches.reduce((prev, curr) => {
-      const currGoals = (curr.home_goals || 0) + (curr.away_goals || 0);
-      const prevGoals = (prev.home_goals || 0) + (prev.away_goals || 0);
-      return currGoals > prevGoals ? curr : prev;
-    }, completedMatches[0] || {});
-    
-    const mostGoalsInMatch = highestScoringMatch 
+    const highestScoringMatch = completedMatches.length > 0
+      ? completedMatches.reduce((prev, curr) => {
+          const currGoals = (curr.home_goals || 0) + (curr.away_goals || 0);
+          const prevGoals = (prev.home_goals || 0) + (prev.away_goals || 0);
+          return currGoals > prevGoals ? curr : prev;
+        })
+      : null;
+
+    const mostGoalsInMatch = highestScoringMatch
       ? (highestScoringMatch.home_goals || 0) + (highestScoringMatch.away_goals || 0)
       : 0;
     
@@ -274,7 +282,6 @@
     const secondHalfGoals = totalGoals - firstHalfGoals;
     
     // Unbeaten runs
-    let currentUnbeaten = 0;
     let longestUnbeaten = 0;
     let unbeatenTeam = '';
     const teamUnbeaten: { [team: string]: number } = {};
@@ -364,7 +371,9 @@
       },
       {
         label: 'Second Half Goals',
-        value: secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`,
+        value: totalGoals > 0
+          ? (secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`)
+          : 'N/A',
         icon: Timer,
         color: 'from-slate-500 to-cyan-500',
         description: secondHalfGoals > firstHalfGoals ? 'More goals after halftime' : 'More goals before halftime'
@@ -407,14 +416,19 @@
         </div>
       {/each}
     </div>
+  {:else if error}
+    <div class="rounded-xl border border-destructive/50 bg-destructive/10 p-8 text-center">
+      <AlertTriangle class="w-12 h-12 mx-auto mb-3 text-destructive" />
+      <p class="text-destructive font-medium">{error}</p>
+    </div>
   {:else}
     <!-- Primary Stats -->
     <div class="mb-12">
       <h3 class="text-lg font-semibold font-display text-foreground mb-4">Key Insights</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Key season statistics">
         {#each stats as stat, i}
           <div 
-            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:scale-105 transition-all duration-300 cursor-pointer"
+            class="stat-card rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 motion-safe:hover:scale-105 transition-colors duration-300 motion-safe:transition-all"
             style="animation-delay: {i * 100}ms"
           >
             <div class="flex items-start justify-between mb-4">
@@ -443,10 +457,10 @@
     {#if additionalStats.length > 0}
       <div class="mb-8">
         <h3 class="text-lg font-semibold font-display text-foreground mb-4">Extended Analytics</h3>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" aria-label="Extended season analytics">
           {#each additionalStats as stat, i}
             <div 
-              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:scale-105 transition-all duration-300 cursor-pointer"
+              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 motion-safe:hover:scale-105 transition-colors duration-300 motion-safe:transition-all"
               style="animation-delay: {(stats.length + i) * 50}ms"
             >
               <div class="flex items-center gap-3 mb-2">
@@ -474,7 +488,7 @@
 
   <div class="mt-8 p-6 rounded-xl border border-border bg-card text-card-foreground shadow-sm text-center">
     <p class="text-sm text-muted-foreground">
-      <span class="font-semibold">Did you know?</span> These statistics are updated in real-time as matches are played.
+      <span class="font-semibold">Did you know?</span> These statistics are refreshed each time you visit this page.
       Check back regularly for the latest insights!
     </p>
   </div>
@@ -501,10 +515,4 @@
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   }
 
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
 </style>

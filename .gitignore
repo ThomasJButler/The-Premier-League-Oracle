@@ -10,15 +10,20 @@ node_modules
 
 # Environment files (contain API keys)
 /.env
+.env
 frontend/.env
+frontend/.env*.local
 backend/.env
 
 # Build output
 frontend/dist/
+frontend/coverage/
 
 # Backend generated files
 backend/chroma_db/
 backend/models/*.pkl
+backend/models/*.joblib
+backend/models/*.png
 
 # Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
@@ -35,10 +40,37 @@ frontend/test-results/
 # Ralph loop (embedded git repo — has its own remote)
 /how-to-ralph-wiggum
 loop.sh
-.env
-/backend/app/api/__pycache__
-.claude/settings.json
-/spreadsheets
+.claude-run/
+scripts/
+
+# Python
+**/__pycache__/
 *.pyc
-urgenttodo.txt
+*.pyo
+.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Backend runtime
+backend/cache/
+backend/logs/
+backend/mlruns/
+/spreadsheets
 /backend/spreadsheets
+
+# OS files
+.DS_Store
+
+# IDE
+.claude/settings.json
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Screenshots
+oracle-landing.png
+
+# Misc
+urgenttodo.txt
+/CoachWiggum
+/testimagesplaywright

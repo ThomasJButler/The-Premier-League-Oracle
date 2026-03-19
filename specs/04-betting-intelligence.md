@@ -15,11 +15,10 @@ The following items from this spec have been **implemented**:
 - **Requirement 4 (Value bet detection — value.ts):** `value.ts` does NOT use `Math.random()` for odds. The `ValueBettingEngine.identifyValueBets()` method accepts a `MarketOdds` parameter (user-supplied bookmaker odds) and compares against model probabilities from `AdvancedMatchPredictor`. It calculates EV, edge, and Kelly stake using real model outputs. An `OddsProvider` interface stub exists for future API integration.
 - **Requirement 6 (Auto-resolve bets):** DONE. `betHistoryService.resolveMatchBets()` is called by both `dataService.reconcilePredictions()` and `Dashboard.svelte` when match results are loaded.
 
-The following items **remain unimplemented or partially done**:
+All items from this spec are now **fully implemented**:
 
-- **ValueBets.svelte:** The component file does not exist. There is no UI for manual odds entry or value bet display.
-- **Requirement 3 (Kelly auto-suggestions):** `KellyCalculator.svelte` is manual-only; no auto-populated suggestions from predictions.
-- **Requirement 5 (BetBuilder completion):** `suggestedCombos` in `betBuilder.ts` needs verification for completeness.
+- **Requirement 5 (BetBuilder completion):** DONE. `suggestedCombos` generates valid, reasoned accumulator suggestions with market correlation (P4d). All four combo types apply `correlationAdjustment()` for consistent confidence calculations (P5al).
+- **Requirement 12 (Accumulator UI):** DONE. `AccumulatorBuilder.svelte` in `frontend/src/components/betting/` provides a dedicated accumulator view: loads upcoming matches, generates bet builder combos for each, displays all 4 combo types with confidence/reasoning/selections, supports building custom cross-match accumulators by selecting individual legs, Kelly-sized stakes, EV calculation, and Track Bet integration via `betHistoryService.storeBet()` with `market: 'combo'`. 17 tests in `AccumulatorBuilder.test.ts`.
 
 ---
 
@@ -30,10 +29,11 @@ The following items **remain unimplemented or partially done**:
 | `frontend/src/services/betting/kelly.ts` | Fully implemented — full/half/quarter Kelly |
 | `frontend/src/services/betting/value.ts` | Fully implemented — accepts user-supplied odds via `MarketOdds` param, uses model probabilities (no `Math.random()`) |
 | `frontend/src/services/betting/betHistoryService.ts` | Fully implemented — localStorage persistence, ROI, monthly P/L, auto-resolve |
-| `frontend/src/components/betting/KellyCalculator.svelte` | Manual input only, no auto-suggestions |
-| `frontend/src/components/betting/ValueBets.svelte` | Does not exist — no UI for value bet detection |
+| `frontend/src/components/betting/KellyCalculator.svelte` | Fully implemented — auto-suggested bets from upcoming predictions, manual calculator |
+| `frontend/src/components/betting/ValueBets.svelte` | Fully implemented — manual odds entry, real EV calculations, "Track Bet" integration |
 | `frontend/src/components/BettingHistory.svelte` | Fully implemented — real data, chart, table, export |
-| `frontend/src/lib/betBuilder.ts` | `suggestedCombos` partially complete |
+| `frontend/src/lib/betBuilder.ts` | Fully implemented — suggestedCombos, correlationAdjustment on all 4 combo types |
+| `frontend/src/components/betting/AccumulatorBuilder.svelte` | Fully implemented — cross-match accumulator builder, Track Bet integration |
 
 ---
 
@@ -90,7 +90,7 @@ The `bets: any[] = []` stub has been replaced with `bets: StoredBet[] = []` type
 
 ---
 
-## Requirement 3: Kelly Auto-Suggestions
+## Requirement 3: Kelly Auto-Suggestions — DONE
 
 `KellyCalculator.svelte` should offer **auto-populated suggestions** from upcoming match predictions.
 
@@ -117,7 +117,7 @@ Offered Kelly fractions: full (f*), half (f*/2), quarter (f*/4). Recommend quart
 
 **Engine (value.ts):** IMPLEMENTED. `ValueBettingEngine.identifyValueBets()` accepts user-supplied `MarketOdds` and compares against `AdvancedMatchPredictor` probabilities. It does NOT use `Math.random()` — all probability calculations use the real prediction model and Poisson distribution. The engine calculates EV, edge, Kelly stake, and generates reasoning/warnings. An `OddsProvider` interface stub exists for future API integration. Also includes arbitrage detection, CLV tracking, Sharpe ratio, and performance metrics.
 
-**UI (ValueBets.svelte):** NOT IMPLEMENTED. The component file does not exist. There is no UI for manual odds entry or value bet display. The engine has zero UI consumers.
+**UI (ValueBets.svelte):** IMPLEMENTED. The component allows manual odds entry for a selected upcoming match, displays real EV calculations, and wires into `betHistoryService` via a "Track Bet" button.
 
 **MVP approach: manual odds entry**
 
@@ -162,10 +162,17 @@ When a match result comes in via the API, auto-resolve any pending bets for that
 
 ## Acceptance Criteria
 
+> Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
+
 - [x] `BetHistoryService` created, uses localStorage, matches `StoredBet` interface
 - [x] `BettingHistory.svelte` shows real bet history, monthly P/L chart, and ROI stats
-- [ ] `KellyCalculator.svelte` shows auto-suggested bets from upcoming predictions
-- [ ] `ValueBets.svelte` allows manual odds entry and shows real EV calculations (component does not exist yet; engine in `value.ts` is complete)
-- [ ] `BetBuilderPredictor.suggestedCombos` generates valid, reasoned accumulator suggestions
+- [x] `KellyCalculator.svelte` shows auto-suggested bets from upcoming predictions (P2g)
+- [x] `ValueBets.svelte` allows manual odds entry and shows real EV calculations — component created (P2i), engine in `value.ts` complete
+- [x] `BetBuilderPredictor.suggestedCombos` generates valid, reasoned accumulator suggestions with market correlation (P4d)
 - [x] Auto-resolve fires when match results are loaded (via `dataService.reconcilePredictions()` and `Dashboard.svelte`)
 - [x] No `any[]` type usage in betting components
+- [x] `betHistoryService.storeBet()` wired into KellyCalculator and ValueBets via "Track Bet" buttons (P1i)
+- [x] BetHistoryService resolution bugs fixed (P1g)
+- [x] betBuilder corner/card probability overflow clamped to [0, 0.99] (P1l)
+- [x] Kelly circular probability bug fixed — uses model confidence as ourProbability (P1l)
+- [x] Accumulator/combination bet UI — `AccumulatorBuilder.svelte` with cross-match accumulator building, per-combo Track Bet, and betHistoryService integration (17 tests)

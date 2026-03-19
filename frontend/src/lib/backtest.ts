@@ -29,8 +29,7 @@ export interface BacktestPrediction {
 
 export type BacktestProgressCallback = (completed: number, total: number) => void;
 
-// Margin used by OptimizedPredictor.calculateValueOdds — probability = margin / odds
-const VALUE_ODDS_MARGIN = 1.05;
+import { VALUE_ODDS_MARGIN } from './constants';
 
 /**
  * Extract outcome probabilities from the prediction model.
@@ -105,6 +104,7 @@ export class BacktestRunner {
   async run(onProgress?: BacktestProgressCallback): Promise<BacktestResult> {
     // Snapshot the shared ELO state so backtesting doesn't corrupt live ratings
     const eloSnapshot = sharedEloSystem.getAllRatings();
+    const processedIdsSnapshot = sharedEloSystem.getProcessedMatchIds();
 
     const predictions: BacktestPrediction[] = [];
     const total = this.matches.length;
@@ -121,7 +121,8 @@ export class BacktestRunner {
           match.home_team,
           match.away_team,
           historicalMatches,
-          match.referee
+          match.referee,
+          match.date
         );
       } catch {
         // If prediction fails, skip this match
@@ -157,6 +158,7 @@ export class BacktestRunner {
     for (const [team, rating] of Object.entries(eloSnapshot)) {
       sharedEloSystem.setTeamRating(team, rating);
     }
+    sharedEloSystem.setProcessedMatchIds(processedIdsSnapshot);
 
     return this.computeMetrics(predictions);
   }

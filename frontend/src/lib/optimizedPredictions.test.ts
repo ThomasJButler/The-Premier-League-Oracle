@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OptimizedPredictor } from './optimizedPredictions';
 import { EloRatingSystem, sharedEloSystem } from './advancedPredictions';
 import { dataService } from '../services/dataService';
-import type { Match, Standing } from '../types';
+import { backendService } from '../services/backendService';
+import { BackendUnavailableError } from '../types';
+import type { Match, Standing, MLPrediction } from '../types';
 
 vi.mock('../services/dataService', () => ({
   dataService: {
@@ -12,13 +14,24 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
+vi.mock('../services/backendService', () => ({
+  backendService: {
+    predictMatch: vi.fn(),
+    isAvailable: vi.fn(),
+    invalidateCache: vi.fn()
+  }
+}));
+
+// Default match date in the past to avoid timing-sensitive filtering in FatigueAnalyzer
+const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString();
+
 /** Creates a full Match object with sensible defaults. Override any field as needed. */
 function createMockMatch(
   overrides: Partial<Match> & { id: string; home_team: string; away_team: string }
 ): Match {
   return {
     season_id: '2025-26',
-    date: new Date().toISOString(),
+    date: YESTERDAY,
     home_goals: null,
     away_goals: null,
     result: null,
@@ -65,6 +78,7 @@ function createMockStanding(overrides: Partial<Standing> & { team: Standing['tea
 describe('OptimizedPredictor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.removeItem('use_backend');
   });
 
   describe('predictMatch', () => {
@@ -394,18 +408,127 @@ describe('OptimizedPredictor', () => {
 
       const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
 
+      // P5e: Assertions must always execute — no conditional guards
       expect(prediction.valueOdds).toBeDefined();
-      if (prediction.valueOdds) {
-        // Odds should be > 1.0 (decimal format)
-        expect(prediction.valueOdds.home).toBeGreaterThan(1.0);
-        expect(prediction.valueOdds.draw).toBeGreaterThan(1.0);
-        expect(prediction.valueOdds.away).toBeGreaterThan(1.0);
+      const odds = prediction.valueOdds!;
 
-        // More likely outcomes should have lower odds
-        if (prediction.predictedResult === 'H') {
-          expect(prediction.valueOdds.home).toBeLessThan(prediction.valueOdds.away);
-        }
-      }
+      // Odds should be > 1.0 (decimal format)
+      expect(odds.home).toBeGreaterThan(1.0);
+      expect(odds.draw).toBeGreaterThan(1.0);
+      expect(odds.away).toBeGreaterThan(1.0);
+
+      // The predicted outcome should have the lowest odds (highest probability)
+      const topProb = prediction.predictedResult === 'H' ? odds.home
+        : prediction.predictedResult === 'A' ? odds.away
+        : odds.draw;
+      const otherOdds = [odds.home, odds.draw, odds.away].filter(o => o !== topProb);
+      expect(topProb).toBeLessThanOrEqual(Math.min(...otherOdds));
+    });
+  });
+
+  describe('ML backend integration', () => {
+    const mockMLPrediction: MLPrediction = {
+      match: 'Arsenal FC vs Chelsea FC',
+      prediction: { home: 0.55, draw: 0.25, away: 0.20 },
+      confidence: 0.78,
+      recommendation: 'Home Win',
+      timestamp: '2026-03-20T12:00:00Z',
+    };
+
+    function setupDefaultMocks() {
+      vi.mocked(dataService.getStandings).mockResolvedValue([]);
+      vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+      vi.mocked(dataService.getMatches).mockResolvedValue([]);
+    }
+
+    it('should not call backendService when use_backend is not enabled', async () => {
+      setupDefaultMocks();
+
+      await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      expect(backendService.predictMatch).not.toHaveBeenCalled();
+    });
+
+    it('should call backendService when use_backend is enabled', async () => {
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'true' : null
+      );
+      vi.mocked(backendService.predictMatch).mockResolvedValue(mockMLPrediction);
+      setupDefaultMocks();
+
+      await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      expect(backendService.predictMatch).toHaveBeenCalledWith('Arsenal FC', 'Chelsea FC');
+    });
+
+    it('should include ml weight in modelWeights when backend prediction succeeds', async () => {
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'true' : null
+      );
+      vi.mocked(backendService.predictMatch).mockResolvedValue(mockMLPrediction);
+      setupDefaultMocks();
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      expect(prediction.modelWeights.ml).toBeDefined();
+      expect(prediction.modelWeights.ml).toBeCloseTo(0.30, 2);
+
+      // TS weights should be scaled down: 0.25 * 0.70 = 0.175, etc.
+      expect(prediction.modelWeights.elo).toBeCloseTo(0.175, 3);
+      expect(prediction.modelWeights.poisson).toBeCloseTo(0.21, 3);
+
+      // Total weights should sum to 1
+      const { elo, poisson, form, h2h, standings: sw, ml } = prediction.modelWeights;
+      expect(elo + poisson + form + h2h + sw + (ml ?? 0)).toBeCloseTo(1.0, 5);
+    });
+
+    it('should silently fall back when backend throws BackendUnavailableError', async () => {
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'true' : null
+      );
+      vi.mocked(backendService.predictMatch).mockRejectedValue(
+        new BackendUnavailableError('Backend down')
+      );
+      setupDefaultMocks();
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      // Should still produce a valid prediction
+      expect(['H', 'D', 'A']).toContain(prediction.predictedResult);
+      // No ML weight in output
+      expect(prediction.modelWeights.ml).toBeUndefined();
+      // TS weights should be full (not scaled)
+      expect(prediction.modelWeights.elo).toBeCloseTo(0.25, 3);
+    });
+
+    it('should add insight when ML prediction is incorporated', async () => {
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'true' : null
+      );
+      vi.mocked(backendService.predictMatch).mockResolvedValue(mockMLPrediction);
+      setupDefaultMocks();
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      expect(prediction.insights).toContain('ML backend prediction incorporated into ensemble');
+    });
+
+    it('should not call backend in backtest mode (historicalMatches provided)', async () => {
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'true' : null
+      );
+      setupDefaultMocks();
+
+      const historicalMatches = [
+        createMockMatch({
+          id: '1', home_team: 'Arsenal FC', away_team: 'Chelsea FC',
+          home_goals: 2, away_goals: 1, result: 'H' as const
+        })
+      ];
+
+      await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC', historicalMatches);
+
+      expect(backendService.predictMatch).not.toHaveBeenCalled();
     });
   });
 });

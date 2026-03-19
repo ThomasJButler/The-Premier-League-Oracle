@@ -15,7 +15,7 @@ The Premier League Oracle is a data-driven football prediction platform that use
 - **Styling**: Tailwind CSS with dark/light mode support
 - **Data Source**: Football-Data.org API v4 (no Supabase)
 - **Caching**: IndexedDB 3-tier cache (memory -> IndexedDB -> API)
-- **Charts**: Chart.js with svelte-chartjs
+- **Charts**: Chart.js with svelte-chartjs (theme-aware via CSS variables)
 - **Testing**: Vitest with @testing-library/svelte
 - **Deployment**: Vercel (frontend)
 
@@ -42,30 +42,33 @@ uvicorn app.api.main:app --reload --port 8000
 
 ### Frontend Structure (`frontend/src/`)
 - `components/` - Svelte components (Dashboard, Predictions, LiveMatches, etc.)
-- `components/betting/` - Betting UI (KellyCalculator, ValueBets)
+- `components/betting/` - Betting UI (KellyCalculator, ValueBets, AccumulatorBuilder)
 - `lib/` - Core prediction libraries:
   - `advancedPredictions.ts` - Statistical models (ELO, Poisson, xG, Fatigue, Referee)
   - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
-  - `predictions.ts` - Original weighted prediction model
   - `betBuilder.ts` - Multi-market prediction generator
+  - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised)
+  - `constants.ts` - Shared constants (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`)
+  - `utils.ts` - Shared utilities (`cn()`, `focusTrap()`, `getSeasonYear()`, `getSeasonLabel()`)
 - `services/` - Data and business logic:
-  - `api/footballData.ts` - Football-Data.org API client with rate limiting
-  - `dataService.ts` - Singleton data layer (cache + API)
-  - `predictionTracker.ts` - Prediction persistence (localStorage)
+  - `api/footballData.ts` - Football-Data.org API client with rate limiting + request queue
+  - `dataService.ts` - Singleton data layer (cache + API + progressive historical loader)
+  - `predictionTracker.ts` - Prediction persistence + calibration factors (localStorage)
   - `betting/kelly.ts` - Kelly Criterion calculator
-  - `betting/value.ts` - Value bet detection engine (user-supplied odds via ValueBets UI)
+  - `betting/value.ts` - Value bet detection engine (imports PoissonPredictor from advancedPredictions)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
 - `types/index.ts` - Shared TypeScript types
-- `utils/teamLogos.ts` - Team logo URL mappings
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
 
 ### Backend Structure (`backend/app/`)
 - `api/main.py` - FastAPI server with prediction endpoints
 - `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
-- `features/advanced_engineering.py` - 150+ feature engineering pipeline
+- `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
+- `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
+- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
 - `data/football_data_collector.py` - Historical data collection
-- `security/` - Auth, secrets, validators
+- `security/` - Auth, secrets, validators (entirely unused at runtime — not imported by main.py)
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -73,19 +76,19 @@ uvicorn app.api.main:app --reload --port 8000
 - **localStorage persistence**: ELO ratings, predictions, bets, settings all in localStorage.
 - **Vite proxy**: `/api/football-data` proxies to `https://api.football-data.org/v4`
 
-
 ## Specifications
 
 All feature specifications live in `specs/`:
-- `01-prediction-engine.md` - ELO, Poisson, fatigue, referee, confidence, backtesting
-- `02-data-pipeline.md` - Football-Data.org integration, caching, historical data
-- `03-backend-integration.md` - Python ML backend connection
-- `04-betting-intelligence.md` - Kelly, value bets, bet history, accumulators
-- `05-live-data.md` - Live scores, smart polling, WebSocket
-- `06-prediction-tracking.md` - Accuracy tracking, auto-reconciliation
-- `07-ui-ux.md` - shadcn-svelte migration, dark mode, accessibility
+- `01-prediction-engine.md` - ELO, Poisson, fatigue, referee, confidence, backtesting — **100% (8/8)**
+- `02-data-pipeline.md` - Football-Data.org integration, caching, historical data — **100% (8/8)**
+- `03-backend-integration.md` - Python ML backend connection — **100% (8/8)**
+- `04-betting-intelligence.md` - Kelly, value bets, bet history, accumulators — **100% (12/12)**
+- `05-live-data.md` - Live scores, smart polling — **100% (10/10)**
+- `06-prediction-tracking.md` - Accuracy tracking, auto-reconciliation — **100% (7/7)**
+- `07-ui-ux.md` - shadcn-svelte migration, dark mode, accessibility — **100% (17/17)**
+- `08-backend-training.md` - Backend ML training pipeline — **~95% (23/24)** Pro-tier Req 6 deferred
 
-These specs are the single source of truth for requirements.
+These specs are the single source of truth for requirements. **All 99 active acceptance criteria met.**
 
 ### Coding Standards
 - Use TypeScript for all new frontend code
@@ -95,31 +98,64 @@ These specs are the single source of truth for requirements.
 - Check types before committing: `cd frontend && npm run check`
 - Run tests before committing: `cd frontend && npm run test:run`
 
-### Current Focus Areas
-- See `IMPLEMENTATION_PLAN.md` for the prioritised task list
-- Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
-- Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
+## Current Focus — P6 Final Push (MVP Ship)
 
-### Important Notes
-- `frontend/src/` is the active codebase (old `src/` directory has been removed)
-- shadcn-svelte partially set up — 5 components installed (Button, Card, Badge, Separator, Skeleton) but only Separator wired into UI; `components.json` exists (enables `npx shadcn-svelte@latest add`)
-- Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200
-- Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but 49 methods return hardcoded `0.0` — tactics, player-level, betting market, weather features all stubbed. **2 `np.random` calls remain** in `lstm_predictor.py:523` (fake feature importance) and `modern_oracle.py:581` (fake ensemble optimisation)
-- Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
-- Backend has 0% test coverage (`test_setup.py` only checks imports — no assertions)
-- Frontend has 378 Vitest tests across 21 test files, all passing
-- 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
-- 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
-- `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
-- `predictions.ts` is entirely dead at runtime — zero imports from any component; only tested, never called
-- 3 new service files need creating: backendService, liveService, aiAnalysis (`backtest.ts` already created)
-- `ChatBot.svelte` makes direct browser-to-OpenAI API calls (key visible in network tab) — security warning banner added but architecture unchanged
-- Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
-- `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"
-- `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)
-- `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
-- `.gitignore` is missing `backend/.env` — API keys could be accidentally committed
-- `backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files
-- MIT licensed for open-source collaboration
+**Execution order:** P6c → P6e → P6a → P6b → P6d (see `IMPLEMENTATION_PLAN.md` for full details)
 
-### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
+| Item | Description | Status |
+|------|-------------|--------|
+| P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | Not started |
+| P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | Not started |
+| P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | Not started |
+| P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | Not started |
+| P6d | Docker & deployment documentation | Not started |
+
+**Active branches:** `v3.0-BackendMLTraining` (current), `pro-tier-archive` (archived Pro code)
+
+## Current State & Gotchas
+
+### Test Coverage
+- **Frontend:** 507 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
+- **Backend:** 86 pytest tests (3 files), all non-skip passing (7 skip without libomp)
+- **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
+- **Untested components (3):** Header, SidebarNav, Sidebar — layout/navigation only
+
+### Frontend Gotchas
+- `Prediction` type in `types/index.ts` is a dead legacy interface — `StoredPrediction` is the actual runtime type
+- `KellyCalculator.svelte` edge display: `edgePercentage` from `kelly.ts` is already a percentage (e.g. 5.0 for 5%) — do NOT multiply by 100 again in the template
+- `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — mitigated by `ValueBets.svelte` `mapMarket()` conversion
+- `SEED_RATINGS` in `advancedPredictions.ts` contains only the 20 current PL teams — unknown teams fall back to `DEFAULT_RATING` (1500). Needs seasonal update on promotion/relegation
+- `Settings.svelte` `teamColors` hardcodes current season teams — needs seasonal update
+- shadcn-svelte: 7 components (Button, Card, Badge, Separator, Skeleton, Dialog, Sheet) all wired. Custom implementations (no bits-ui). `components.json` exists for `npx shadcn-svelte@latest add`
+- Svelte 4 `any` limitations: `SeasonStats.svelte` icon prop, `Sidebar/MobileNav` keydown handlers — cannot be resolved without `any`
+
+### Backend Gotchas
+- Server starts with graceful degradation — heavy deps (shap, optuna, redis, sklearn, torch) are optional. ML endpoints disabled when deps missing but `/health` returns 200
+- 63 feature engineering methods return hardcoded `0.0` — Pro-tier only (tactics, player-level, betting, weather, advanced)
+- 2 `np.random` calls remain: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation) — both Pro-tier
+- Security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — targeted for deletion in P6c
+- `torch` missing from `requirements.txt` (only in `environment.yml`) — LSTM/Transformer non-functional via pip
+- `backend/spreadsheets/` is gitignored — CSV training data (2,191 matches) not included in repo clone
+- `advanced_engineering.py` `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
+- CORS includes `allow_origin_regex=r"https://.*\.vercel\.app"` for Vercel production + preview deployments
+
+### Data Constraints
+- Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
+- CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` has richer data (shots, corners, cards, odds) but this creates a training/inference mismatch — `FreeTierFeatureEngineer` handles gracefully
+- Free-tier ML model: 51.0% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
+
+### Architecture Notes
+- `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection
+- `footballData.ts` `rateLimitedFetch()` uses promise-based request queue for serialised API access
+- `dataService.ts` progressively fetches seasons 2020-2024 in background on startup
+- Single Poisson implementation in `advancedPredictions.ts` (`PoissonPredictor`) — shared by `value.ts` and `betBuilder.ts`
+- ELO home advantage is the single source of truth (form analysis no longer applies momentum adjustments)
+- `svelte-check` reports 0 errors, 0 warnings
+
+### The #1 Rule of E2E Tests
+A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
+
+## Completed Work
+
+All completed P0–P5h work (20 audits, hundreds of fixes) is documented in `CHANGELOG.md`.
+Pro-tier deferred work (P3a–d) is detailed in `IMPLEMENTATION_PLAN.md`.
