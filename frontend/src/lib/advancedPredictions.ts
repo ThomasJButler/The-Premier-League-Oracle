@@ -65,6 +65,10 @@ export class EloRatingSystem {
 
   // Default seed ratings — used only when no localStorage data exists.
   // Keyed by canonical Football-Data.org names (with FC suffix).
+  // Cold-start ELO ratings for new users — should be updated each season to
+  // reflect the current PL squad. Teams not listed here fall back to
+  // DEFAULT_RATING (1500). Once matches are processed, ratings are stored in
+  // localStorage and these seeds are no longer used.
   private static readonly SEED_RATINGS: Record<string, number> = {
     'Manchester City FC': 1850,
     'Arsenal FC': 1800,
@@ -84,13 +88,8 @@ export class EloRatingSystem {
     'Nottingham Forest FC': 1420,
     'AFC Bournemouth': 1400,
     'Leicester City FC': 1380,
-    'Leeds United FC': 1360,
     'Southampton FC': 1340,
     'Ipswich Town FC': 1320,
-    'Sunderland AFC': 1310,
-    'Luton Town FC': 1300,
-    'Burnley FC': 1290,
-    'Sheffield United FC': 1280,
   };
 
   // Short-name aliases → canonical name for fuzzy lookup

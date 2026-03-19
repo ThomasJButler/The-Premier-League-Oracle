@@ -8,7 +8,8 @@
     BarElement,
     CategoryScale,
     LinearScale,
-    type ChartData
+    type ChartData,
+    type TooltipItem
   } from 'chart.js';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
@@ -192,7 +193,7 @@
       },
       tooltip: {
         callbacks: {
-          label: (ctx: any) => `£${ctx.parsed.y.toFixed(2)}`
+          label: (ctx: TooltipItem<'bar'>) => `£${ctx.parsed.y.toFixed(2)}`
         }
       }
     }
@@ -216,7 +217,7 @@
       <div class="stat-value">£{$totalWagered.toFixed(2)}</div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 100ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper {$totalProfitLoss >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         {#if $totalProfitLoss >= 0}
           <TrendingUp class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -230,7 +231,7 @@
       </div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 200ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper {$roiTweened >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}">
         <Percent class="w-5 h-5 {$roiTweened >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}" />
       </div>
@@ -240,7 +241,7 @@
       </div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 300ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-teal-100 dark:bg-teal-900/30">
         <Trophy class="w-5 h-5 text-teal-600 dark:text-teal-400" />
       </div>
@@ -248,7 +249,7 @@
       <div class="stat-value">{$winRateTweened.toFixed(1)}%</div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
       <div class="stat-icon-wrapper bg-amber-100 dark:bg-amber-900/30">
         <PoundSterling class="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
@@ -258,7 +259,7 @@
   </div>
 
   <!-- Profit/Loss Chart -->
-  <div class="rounded-xl border border-border bg-card p-5" style="animation-delay: 300ms">
+  <div class="rounded-xl border border-border bg-card p-5">
     <h3 class="text-lg font-semibold font-display text-foreground mb-3">Monthly Profit/Loss</h3>
     {#if monthlyPerformance.labels && monthlyPerformance.labels.length > 0}
       <div class="h-64" role="img" aria-label="Bar chart showing monthly profit and loss from resolved bets">
@@ -272,7 +273,7 @@
   </div>
 
   <!-- Bet History Table -->
-  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" style="animation-delay: 400ms">
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold font-display text-foreground">Detailed History</h3>
       <div class="flex space-x-2">

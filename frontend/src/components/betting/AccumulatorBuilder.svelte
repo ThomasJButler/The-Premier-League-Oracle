@@ -422,7 +422,7 @@
                         <button
                           class="text-xs px-2 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 transition-colors"
                           on:click={() => addLeg(match, combo, selIdx)}
-                          title="Add '{selection}' to your accumulator"
+                          aria-label="Add '{selection}' to your accumulator"
                         >
                           + {selection}
                         </button>

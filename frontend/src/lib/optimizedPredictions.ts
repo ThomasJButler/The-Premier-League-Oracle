@@ -4,7 +4,7 @@ import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
-import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
+import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE } from './constants';
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -673,7 +673,7 @@ export class OptimizedPredictor {
 
   private static getStandingsProbabilities(homePosition: number, awayPosition: number) {
     if (!homePosition || !awayPosition) {
-      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: 0.27, awayWin: 1 - DEFAULT_HOME_WIN_RATE - 0.27 };
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: DEFAULT_DRAW_RATE, awayWin: 1 - DEFAULT_HOME_WIN_RATE - DEFAULT_DRAW_RATE };
     }
 
     const positionDiff = awayPosition - homePosition;
@@ -746,7 +746,7 @@ export class OptimizedPredictor {
     const total = homeWin + draw + awayWin;
 
     if (total === 0) {
-      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: 0.27, awayWin: 1 - DEFAULT_HOME_WIN_RATE - 0.27 };
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: DEFAULT_DRAW_RATE, awayWin: 1 - DEFAULT_HOME_WIN_RATE - DEFAULT_DRAW_RATE };
     }
 
     return {

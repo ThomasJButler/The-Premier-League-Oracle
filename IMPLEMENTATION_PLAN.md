@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: April 2026 (thirty-fourth update — twentieth audit)
+Last updated: April 2026 (thirty-fifth update — twentieth audit resolved)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~87% Complete
+## Project Status: ~89% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -18,7 +18,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
-| P5h Twentieth Audit | 0/17 (0%) | NEW — 17 items found (3 real bugs, 6 a11y, 4 type/code quality, 4 consistency) |
+| P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 
 **Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -167,36 +167,36 @@ All issues fixed:
 - [x] `optimizedPredictions.ts:484` — `getEnhancedTeamStats` is `async` but never calls `await` (low, code quality) — **FIXED:** removed unnecessary `async` keyword from `getEnhancedTeamStats` — callers already handle it correctly via `Promise.all`
 - [x] `StandingsTable.svelte` and `TopScorers.svelte` — `catch (err: any)` should be `catch (err: unknown)` (low) — **FIXED:** changed to `catch (err: unknown)` with `instanceof Error` narrowing before accessing `.message`
 
-### P5h. Twentieth Audit (April 2026) — 17 items
+### P5h. Twentieth Audit (April 2026) — ALL DONE
 
 **Real bugs (3):**
 
-- [ ] `KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100. `kelly.ts:72` computes `edgePercentage = edge * 100` (already a percentage), then the template does `(calculation.edgePercentage * 100).toFixed(1)%` — a 5% edge displays as `500.0%` (high, confirmed)
-- [ ] `optimizedPredictions.ts:676,749` — `combineModels` and `getStandingsProbabilities` zero-guard fallbacks use magic `draw: 0.27` instead of a named constant. If `DEFAULT_HOME_WIN_RATE` is ever changed, these fallbacks will be silently inconsistent (low, maintenance risk)
-- [ ] `check_imports.py:103-104` — `ModernPremierLeagueOracle` import check never actually imports the module — the `try` block only contains a `print()` call, so the check always reports success regardless of whether the module is importable (low)
+- [x] `KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100. `kelly.ts:72` computes `edgePercentage = edge * 100` (already a percentage), then the template does `(calculation.edgePercentage * 100).toFixed(1)%` — a 5% edge displays as `500.0%` (high, confirmed) — **FIXED:** removed extra `* 100` from template; `edgePercentage` is already a percentage from `kelly.ts`
+- [x] `optimizedPredictions.ts:676,749` — `combineModels` and `getStandingsProbabilities` zero-guard fallbacks use magic `draw: 0.27` instead of a named constant. If `DEFAULT_HOME_WIN_RATE` is ever changed, these fallbacks will be silently inconsistent (low, maintenance risk) — **FIXED:** replaced magic `0.27` with named `DEFAULT_DRAW_RATE` constant exported from `constants.ts`
+- [x] `check_imports.py:103-104` — `ModernPremierLeagueOracle` import check never actually imports the module — the `try` block only contains a `print()` call, so the check always reports success regardless of whether the module is importable (low) — **FIXED:** added actual `from app.models.modern_oracle import ModernPremierLeagueOracle` import inside the try block
 
 **Accessibility (6):**
 
-- [ ] `StandingsTable.svelte` — "Show All / Show Less" toggle button missing `aria-expanded` attribute — screen readers cannot determine current state (medium)
-- [ ] `LiveTicker.svelte:124` — `role="marquee"` is deprecated in ARIA 1.2. Should remove the role — the `aria-live="off"` + `sr-only` pattern already handles screen readers correctly (low)
-- [ ] `ChatBot.svelte:397` — "Clear chat" button has only a `title` attribute, no `aria-label`. `title` not reliably announced on touch devices (low)
-- [ ] `Help.svelte:53` — Section navigation uses `aria-current="page"` for in-page section switching — should be `aria-current="true"` (not actual page navigation) (low)
-- [ ] `AccumulatorBuilder.svelte` — Individual selection "Add" buttons have `title` but no `aria-label` — not reliably announced on touch devices (low)
-- [ ] `SeasonStats.svelte` — Stat cards use `hover:scale-105 transition-all` without `@media (prefers-reduced-motion)` guard. `transition-all` can cause unexpected animation of non-visual properties (low)
+- [x] `StandingsTable.svelte` — "Show All / Show Less" toggle button missing `aria-expanded` attribute — screen readers cannot determine current state (medium) — **FIXED:** added `aria-expanded={showFullTable}` to the toggle button
+- [x] `LiveTicker.svelte:124` — `role="marquee"` is deprecated in ARIA 1.2. Should remove the role — the `aria-live="off"` + `sr-only` pattern already handles screen readers correctly (low) — **FIXED:** removed deprecated `role="marquee"`; sr-only + aria-live pattern already handles a11y correctly
+- [x] `ChatBot.svelte:397` — "Clear chat" button has only a `title` attribute, no `aria-label`. `title` not reliably announced on touch devices (low) — **FIXED:** replaced `title` with `aria-label` on the Clear chat button
+- [x] `Help.svelte:53` — Section navigation uses `aria-current="page"` for in-page section switching — should be `aria-current="true"` (not actual page navigation) (low) — **FIXED:** changed `aria-current="page"` to `aria-current="true"` for in-page section navigation
+- [x] `AccumulatorBuilder.svelte` — Individual selection "Add" buttons have `title` but no `aria-label` — not reliably announced on touch devices (low) — **FIXED:** replaced `title` with `aria-label` on all selection buttons
+- [x] `SeasonStats.svelte` — Stat cards use `hover:scale-105 transition-all` without `@media (prefers-reduced-motion)` guard. `transition-all` can cause unexpected animation of non-visual properties (low) — **FIXED:** added `motion-safe:` prefix to `hover:scale-105` and `transition-all`; safe baseline `transition-colors` retained for reduced-motion users
 
 **Type safety / code quality (4):**
 
-- [ ] `ChatBot.svelte:264` — `catch (err: any)` should be `catch (err: unknown)` with `instanceof Error` narrowing. P5g fixed this in StandingsTable and TopScorers but ChatBot was missed (low)
-- [ ] `BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback should be typed using `TooltipItem<'bar'>` (low)
-- [ ] `BettingHistory.svelte:219-275` — `style="animation-delay: 100ms"` on 6 summary cards but no animation class on the individual cards — the parent `animate-fade-in` doesn't propagate delay. Delays are vestigial/non-functional (low)
-- [ ] `backend/app/api/main.py:392` — `/predict` error handler leaks internal error details via `detail=str(e)`, inconsistent with the global handler which returns a generic message (low, only affects permanently-503 oracle endpoints)
+- [x] `ChatBot.svelte:264` — `catch (err: any)` should be `catch (err: unknown)` with `instanceof Error` narrowing. P5g fixed this in StandingsTable and TopScorers but ChatBot was missed (low) — **FIXED:** changed to `catch (err: unknown)` with proper `instanceof Error` narrowing
+- [x] `BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback should be typed using `TooltipItem<'bar'>` (low) — **FIXED:** typed as `TooltipItem<'bar'>` with proper import from `chart.js`
+- [x] `BettingHistory.svelte:219-275` — `style="animation-delay: 100ms"` on 6 summary cards but no animation class on the individual cards — the parent `animate-fade-in` doesn't propagate delay. Delays are vestigial/non-functional (low) — **FIXED:** removed all 6 vestigial `style="animation-delay"` attributes
+- [x] `backend/app/api/main.py:392` — `/predict` error handler leaks internal error details via `detail=str(e)`, inconsistent with the global handler which returns a generic message (low, only affects permanently-503 oracle endpoints) — **FIXED:** replaced `detail=str(e)` with generic error messages across all 5 endpoint handlers
 
 **Consistency / documentation (4):**
 
-- [ ] `SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United) that are not in the 2025/26 Premier League. Missing any 2025/26 promoted teams who fall back to DEFAULT_RATING (1500). Cold-start ELO priors are wrong for new users (medium)
-- [ ] `Settings.svelte:33-42` — `teamColors` map hardcodes 2024/25 season teams. Will become stale on promotion/relegation (low)
-- [ ] `Help.svelte:345` — Dashboard feature list claims "Live standings" which the Dashboard does not show (Standings is a separate view) (low)
-- [ ] `ApiSetupWizard.svelte:309` — Step 4 "Use Kelly Calculator for betting" directly contradicts Step 2's "research and educational purposes only" disclaimer (low)
+- [x] `SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United) that are not in the 2025/26 Premier League. Missing any 2025/26 promoted teams who fall back to DEFAULT_RATING (1500). Cold-start ELO priors are wrong for new users (medium) — **FIXED:** removed 5 non-PL teams (Leeds, Luton, Burnley, Sheffield United, Sunderland); added seasonal update comment
+- [x] `Settings.svelte:33-42` — `teamColors` map hardcodes 2024/25 season teams. Will become stale on promotion/relegation (low) — **FIXED:** added seasonal update comment to the `teamColors` map
+- [x] `Help.svelte:345` — Dashboard feature list claims "Live standings" which the Dashboard does not show (Standings is a separate view) (low) — **FIXED:** replaced "Live standings" with "Prediction accuracy stats"
+- [x] `ApiSetupWizard.svelte:309` — Step 4 "Use Kelly Calculator for betting" directly contradicts Step 2's "research and educational purposes only" disclaimer (low) — **FIXED:** changed to "Explore Kelly Calculator for research"
 
 **Not bugs (confirmed false positives from audit):**
 

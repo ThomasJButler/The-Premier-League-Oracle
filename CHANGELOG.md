@@ -2,38 +2,36 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
-## April 2026 — Twentieth audit: comprehensive codebase review (P5h)
+## April 2026 — Twentieth audit: all 17 items resolved (P5h)
 
 **Branch:** `v3.0-BackendMLTraining`
 
-### Discovered
-
-17 new items across 4 categories — all documented in `IMPLEMENTATION_PLAN.md` under P5h:
+### Resolved — 17 items across 4 categories
 
 **Real bugs (3):**
-- `KellyCalculator.svelte:431` — edge percentage double-multiplied by 100 (5% edge displays as 500%)
-- `optimizedPredictions.ts:676,749` — zero-guard fallbacks use magic `draw: 0.27` instead of a named constant
-- `check_imports.py:103-104` — `ModernPremierLeagueOracle` import check never actually imports the module
+- `KellyCalculator.svelte:431` — removed extra `* 100` on `edgePercentage` (was displaying 500% instead of 5%)
+- `optimizedPredictions.ts:676,749` — replaced magic `draw: 0.27` with `DEFAULT_DRAW_RATE` constant from `constants.ts`
+- `check_imports.py:103-104` — added actual `from app.models.modern_oracle import ModernPremierLeagueOracle`
 
 **Accessibility (6):**
-- `StandingsTable.svelte` "Show All" button missing `aria-expanded`
-- `LiveTicker.svelte` uses deprecated `role="marquee"` (ARIA 1.2)
-- `ChatBot.svelte` "Clear chat" button missing `aria-label`
-- `Help.svelte` uses `aria-current="page"` for in-page section nav
-- `AccumulatorBuilder.svelte` selection buttons missing `aria-label`
-- `SeasonStats.svelte` stat cards lack `prefers-reduced-motion` guard
+- `StandingsTable.svelte` — added `aria-expanded` to "Show All / Show Less" toggle
+- `LiveTicker.svelte` — removed deprecated `role="marquee"` (ARIA 1.2); sr-only + aria-live already handles a11y
+- `ChatBot.svelte` — replaced `title` with `aria-label` on "Clear chat" button
+- `Help.svelte` — changed `aria-current="page"` to `aria-current="true"` for in-page navigation
+- `AccumulatorBuilder.svelte` — replaced `title` with `aria-label` on selection buttons
+- `SeasonStats.svelte` — added `motion-safe:` Tailwind prefix guard for `hover:scale-105` and `transition-all`
 
 **Type safety / code quality (4):**
-- `ChatBot.svelte:264` — `catch (err: any)` missed in P5g cleanup
-- `BettingHistory.svelte:195` — `ctx: any` in Chart.js callback
-- `BettingHistory.svelte` — vestigial `animation-delay` styles with no effect
-- `main.py:392` — `/predict` error handler leaks internal details
+- `ChatBot.svelte:264` — changed `catch (err: any)` to `catch (err: unknown)`
+- `BettingHistory.svelte:195` — typed Chart.js tooltip callback as `TooltipItem<'bar'>`
+- `BettingHistory.svelte` — removed all 6 vestigial `animation-delay` style attributes (no animation class to propagate to)
+- `main.py` — all 5 endpoint error handlers now return generic messages instead of `detail=str(e)`
 
 **Consistency / documentation (4):**
-- `SEED_RATINGS` contains relegated teams, missing 2025/26 promoted teams
-- `Settings.svelte` `teamColors` hardcodes 2024/25 season teams
-- `Help.svelte` claims Dashboard has "Live standings"
-- `ApiSetupWizard.svelte` betting recommendation contradicts research-only disclaimer
+- `SEED_RATINGS` — removed 5 relegated non-PL teams (Leeds, Luton, Burnley, Sheffield United, Sunderland), added seasonal update comment
+- `Settings.svelte` — added seasonal update comment to `teamColors` map
+- `Help.svelte` — replaced "Live standings" with "Prediction accuracy stats" (Dashboard doesn't show standings)
+- `ApiSetupWizard.svelte` — changed "Use Kelly Calculator for betting" to "Explore Kelly Calculator for research"
 
 ### Confirmed clean
 - All 8 specs: 100% of active acceptance criteria met (99/99)

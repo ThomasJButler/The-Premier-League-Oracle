@@ -306,7 +306,7 @@
               <ul class="text-sm text-muted-foreground space-y-1">
                 <li>Check daily predictions</li>
                 <li>Monitor team performance</li>
-                <li>Use Kelly Calculator for betting</li>
+                <li>Explore Kelly Calculator for research</li>
               </ul>
             </div>
 

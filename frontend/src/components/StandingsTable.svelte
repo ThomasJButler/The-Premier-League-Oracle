@@ -244,6 +244,7 @@
           <button
             on:click={() => showFullTable = !showFullTable}
             class="w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            aria-expanded={showFullTable}
           >
             {showFullTable ? 'Show Less' : `Show All ${standings.length} Teams`}
           </button>

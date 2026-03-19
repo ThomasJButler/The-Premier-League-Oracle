@@ -428,7 +428,7 @@
 
         <!-- Edge indicator -->
         <div class="mt-4 pt-3 border-t border-border/30 flex justify-between text-xs text-muted-foreground">
-          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{(calculation.edgePercentage * 100).toFixed(1)}%</span></span>
+          <span>Your edge: <span class="font-mono {calculation.edgePercentage > 0 ? 'text-emerald-500' : 'text-red-400'}">{calculation.edgePercentage.toFixed(1)}%</span></span>
           <span>{calculation.isValueBet ? '✓ Value bet' : '✗ No value'}</span>
         </div>
 

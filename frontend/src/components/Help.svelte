@@ -50,7 +50,7 @@
                     {selectedSection === section.id
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted'}"
-                  aria-current={selectedSection === section.id ? 'page' : undefined}
+                  aria-current={selectedSection === section.id ? 'true' : undefined}
                   on:click={() => {
                     selectedSection = section.id;
                     showMobileMenu = false;
@@ -343,7 +343,7 @@
                   <h3 class="font-bold text-lg mb-3">📊 Dashboard</h3>
                   <p class="text-sm mb-3">Your command center for all Premier League data and predictions.</p>
                   <ul class="text-sm space-y-1">
-                    <li>• Live standings</li>
+                    <li>• Prediction accuracy stats</li>
                     <li>• Upcoming fixtures</li>
                     <li>• Recent results</li>
                     <li>• Team performance metrics</li>

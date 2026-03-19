@@ -22,3 +22,13 @@ export const VALUE_ODDS_MARGIN = 1.05;
  * - advancedPredictions.ts (RefereeAnalyzer.getStats fallback)
  */
 export const DEFAULT_HOME_WIN_RATE = 0.46;
+
+/**
+ * DEFAULT_DRAW_RATE is the fallback proportion of matches ending in a draw
+ * when no completed match data is available. Derived from long-term Premier
+ * League averages (~27%).
+ *
+ * Used as a fallback in:
+ * - optimizedPredictions.ts (getStandingsProbabilities, combineModels zero-guard)
+ */
+export const DEFAULT_DRAW_RATE = 0.27;

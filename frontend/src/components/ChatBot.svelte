@@ -261,7 +261,7 @@ Current data:\n`;
         content: reply,
         timestamp: Date.now()
       }];
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       messages = [...messages, {
         role: 'system',
@@ -397,7 +397,7 @@ Current data:\n`;
         <button
           on:click={clearChat}
           class="p-1.5 rounded-md hover:bg-muted transition-colors"
-          title="Clear chat"
+          aria-label="Clear chat"
         >
           <Trash2 class="w-3.5 h-3.5 text-muted-foreground" />
         </button>

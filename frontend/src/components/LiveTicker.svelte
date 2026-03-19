@@ -121,7 +121,7 @@
   }
 </script>
 
-<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" role="marquee" aria-live="off" aria-label="Live match updates ticker">
+<div class="live-ticker bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 py-2 border-y border-border" aria-label="Live match updates ticker">
   {#if hasLiveMatches}
     <span class="live-dot" aria-hidden="true"></span>
   {/if}

@@ -146,7 +146,7 @@ describe('KellyCalculator Component', () => {
     render(KellyCalculatorComponent);
 
     expect(screen.getByText(/Your edge:/)).toBeInTheDocument();
-    expect(screen.getByText('500.0%')).toBeInTheDocument();
+    expect(screen.getByText('5.0%')).toBeInTheDocument();
   });
 
   // --- Suggestions Section Tests ---

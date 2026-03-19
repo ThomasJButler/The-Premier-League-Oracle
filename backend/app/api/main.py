@@ -389,7 +389,7 @@ async def predict_match(
 
     except Exception as e:
         logger.error(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Prediction failed — check server logs for details")
 
 
 # Natural language prediction endpoint
@@ -420,7 +420,7 @@ async def predict_natural_language(
         return result
     except Exception as e:
         logger.error(f"Natural language prediction error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Natural language prediction failed — check server logs for details")
 
 
 # Batch prediction endpoint
@@ -484,7 +484,7 @@ async def get_team_stats(
         }
     except Exception as e:
         logger.error(f"Team stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to retrieve team stats")
 
 
 # League standings endpoint
@@ -505,7 +505,7 @@ async def get_standings():
         }
     except Exception as e:
         logger.error(f"Standings error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to retrieve standings")
 
 
 # Model performance endpoint
@@ -671,7 +671,7 @@ async def calculate_betting_value(
         }
     except Exception as e:
         logger.error(f"Betting value error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to calculate betting value")
 
 
 # Admin endpoint to retrain models

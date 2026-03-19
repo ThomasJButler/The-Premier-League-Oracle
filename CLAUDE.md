@@ -101,10 +101,10 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~87% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Project ~89% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
 - **All 8 specs: 100% of active acceptance criteria met** (99/99). Pro-tier spec 08 Req 6 explicitly deferred.
 - **Free-tier ML model trained** — stacked OvR ensemble now trained alongside single XGBoost (51.0% accuracy baseline, model at `backend/models/xgboost_free_tier.joblib`). Ensemble uses 3 binary classifiers (H/D/A vs rest) with dedicated draw-class tuning + logistic regression meta-learner. `/predict/free` endpoint auto-uses ensemble when present. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
-- **Remaining work:** P5h twentieth audit (17 items), deferred minor items (3), deferred Pro-tier (P3a–d)
+- **Remaining work:** Deferred minor items (3), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
 
@@ -270,22 +270,25 @@ These specs are the single source of truth for requirements.
 - ~~`StandingsTable.svelte` and `TopScorers.svelte`: `catch (err: any)` bypasses TypeScript's `unknown` type for caught errors~~ **FIXED:** both changed to `catch (err: unknown)` with proper type narrowing (P5g)
 
 - **Twentieth audit (April 2026) — 17 new items found (P5h):**
-- `KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100: `kelly.ts:72` computes `edgePercentage = edge * 100` (already a %), then template does `(calculation.edgePercentage * 100)` — displays 500% instead of 5%
-- `optimizedPredictions.ts:676,749` — zero-guard fallbacks use magic `draw: 0.27` instead of a named constant — will drift if `DEFAULT_HOME_WIN_RATE` changes
-- `check_imports.py:103-104` — `ModernPremierLeagueOracle` check never imports the module (try block only prints, always reports success)
-- `StandingsTable.svelte` — "Show All / Show Less" button missing `aria-expanded`
-- `LiveTicker.svelte:124` — `role="marquee"` deprecated in ARIA 1.2 (the `sr-only` + `aria-live="off"` pattern already handles accessibility)
-- `ChatBot.svelte:397` — "Clear chat" button uses `title` instead of `aria-label` (not reliably announced on touch devices)
-- `ChatBot.svelte:264` — `catch (err: any)` missed in P5g cleanup (StandingsTable/TopScorers were fixed but ChatBot was not)
-- `BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback (should be `TooltipItem<'bar'>`)
-- `BettingHistory.svelte:219-275` — `style="animation-delay"` on 6 summary cards has no effect (no animation class on individual cards; vestigial)
-- `SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United), missing 2025/26 promoted teams. Cold-start ELO priors wrong for new users
-- `Settings.svelte:33-42` — `teamColors` hardcodes 2024/25 season teams, will go stale on promotion/relegation
-- `Help.svelte:345` — claims Dashboard has "Live standings" (Standings is a separate view)
-- `ApiSetupWizard.svelte:309` — "Use Kelly Calculator for betting" contradicts "research and educational purposes only" disclaimer
-- `main.py:392` — `/predict` error handler leaks internal details via `detail=str(e)` (only affects permanently-503 oracle endpoints)
-- `Help.svelte:53` — `aria-current="page"` used for in-page section navigation (should be `aria-current="true"`)
-- `AccumulatorBuilder.svelte` — selection buttons use `title` instead of `aria-label`
-- `SeasonStats.svelte` — stat cards `hover:scale-105 transition-all` lacks `prefers-reduced-motion` guard
+- ~~`KellyCalculator.svelte:431` — `edgePercentage` double-multiplied by 100: `kelly.ts:72` computes `edgePercentage = edge * 100` (already a %), then template does `(calculation.edgePercentage * 100)` — displays 500% instead of 5%~~ **FIXED:** removed extra `* 100` multiply — `edgePercentage` is already a percentage (P5h)
+- ~~`optimizedPredictions.ts:676,749` — zero-guard fallbacks use magic `draw: 0.27` instead of a named constant — will drift if `DEFAULT_HOME_WIN_RATE` changes~~ **FIXED:** replaced magic `draw: 0.27` with `DEFAULT_DRAW_RATE` constant from `constants.ts` (P5h)
+- ~~`check_imports.py:103-104` — `ModernPremierLeagueOracle` check never imports the module (try block only prints, always reports success)~~ **FIXED:** added actual `from app.models.modern_oracle import ModernPremierLeagueOracle` import (P5h)
+- ~~`StandingsTable.svelte` — "Show All / Show Less" button missing `aria-expanded`~~ **FIXED:** added `aria-expanded={showFullTable}` to toggle button (P5h)
+- ~~`LiveTicker.svelte:124` — `role="marquee"` deprecated in ARIA 1.2 (the `sr-only` + `aria-live="off"` pattern already handles accessibility)~~ **FIXED:** removed deprecated `role="marquee"` (P5h)
+- ~~`ChatBot.svelte:397` — "Clear chat" button uses `title` instead of `aria-label` (not reliably announced on touch devices)~~ **FIXED:** replaced `title` with `aria-label` (P5h)
+- ~~`ChatBot.svelte:264` — `catch (err: any)` missed in P5g cleanup (StandingsTable/TopScorers were fixed but ChatBot was not)~~ **FIXED:** changed to `catch (err: unknown)` (P5h)
+- ~~`BettingHistory.svelte:195` — `ctx: any` in Chart.js tooltip callback (should be `TooltipItem<'bar'>`)~~ **FIXED:** typed as `TooltipItem<'bar'>` (P5h)
+- ~~`BettingHistory.svelte:219-275` — `style="animation-delay"` on 6 summary cards has no effect (no animation class on individual cards; vestigial)~~ **FIXED:** removed all 6 vestigial `animation-delay` styles (P5h)
+- ~~`SEED_RATINGS` in `advancedPredictions.ts` — contains relegated teams (Leeds, Luton, Burnley, Sheffield United), missing 2025/26 promoted teams. Cold-start ELO priors wrong for new users~~ **FIXED:** removed 5 relegated non-PL teams, added seasonal comment (P5h)
+- ~~`Settings.svelte:33-42` — `teamColors` hardcodes 2024/25 season teams, will go stale on promotion/relegation~~ **FIXED:** added seasonal update comment (P5h)
+- ~~`Help.svelte:345` — claims Dashboard has "Live standings" (Standings is a separate view)~~ **FIXED:** changed "Live standings" to "Prediction accuracy stats" (P5h)
+- ~~`ApiSetupWizard.svelte:309` — "Use Kelly Calculator for betting" contradicts "research and educational purposes only" disclaimer~~ **FIXED:** changed to "Explore Kelly Calculator for research" (P5h)
+- ~~`main.py:392` — `/predict` error handler leaks internal details via `detail=str(e)` (only affects permanently-503 oracle endpoints)~~ **FIXED:** all 5 endpoint error handlers now return generic messages (P5h)
+- ~~`Help.svelte:53` — `aria-current="page"` used for in-page section navigation (should be `aria-current="true"`)~~ **FIXED:** changed `aria-current="page"` to `aria-current="true"` (P5h)
+- ~~`AccumulatorBuilder.svelte` — selection buttons use `title` instead of `aria-label`~~ **FIXED:** replaced `title` with `aria-label` on selection buttons (P5h)
+- ~~`SeasonStats.svelte` — stat cards `hover:scale-105 transition-all` lacks `prefers-reduced-motion` guard~~ **FIXED:** added `motion-safe:` prefix guard for reduced-motion (P5h)
+- `constants.ts` now exports `DEFAULT_DRAW_RATE = 0.27` in addition to `DEFAULT_HOME_WIN_RATE` and `VALUE_ODDS_MARGIN`
+- `KellyCalculator.svelte` edge display: `edgePercentage` from `kelly.ts` is already a percentage (e.g. 5.0 for 5%) — do NOT multiply by 100 again in the template
+- `SEED_RATINGS` in `advancedPredictions.ts` now contains only the 20 current PL teams — relegated teams removed, unknown teams fall back to `DEFAULT_RATING` (1500)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
