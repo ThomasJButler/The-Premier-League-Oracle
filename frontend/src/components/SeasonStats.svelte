@@ -244,13 +244,15 @@
       : -1; // Sentinel: -1 means no data available
     
     // Most goals in a single match
-    const highestScoringMatch = completedMatches.reduce((prev, curr) => {
-      const currGoals = (curr.home_goals || 0) + (curr.away_goals || 0);
-      const prevGoals = (prev.home_goals || 0) + (prev.away_goals || 0);
-      return currGoals > prevGoals ? curr : prev;
-    }, completedMatches[0] || {});
-    
-    const mostGoalsInMatch = highestScoringMatch 
+    const highestScoringMatch = completedMatches.length > 0
+      ? completedMatches.reduce((prev, curr) => {
+          const currGoals = (curr.home_goals || 0) + (curr.away_goals || 0);
+          const prevGoals = (prev.home_goals || 0) + (prev.away_goals || 0);
+          return currGoals > prevGoals ? curr : prev;
+        })
+      : null;
+
+    const mostGoalsInMatch = highestScoringMatch
       ? (highestScoringMatch.home_goals || 0) + (highestScoringMatch.away_goals || 0)
       : 0;
     
@@ -280,7 +282,6 @@
     const secondHalfGoals = totalGoals - firstHalfGoals;
     
     // Unbeaten runs
-    const currentUnbeaten = 0;
     let longestUnbeaten = 0;
     let unbeatenTeam = '';
     const teamUnbeaten: { [team: string]: number } = {};

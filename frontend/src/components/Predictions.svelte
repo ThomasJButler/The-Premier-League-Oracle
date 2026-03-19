@@ -697,6 +697,7 @@
                   on:click={() => toggleCard(prediction.id)}
                   class="w-full mt-2 flex items-center justify-center gap-2"
                   aria-label="View analysis for {prediction.home_team} vs {prediction.away_team}"
+                  tabindex={flippedCards.has(prediction.id) ? -1 : 0}
                 >
                   <Calculator class="w-4 h-4" />
                   Tap for Analysis
@@ -718,7 +719,8 @@
                       on:click={() => toggleCard(prediction.id)}
                       variant="ghost"
                       size="sm"
-                      aria-label="Close analysis">
+                      aria-label="Close analysis"
+                      tabindex={flippedCards.has(prediction.id) ? 0 : -1}>
                       ×
                     </Button>
                   </div>

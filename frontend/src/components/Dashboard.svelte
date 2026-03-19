@@ -128,6 +128,7 @@
 
   export async function refresh() {
     await loadDashboardData();
+    initProfitChart();
   }
   
   async function loadDashboardData() {

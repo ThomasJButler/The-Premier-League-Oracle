@@ -393,7 +393,7 @@
     </div>
   {:else}
     <!-- No live matches — show countdown to next kickoff -->
-    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-12 text-center">
+    <div id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-12 text-center">
       <Tv class="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
       <h3 class="text-xl font-semibold font-display mb-2 text-foreground">No Live Matches</h3>
       <p class="text-muted-foreground">

@@ -245,6 +245,13 @@ class FootballDataAPI {
       
       return data;
     } catch (error) {
+      // Re-throw user-actionable errors (auth failure, rate limit) so callers
+      // can display meaningful feedback instead of a blank "no data" state
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('API authentication failed') || msg.includes('Rate limit exceeded')) {
+        throw error;
+      }
+      // Transient/network errors degrade gracefully to empty state
       console.error(`Error fetching ${endpoint}:`, error);
       return null;
     }
