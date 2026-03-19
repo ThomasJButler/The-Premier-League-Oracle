@@ -217,12 +217,22 @@ def _check_rate_limit(client_ip: str) -> bool:
 
 
 def _resolve_team_name(name: str) -> str:
-    """Resolve a team name to CSV format, raising 422 if unrecognised."""
+    """Resolve a team name to CSV format, raising 422 if unrecognised.
+
+    Tries exact normalisation first, then case-insensitive fallback against
+    the valid team set so that minor casing differences from the frontend
+    (e.g. Football-Data.org API names) don't produce spurious 422s.
+    """
     if not FREE_TIER_AVAILABLE:
         return name
     csv_name = FreeTierFeatureEngineer.normalize_team_name(name, to='csv')
     if csv_name in VALID_FREE_TIER_TEAMS:
         return csv_name
+    # Case-insensitive fallback against valid team set
+    lower = csv_name.lower()
+    for valid in VALID_FREE_TIER_TEAMS:
+        if valid.lower() == lower:
+            return valid
     raise HTTPException(
         status_code=422,
         detail={

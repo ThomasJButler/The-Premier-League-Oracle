@@ -58,7 +58,7 @@ interface FDStanding {
   position: number;
   team: FDTeam;
   playedGames: number;
-  form: string;
+  form: string | null;
   won: number;
   draw: number;
   lost: number;
@@ -441,7 +441,7 @@ class FootballDataAPI {
     losses: number;
     goalsFor: number;
     goalsAgainst: number;
-    form: string;
+    form: string | null;
     recentMatches: Match[];
   } | null> {
     const standings = await this.getStandings();

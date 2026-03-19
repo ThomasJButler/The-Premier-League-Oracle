@@ -54,7 +54,8 @@ vi.mock('chart.js', () => {
     LineElement: vi.fn(),
     LinearScale: vi.fn(),
     CategoryScale: vi.fn(),
-    PointElement: vi.fn()
+    PointElement: vi.fn(),
+    Filler: vi.fn()
   };
 });
 

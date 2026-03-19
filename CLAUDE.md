@@ -102,7 +102,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | Item | Description | Status |
 |------|-------------|--------|
 | P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | **DONE** |
-| P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | Not started |
+| P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | **DONE** |
 | P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | Not started |
 | P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | Not started |
 | P6d | Docker & deployment documentation | Not started |

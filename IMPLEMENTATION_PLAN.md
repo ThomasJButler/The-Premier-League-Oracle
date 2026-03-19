@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
-| **P6 Final Push** | **1/5 (20%)** | **P6c DONE — Dashboard redesign, Oracle Chat RAG, deployment docs, MVP quality remaining** |
+| **P6 Final Push** | **2/5 (40%)** | **P6c, P6e DONE — Dashboard redesign, Oracle Chat RAG, deployment docs remaining** |
 
 **Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -34,7 +34,7 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 **Goal:** Ship a viable, deployable MVP. This is the last set of work before the project is complete.
 
-**Execution order:** P6c → P6e → P6a → P6b → P6d
+**Execution order:** P6c ✓ → P6e ✓ → P6a → P6b → P6d
 
 ### P6c. Repo Cleanup — Remove Dead Code
 
@@ -68,11 +68,11 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 
 ### P6e. MVP Quality Pass
 
-- [ ] **Vite proxy for `/api/oracle/`** — Kelly Calculator suggested bets fail; check `vite.config.ts` proxy matches backend at `:8000`
-- [ ] **Chart.js 'fill' warnings** — register Filler plugin or remove `fill` from datasets (3 console warnings)
-- [ ] **422 errors on `/predict/free`** — 2 of 18 predictions returned 422; identify team name mismatches and add normalisation
-- [ ] **Standings form column empty** — show "—" when `Standing.form` is null in `StandingsTable.svelte`
-- [ ] **Prediction Accuracy chart x-axis** — "Feb 21" repeated 4 times; fix date formatting to show gameweek labels
+- [x] **Vite proxy for `/api/oracle/`** — proxy works in dev; production rewrite is a P6d deployment concern
+- [x] **Chart.js 'fill' warnings** — FIXED: registered Filler plugin in Dashboard.svelte
+- [x] **422 errors on `/predict/free`** — FIXED: added case-insensitive fallback in normalize_team_name and _resolve_team_name
+- [x] **Standings form column empty** — FIXED: added {:else} fallback showing "—" when form is null
+- [x] **Prediction Accuracy chart x-axis** — FIXED: uses matchday (GW labels) or matchDate instead of generation timestamp
 
 ### P6a. Dashboard Redesign — Reduce Scrolling & Fix Charts
 

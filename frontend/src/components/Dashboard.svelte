@@ -12,6 +12,7 @@
     LinearScale,
     CategoryScale,
     PointElement,
+    Filler,
     type ChartData,
     type ChartItem
   } from 'chart.js';
@@ -33,7 +34,8 @@
     LineElement,
     LinearScale,
     CategoryScale,
-    PointElement
+    PointElement,
+    Filler
   );
 
   let recentMatches: Match[] = [];
@@ -215,7 +217,7 @@
         if (recentPreds.length > 0) {
           recentPerformance.labels = [...recentPreds]
             .reverse()
-            .map(p => format(new Date(p.timestamp), 'MMM d'));
+            .map(p => p.matchday ? `GW ${p.matchday}` : format(new Date(p.matchDate), 'MMM d'));
           recentPerformance.datasets[0].data = [...recentPreds].reverse().map(p => p.confidence * 100);
           // Label correctly — this is confidence, not measured accuracy
           recentPerformance.datasets[0].label = 'Model Confidence (awaiting results)';
