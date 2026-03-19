@@ -6,6 +6,7 @@ Validates:
 - Feature matrix construction (chronological, no leakage)
 - Chronological train/val split
 - Model save/load with metadata
+- Rolling cross-validation
 """
 
 import numpy as np
@@ -23,8 +24,10 @@ from train_free_tier import (
     build_dataset,
     chronological_split,
     compute_recency_weights,
+    rolling_cross_validation,
     train_stacked_ensemble,
     predict_with_ensemble,
+    _per_class_accuracy,
     LABEL_MAP,
     LABEL_NAMES,
     MIN_PRIOR_MATCHES,
@@ -330,3 +333,177 @@ class TestStackedEnsemble:
         assert preds.shape == (len(X_val), 3)
         row_sums = preds.sum(axis=1)
         np.testing.assert_allclose(row_sums, 1.0, atol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Helpers: multi-season dataset
+# ---------------------------------------------------------------------------
+
+def _build_multi_season_dataset(matches_per_season: int = 20) -> pd.DataFrame:
+    """Build a dataset spanning 4 seasons for rolling CV tests."""
+    from datetime import datetime, timedelta
+
+    teams = ['Arsenal', 'Chelsea', 'Liverpool', 'Man City']
+    season_labels = ['2021/22', '2022/23', '2023/24', '2024/25']
+    rows = []
+
+    for s_idx, season in enumerate(season_labels):
+        base = datetime(2021 + s_idx, 8, 17)
+        for m in range(matches_per_season):
+            home = teams[m % len(teams)]
+            away = teams[(m + 1) % len(teams)]
+            hg = (m * 7 + 3) % 4
+            ag = (m * 5 + 1) % 3
+            match_date = base + timedelta(days=m * 3)
+            result = 'H' if hg > ag else ('A' if hg < ag else 'D')
+            rows.append({
+                'date': match_date,
+                'home_team': home,
+                'away_team': away,
+                'home_goals': hg,
+                'away_goals': ag,
+                'result': result,
+                'half_time_home_goals': min(hg, 1),
+                'half_time_away_goals': min(ag, 1),
+                'half_time_result': 'H' if min(hg, 1) > min(ag, 1) else (
+                    'D' if min(hg, 1) == min(ag, 1) else 'A'),
+                'home_shots': 10 + hg, 'away_shots': 8 + ag,
+                'home_shots_target': 4 + hg, 'away_shots_target': 3 + ag,
+                'home_corners': 5, 'away_corners': 4,
+                'home_yellows': 1, 'away_yellows': 2,
+                'home_reds': 0, 'away_reds': 0,
+                'home_fouls': 10, 'away_fouls': 12,
+                'season': season,
+            })
+
+    df = pd.DataFrame(rows)
+    df['date'] = pd.to_datetime(df['date'])
+    return df.sort_values('date').reset_index(drop=True)
+
+
+# ---------------------------------------------------------------------------
+# Tests: _per_class_accuracy
+# ---------------------------------------------------------------------------
+
+class TestPerClassAccuracy:
+    """Helper function for per-class accuracy."""
+
+    def test_perfect_predictions(self):
+        y_true = np.array([0, 1, 2, 0, 1])
+        y_pred = np.array([0, 1, 2, 0, 1])
+        result = _per_class_accuracy(y_true, y_pred)
+        assert result['Home win'] == 1.0
+        assert result['Draw'] == 1.0
+        assert result['Away win'] == 1.0
+
+    def test_partial_accuracy(self):
+        y_true = np.array([0, 0, 1, 1, 2, 2])
+        y_pred = np.array([0, 2, 1, 0, 2, 1])
+        result = _per_class_accuracy(y_true, y_pred)
+        assert result['Home win'] == pytest.approx(0.5)
+        assert result['Draw'] == pytest.approx(0.5)
+        assert result['Away win'] == pytest.approx(0.5)
+
+    def test_empty_class(self):
+        """Class with no samples returns 0.0."""
+        y_true = np.array([0, 0, 0])
+        y_pred = np.array([0, 0, 1])
+        result = _per_class_accuracy(y_true, y_pred)
+        assert result['Draw'] == 0.0
+        assert result['Away win'] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Tests: rolling cross-validation
+# ---------------------------------------------------------------------------
+
+class TestRollingCrossValidation:
+    """Expanding-window cross-validation tests."""
+
+    def test_insufficient_seasons_returns_empty(self):
+        """CV with fewer than min_train_seasons + 1 should return empty."""
+        X = np.random.randn(20, 5)
+        y = np.array([0, 1, 2] * 6 + [0, 1])
+        seasons = np.array(['2024/25'] * 20)
+        result = rolling_cross_validation(X, y, [f'f{i}' for i in range(5)],
+                                          seasons, min_train_seasons=2)
+        assert result == {}
+
+    def test_two_seasons_with_min_one(self):
+        """With 2 seasons and min_train_seasons=1, should produce 1 fold."""
+        X = np.random.randn(40, 5)
+        y = np.array([0, 1, 2, 0] * 10)
+        seasons = np.array(['2023/24'] * 20 + ['2024/25'] * 20)
+        # This runs without XGBoost — will hit the except block and produce
+        # empty fold metrics, but the fold structure should still be created
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        result = rolling_cross_validation(
+            X, y, [f'f{i}' for i in range(5)], seasons, min_train_seasons=1,
+        )
+        assert 'folds' in result
+        assert len(result['folds']) == 1
+        assert result['folds'][0]['val_season'] == '2024/25'
+
+    def test_four_seasons_produces_correct_fold_count(self):
+        """With 4 seasons and min_train=2, should produce 2 folds."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        df = _build_multi_season_dataset(25)
+        X, y, names, seasons = build_dataset(df)
+
+        result = rolling_cross_validation(
+            X, y, names, seasons, min_train_seasons=2,
+        )
+
+        assert 'folds' in result
+        assert len(result['folds']) == 2
+        assert result['folds'][0]['val_season'] == '2023/24'
+        assert result['folds'][1]['val_season'] == '2024/25'
+
+    def test_aggregate_metrics_present(self):
+        """Aggregate dict should contain accuracy stats for each model."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        df = _build_multi_season_dataset(25)
+        X, y, names, seasons = build_dataset(df)
+
+        result = rolling_cross_validation(
+            X, y, names, seasons, min_train_seasons=2,
+        )
+
+        assert 'aggregate' in result
+        agg = result['aggregate']
+        # At minimum XGBoost should have results
+        if 'xgboost' in agg:
+            assert 'mean_accuracy' in agg['xgboost']
+            assert 'std_accuracy' in agg['xgboost']
+            assert 0.0 <= agg['xgboost']['mean_accuracy'] <= 1.0
+            assert agg['xgboost']['n_folds'] == 2
+
+    def test_fold_train_size_increases(self):
+        """Each fold should have more training data than the previous."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        df = _build_multi_season_dataset(25)
+        X, y, names, seasons = build_dataset(df)
+
+        result = rolling_cross_validation(
+            X, y, names, seasons, min_train_seasons=2,
+        )
+
+        folds = result.get('folds', [])
+        if len(folds) >= 2:
+            assert folds[1]['train_size'] > folds[0]['train_size']

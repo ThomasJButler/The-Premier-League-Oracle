@@ -9,6 +9,7 @@ Usage:
     python train_free_tier.py                # Train with 80/20 chronological split
     python train_free_tier.py --tune         # Run hyperparameter tuning first (25 trials)
     python train_free_tier.py --tune --tune-trials 50  # More thorough search
+    python train_free_tier.py --cv           # Rolling cross-validation across seasons
     python train_free_tier.py --test         # Also evaluate on 2025/26 held-out data
     python train_free_tier.py --csv-dir DIR  # Custom CSV directory
 
@@ -806,6 +807,210 @@ def evaluate(
     }
 
 
+def rolling_cross_validation(
+    X: np.ndarray, y: np.ndarray,
+    feature_names: List[str],
+    seasons: np.ndarray,
+    min_train_seasons: int = 2,
+) -> dict:
+    """
+    Expanding-window cross-validation, split by season.
+
+    Instead of a single 80/20 split (which can be misleading if that
+    particular validation season is atypical), this trains on seasons
+    1..k and validates on season k+1 for each fold.
+
+    For 6 seasons (2020/21-2025/26) with min_train_seasons=2, this
+    produces 4 folds:
+      Fold 1: train 2020/21-2021/22, validate 2022/23
+      Fold 2: train 2020/21-2022/23, validate 2023/24
+      Fold 3: train 2020/21-2023/24, validate 2024/25
+      Fold 4: train 2020/21-2024/25, validate 2025/26
+
+    Returns aggregate and per-fold metrics for XGBoost (calibrated),
+    logistic regression, and stacked ensemble.
+    """
+    from sklearn.metrics import accuracy_score, log_loss
+
+    unique_seasons = sorted(set(seasons))
+    n_seasons = len(unique_seasons)
+
+    if n_seasons < min_train_seasons + 1:
+        logger.warning(
+            'Not enough seasons for CV (%d seasons, need %d + 1)',
+            n_seasons, min_train_seasons,
+        )
+        return {}
+
+    fold_results = []
+
+    for fold_idx in range(min_train_seasons, n_seasons):
+        train_seasons = set(unique_seasons[:fold_idx])
+        val_season = unique_seasons[fold_idx]
+
+        train_mask = np.array([s in train_seasons for s in seasons])
+        val_mask = seasons == val_season
+
+        X_train_fold = X[train_mask]
+        y_train_fold = y[train_mask]
+        X_val_fold = X[val_mask]
+        y_val_fold = y[val_mask]
+        seasons_train_fold = seasons[train_mask]
+
+        if len(X_val_fold) == 0:
+            logger.warning('Fold %d: no validation samples for %s — skipping', fold_idx, val_season)
+            continue
+
+        logger.info(
+            '\n=== Rolling CV Fold %d/%d: train %s, validate %s (%d→%d samples) ===',
+            fold_idx - min_train_seasons + 1,
+            n_seasons - min_train_seasons,
+            f'{unique_seasons[0]}–{unique_seasons[fold_idx - 1]}',
+            val_season,
+            len(X_train_fold), len(X_val_fold),
+        )
+
+        fold_metrics: Dict[str, Dict] = {}
+
+        # --- XGBoost (with calibration) ---
+        try:
+            xgb_res = train_xgboost(
+                X_train_fold, y_train_fold,
+                X_val_fold, y_val_fold,
+                feature_names,
+                seasons_train=seasons_train_fold,
+            )
+            import xgboost as xgb
+            dval = xgb.DMatrix(X_val_fold, feature_names=feature_names)
+            raw_probs = xgb_res['model'].predict(dval)
+
+            # Calibrate
+            cal_res = calibrate_probabilities(
+                xgb_res['model'], X_val_fold, y_val_fold, feature_names,
+            )
+            cal_probs = np.column_stack([
+                cal.predict(raw_probs[:, i])
+                for i, cal in enumerate(cal_res['calibrators'])
+            ])
+            row_sums = cal_probs.sum(axis=1, keepdims=True)
+            row_sums[row_sums == 0] = 1.0
+            cal_probs = cal_probs / row_sums
+
+            xgb_preds = np.argmax(cal_probs, axis=1)
+            fold_metrics['xgboost'] = {
+                'accuracy': float(accuracy_score(y_val_fold, xgb_preds)),
+                'log_loss': float(log_loss(y_val_fold, cal_probs, labels=[0, 1, 2])),
+                'per_class': _per_class_accuracy(y_val_fold, xgb_preds),
+            }
+        except Exception as e:
+            logger.warning('Fold %d XGBoost failed: %s', fold_idx, e)
+
+        # --- Logistic Regression baseline ---
+        try:
+            lr_res = train_logistic_baseline(
+                X_train_fold, y_train_fold, X_val_fold, y_val_fold,
+            )
+            lr_preds = np.argmax(lr_res['val_probs'], axis=1)
+            fold_metrics['lr'] = {
+                'accuracy': float(accuracy_score(y_val_fold, lr_preds)),
+                'log_loss': float(log_loss(y_val_fold, lr_res['val_probs'], labels=[0, 1, 2])),
+                'per_class': _per_class_accuracy(y_val_fold, lr_preds),
+            }
+        except Exception as e:
+            logger.warning('Fold %d LR failed: %s', fold_idx, e)
+
+        # --- Stacked Ensemble ---
+        try:
+            if len(X_train_fold) >= 30:
+                ens_res = train_stacked_ensemble(
+                    X_train_fold, y_train_fold,
+                    X_val_fold, y_val_fold,
+                    feature_names,
+                    seasons_train=seasons_train_fold,
+                )
+                ens_preds = np.argmax(ens_res['val_probs'], axis=1)
+                fold_metrics['ensemble'] = {
+                    'accuracy': float(accuracy_score(y_val_fold, ens_preds)),
+                    'log_loss': float(log_loss(y_val_fold, ens_res['val_probs'], labels=[0, 1, 2])),
+                    'per_class': _per_class_accuracy(y_val_fold, ens_preds),
+                }
+            else:
+                logger.info('  Skipping ensemble — too few training samples (%d)', len(X_train_fold))
+        except Exception as e:
+            logger.warning('Fold %d Ensemble failed: %s', fold_idx, e)
+
+        # Log fold summary
+        for model_name, m in fold_metrics.items():
+            pc = m['per_class']
+            logger.info(
+                '  %-12s acc=%.1f%% | H=%.1f%% D=%.1f%% A=%.1f%% | logloss=%.3f',
+                model_name, m['accuracy'] * 100,
+                pc.get('Home win', 0) * 100, pc.get('Draw', 0) * 100,
+                pc.get('Away win', 0) * 100, m['log_loss'],
+            )
+
+        fold_results.append({
+            'fold': fold_idx - min_train_seasons + 1,
+            'val_season': val_season,
+            'train_size': len(X_train_fold),
+            'val_size': len(X_val_fold),
+            'metrics': fold_metrics,
+        })
+
+    # --- Aggregate ---
+    if not fold_results:
+        logger.warning('No CV folds completed')
+        return {}
+
+    logger.info('\n=== Rolling CV Summary ===')
+
+    aggregate: Dict[str, Dict] = {}
+    for model_name in ('xgboost', 'lr', 'ensemble'):
+        accs = [f['metrics'][model_name]['accuracy']
+                for f in fold_results if model_name in f['metrics']]
+        lls = [f['metrics'][model_name]['log_loss']
+               for f in fold_results if model_name in f['metrics']]
+
+        if not accs:
+            continue
+
+        draw_accs = [f['metrics'][model_name]['per_class'].get('Draw', 0)
+                     for f in fold_results if model_name in f['metrics']]
+
+        agg = {
+            'mean_accuracy': float(np.mean(accs)),
+            'std_accuracy': float(np.std(accs)),
+            'mean_log_loss': float(np.mean(lls)),
+            'mean_draw_accuracy': float(np.mean(draw_accs)),
+            'n_folds': len(accs),
+            'per_fold_accuracy': accs,
+        }
+        aggregate[model_name] = agg
+
+        logger.info(
+            '  %-12s mean_acc=%.1f%% (±%.1f%%) | draw=%.1f%% | logloss=%.3f | %d folds',
+            model_name, agg['mean_accuracy'] * 100, agg['std_accuracy'] * 100,
+            agg['mean_draw_accuracy'] * 100, agg['mean_log_loss'],
+            agg['n_folds'],
+        )
+
+    return {
+        'folds': fold_results,
+        'aggregate': aggregate,
+    }
+
+
+def _per_class_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    """Compute per-class accuracy from predictions."""
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
+    result = {}
+    for i, name in enumerate(LABEL_NAMES):
+        total = cm[i].sum()
+        result[name] = cm[i][i] / total if total > 0 else 0.0
+    return result
+
+
 def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
                            output_path: str) -> None:
     """Save calibration curve as PNG (best-effort — skips if matplotlib unavailable)."""
@@ -908,6 +1113,10 @@ def main():
         '--tune-trials', type=int, default=25,
         help='Number of hyperparameter search trials (default: 25)',
     )
+    parser.add_argument(
+        '--cv', action='store_true',
+        help='Run rolling (expanding-window) cross-validation across seasons',
+    )
     args = parser.parse_args()
 
     # 1. Load data
@@ -922,6 +1131,18 @@ def main():
     if len(X) < 50:
         logger.error('Too few samples (%d) — need at least 50 to train', len(X))
         sys.exit(1)
+
+    # 2b. Optional rolling cross-validation (evaluation only — does not affect
+    #     the final model, just gives robust accuracy estimates across seasons)
+    if args.cv:
+        logger.info('\n' + '=' * 60)
+        logger.info('ROLLING CROSS-VALIDATION')
+        logger.info('=' * 60)
+        cv_results = rolling_cross_validation(
+            X, y, feature_names, sample_seasons, min_train_seasons=2,
+        )
+        if cv_results:
+            logger.info('\nCV complete — proceeding with final model training...\n')
 
     # 3. Chronological split (also split seasons array for recency weighting)
     X_train, y_train, X_val, y_val = chronological_split(X, y, val_fraction=0.2)

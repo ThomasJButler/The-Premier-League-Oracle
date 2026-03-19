@@ -66,7 +66,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
 - `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
 - `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo, standalone, fully functional)
-- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline, chronological split)
+- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline, chronological split, rolling CV via `--cv`)
 - `data/football_data_collector.py` - Historical data collection
 - `security/` - Auth, secrets, validators
 
@@ -113,7 +113,7 @@ These specs are the single source of truth for requirements.
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200. Oracle ensemble model loading removed from startup (no `xgboost_model.pkl`, `lstm_model.pt`, `transformer_model.pt`). Frontend uses `/predict/free` endpoint exclusively
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
-- ~~Backend has 0% test coverage~~ **FIXED:** 79 backend tests across 3 files (45 feature engineering incl. Elo, 18 training pipeline incl. stacked ensemble + recency weights, 16 API endpoints) — all passing (3 ensemble tests skip without libomp). ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
+- ~~Backend has 0% test coverage~~ **FIXED:** 86 backend tests across 3 files (45 feature engineering incl. Elo leakage, 25 training pipeline incl. rolling CV + stacked ensemble + recency weights, 16 API endpoints) — all non-skip tests pass (7 skip without libomp). ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
 - Frontend has 372 Vitest tests across 23 test files, all passing (was 373 — 4 WebSocket tests removed with P5v dead infrastructure cleanup)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested

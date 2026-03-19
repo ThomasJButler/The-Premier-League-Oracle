@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 1 April 2026 — Rolling cross-validation, ELO data leakage fix
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Rolling Cross-Validation
+
+- **`rolling_cross_validation()`** implements expanding-window CV across seasons — train on seasons 1..k, validate on k+1. For 6 seasons with `min_train_seasons=2`, this produces 4 folds with progressively growing training sets
+- **CLI flag `--cv`** runs rolling CV before the final model training. Results are informational only — they don't affect the saved model, but give robust accuracy estimates across multiple seasons rather than depending on a single 80/20 split
+- **Per-fold metrics** for XGBoost (calibrated), logistic regression baseline, and stacked ensemble. Reports accuracy, log loss, and per-class accuracy for each fold, plus aggregate mean±std
+- **`_per_class_accuracy()` helper** extracted for fold-level class accuracy computation
+- **8 new tests** (3 for `_per_class_accuracy`, 5 for rolling CV including boundary cases and fold structure validation)
+
+### Bug fix: ELO data leakage
+
+- **`free_tier_features.py:_latest_elo()`** fallback path walked backwards from the END of the full dataset, picking up ELO ratings influenced by future matches. Added `before_date` parameter that skips matches at or after the cutoff date. `_elo_features()` now passes `match_date` as `before_date`, ensuring ELO features only reflect matches that have actually occurred before the prediction date. `test_no_future_data_used` now passes
+
+---
+
 ## 1 April 2026 — Stacked ensemble for draw prediction, standings bug fix
 
 **Branch:** `v3.0-BackendMLTraining`

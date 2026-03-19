@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-ninth update — Elo-based features for ML)
+Last updated: 30 March 2026 (thirtieth update — rolling CV, ELO leakage fix)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -14,7 +14,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 27/27 (100%) | ALL DONE — Docker fixed, CI coverage enforced, .env.example created |
-| P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 73 tests, API endpoints wired |
+| P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 86 tests, rolling CV, stacked ensemble, ELO leakage fixed |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 49/49 (100%) | ALL DONE |
@@ -121,7 +121,7 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 - [x] **Stacked ensemble** — 3 One-vs-Rest XGBoost binary classifiers (Home/Draw/Away vs rest) with a logistic regression meta-learner. Draw classifier has dedicated tuning: `max_depth=4`, `lr=0.03`, `scale_pos_weight=~3.35`, higher regularisation. Meta-learner trained on chronological OOF predictions (70/30 base/meta split within training data) to avoid leakage. Final base classifiers retrained on full training data. `predict_with_ensemble()` helper for inference. `/predict/free` endpoint auto-uses ensemble when present in model file
 - [x] **Draw indicator bug fix** — `_draw_indicators()` called non-existent `_get_standings()`. Fixed to `_compute_standings(data, match_date)` with `match_date` threaded through the method chain. Affects `standings_closeness` and `form_closeness` features
 - [ ] **Odds-as-features** — the CSVs contain ~80 bookmaker odds columns. Using closing odds as features would dramatically boost accuracy (bookmakers are the strongest predictor), but makes the model dependent on having odds data at inference time
-- [ ] **Rolling cross-validation** — instead of a single 80/20 split, use expanding-window CV (train on seasons 1–N, validate on N+1) for more robust evaluation
+- [x] **Rolling cross-validation** — `rolling_cross_validation()` implements expanding-window CV across seasons (train on seasons 1..k, validate on k+1). CLI flag `--cv` runs it before final training. Produces per-fold and aggregate metrics for XGBoost (calibrated), LR baseline, and stacked ensemble. `_per_class_accuracy()` helper extracted for fold-level class metrics. 8 new tests (3 `_per_class_accuracy` + 5 rolling CV)
 
 ### How to Retrain
 
@@ -130,7 +130,8 @@ cd backend
 python train_free_tier.py                                # Train model → xgboost_free_tier.joblib
 python train_free_tier.py --tune                         # Train with hyperparameter tuning (25 trials)
 python train_free_tier.py --tune --tune-trials 50        # More thorough tuning
-python -m pytest tests/ -v                               # All 67 tests
+python train_free_tier.py --cv                           # Rolling cross-validation across seasons
+python -m pytest tests/ -v                               # All 86 tests
 uvicorn app.api.main:app --reload --port 8000            # Start server
 curl -X POST http://localhost:8000/predict/free \
   -H "Content-Type: application/json" \
@@ -806,4 +807,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**62 tests across 3 files** — all passing. Covers free-tier features (39), training pipeline (12), and API endpoints (11). Pro-tier models and data collector have 0% test coverage. Security modules are entirely unused at runtime and untested.
+**86 tests across 3 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), and API endpoints (16). Pro-tier models and data collector have 0% test coverage. Security modules are entirely unused at runtime and untested.
