@@ -177,12 +177,32 @@ def chronological_split(
 # Training
 # ---------------------------------------------------------------------------
 
+def compute_sample_weights(y: np.ndarray) -> np.ndarray:
+    """
+    Compute inverse-frequency sample weights to address class imbalance.
+
+    Draws are ~23% of PL data but equally important to predict. Without
+    weighting, XGBoost optimises for the majority classes (H/A) and
+    nearly ignores draws (6.7% draw accuracy in v1).
+    """
+    classes, counts = np.unique(y, return_counts=True)
+    total = len(y)
+    # Weight = total / (n_classes * count_for_class)
+    class_weights = {c: total / (len(classes) * cnt) for c, cnt in zip(classes, counts)}
+    weights = np.array([class_weights[label] for label in y])
+    logger.info(
+        'Class weights: %s',
+        {LABEL_NAMES[c]: f'{w:.3f}' for c, w in class_weights.items()},
+    )
+    return weights
+
+
 def train_xgboost(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
     feature_names: List[str],
 ) -> dict:
-    """Train XGBoost model with early stopping."""
+    """Train XGBoost model with early stopping and class weighting."""
     import xgboost as xgb
 
     params = {
@@ -201,7 +221,11 @@ def train_xgboost(
         'verbosity': 0,
     }
 
-    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names)
+    # Compute sample weights to boost draw importance
+    sample_weights = compute_sample_weights(y_train)
+
+    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
+                         weight=sample_weights)
     dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
 
     evals_result: Dict = {}
@@ -233,6 +257,103 @@ def train_xgboost(
         'best_score': best_score,
         'importance': importance,
         'evals_result': evals_result,
+    }
+
+
+def select_features(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_val: np.ndarray,
+    feature_names: List[str],
+    importance: Dict[str, float],
+    min_importance: float = 0.005,
+) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Drop features with importance below threshold.
+
+    With 86 features for ~1,680 training samples, low-importance features
+    are noise that the model memorises (overfitting). Pruning improves
+    generalisation on unseen data.
+
+    Returns filtered X_train, X_val, and feature_names.
+    """
+    keep_indices = []
+    keep_names = []
+    dropped = []
+
+    for i, name in enumerate(feature_names):
+        imp = importance.get(name, 0.0)
+        if imp >= min_importance:
+            keep_indices.append(i)
+            keep_names.append(name)
+        else:
+            dropped.append(name)
+
+    if not keep_indices:
+        logger.warning('Feature selection would drop ALL features — skipping')
+        return X_train, X_val, feature_names
+
+    logger.info(
+        'Feature selection: keeping %d/%d features (dropped %d with importance < %.4f)',
+        len(keep_indices), len(feature_names), len(dropped), min_importance,
+    )
+    if dropped:
+        logger.info('Dropped features: %s', ', '.join(sorted(dropped)[:10]))
+        if len(dropped) > 10:
+            logger.info('  ... and %d more', len(dropped) - 10)
+
+    X_train_sel = X_train[:, keep_indices]
+    X_val_sel = X_val[:, keep_indices]
+    return X_train_sel, X_val_sel, keep_names
+
+
+def calibrate_probabilities(
+    model, X_val: np.ndarray, y_val: np.ndarray,
+    feature_names: List[str],
+) -> dict:
+    """
+    Calibrate XGBoost probabilities using isotonic regression.
+
+    Raw XGBoost probabilities are often overconfident — log loss was 1.034
+    for 51% accuracy (well-calibrated would be ~0.95). Calibration maps
+    predicted probabilities to observed frequencies using a held-out set.
+
+    Uses a simple wrapper that calibrates each class independently with
+    isotonic regression, then re-normalises to sum to 1.
+    """
+    import xgboost as xgb
+    from sklearn.isotonic import IsotonicRegression
+
+    dval = xgb.DMatrix(X_val, feature_names=feature_names)
+    raw_probs = model.predict(dval)
+
+    calibrators = []
+    for class_idx in range(3):
+        binary_target = (y_val == class_idx).astype(float)
+        ir = IsotonicRegression(out_of_bounds='clip')
+        ir.fit(raw_probs[:, class_idx], binary_target)
+        calibrators.append(ir)
+
+    # Verify calibration improves on val set
+    cal_probs = np.column_stack([
+        cal.predict(raw_probs[:, i]) for i, cal in enumerate(calibrators)
+    ])
+    # Re-normalise rows to sum to 1
+    row_sums = cal_probs.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0  # prevent division by zero
+    cal_probs = cal_probs / row_sums
+
+    from sklearn.metrics import log_loss
+    raw_ll = log_loss(y_val, raw_probs, labels=[0, 1, 2])
+    cal_ll = log_loss(y_val, cal_probs, labels=[0, 1, 2])
+    logger.info(
+        'Calibration: log loss %.4f → %.4f (%+.4f)',
+        raw_ll, cal_ll, cal_ll - raw_ll,
+    )
+
+    return {
+        'calibrators': calibrators,
+        'raw_log_loss': raw_ll,
+        'calibrated_log_loss': cal_ll,
     }
 
 
@@ -375,10 +496,11 @@ def save_model(xgb_result: dict, feature_names: List[str],
 
     payload = {
         'model': xgb_result['model'],
+        'calibrators': xgb_result.get('calibrators'),
         'feature_names': feature_names,
         'params': xgb_result['params'],
         'feature_importance': xgb_result['importance'],
-        'version': '1.0.0-free',
+        'version': '2.0.0-free',
         'tier': 'free',
         'training_date': datetime.utcnow().isoformat(),
         'training_samples': training_info.get('training_samples', 0),
@@ -430,22 +552,58 @@ def main():
         100 * len(X_train) / len(X), 100 * len(X_val) / len(X),
     )
 
-    # 4. Train XGBoost
-    logger.info('Training XGBoost...')
-    xgb_result = train_xgboost(X_train, y_train, X_val, y_val, feature_names)
-
-    # 5. Evaluate XGBoost
+    # 4. First XGBoost pass (all features — to get importance scores)
+    logger.info('Training XGBoost (first pass — all %d features)...', len(feature_names))
     import xgboost as xgb
-    dval = xgb.DMatrix(X_val, feature_names=feature_names)
-    xgb_probs = xgb_result['model'].predict(dval)
-    xgb_metrics = evaluate(y_val, xgb_probs, label='XGBoost')
+    xgb_result_v1 = train_xgboost(X_train, y_train, X_val, y_val, feature_names)
 
-    # 6. Train and evaluate logistic regression baseline
+    # 5. Feature selection — drop low-importance features and retrain
+    X_train_sel, X_val_sel, sel_feature_names = select_features(
+        X_train, y_train, X_val, feature_names,
+        importance=xgb_result_v1['importance'],
+        min_importance=0.005,
+    )
+
+    if len(sel_feature_names) < len(feature_names):
+        logger.info('Retraining XGBoost with %d selected features...', len(sel_feature_names))
+        xgb_result = train_xgboost(X_train_sel, y_train, X_val_sel, y_val, sel_feature_names)
+        active_feature_names = sel_feature_names
+        X_train_active, X_val_active = X_train_sel, X_val_sel
+    else:
+        logger.info('No features dropped — using first-pass model')
+        xgb_result = xgb_result_v1
+        active_feature_names = feature_names
+        X_train_active, X_val_active = X_train, X_val
+
+    # 6. Evaluate raw XGBoost
+    dval = xgb.DMatrix(X_val_active, feature_names=active_feature_names)
+    xgb_probs_raw = xgb_result['model'].predict(dval)
+    xgb_metrics_raw = evaluate(y_val, xgb_probs_raw, label='XGBoost (raw)')
+
+    # 7. Probability calibration
+    logger.info('Calibrating probabilities...')
+    cal_result = calibrate_probabilities(
+        xgb_result['model'], X_val_active, y_val, active_feature_names,
+    )
+
+    # Use calibrated probabilities for final evaluation
+    cal_probs = np.column_stack([
+        cal.predict(xgb_probs_raw[:, i])
+        for i, cal in enumerate(cal_result['calibrators'])
+    ])
+    row_sums = cal_probs.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0
+    cal_probs = cal_probs / row_sums
+
+    xgb_metrics = evaluate(y_val, cal_probs, label='XGBoost (calibrated)')
+    xgb_probs = cal_probs
+
+    # 8. Train and evaluate logistic regression baseline
     logger.info('Training logistic regression baseline...')
-    lr_result = train_logistic_baseline(X_train, y_train, X_val, y_val)
+    lr_result = train_logistic_baseline(X_train_active, y_train, X_val_active, y_val)
     lr_metrics = evaluate(y_val, lr_result['val_probs'], label='Logistic Regression')
 
-    # 7. Comparison
+    # 9. Comparison
     xgb_acc = xgb_metrics['accuracy']
     lr_acc = lr_metrics['accuracy']
     lift = (xgb_acc - lr_acc) * 100
@@ -459,7 +617,7 @@ def main():
             'XGBoost lift < 3%% over LR — investigate feature engineering quality',
         )
 
-    # 8. Top features
+    # 10. Top features
     sorted_imp = sorted(
         xgb_result['importance'].items(), key=lambda x: x[1], reverse=True,
     )
@@ -467,18 +625,19 @@ def main():
     for i, (name, imp) in enumerate(sorted_imp[:20], 1):
         logger.info('  %2d. %-35s %.4f', i, name, imp)
 
-    # 9. Save model
+    # 11. Save model (with calibrators and selected features)
     training_info = {
-        'training_samples': len(X_train),
+        'training_samples': len(X_train_active),
         'seasons': seasons,
     }
-    save_model(xgb_result, feature_names, xgb_metrics, training_info)
+    xgb_result['calibrators'] = cal_result['calibrators']
+    save_model(xgb_result, active_feature_names, xgb_metrics, training_info)
 
-    # 10. Calibration curve
+    # 12. Calibration curve
     cal_path = os.path.join(MODEL_DIR, 'calibration_curve.png')
     save_calibration_curve(y_val, xgb_probs, cal_path)
 
-    # 11. Optional: held-out test on 2025/26 season
+    # 13. Optional: held-out test on 2025/26 season
     if args.test:
         test_mask = df['season'].str.startswith('2025')
         if test_mask.any():
@@ -486,6 +645,7 @@ def main():
             test_df = df[test_mask]
             # Build test features using ALL prior data
             test_engineer = FreeTierFeatureEngineer(df)
+            all_feature_names = FreeTierFeatureEngineer.FEATURE_NAMES
             X_test_rows = []
             y_test_rows = []
             for _, row in test_df.iterrows():
@@ -499,7 +659,7 @@ def main():
                     features = test_engineer.create_features(
                         row['home_team'], row['away_team'], match_date,
                     )
-                    vec = [features[name] for name in feature_names]
+                    vec = [features[name] for name in all_feature_names]
                     X_test_rows.append(vec)
                     y_test_rows.append(LABEL_MAP[result])
                 except Exception:
@@ -508,8 +668,19 @@ def main():
             if X_test_rows:
                 X_test = np.array(X_test_rows)
                 y_test = np.array(y_test_rows)
-                dtest = xgb.DMatrix(X_test, feature_names=feature_names)
-                test_probs = xgb_result['model'].predict(dtest)
+                # Apply same feature selection as training
+                sel_indices = [all_feature_names.index(n) for n in active_feature_names]
+                X_test_sel = X_test[:, sel_indices]
+                dtest = xgb.DMatrix(X_test_sel, feature_names=active_feature_names)
+                test_probs_raw = xgb_result['model'].predict(dtest)
+                # Apply calibration
+                test_probs = np.column_stack([
+                    cal.predict(test_probs_raw[:, i])
+                    for i, cal in enumerate(cal_result['calibrators'])
+                ])
+                row_sums = test_probs.sum(axis=1, keepdims=True)
+                row_sums[row_sums == 0] = 1.0
+                test_probs = test_probs / row_sums
                 evaluate(y_test, test_probs, label='Held-out 2025/26')
             else:
                 logger.warning('No test samples from 2025/26 season')

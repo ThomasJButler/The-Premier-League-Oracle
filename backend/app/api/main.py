@@ -231,6 +231,8 @@ async def lifespan(app: FastAPI):
             free_tier_metadata = {
                 k: v for k, v in payload.items() if k != 'model'
             }
+            if payload.get('calibrators'):
+                logger.info("Probability calibrators loaded")
             logger.info(
                 "Free-tier model loaded: version %s, %d features",
                 payload.get('version', 'unknown'),
@@ -779,7 +781,19 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         dmatrix = xgb.DMatrix(
             [feature_vec], feature_names=feature_names,
         )
-        probs = free_tier_model.predict(dmatrix)[0]
+        raw_probs = free_tier_model.predict(dmatrix)[0]
+
+        # Apply probability calibration if calibrators are available
+        calibrators = free_tier_metadata.get('calibrators')
+        if calibrators and len(calibrators) == 3:
+            cal_probs = np.array([
+                float(cal.predict([raw_probs[i]])[0])
+                for i, cal in enumerate(calibrators)
+            ])
+            total = cal_probs.sum()
+            probs = cal_probs / total if total > 0 else raw_probs
+        else:
+            probs = raw_probs
 
         home_prob = float(probs[0])
         draw_prob = float(probs[1])

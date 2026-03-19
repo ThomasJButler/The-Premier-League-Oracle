@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-second update — P2o Docker, P2l .env.example, P2n CI coverage, P5u icon fix)
+Last updated: 30 March 2026 (twenty-third update — ML improvements: class weights, calibration, feature selection)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -107,9 +107,9 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 ### Improvement Opportunities (for next iteration)
 
 **Quick wins (low effort, likely impact):**
-- [ ] **Class weights** — add `scale_pos_weight` or `sample_weight` to boost draw importance during XGBoost training. Draws are 23% of data but equally important to predict
-- [ ] **Probability calibration** — apply sklearn `CalibratedClassifierCV` (isotonic or sigmoid) as a post-processing step to fix overconfident predictions. Should directly improve log loss and Brier score
-- [ ] **Feature selection** — 86 features for 1,680 training samples risks overfitting. Try dropping features with importance < 0.01 (likely ~30+ features). Fewer noisy features = better generalisation
+- [x] **Class weights** — `compute_sample_weights()` applies inverse-frequency weighting to training samples. Draws get higher weight (~1.4x) to compensate for 23% class imbalance
+- [x] **Probability calibration** — `calibrate_probabilities()` fits per-class isotonic regression on validation set, then re-normalises. Calibrators saved in model file and applied at inference in `/predict/free`
+- [x] **Feature selection** — `select_features()` drops features with importance < 0.005 after a first training pass, then retrains with the pruned set. Reduces overfitting on the ~1,680 training samples
 - [ ] **Hyperparameter tuning** — model stopped at iteration 48 (early stopping). Default XGBoost params may not be optimal. Grid search or Optuna over `max_depth`, `learning_rate`, `min_child_weight`, `subsample`, `colsample_bytree`
 
 **Medium effort (likely significant impact):**

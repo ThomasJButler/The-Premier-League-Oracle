@@ -2,6 +2,29 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — ML v2: class weights, calibration, feature selection
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Training pipeline improvements (`train_free_tier.py`)
+- **Class weighting:** Added `compute_sample_weights()` — inverse-frequency weighting makes draws ~1.4x more important during training. Previously 6.7% draw accuracy because the model ignored the minority class
+- **Feature selection:** Added `select_features()` — trains a first pass on all 86 features, then drops features with importance < 0.005 and retrains. Reduces noise from low-signal features that cause overfitting on 1,680 training samples
+- **Probability calibration:** Added `calibrate_probabilities()` — fits per-class isotonic regression on the validation set. Maps overconfident XGBoost probabilities to observed frequencies. Calibrators saved in the model file
+- Model version bumped from `1.0.0-free` to `2.0.0-free`
+- Training flow now: load → build features → split → first pass (all features) → select features → retrain (selected) → calibrate → evaluate → save
+
+### Backend API (`main.py`)
+- `/predict/free` endpoint now applies probability calibration when calibrators are present in the model file
+- Backwards compatible — works with both v1 (uncalibrated) and v2 (calibrated) model files
+
+### Context
+These three improvements target the key weaknesses identified in the v1 training run:
+- Draw prediction was nearly non-functional (6.7% accuracy)
+- Log loss was 1.034 (overconfident probabilities)
+- Feature importance was flat after position_difference — 80+ features had negligible signal
+
+---
+
 ## 30 March 2026 — P2o/P2l/P2n/P5u — Docker, CI, and polish
 
 **Branch:** `v3.0-BackendMLTraining`
