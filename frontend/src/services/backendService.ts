@@ -80,22 +80,23 @@ class BackendService {
   }
 
   /**
-   * Predict a single match using the backend ML ensemble.
+   * Predict a single match using the free-tier XGBoost model.
    * Throws BackendUnavailableError if the backend is down.
+   *
+   * Calls /predict/free and maps the response to the MLPrediction type
+   * expected by the frontend ensemble (optimizedPredictions.ts).
    */
   async predictMatch(homeTeam: string, awayTeam: string): Promise<MLPrediction> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const res = await fetch(`${BASE_URL}/predict`, {
+      const res = await fetch(`${BASE_URL}/predict/free`, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({
           home_team: homeTeam,
           away_team: awayTeam,
-          include_details: true,
-          use_cache: true,
         }),
         signal: controller.signal,
       });
@@ -109,7 +110,20 @@ class BackendService {
         );
       }
 
-      return await res.json();
+      const data = await res.json();
+
+      // Map /predict/free response to MLPrediction shape
+      return {
+        match: `${data.home_team} vs ${data.away_team}`,
+        prediction: {
+          home: data.probabilities.home_win,
+          draw: data.probabilities.draw,
+          away: data.probabilities.away_win,
+        },
+        confidence: data.confidence,
+        recommendation: data.predicted_outcome,
+        timestamp: new Date().toISOString(),
+      };
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof BackendUnavailableError) throw err;

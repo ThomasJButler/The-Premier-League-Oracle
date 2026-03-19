@@ -18,6 +18,7 @@
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
   import { aiAnalysisService } from '../services/aiAnalysis';
   import type { AnalysisInput } from '../services/aiAnalysis';
+  import { renderMarkdown } from '$lib/renderMarkdown';
 
   let predictions: Array<Match & { 
     prediction?: Prediction;
@@ -297,15 +298,20 @@
           selectedGameweek
         );
         
+        // Auto-fetch AI analysis in the background (don't block the loop)
+        if (aiAnalysisService.isEnabled()) {
+          fetchAiAnalysis(predictions[matchIndex]);
+        }
+
       } catch (error) {
         // Error predicting match
         predictions[matchIndex].predictionStatus = 'error';
       }
-      
+
       // Force UI update
       predictions = [...predictions];
     }
-    
+
     batchPredictionMessage = 'All predictions complete!';
     setTimeout(() => {
       isBatchPredicting = false;
@@ -857,8 +863,8 @@
                         <span class="font-semibold text-violet-800 dark:text-violet-200">AI Analysis</span>
                       </div>
                       {#if aiAnalyses.has(prediction.id)}
-                        <div class="text-sm text-muted-foreground prose-chat whitespace-pre-line">
-                          {aiAnalyses.get(prediction.id)}
+                        <div class="text-sm text-muted-foreground prose-chat">
+                          {@html renderMarkdown(aiAnalyses.get(prediction.id) || '')}
                         </div>
                       {:else if aiAnalysisLoading.has(prediction.id)}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">

@@ -3,7 +3,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
   import { onMount, tick } from 'svelte';
-  import DOMPurify from 'dompurify';
+  import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
   import type { Standing, Match } from '../types';
@@ -195,32 +195,6 @@ Current data:\n`;
   }
 
   // --- Simple Markdown Rendering (sanitised) ---
-  function renderMarkdown(text: string): string {
-    const html = text
-      // Code blocks (triple backtick)
-      .replace(/```([\s\S]*?)```/g, '<pre class="bg-background/50 rounded p-2 my-1 text-xs font-mono overflow-x-auto">$1</pre>')
-      // Inline code
-      .replace(/`([^`]+)`/g, '<code class="bg-background/50 rounded px-1 py-0.5 text-xs font-mono">$1</code>')
-      // Bold
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      // Bullet points (lines starting with - or *)
-      .replace(/^[\-\*]\s+(.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-      // Numbered lists
-      .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-      // Wrap consecutive <li> in <ul>
-      .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
-      // Line breaks
-      .replace(/\n/g, '<br/>');
-
-    // Sanitise to prevent XSS from injected content in OpenAI responses
-    return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: ['pre', 'code', 'strong', 'em', 'li', 'ul', 'ol', 'br', 'p', 'div', 'span'],
-      ALLOWED_ATTR: ['class'],
-    });
-  }
-
   // --- Send Message ---
   export async function sendMessage() {
     const text = inputText.trim();

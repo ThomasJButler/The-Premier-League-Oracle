@@ -202,18 +202,12 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Oracle system not available — ML endpoints disabled")
     
-    # Load pre-trained models if they exist and oracle initialised successfully
-    model_dir = Path("models")
-    if oracle is not None and model_dir.exists():
-        try:
-            oracle.xgboost_model.load_model(str(model_dir / "xgboost_model.pkl"))
-            if oracle.lstm_model is not None:
-                oracle.lstm_model.load_model(str(model_dir / "lstm_model.pt"))
-            if oracle.transformer_model is not None:
-                oracle.transformer_model.load_model(str(model_dir / "transformer_model.pt"))
-            logger.info("Loaded pre-trained models")
-        except Exception as e:
-            logger.warning(f"Could not load pre-trained models: {e}")
+    # Oracle ensemble models (xgboost_model.pkl, lstm_model.pt, transformer_model.pt)
+    # are not loaded — the frontend uses /predict/free which serves the free-tier
+    # XGBoost model (xgboost_free_tier.joblib) loaded below. The /predict endpoint
+    # remains available but requires all 3 ensemble models to be trained first.
+    if oracle is not None:
+        logger.info("Oracle initialised but ensemble models not loaded — use /predict/free")
 
     # Load free-tier model if available
     global free_tier_model, free_tier_metadata, free_tier_engineer
