@@ -76,20 +76,24 @@
   }
 
   async function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
-    hasApiKey = true;
     showApiSetup = false;
-    
+
+    // Only mark as having an API key if one was actually provided
+    if (!event.detail.apiKey) {
+      return;
+    }
+
+    hasApiKey = true;
+
     // Refresh data services with new API key
     const { dataService } = await import('./services/dataService');
     const { footballDataAPI } = await import('./services/api/footballData');
-    
+
     // Set the API key and clear any stale cached data
     footballDataAPI.setApiKey(event.detail.apiKey);
     await dataService.clearCache();
     await dataService.refreshApiConfiguration();
-    
-    // API key setup completed successfully
-    
+
     // Refresh dashboard if it's currently loaded
     if (currentView === 'Dashboard' && dashboardComponent) {
       setTimeout(() => {
@@ -110,7 +114,7 @@
     <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative" aria-label="Premier League Oracle content">
       <!-- Page transition overlay -->
       {#if isTransitioning}
-        <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fadeIn"></div>
+        <div class="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 transition-opacity duration-200 animate-fade-in"></div>
       {/if}
       
       <!-- Page content with smooth transitions -->

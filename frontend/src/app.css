@@ -371,21 +371,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Ticker scroll */
-  .live-ticker {
-    @apply overflow-hidden whitespace-nowrap relative;
-  }
-
-  .ticker-content {
-    @apply inline-block;
-    animation: scroll 60s linear infinite;
-  }
-
-
-  .ticker-content:hover {
-    animation-play-state: paused;
-  }
-
   /* Stat change indicator */
   .stat-change {
     @apply text-xs font-medium;

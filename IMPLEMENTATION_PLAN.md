@@ -1,25 +1,25 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 29 March 2026 (seventeenth update — corrections + 7 new items from deep parallel audit)
+Last updated: 30 March 2026 (eighteenth update — P1g wizard bug fixed, P5ah/P5w/P5y/P5z resolved)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~80% Complete
+## Project Status: ~82% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
 | Priority | Status | Notes |
 |----------|--------|-------|
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
-| P1 High Priority | 16/17 (94%) | 1 remaining: wizard dismiss sets hasApiKey unconditionally |
+| P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 22/27 (81%) | 5 open: httpx, .gitignore gaps, environment.yml stale, Docker, CI gaps |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~28/49 (57%) | 2 false-positive P5x items corrected; 7 new items from seventeenth audit (animate-fadeIn typo, typography plugin, aria-expanded, dead service methods, correlation inconsistency, Dockerfile root user, test_setup.py) |
+| P5 Hardening | ~32/49 (65%) | P5ah animate-fadeIn typo fixed, P5w dead CSS removed, P5y NaN guard added, P5z semantic HTML fixed |
 
-**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors — 2 P5x false positives corrected, 2 new CSS bugs found
+**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -141,13 +141,11 @@ curl -X POST http://localhost:8000/predict/free \
 
 ---
 
-## Remaining Work — P1 (Newly Discovered)
+## Remaining Work — P1 (ALL DONE)
 
-### P1g. ApiSetupWizard Dismiss Bug
+### P1g. ApiSetupWizard Dismiss Bug — DONE
 
-`App.svelte:79`: When the wizard is dismissed without entering an API key, `hasApiKey` is set to `true` unconditionally. The app then attempts to load data without a key, causing silent failures.
-
-- [ ] Make `hasApiKey = true` conditional on `event.detail.apiKey` being non-empty in `handleApiSetupComplete`
+- [x] Made `hasApiKey = true` conditional on `event.detail.apiKey` being non-empty in `handleApiSetupComplete`. Dismissing the wizard now correctly early-returns without setting `hasApiKey`, preventing silent data-fetch failures
 
 ---
 
@@ -352,11 +350,9 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [ ] Either wire parsed data into the appropriate store, or remove the WebSocket connection until the backend sends payload that the frontend needs. Currently the backend only sends prediction probability updates which nothing consumes
 
-### P5w. Dead Global CSS Rules
+### P5w. Dead Global CSS Rules — DONE
 
-`app.css` still contains `.live-ticker` (line 376) and `.ticker-content` (lines 379–387) global rules. The `.ticker-content` rule references the deleted `@keyframes scroll` animation. Both are overridden by `LiveTicker.svelte` local styles and are entirely dead.
-
-- [ ] Remove `.live-ticker` and `.ticker-content` global rules from `app.css`
+- [x] Removed dead `.live-ticker`, `.ticker-content`, and `.ticker-content:hover` global rules from `app.css` — all overridden by LiveTicker.svelte local styles
 
 ### P5x. Frontend CSS/Class Bugs — CORRECTED
 
@@ -364,17 +360,13 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [ ] `Dashboard.svelte:87`: `dark:text-primary-light` — undefined token, icon renders wrong colour in dark mode. No `primary-light` colour key exists in the Tailwind config (only `primary.DEFAULT` and `primary.foreground`)
 
-### P5y. SeasonStats NaN Guard
+### P5y. SeasonStats NaN Guard — DONE
 
-`SeasonStats.svelte:374`: The "Second Half Goals" stat divides by `totalGoals` without a zero guard. When no goals have been scored (e.g. at season start), this produces `NaN%` in the UI.
+- [x] Guarded `totalGoals` division with `> 0` check — displays "N/A" when no goals scored instead of `NaN%`
 
-- [ ] Guard the division with `totalGoals > 0` check, display a fallback like "N/A" or "0%"
+### P5z. renderMarkdown Semantic HTML — DONE
 
-### P5z. renderMarkdown Semantic HTML
-
-`renderMarkdown.ts`: Numbered list items produce `<li class="ml-4 list-decimal">` inside a `<ul>` wrapper. Numbered lists should use `<ol>`, not `<ul>`. This is semantically incorrect HTML and affects screen reader list navigation.
-
-- [ ] Use `<ol>` wrapper for numbered list items instead of `<ul>`
+- [x] Bullet list items now wrapped in `<ul>`, numbered list items wrapped in `<ol>` — correct semantic HTML for screen reader list navigation
 
 ### P5aa. Home Advantage Double-Counting
 
@@ -427,11 +419,9 @@ Three different spinner implementations exist across components (none use the `s
 - [ ] Consolidate spinners to a single pattern or shared component
 - [ ] Migrate remaining raw `<button>` elements to shadcn `<Button>` where appropriate (StandingsTable, TopScorers, LiveMatches, MatchList refresh/retry/filter buttons)
 
-### P5ah. App.svelte animate-fadeIn Typo
+### P5ah. App.svelte animate-fadeIn Typo — DONE
 
-`App.svelte:113`: Uses `animate-fadeIn` (camelCase) but Tailwind generates `animate-fade-in` (kebab-case). The overlay div appears and disappears via conditional rendering, but the intended fade animation never runs.
-
-- [ ] Change `animate-fadeIn` to `animate-fade-in`
+- [x] Changed `animate-fadeIn` to `animate-fade-in` — page transition overlay now fades correctly
 
 ### P5ai. Help.svelte Typography Plugin Missing
 

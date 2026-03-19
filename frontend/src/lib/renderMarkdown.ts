@@ -26,8 +26,10 @@ export function renderMarkdown(text: string): string {
     .replace(/^[-*]\s+(.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
     // Numbered lists
     .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    // Wrap consecutive <li> in <ul>
-    .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
+    // Wrap consecutive bullet <li> in <ul>
+    .replace(/((?:<li class="ml-4 list-disc">.*<\/li>\n?)+)/g, '<ul class="space-y-0.5 my-1">$1</ul>')
+    // Wrap consecutive numbered <li> in <ol>
+    .replace(/((?:<li class="ml-4 list-decimal">.*<\/li>\n?)+)/g, '<ol class="space-y-0.5 my-1">$1</ol>')
     // Line breaks
     .replace(/\n/g, '<br/>');
 

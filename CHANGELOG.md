@@ -2,6 +2,32 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P1g wizard dismiss bug fixed, P5ah/P5w/P5y/P5z resolved
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P1g — ApiSetupWizard dismiss bug (last P1 item)
+- `handleApiSetupComplete` in `App.svelte` now early-returns when `apiKey` is empty. Dismissing the wizard no longer sets `hasApiKey = true`, preventing silent data-fetch failures when no API key is configured
+
+### P5ah — animate-fadeIn typo
+- Changed `animate-fadeIn` (camelCase) to `animate-fade-in` (kebab-case) in `App.svelte` — page transition overlay now fades correctly
+
+### P5w — Dead global CSS rules
+- Removed dead `.live-ticker`, `.ticker-content`, and `.ticker-content:hover` rules from `app.css` — all overridden by LiveTicker.svelte scoped styles, and `.ticker-content` referenced the deleted `@keyframes scroll`
+
+### P5y — SeasonStats NaN guard
+- "Second Half Goals" stat now guarded with `totalGoals > 0` check — displays "N/A" instead of `NaN%` at season start
+
+### P5z — renderMarkdown semantic HTML
+- Numbered list items now wrapped in `<ol>` instead of `<ul>` — correct semantic HTML for screen reader list navigation
+
+### Stats
+- P1 High Priority: 17/17 (100%) — ALL DONE
+- P5 Hardening: ~32/49 (65%)
+- Project completion: ~80% → ~82%
+
+---
+
 ## 29 March 2026 — Seventeenth audit: P5x corrections + 7 new items from deep parallel analysis
 
 **Branch:** `v3.0-BackendMLTraining`

@@ -371,7 +371,9 @@
       },
       {
         label: 'Second Half Goals',
-        value: secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`,
+        value: totalGoals > 0
+          ? (secondHalfGoals > firstHalfGoals ? `${((secondHalfGoals/totalGoals)*100).toFixed(0)}%` : `${((firstHalfGoals/totalGoals)*100).toFixed(0)}%`)
+          : 'N/A',
         icon: Timer,
         color: 'from-slate-500 to-cyan-500',
         description: secondHalfGoals > firstHalfGoals ? 'More goals after halftime' : 'More goals before halftime'
