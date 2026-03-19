@@ -2,6 +2,44 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 27 March 2026 — P5 Hardening Batch 4: Confidence calibration, WebSocket cleanup, error contracts
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.79`
+
+### P5m — Confidence calibration (Spec 01 Req 5)
+- Added `CalibrationFactors` interface and `getCalibrationFactors()` method to `predictionTracker.ts`
+- Computes per-band accuracy factors: (actual accuracy) / (average stated confidence) for high (>0.7), medium (0.5–0.7), and low (<0.5) bands
+- Minimum 10 settled predictions per band before calibration activates; factors clamped to [0.5, 1.5]
+- Wired into `OptimizedPredictor.predictMatch()` — raw confidence multiplied by the band's calibration factor
+- 6 new tests covering insufficient data, overconfident/underconfident models, clamping, and independent band computation
+
+### P5i — WebSocket URL configurable
+- Extracted hardcoded `hostname:8000` WebSocket URL to use `VITE_BACKEND_WS_URL` environment variable
+- Falls back to `${protocol}//${hostname}:8000` for local development
+- Production deployments can now set the env var to match their backend URL
+
+### P5g — Dead WebSocket code removed
+- Removed aspirational `data.liveMatches` handler from `liveService.ts` — backend never sends this payload
+- Updated test from asserting dead behaviour to verifying WebSocket messages parse without crashing
+- Confirmed `backend/chroma_db/` is already in `.gitignore` (line 20) — corrected stale CLAUDE.md note
+
+### P5t — Error contract documented
+- Added JSDoc to `DataService` class documenting the two-tier error contract:
+  - Essential data methods (`getMatches`, `getStandings`, `getTopScorers`, `getCurrentSeason`) throw
+  - Supplementary methods return empty (`[]` for collections, `null` for single objects)
+
+### Spec 08 — Rate limiter marker synced
+- Ticked the Section 4d acceptance criterion — `_get_client_ip()` fix from P5a was already deployed
+
+### Spec 03 — Historical data command
+- Added `python -m app.data.football_data_collector --seasons 2020,2021,2022,2023,2024` to AGENTS.md
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- P5 progress: 95% → 96% (25/26 items done)
+
+---
+
 ## 19 March 2026 — P5 Hardening Batch 3: Accessibility, rate limiter, CI
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.78`

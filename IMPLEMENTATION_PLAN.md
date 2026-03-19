@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 26 March 2026 (tenth planning audit — P5n/o/p/q/s partial completed)
+Last updated: 27 March 2026 (eleventh planning audit — P5m/i done, P5g/P5t partial completed)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,9 +17,9 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
-| P5 Hardening | ~21/22 (95%) | Error contract, WebSocket URL remaining; accessibility, rate limiter, CI config done |
+| P5 Hardening | ~25/26 (96%) | CI config, error contract docs, WebSocket URL, dead code remaining; accessibility, rate limiter, confidence calibration done |
 
-**Frontend:** Production-ready — 376 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -227,27 +227,28 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 ### P5g. Config & Infrastructure — PARTIAL
 
 - [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency (blocked — push requires `workflow` OAuth scope)
-- [ ] `.gitignore`: `backend/chroma_db/` not gitignored — `chroma.sqlite3` generated database exists on disk and could be committed
+- [x] `.gitignore`: `backend/chroma_db/` IS already gitignored (line 20) — the prior CLAUDE.md note was incorrect. No action needed
 - [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
-- [ ] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` is dead code — the backend doesn't send this payload
+- [x] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` dead code removed — backend never sends this payload; test updated
 
-### P5i. WebSocket URL Hardcodes Port 8000
+### P5i. WebSocket URL Hardcodes Port 8000 — DONE
 
-`liveService.ts:235` constructs the WebSocket URL with hardcoded port 8000. In production deployments where the backend is not on port 8000, the WebSocket will silently fail to connect. Polling fallback masks the failure.
+`liveService.ts:235` previously hardcoded port 8000 in the WebSocket URL, causing silent failures in production deployments where the backend is not on port 8000. Polling fallback masked the failure.
 
-- [ ] Extract WebSocket URL to a configurable constant or environment variable (`VITE_BACKEND_WS_URL`)
-- [ ] Consider deriving the base URL from `backendService.BASE_URL` for consistency
+- [x] WebSocket URL now configurable via `VITE_BACKEND_WS_URL` environment variable, with fallback to `hostname:8000`
+- [x] Base URL derived consistently from the configurable constant
 
 ### P5l. Minor Dead Code and Type Cleanup — DONE
 
 - [x] `TopScorers.svelte:56` — removed `(s: any)` cast and nonexistent `FDScorer` fallback properties
 
-### P5m. Spec 01 — Confidence Calibration Not Implemented
+### P5m. Spec 01 — Confidence Calibration — DONE
 
-Spec 01 Req 5 requires tracking accuracy by confidence band over time and adjusting future confidence scores. Currently `calculateConfidence()` uses ensemble disagreement but lacks the feedback loop.
+Spec 01 Req 5 requires tracking accuracy by confidence band over time and adjusting future confidence scores. `calculateConfidence()` now includes a feedback loop based on historical prediction accuracy.
 
-- [ ] Add `getCalibrationFactors()` to `predictionTracker.ts` — returns `{ highBand: factor, mediumBand: factor, lowBand: factor }` from stored predictions
-- [ ] Wire calibration factors into `OptimizedPredictor.calculateConfidence()` as a final multiplier
+- [x] `getCalibrationFactors()` added to `predictionTracker.ts` — returns `{ highBand: factor, mediumBand: factor, lowBand: factor }` computed from stored prediction outcomes
+- [x] Calibration factors wired into `OptimizedPredictor.predictMatch()` as a post-processing multiplier on the confidence score
+- [x] 6 tests added covering calibration factor calculation and its effect on predicted confidence
 
 ### P5n. Poisson maxGoals Inconsistency — DONE
 
@@ -304,7 +305,7 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 ### P5t. Frontend Resilience — PARTIAL
 
 - [x] `footballData.ts`: AbortController with 15s timeout added to `rateLimitedFetch()` — prevents hung API calls from blocking the rate-limit queue
-- [ ] `dataService.ts`: inconsistent error contract remains (`getTeamStats` returns null, `getTeamForm` returns [], `getMatches` throws)
+- [x] `dataService.ts`: error contract documented — essential data methods (`getMatches`) throw so callers can surface errors; supplementary methods (`getTeamStats`, `getTeamForm`) return null/empty so optional UI sections degrade gracefully rather than crashing the page
 - [x] `Predictions.svelte`: `catch (error)` renamed to `catch (err)` — no longer shadows outer reactive error state
 
 ---
@@ -445,8 +446,8 @@ Priority features to implement with real data:
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
 | `kelly.ts` | `Math.random()` in `simulate()` — non-deterministic Monte Carlo | Low |
-| `liveService.ts` | WebSocket `onmessage` handler for `data.liveMatches` — dead code, backend never sends this | P5g |
-| `liveService.ts` | WebSocket URL hardcodes port `8000` — breaks production deployments | P5i |
+| ~~`liveService.ts`~~ | ~~WebSocket `onmessage` handler for `data.liveMatches` — dead code, backend never sends this~~ | ~~P5g~~ DONE |
+| ~~`liveService.ts`~~ | ~~WebSocket URL hardcodes port `8000` — breaks production deployments~~ | ~~P5i~~ DONE |
 
 ### Backend
 
@@ -510,9 +511,9 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~80% — missing: Poisson from real stats (Req 2), confidence calibration P5m (Req 5). Poisson maxGoals consistency fixed (P5n). **Markers: 5/8** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~85% — missing: Poisson from real stats (Req 2). Confidence calibration done (P5m). Poisson maxGoals consistency fixed (P5n). **Markers: 6/8** |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~65% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). **Markers: 6/8** |
-| `specs/03-backend-integration.md` | Python ML backend connection | ~85% — missing: AGENTS.md historical data command (Req 6). **Markers: 7/8** |
+| `specs/03-backend-integration.md` | Python ML backend connection | ~90% — AGENTS.md historical data command added (Req 6 met). **Markers: 8/8** |
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
@@ -546,7 +547,7 @@ All feature specifications in `specs/`:
 | `footballData.test.ts` | 23 | Passing |
 | `kelly.test.ts` | 13 | Passing |
 | `types.test.ts` | 4 | Passing |
-| `predictionTracker.test.ts` | 18 | Passing |
+| `predictionTracker.test.ts` | 24 | Passing |
 | `ChatBot.test.ts` | 18 | Passing |
 | `Predictions.test.ts` | 17 | Passing |
 | `BettingHistory.test.ts` | 15 | Passing |
@@ -562,7 +563,7 @@ All feature specifications in `specs/`:
 | `liveService.test.ts` | 14 | Passing |
 | `backendService.test.ts` | 19 | Passing |
 | `aiAnalysis.test.ts` | 24 | Passing |
-| **Total** | **376** | **All passing** |
+| **Total** | **382** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

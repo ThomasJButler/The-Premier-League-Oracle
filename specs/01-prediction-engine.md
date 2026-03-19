@@ -13,13 +13,12 @@ The following items from this spec have been **partially or fully implemented**:
 - **ELO Rating System (Req 1):** DONE. `EloRatingSystem` persists to/loads from localStorage (`elo_ratings` key). `updateRatings()` instance method updates ratings in memory + localStorage. `processCompletedMatches()` batch-processes finished matches idempotently. **Wired:** `sharedEloSystem.processCompletedMatches(completedMatches)` is called from `dataService.reconcilePredictions()` — ELO ratings auto-update whenever match results are reconciled. The seed ratings use canonical Football-Data.org names with an extensive alias map for fuzzy matching.
 - **Fatigue Analysis (Req 3):** FIXED. `calculateFixtureDifficulty()` no longer returns hardcoded `1500`. It now accepts an optional `EloRatingSystem` parameter, fetches matches in the date range from `dataService.getMatches()`, looks up opponent ELO ratings, and returns the average opponent rating. Returns `0` when no matches are found.
 - **Referee Analysis (Req 4):** IMPLEMENTED. `RefereeAnalyzer.getRefereeStats()` is called by `OptimizedPredictor.predictMatch()` when a referee name is provided. It applies a clamped +-3% adjustment to home/away probabilities based on the referee's historical home win rate vs the league average (0.46). Insights are added to the prediction output.
-- **Confidence Calculation (Req 5):** PARTIALLY DONE. `OptimizedPredictor` detects ensemble disagreement between ELO and Poisson top outcomes and lowers confidence when they disagree. Historical calibration tracking is not yet implemented.
+- **Confidence Calculation (Req 5):** DONE. `OptimizedPredictor` detects ensemble disagreement between ELO and Poisson top outcomes and lowers confidence when they disagree. `getCalibrationFactors()` in `predictionTracker.ts` adjusts confidence based on per-band historical accuracy.
 
 The following items **remain unimplemented**:
 
 - **Poisson lambda from real stats (Req 2)** — still uses estimated base values rather than team-specific attacking/defensive stats from the API.
 - **AI-Assisted Analysis (Req 6)** — `aiAnalysis.ts` does not exist.
-- **Historical confidence calibration** — no tracking of accuracy by confidence band for auto-adjustment.
 
 ---
 
@@ -150,7 +149,7 @@ Ralph should run backtests with ±5% weight variations to optimise these values 
 - [ ] Poisson lambda derived from real team stats, not hardcoded averages
 - [x] Fatigue multiplier uses real ELO opponent ratings (via `calculateFixtureDifficulty` with `eloSystem` param)
 - [x] Referee adjustments applied when referee name is available (via `OptimizedPredictor.predictMatch`)
-- [ ] Confidence reflects both model certainty and historical calibration (ensemble disagreement done; calibration not done)
+- [x] Confidence reflects both model certainty and historical calibration — ensemble disagreement lowers confidence; `getCalibrationFactors()` in predictionTracker adjusts based on per-band historical accuracy
 - [ ] AI analysis available as a configurable feature in Settings
 - [x] Backtest runner produces accuracy metrics for historical seasons (`frontend/src/lib/backtest.ts` — `BacktestRunner` class with accuracy, log loss, Brier score)
 - [x] All prediction unit tests pass — 364/364 passing (`npm run test:run`)

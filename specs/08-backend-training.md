@@ -255,7 +255,7 @@ When loading the model file at startup, validate that it contains the expected m
 - [x] `backend/.env` added to `.gitignore`
 - [x] Invalid team names return 422, not 500
 - [x] Error responses contain no stack traces or internal paths
-- [ ] Rate limiting returns 429 after 60 requests/minute from the same IP — **BROKEN:** `client_ip` always `"unknown"` (all clients share one bucket). Tracked in P5a.
+- [x] Rate limiting returns 429 after 60 requests/minute from the same IP — fixed in P5a: `_get_client_ip()` extracts real IP from `X-Forwarded-For` header
 - [x] Malformed model file causes startup failure with clear error message
 
 ---

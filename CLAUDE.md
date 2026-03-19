@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **3 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation), `lstm_predictor.py:537-540` (synthetic training data fallback)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
-- Frontend has 376 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
+- Frontend has 382 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -168,9 +168,9 @@ These specs are the single source of truth for requirements.
 - ~~`ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged~~ **FIXED:** mock now uses spy, test verifies `sanitize()` is called with response content (P5e)
 - ~~`betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`~~ **FIXED:** `normaliseTeamName()` now converts `&` to `and`
 - ~~`frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)~~ **FIXED:** pinned to `^20.17.0`
-- `.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed
+- ~~`.gitignore`: `backend/chroma_db/` not listed — generated `chroma.sqlite3` database file could be committed~~ **FIXED:** `backend/chroma_db/` is already listed in `.gitignore` at line 20
 - ~~Spec files 03, 04, 05, 07, 08 have severely outdated completion markers (see P5b in IMPLEMENTATION_PLAN.md)~~ **FIXED:** all 5 specs synced (P5b done 26 March 2026)
-- `liveService.ts:235`: WebSocket URL hardcodes port `8000` — will silently fail in production deployments where backend is not on same hostname:8000. Polling fallback masks the failure
+- ~~`liveService.ts:235`: WebSocket URL hardcodes port `8000` — will silently fail in production deployments where backend is not on same hostname:8000. Polling fallback masks the failure~~ **FIXED:** WebSocket URL now uses `VITE_BACKEND_WS_URL` env var with fallback to `hostname:8000`. Dead `data.liveMatches` handler also removed
 - ~~Season year calculation `getMonth() >= 6` duplicated in 3 places~~ **FIXED:** extracted `getSeasonYear()` and `SEASON_START_MONTH` to `lib/utils.ts` (P5j)
 - ~~`optimizedPredictions.ts:566`: H2H no-data fallback uses `homeWinRate: 0.40` but `constants.ts` has `DEFAULT_HOME_WIN_RATE = 0.46`~~ **FIXED:** now uses `DEFAULT_HOME_WIN_RATE` (P5k)
 - ~~`dataService.ts:98-101`: empty if/else branches with comment-only bodies~~ **FIXED:** collapsed (P5l)
@@ -191,12 +191,13 @@ These specs are the single source of truth for requirements.
 - ~~Dead exports: `kelly.ts` `isValueBet()`, `advancedPredictions.ts` `TeamRating` interface~~ **FIXED:** both removed (P5s). Note: `predictionTracker.ts` `GameweekAccuracy`/`getAccuracyByGameweek()` are NOT dead — actively used by `Dashboard.svelte:194`; incorrectly listed here previously
 - ~~`app.css`: dead classes `.match-card`, `.match-score`, `.chart-container` not used by any component. Dead `@keyframes scroll` animation overridden by LiveTicker local keyframes (P5s)~~ **FIXED:** all dead classes and the dead `@keyframes scroll` animation removed from `app.css` (P5s)
 - ~~`footballData.ts`: no AbortController or timeout on fetch~~ **FIXED:** AbortController with 15s timeout added to `rateLimitedFetch()` (P5t)
-- `dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws (P5t)
+- ~~`dataService.ts`: inconsistent error contract — `getTeamStats()` returns null, `getTeamForm()` returns [], but `getMatches()` throws~~ **FIXED:** error contract documented with JSDoc: essential data methods throw, supplementary methods return empty/null (P5t)
 - ~~`Predictions.svelte`: `catch (error)` variable shadows outer `let error`~~ **FIXED:** renamed to `catch (err)` (P5t)
 - `SEED_RATINGS` in `advancedPredictions.ts` includes relegated teams (Leeds, Luton, Burnley, Sheffield United) — dormant but stale
 - `betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded — not derived from the calculated `corners` predictions object
 - Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
 - `advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped
 - Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)
+- `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
