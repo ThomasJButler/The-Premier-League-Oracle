@@ -99,17 +99,20 @@ class DataService {
     try {
       // Check if API key is available
       const activeApi = this.getActiveApi();
-      
-      // Check if API key is available
+
       if (!activeApi.hasApiKey()) {
-        // Football-Data: No API key available
         this.apiSource.available = false;
         return;
       }
-      
+
       // Test API availability with the key
       const season = await activeApi.getCurrentSeason();
       this.apiSource.available = season !== null;
+
+      // Kick off background loading of historical seasons (non-blocking)
+      if (this.apiSource.available) {
+        this.loadAllHistoricalSeasons();
+      }
     } catch (error) {
       // Error checking API availability
       this.apiSource.available = false;
@@ -481,6 +484,69 @@ class DataService {
     }
 
     return [];
+  }
+
+  /** Seasons to pre-load for the backtester and ELO initialiser */
+  private static readonly HISTORICAL_SEASONS = [2020, 2021, 2022, 2023, 2024];
+  /** localStorage key — stores a timestamp so we don't re-trigger on every page load */
+  private static readonly SEASONS_LOADED_KEY = 'historical_seasons_loaded';
+  /** How often to re-check whether cached seasons have expired (24 hours) */
+  private static readonly SEASONS_LOADED_TTL = 24 * 60 * 60 * 1000;
+
+  /**
+   * Progressively load 5 seasons of historical match data into IndexedDB.
+   *
+   * - Runs in the background (fire-and-forget from checkDataSources)
+   * - Skips seasons already cached with a valid TTL
+   * - Each fetch goes through the rate-limited queue, guaranteeing
+   *   the 6-second gap between API calls on the free tier
+   * - Stores a localStorage flag to avoid re-triggering on every page load
+   */
+  private async loadAllHistoricalSeasons(): Promise<void> {
+    // Skip if we've already loaded recently (within TTL)
+    const lastLoaded = localStorage.getItem(DataService.SEASONS_LOADED_KEY);
+    if (lastLoaded) {
+      const elapsed = Date.now() - Number(lastLoaded);
+      if (elapsed < DataService.SEASONS_LOADED_TTL) {
+        return;
+      }
+    }
+
+    try {
+      // Fetch each season sequentially — the rate-limit queue in footballData.ts
+      // ensures the 6-second gap between API calls automatically
+      for (const season of DataService.HISTORICAL_SEASONS) {
+        // getHistoricalMatches checks IndexedDB first and only hits the API on a cache miss
+        await this.getHistoricalMatches(season);
+      }
+
+      // Mark as loaded so we don't re-trigger until the TTL expires
+      localStorage.setItem(DataService.SEASONS_LOADED_KEY, String(Date.now()));
+    } catch (error) {
+      // Historical loading is non-critical — log and move on
+      console.warn('Background historical data loading failed:', error);
+    }
+  }
+
+  /**
+   * Get all historical matches across the pre-loaded seasons.
+   * Useful for backtesting and ELO initialisation.
+   * Returns whatever is cached — does NOT trigger new API calls.
+   */
+  public async getAllHistoricalMatches(): Promise<Match[]> {
+    await this.ensureReady();
+    const allMatches: Match[] = [];
+
+    for (const season of DataService.HISTORICAL_SEASONS) {
+      const cacheKey = `historical_matches_${season}`;
+      const HISTORICAL_TTL = 24 * 60 * 60 * 1000;
+      const cached = await this.getCachedData<Match[]>('matches', cacheKey, HISTORICAL_TTL);
+      if (cached) {
+        allMatches.push(...cached);
+      }
+    }
+
+    return allMatches;
   }
 
   // Get completed matches for a given season year (e.g. 2024 for 2024/25)

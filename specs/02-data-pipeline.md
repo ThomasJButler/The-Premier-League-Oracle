@@ -177,7 +177,7 @@ All shared types in `frontend/src/types/index.ts`. Key constraints:
 - [x] `getLiveMatches()` method returns real data (empty array when no live matches)
 - [x] `getHistoricalMatches(season)` fetches and caches season data
 - [x] `getTeamRecentMatches()` implemented and delegates to `footballDataAPI.getTeamMatches()`
-- [ ] Progressive 5-season loader with rate limiting (method exists, bulk loader does not)
+- [x] Progressive 5-season loader with rate limiting — `loadAllHistoricalSeasons()` in `dataService.ts` fetches seasons 2020–2024 sequentially with rate-limited spacing, caches in IndexedDB, skips already-cached seasons
 - [x] All Supabase code removed
-- [ ] Rate limiting respected (queue requests, 6s minimum spacing for batch fetches)
-- [ ] Backend proxy configured in `vite.config.ts`
+- [x] Rate limiting respected — `footballData.ts` uses a proper request queue ensuring 6s minimum spacing between API calls (even under concurrent callers)
+- [x] Backend proxy configured in `vite.config.ts` — `/api/oracle` → `http://localhost:8000` since P2b

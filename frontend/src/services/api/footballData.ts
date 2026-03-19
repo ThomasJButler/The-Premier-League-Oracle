@@ -111,7 +111,10 @@ class FootballDataAPI {
   // Dev proxy has no rate limit, so use a shorter delay to keep the UI snappy.
   private rateLimitDelay = import.meta.env.DEV ? 200 : 6000;
   private lastRequestTime = 0;
-  
+  // Promise-based queue: each request chains onto the previous one so that
+  // concurrent callers are serialised and the rate-limit gap is guaranteed.
+  private requestQueue: Promise<void> = Promise.resolve();
+
   constructor() {
     const envKey = import.meta.env.VITE_FOOTBALL_DATA_API_KEY;
     const savedApiKey = localStorage.getItem('football_data_api_key');
@@ -155,32 +158,43 @@ class FootballDataAPI {
   private static readonly FETCH_TIMEOUT = 15_000;
 
   private async rateLimitedFetch(url: string): Promise<Response> {
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequestTime;
+    // Chain onto the queue so concurrent callers are serialised.
+    // Without this, two simultaneous calls would both read the same
+    // lastRequestTime and fire within milliseconds of each other,
+    // blowing past the API rate limit.
+    return new Promise<Response>((resolve, reject) => {
+      this.requestQueue = this.requestQueue.then(async () => {
+        const now = Date.now();
+        const timeSinceLastRequest = now - this.lastRequestTime;
 
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest));
-    }
+        if (timeSinceLastRequest < this.rateLimitDelay) {
+          await new Promise(r => setTimeout(r, this.rateLimitDelay - timeSinceLastRequest));
+        }
 
-    this.lastRequestTime = Date.now();
+        this.lastRequestTime = Date.now();
 
-    // AbortController ensures a hung API call fails fast rather than
-    // blocking the rate-limit queue indefinitely (P5t).
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FootballDataAPI.FETCH_TIMEOUT);
+        // AbortController ensures a hung API call fails fast rather than
+        // blocking the rate-limit queue indefinitely (P5t).
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), FootballDataAPI.FETCH_TIMEOUT);
 
-    try {
-      return await fetch(url, {
-        headers: {
-          'X-Auth-Token': this.config.apiKey
-        },
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'same-origin'
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'X-Auth-Token': this.config.apiKey
+            },
+            signal: controller.signal,
+            mode: 'cors',
+            credentials: 'same-origin'
+          });
+          resolve(response);
+        } catch (err) {
+          reject(err);
+        } finally {
+          clearTimeout(timeoutId);
+        }
       });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    });
   }
   
   private async fetchWithCache<T>(endpoint: string, customCacheTimeout?: number): Promise<T | null> {
