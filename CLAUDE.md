@@ -119,7 +119,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 
 ### Frontend Gotchas
-- `Prediction` type in `types/index.ts` is a dead legacy interface — `StoredPrediction` is the actual runtime type
+- `Prediction` type in `types/index.ts` is a view-model for Predictions.svelte card display — `StoredPrediction` is the persistence type used by `predictionTracker`
 - `KellyCalculator.svelte` edge display: `edgePercentage` from `kelly.ts` is already a percentage (e.g. 5.0 for 5%) — do NOT multiply by 100 again in the template
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — mitigated by `ValueBets.svelte` `mapMarket()` conversion
 - `SEED_RATINGS` in `advancedPredictions.ts` contains only the 20 current PL teams — unknown teams fall back to `DEFAULT_RATING` (1500). Needs seasonal update on promotion/relegation
