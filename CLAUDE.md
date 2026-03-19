@@ -125,7 +125,7 @@ These specs are the single source of truth for requirements.
 - Football-Data.org free tier constraint: xG, shots, possession, cards, corners data unavailable — limits ~70 backend features permanently
 - `SeasonStats.svelte` lateDrama uses `full_time_result !== half_time_result` — both fields exist on `Match` type and are populated by `transformMatch`; relabelled to "Results changed after halftime"
 - `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)
-- `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
+- ~~`Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"~~ **FIXED:** "Local data caching" → "IndexedDB data caching", "All data bypasses servers" corrected for ChatBot proxy, "copy from tables" claim removed, "other leagues on roadmap" → "no current plans"
 - `.gitignore` has `backend/.env` (fixed 18 March 2026) — API keys protected
 - ~~`backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files~~ **STALE:** no broken links remain in either file
 - ~~No `vercel.json` exists~~ **FIXED:** `vercel.json` created with build command, output directory, and SPA catch-all rewrite. Football-Data.org sends `Access-Control-Allow-Origin: *` so direct browser calls work in production
@@ -223,9 +223,9 @@ These specs are the single source of truth for requirements.
 - ~~`SeasonStats.svelte:374`: Division by `totalGoals` produces `NaN%` when no goals scored~~ **FIXED:** guarded with `totalGoals > 0`, displays "N/A" fallback (P5y)
 - ~~`renderMarkdown.ts`: Numbered lists wrap `<li class="list-decimal">` in `<ul>` instead of `<ol>`~~ **FIXED:** bullet items now wrapped in `<ul>`, numbered items in `<ol>` (P5z)
 - ~~`optimizedPredictions.ts`: Home advantage double-counted — ELO adds 65 points AND form adds `*1.1`/`*0.9` momentum~~ **FIXED:** removed `*1.1`/`*0.9` momentum adjustments from `analyzeRecentForm()` — ELO `HOME_ADVANTAGE` is the single source of truth (P5aa)
-- `backtest.ts`: ELO `saveToStorage()` fires on every match during backtest — ~300+ unnecessary localStorage writes (P5ab)
+- ~~`backtest.ts`: ELO `saveToStorage()` fires on every match during backtest — ~300+ unnecessary localStorage writes (P5ab)~~ **NOT A BUG:** investigated and confirmed `updateRatings()` does not call `saveToStorage()` — only `processCompletedMatches()` writes once per batch. No per-match writes occur during backtest
 - ~~`betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation~~ **FIXED:** corrected to 0.26 + 0.46 + 0.28 = 1.0 (P5ac)
-- `advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)
+- ~~`advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)~~ **FIXED:** `recentFixtures` parameter removed, method simplified to single-param `(restDays: number)` — see line 148
 - ~~`main.py`: Model/CSV paths resolve relative to CWD, not `__file__`~~ **FIXED:** `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` anchors all paths to `backend/` regardless of CWD (P5af)
 - ~~`requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI~~ **FIXED:** added httpx==0.27.2 to requirements.txt (P2t)
 - ~~`.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered~~ **FIXED:** added *.joblib and frontend/.env.local/.env.production.local patterns (P2u)

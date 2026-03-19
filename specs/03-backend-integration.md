@@ -6,7 +6,7 @@
 
 ## Current State
 
-The Python backend in `backend/` is fully built but **zero frontend code calls it**. It has:
+The Python backend in `backend/` is integrated with the frontend via `BackendService`. Key components:
 
 > **Note (March 2026 audit — updated):** The backend server now starts with graceful degradation — all heavy deps (LangChain, ChromaDB, torch, shap, optuna) are wrapped in try/except with availability flags. ML endpoints are disabled when deps are missing but `/health` returns 200. Feature engineering methods no longer return `np.random.uniform()` — 63 methods now return hardcoded `0.0` (still stubs, but not random). See `IMPLEMENTATION_PLAN.md` P3 for the remediation plan.
 
@@ -25,12 +25,13 @@ The Python backend in `backend/` is fully built but **zero frontend code calls i
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/predict` | Single match prediction |
-| POST | `/predict/batch` | Batch predictions for multiple matches |
+| POST | `/predict` | Single match prediction (Pro-tier Oracle) |
+| POST | `/predict/free` | Free-tier XGBoost prediction |
 | GET | `/predict/upcoming` | Predictions for all upcoming PL fixtures |
-| POST | `/nl-query` | Natural language query (LangChain) |
-| POST | `/team-stats` | Team statistics with ML features |
-| WS | `/ws` | WebSocket for real-time updates |
+| GET | `/health` | Health check (backend availability) |
+| GET | `/models/free-tier/info` | Free-tier model metadata |
+
+Note: `POST /predict/batch`, `POST /team-stats`, and `WS /ws` were removed — `predictBatch()` and `getTeamStats()` were dead code (P5ak); WebSocket was removed from frontend in P5v.
 
 Auth: `HTTPBearer` token. For development, support `ORACLE_API_TOKEN` env var or an unauthenticated dev mode flag.
 

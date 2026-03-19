@@ -15,9 +15,9 @@ The following items from this spec have been **implemented**:
 - **`getMatchesBySeason(seasonId)`:** DONE. Helper method that extracts the year from a season string and delegates to `getHistoricalMatches()`.
 - **3-tier cache:** DONE. Memory-level caching is handled via IndexedDB TTL checks; API fallback is in place.
 
-The following items **remain unimplemented or partially done**:
+All items from this spec are now **fully implemented**:
 
-- **5 seasons of historical data loading:** The method exists but there is no progressive loader that fetches all 5 seasons on first use with rate-limiting between requests.
+- **5 seasons of historical data loading:** DONE. `loadAllHistoricalSeasons()` in `dataService.ts` progressively fetches seasons 2020–2024 with rate-limited spacing, caching in IndexedDB.
 - **Supabase removal:** DONE. All Supabase code removed, verified 19 March 2026. Checklist below fully checked off.
 - **Football-Data.org proxy:** DONE. `/api/football-data` proxy configured in `vite.config.ts` for local development. In production, the frontend calls Football-Data.org directly (they send `Access-Control-Allow-Origin: *`).
 - **Backend ML proxy:** DONE. `/api/oracle` → `http://localhost:8000` proxy configured in `vite.config.ts` since P2b (backend service integration).

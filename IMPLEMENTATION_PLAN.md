@@ -321,7 +321,6 @@ Priority features to implement with real data:
 | `Predictions.svelte` | 300ms artificial delay in `predictGameweek` — cosmetic fake loading | Low |
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
-| `kelly.ts` | `Math.random()` in `simulate()` — non-deterministic Monte Carlo | Low |
 
 ### Backend
 

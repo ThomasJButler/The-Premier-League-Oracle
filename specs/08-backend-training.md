@@ -10,16 +10,16 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 | Component | Status | Notes |
 | --------- | ------ | ----- |
-| `xgboost_model.py` | Architecture complete | Real training, SHAP, Optuna, save/load |
-| `lstm_predictor.py` | Architecture complete | `get_feature_importance()` returns `np.random.random()` (stub) |
-| `transformer_model.py` | Architecture complete | Save/load only stores 2 of 8 params; `val_accuracy` UnboundLocalError |
-| `modern_oracle.py` | Orchestrator exists | `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
-| `advanced_engineering.py` | 150 features declared | 63 methods return hardcoded `0.0` (no data from free API) |
-| `train.py` | Runnable | Trains XGBoost on all 150 features (including 63 zero-columns) |
-| `football_data_collector.py` | Partial | `get_head_to_head()` stub; `get_team_form()` result-flip bug |
-| `models/xgboost_model.pkl` | Exists on disk | Trained on noisy feature set (63 zero-value columns) |
-| LSTM/Transformer models | No saved artefacts | Untrained |
-| Backend tests | 0% coverage | `test_setup.py` only checks imports |
+| `free_tier_features.py` | **Complete** | 99 features (incl. 8 draw + 5 Elo), standalone class |
+| `train_free_tier.py` | **Complete** | XGBoost + stacked OvR ensemble + LR baseline, rolling CV via `--cv` |
+| `xgboost_free_tier.joblib` | **Trained** | 51.0% accuracy, saved with metadata |
+| `main.py` — `/predict/free` | **Complete** | Auto-uses ensemble when present, input validation, rate limiting |
+| `xgboost_model.py` | Architecture complete | Pro-tier — deferred |
+| `lstm_predictor.py` | Architecture complete | Pro-tier — `get_feature_importance()` returns `np.random.random()` (stub) |
+| `transformer_model.py` | Architecture complete | Pro-tier — save/load only stores 2 of 8 params |
+| `modern_oracle.py` | Orchestrator exists | Pro-tier — `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
+| `advanced_engineering.py` | 150 features declared | Pro-tier — 63 methods return hardcoded `0.0` (no data from free API) |
+| Backend tests | **86 tests** | 45 features, 25 training pipeline, 16 API endpoints |
 
 **Training data:** 2,197 matches across 6 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
 
@@ -31,7 +31,7 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 ```
 Tier 1: Free (active development)
-  Features:     ~73 (results, form, standings, H2H, contextual, time series)
+  Features:     99 (results, form, standings, H2H, contextual, time series, draw indicators, Elo)
   Model:        XGBoost
   Training:     train_free_tier.py → xgboost_free_tier.joblib
   Endpoint:     POST /predict/free
@@ -85,7 +85,7 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone cla
 - [x] Team name normalisation handles both CSV and API formats
 - [x] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
 
-Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 86 features are computed from scratch using only CSV/free-API data.
+Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 99 features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -262,7 +262,7 @@ When loading the model file at startup, validate that it contains the expected m
 
 ### 5. Testing (Priority: High)
 
-The backend currently has 0% test coverage. The free-tier model introduces the first real tests.
+The backend has 86 tests across 3 files covering free-tier features, training pipeline, and API endpoints.
 
 #### `backend/tests/test_free_tier_features.py`
 
@@ -344,7 +344,7 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 | `backend/tests/test_predict_free_tier.py` | Create | High |
 | `.gitignore` | Modify (add `backend/.env`) | High |
 | `backend/app/features/advanced_engineering.py` | No change (free tier) | — |
-| `backend/train.py` | No change (free tier) | — |
+| `backend/train.py` | **Removed** — superseded by `train_free_tier.py` | — |
 | `backend/app/models/xgboost_model.py` | No change (reused) | — |
 
 ---

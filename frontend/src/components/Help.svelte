@@ -400,7 +400,7 @@
                   <ul class="text-sm space-y-1">
                     <li>• Bottom navigation bar</li>
                     <li>• Touch-optimised controls</li>
-                    <li>• Local data caching</li>
+                    <li>• IndexedDB data caching</li>
                     <li>• Responsive layouts</li>
                   </ul>
                 </div>
@@ -433,7 +433,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">All data comes directly from Football-Data.org, bypassing our servers.</p>
+                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your OpenAI key out of the browser.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">
@@ -496,12 +496,12 @@
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
-                  <p>Yes — the Betting History page has a JSON export button for your tracked bets. You can also copy data from tables directly.</p>
+                  <p>Yes — the Betting History page has a JSON export button for your tracked bets.</p>
                 </div>
                 
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Will you add other leagues?</h3>
-                  <p>We're focusing on perfecting Premier League predictions first. Other leagues are on our roadmap for future versions.</p>
+                  <p>The app is focused exclusively on the Premier League. There are no current plans to add other leagues.</p>
                 </div>
               </div>
             </div>

@@ -15,9 +15,9 @@ The following items from this spec have been **implemented**:
 - **Requirement 4 (Value bet detection — value.ts):** `value.ts` does NOT use `Math.random()` for odds. The `ValueBettingEngine.identifyValueBets()` method accepts a `MarketOdds` parameter (user-supplied bookmaker odds) and compares against model probabilities from `AdvancedMatchPredictor`. It calculates EV, edge, and Kelly stake using real model outputs. An `OddsProvider` interface stub exists for future API integration.
 - **Requirement 6 (Auto-resolve bets):** DONE. `betHistoryService.resolveMatchBets()` is called by both `dataService.reconcilePredictions()` and `Dashboard.svelte` when match results are loaded.
 
-The following items **remain unimplemented or partially done**:
+All items from this spec are now **fully implemented**:
 
-- **Requirement 5 (BetBuilder completion):** `suggestedCombos` in `betBuilder.ts` needs verification for completeness.
+- **Requirement 5 (BetBuilder completion):** DONE. `suggestedCombos` generates valid, reasoned accumulator suggestions with market correlation (P4d). All four combo types apply `correlationAdjustment()` for consistent confidence calculations (P5al).
 - **Requirement 12 (Accumulator UI):** DONE. `AccumulatorBuilder.svelte` in `frontend/src/components/betting/` provides a dedicated accumulator view: loads upcoming matches, generates bet builder combos for each, displays all 4 combo types with confidence/reasoning/selections, supports building custom cross-match accumulators by selecting individual legs, Kelly-sized stakes, EV calculation, and Track Bet integration via `betHistoryService.storeBet()` with `market: 'combo'`. 17 tests in `AccumulatorBuilder.test.ts`.
 
 ---
@@ -32,7 +32,7 @@ The following items **remain unimplemented or partially done**:
 | `frontend/src/components/betting/KellyCalculator.svelte` | Fully implemented — auto-suggested bets from upcoming predictions, manual calculator |
 | `frontend/src/components/betting/ValueBets.svelte` | Fully implemented — manual odds entry, real EV calculations, "Track Bet" integration |
 | `frontend/src/components/BettingHistory.svelte` | Fully implemented — real data, chart, table, export |
-| `frontend/src/lib/betBuilder.ts` | `suggestedCombos` partially complete |
+| `frontend/src/lib/betBuilder.ts` | Fully implemented — suggestedCombos, correlationAdjustment on all 4 combo types |
 | `frontend/src/components/betting/AccumulatorBuilder.svelte` | Fully implemented — cross-match accumulator builder, Track Bet integration |
 
 ---

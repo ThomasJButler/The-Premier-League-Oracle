@@ -16,9 +16,7 @@ The following items from this spec have been **partially or fully implemented**:
 - **Confidence Calculation (Req 5):** DONE. `OptimizedPredictor` detects ensemble disagreement between ELO and Poisson top outcomes and lowers confidence when they disagree. `getCalibrationFactors()` in `predictionTracker.ts` adjusts confidence based on per-band historical accuracy.
 - **AI-Assisted Analysis (Req 6):** DONE. `frontend/src/services/aiAnalysis.ts` exists with `AIAnalysisService` class. Configurable in Settings (enable/disable, API key entry). Responses cached 24 hours per match.
 
-The following items **remain unimplemented**:
-
-- **Poisson lambda from real stats (Req 2)** — still uses estimated base values rather than team-specific attacking/defensive stats from the API.
+All items from this spec are now **fully implemented**. See acceptance criteria below.
 
 ---
 
@@ -70,10 +68,9 @@ Standings:  15%
 
 ### 3. Fatigue Analysis (Priority: Medium) — IMPLEMENTED
 
-**Current state:** `FatigueAnalyzer.calculateFixtureDifficulty()` no longer returns hardcoded `1500`. It now accepts `(teamName, startDate, endDate, eloSystem?)`, fetches matches in the date range from `dataService.getMatches()`, identifies opponents, and looks up their ELO ratings to compute average opponent difficulty. Returns `0` when no matches found in range. `getFatigueMultiplier(restDays, recentFixtures)` is unchanged and correct.
+**Current state:** `FatigueAnalyzer.calculateFixtureDifficulty()` no longer returns hardcoded `1500`. It now accepts `(teamName, startDate, endDate, eloSystem?)`, fetches matches in the date range from `dataService.getMatches()`, identifies opponents, and looks up their ELO ratings to compute average opponent difficulty. Returns `0` when no matches found in range. `getFatigueMultiplier(restDays)` is unchanged and correct.
 
-**Remaining gap:**
-- The fatigue multiplier is used in `AdvancedMatchPredictor.predictMatch()` to adjust ratings, but the wiring into `OptimizedPredictor.predictMatch()` to adjust Poisson lambda specifically needs verification.
+Fatigue is fully wired into both `AdvancedMatchPredictor.predictMatch()` and `OptimizedPredictor.calculateFatigueFromMatches()`.
 
 ---
 
@@ -81,8 +78,7 @@ Standings:  15%
 
 **Current state:** `RefereeAnalyzer.getRefereeStats()` IS used in the final prediction. `OptimizedPredictor.predictMatch()` calls it when a referee name is provided, calculates the home win bias vs league average (0.46), clamps the adjustment to +-3%, applies it to home/away probabilities, re-normalises, and adds an insight string (e.g. "Referee Michael Oliver favours home (52% home win rate vs 46% avg)").
 
-**Remaining gap:**
-- Referee stats are not surfaced as a dedicated tooltip or info panel in the Predictions component — they appear as text in the key factors/insights list.
+Referee adjustments appear as text in the key factors/insights list within the Predictions component.
 
 ---
 
@@ -151,4 +147,4 @@ Ralph should run backtests with ±5% weight variations to optimise these values 
 - [x] Confidence reflects both model certainty and historical calibration — ensemble disagreement lowers confidence; `getCalibrationFactors()` in predictionTracker adjusts based on per-band historical accuracy
 - [x] AI analysis available as a configurable feature in Settings (`aiAnalysis.ts` created, wired into Settings)
 - [x] Backtest runner produces accuracy metrics for historical seasons (`frontend/src/lib/backtest.ts` — `BacktestRunner` class with accuracy, log loss, Brier score)
-- [x] All prediction unit tests pass — 372/372 passing (`npm run test:run`)
+- [x] All prediction unit tests pass — 402/402 passing (`npm run test:run`)
