@@ -2,6 +2,28 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — P6e: MVP quality pass — fix Chart.js, null form, chart labels, team name 422s
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.17`
+
+### Chart.js Filler plugin (Dashboard.svelte)
+- Registered `Filler` plugin so `fill: true` on profit/loss chart no longer produces console warnings
+- Updated Dashboard test mock to include the new `Filler` export
+
+### Standings form null handling (StandingsTable.svelte, footballData.ts)
+- Added `{:else}` fallback in the form column template — shows "—" when form data is null (e.g. early season)
+- Fixed `FDStanding.form` type from `string` to `string | null` in both interface and `getTeamAnalysis` return type
+
+### Prediction Accuracy chart x-axis (Dashboard.svelte)
+- Fallback labels now use `matchday` (GW 1, GW 2) or `matchDate` instead of generation `timestamp`
+- Prevents repeated labels (e.g. "Feb 21" x4) when predictions are batch-generated in a single session
+
+### Backend team name normalisation (free_tier_features.py, main.py)
+- Added case-insensitive fallback in `normalize_team_name()` across all lookup maps
+- Added `F.C.` suffix stripping alongside existing `FC`, `AFC`, `CF`
+- Added case-insensitive fallback in `_resolve_team_name()` against the valid team set
+- Prevents 422 errors when the frontend sends Football-Data.org canonical names with minor casing differences
+
 ## March 2026 — P6c: Repository cleanup — remove dead code and archive Pro-tier
 
 **Branch:** `v3.0-Development`
