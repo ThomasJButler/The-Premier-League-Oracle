@@ -2,6 +2,33 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — P5 Hardening Batch 5: Backend CI pipeline, spec consistency, stale docs
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.80`
+
+### P5c — Backend CI pipeline
+- Added `backend` job to `.github/workflows/ci.yml` — runs 62 Python tests via pytest on every push/PR
+- Uses Python 3.11 (matching Dockerfile and environment.yml), pip cache for faster runs
+- Installs from `requirements.txt` plus `httpx` (required by FastAPI `TestClient`)
+- Frontend and backend jobs run in parallel for faster CI
+
+### P5g — CI node version fixed
+- Changed `node-version: 20` to `node-version-file: .nvmrc` — Node version now reads from `.nvmrc` (single source of truth)
+- Previously blocked by OAuth `workflow` scope — now pushed
+
+### Documentation consistency
+- Fixed stale CLAUDE.md entries: LiveMatches ARIA association already fixed (panel IDs exist), dead backend imports already removed (`timedelta` from main.py, `asyncio` from modern_oracle.py)
+- Updated backend/README.md — was actively contradicting current state (claimed 0% test coverage, untrained models)
+- Synced spec body text with acceptance criteria across specs 01, 02, 04, 05, 07, 08 — body descriptions still said "not done" while criteria were ticked
+- Removed dead `frontend/src/assets/svelte.svg` (unused Vite template scaffolding)
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Backend: 62 pytest tests (now running in CI)
+- P5 progress: 96% → 96% (27/28 items done — 2 new items resolved, recount)
+
+---
+
 ## 27 March 2026 — P5 Hardening Batch 4: Confidence calibration, WebSocket cleanup, error contracts
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.79`

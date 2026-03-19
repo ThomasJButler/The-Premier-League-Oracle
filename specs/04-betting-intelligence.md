@@ -17,8 +17,6 @@ The following items from this spec have been **implemented**:
 
 The following items **remain unimplemented or partially done**:
 
-- **ValueBets.svelte:** The component file does not exist. There is no UI for manual odds entry or value bet display.
-- **Requirement 3 (Kelly auto-suggestions):** `KellyCalculator.svelte` is manual-only; no auto-populated suggestions from predictions.
 - **Requirement 5 (BetBuilder completion):** `suggestedCombos` in `betBuilder.ts` needs verification for completeness.
 
 ---
@@ -30,8 +28,8 @@ The following items **remain unimplemented or partially done**:
 | `frontend/src/services/betting/kelly.ts` | Fully implemented — full/half/quarter Kelly |
 | `frontend/src/services/betting/value.ts` | Fully implemented — accepts user-supplied odds via `MarketOdds` param, uses model probabilities (no `Math.random()`) |
 | `frontend/src/services/betting/betHistoryService.ts` | Fully implemented — localStorage persistence, ROI, monthly P/L, auto-resolve |
-| `frontend/src/components/betting/KellyCalculator.svelte` | Manual input only, no auto-suggestions |
-| `frontend/src/components/betting/ValueBets.svelte` | Does not exist — no UI for value bet detection |
+| `frontend/src/components/betting/KellyCalculator.svelte` | Fully implemented — auto-suggested bets from upcoming predictions, manual calculator |
+| `frontend/src/components/betting/ValueBets.svelte` | Fully implemented — manual odds entry, real EV calculations, "Track Bet" integration |
 | `frontend/src/components/BettingHistory.svelte` | Fully implemented — real data, chart, table, export |
 | `frontend/src/lib/betBuilder.ts` | `suggestedCombos` partially complete |
 
@@ -117,7 +115,7 @@ Offered Kelly fractions: full (f*), half (f*/2), quarter (f*/4). Recommend quart
 
 **Engine (value.ts):** IMPLEMENTED. `ValueBettingEngine.identifyValueBets()` accepts user-supplied `MarketOdds` and compares against `AdvancedMatchPredictor` probabilities. It does NOT use `Math.random()` — all probability calculations use the real prediction model and Poisson distribution. The engine calculates EV, edge, Kelly stake, and generates reasoning/warnings. An `OddsProvider` interface stub exists for future API integration. Also includes arbitrage detection, CLV tracking, Sharpe ratio, and performance metrics.
 
-**UI (ValueBets.svelte):** NOT IMPLEMENTED. The component file does not exist. There is no UI for manual odds entry or value bet display. The engine has zero UI consumers.
+**UI (ValueBets.svelte):** IMPLEMENTED. The component allows manual odds entry for a selected upcoming match, displays real EV calculations, and wires into `betHistoryService` via a "Track Bet" button.
 
 **MVP approach: manual odds entry**
 

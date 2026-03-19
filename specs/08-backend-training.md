@@ -14,10 +14,10 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 | `lstm_predictor.py` | Architecture complete | `get_feature_importance()` returns `np.random.random()` (stub) |
 | `transformer_model.py` | Architecture complete | Save/load only stores 2 of 8 params; `val_accuracy` UnboundLocalError |
 | `modern_oracle.py` | Orchestrator exists | `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
-| `advanced_engineering.py` | 150 features declared | 49 methods return hardcoded `0.0` (no data from free API) |
-| `train.py` | Runnable | Trains XGBoost on all 150 features (including 49 zero-columns) |
+| `advanced_engineering.py` | 150 features declared | 63 methods return hardcoded `0.0` (no data from free API) |
+| `train.py` | Runnable | Trains XGBoost on all 150 features (including 63 zero-columns) |
 | `football_data_collector.py` | Partial | `get_head_to_head()` stub; `get_team_form()` result-flip bug |
-| `models/xgboost_model.pkl` | Exists on disk | Trained on noisy feature set (49 zero-value columns) |
+| `models/xgboost_model.pkl` | Exists on disk | Trained on noisy feature set (63 zero-value columns) |
 | LSTM/Transformer models | No saved artefacts | Untrained |
 | Backend tests | 0% coverage | `test_setup.py` only checks imports |
 
@@ -45,7 +45,7 @@ Tier 2: Pro (future, when paid API available)
   Data source:  Football-Data.org Pro tier + CSV history
 ```
 
-The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeatureEngineer` via composition, calling only the methods that return real computed data.
+The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone class — it does not wrap `AdvancedFeatureEngineer`, as that class has 63 stub methods that would pollute feature vectors. All free-tier features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -56,11 +56,11 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` wraps `AdvancedFeat
 **New file:** `backend/app/features/free_tier_features.py`
 
 `FreeTierFeatureEngineer` class that:
-- Wraps `AdvancedFeatureEngineer` internally (composition, not subclassing)
+- Is a standalone class (does not wrap `AdvancedFeatureEngineer`)
 - `create_features(home_team, away_team, match_date)` returns a dict of ~83 features
 - Class-level `FEATURE_NAMES` list for validation and documentation
 - Team name normalisation dict mapping CSV short names (e.g. "Man United") to API canonical names (e.g. "Manchester United FC")
-- Never calls any of the 49 stub methods that require Pro API data
+- Never calls any of the 63 stub methods that require Pro API data
 
 **Feature groups:**
 
@@ -304,7 +304,7 @@ This section documents the full-feature pipeline for when a paid Football-Data.o
 
 #### 6a. Feature engineering fixes
 
-- Implement the 49 stubbed methods in `advanced_engineering.py` that have real data from the Pro API (xG, shots, possession, cards, corners)
+- Implement the 63 stubbed methods in `advanced_engineering.py` that have real data from the Pro API (xG, shots, possession, cards, corners)
 - Remove methods that require data sources beyond Football-Data.org (weather, betting odds, player injuries) or honestly document them as permanently stubbed
 - Fix `football_data_collector.py`: `get_head_to_head()` returns empty DataFrame; `get_team_form()` has result-flip bug
 

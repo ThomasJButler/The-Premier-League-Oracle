@@ -14,21 +14,20 @@ The following items from this spec have been **partially or fully implemented**:
 - **Fatigue Analysis (Req 3):** FIXED. `calculateFixtureDifficulty()` no longer returns hardcoded `1500`. It now accepts an optional `EloRatingSystem` parameter, fetches matches in the date range from `dataService.getMatches()`, looks up opponent ELO ratings, and returns the average opponent rating. Returns `0` when no matches are found.
 - **Referee Analysis (Req 4):** IMPLEMENTED. `RefereeAnalyzer.getRefereeStats()` is called by `OptimizedPredictor.predictMatch()` when a referee name is provided. It applies a clamped +-3% adjustment to home/away probabilities based on the referee's historical home win rate vs the league average (0.46). Insights are added to the prediction output.
 - **Confidence Calculation (Req 5):** DONE. `OptimizedPredictor` detects ensemble disagreement between ELO and Poisson top outcomes and lowers confidence when they disagree. `getCalibrationFactors()` in `predictionTracker.ts` adjusts confidence based on per-band historical accuracy.
+- **AI-Assisted Analysis (Req 6):** DONE. `frontend/src/services/aiAnalysis.ts` exists with `AIAnalysisService` class. Configurable in Settings (enable/disable, API key entry). Responses cached 24 hours per match.
 
 The following items **remain unimplemented**:
 
 - **Poisson lambda from real stats (Req 2)** — still uses estimated base values rather than team-specific attacking/defensive stats from the API.
-- **AI-Assisted Analysis (Req 6)** — `aiAnalysis.ts` does not exist.
 
 ---
 
 ## Current State
 
-The prediction engine lives in `frontend/src/lib/`. Three files are in play:
+The prediction engine lives in `frontend/src/lib/`. Two files are in play:
 
 | File | Purpose |
 |------|---------|
-| `predictions.ts` | Original weighted model (H2H 30%, Form 25%, Stats 20%, Home 15%, Trend 10%) |
 | `advancedPredictions.ts` | Statistical model classes (ELO, Poisson, xG, Fatigue, Referee) |
 | `optimizedPredictions.ts` | Weighted ensemble orchestrator — the production model |
 | `betBuilder.ts` | Multi-market prediction generator (BTTS, O/U, corners, cards) |
@@ -150,6 +149,6 @@ Ralph should run backtests with ±5% weight variations to optimise these values 
 - [x] Fatigue multiplier uses real ELO opponent ratings (via `calculateFixtureDifficulty` with `eloSystem` param)
 - [x] Referee adjustments applied when referee name is available (via `OptimizedPredictor.predictMatch`)
 - [x] Confidence reflects both model certainty and historical calibration — ensemble disagreement lowers confidence; `getCalibrationFactors()` in predictionTracker adjusts based on per-band historical accuracy
-- [ ] AI analysis available as a configurable feature in Settings
+- [x] AI analysis available as a configurable feature in Settings (`aiAnalysis.ts` created, wired into Settings)
 - [x] Backtest runner produces accuracy metrics for historical seasons (`frontend/src/lib/backtest.ts` — `BacktestRunner` class with accuracy, log loss, Brier score)
-- [x] All prediction unit tests pass — 364/364 passing (`npm run test:run`)
+- [x] All prediction unit tests pass — 382/382 passing (`npm run test:run`)

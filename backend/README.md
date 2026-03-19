@@ -1,61 +1,24 @@
-# Premier League Oracle - ML Backend
+# Premier League Oracle — ML Backend
 
 ## Current Status
 
-> **Work in progress.** The models are scaffolded but untrained — no training data pipeline exists yet and feature engineering methods currently return placeholder values. The FastAPI server starts and all endpoints are defined, but predictions are not production-ready.
-
 | Component | Status |
 |---|---|
-| FastAPI server | Starts correctly |
-| XGBoost, LSTM, Transformer | Scaffolded — untrained |
-| Feature engineering (150+ features) | Structure in place — placeholder values |
-| LangChain / ChromaDB | Optional — server starts without them |
+| FastAPI server | Running — graceful degradation if heavy deps missing |
+| Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
+| Free-tier feature engineering | 86 features, standalone, no heavy deps |
+| Pro-tier models (LSTM, Transformer, Oracle ensemble) | Scaffolded — explicitly deferred, not trained |
+| Backend tests | **62 tests across 3 files — all passing** |
 | Redis | Optional — server starts without it |
-| Tests | None yet (0% coverage) |
+| LangChain / ChromaDB | Optional — server starts without them |
 
 ---
 
 ## What This Does
 
-The backend provides a REST API for Premier League match predictions. It combines three ML models (XGBoost, LSTM, Transformer) into an ensemble, and exposes endpoints for match predictions, team stats, standings, and WebSocket live updates.
+The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with 86 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) are scaffolded but deferred.
 
----
-
-## Understanding the Code - Three Levels
-
-### For 10-Year-Olds
-Imagine you want to guess who'll win a football match. You might think about:
-- Who won last time they played?
-- Are they good at home?
-- Did they win their last few games?
-
-The system does the same thing, but looks at hundreds of things at once — like a very attentive analyst who remembers every Premier League match ever played.
-
-### For Junior Developers
-We use machine learning models (mainly XGBoost) to predict match outcomes. The system:
-1. Collects data from Football-Data.org API v4
-2. Engineers 150+ features (calculated values that help predictions)
-3. Trains models on historical data
-4. Combines multiple models for better accuracy
-5. Provides predictions with confidence scores
-
-```python
-# Simple version of what we do
-def predict_match(home_team, away_team):
-    features = get_features(home_team, away_team)  # Get data
-    prediction = model.predict(features)            # Use ML model
-    return prediction                               # Return result
-```
-
-### For Experts
-Full implementation uses:
-- **XGBoost**: Gradient boosting with custom objectives, SHAP explanations, Optuna hyperparameter optimisation
-- **LSTM Networks**: Bidirectional LSTM with attention for sequence modelling and momentum capture
-- **Transformers**: Multi-head self-attention with positional encoding for complex feature relationships
-- **LangChain Integration**: Natural language queries (optional — requires OpenAI API key)
-- **Feature Engineering**: 150+ features across 10 categories (form, xG, tactical styles, contextual)
-- **MLflow Tracking**: Experiment tracking, model versioning
-- **FastAPI**: REST API, WebSocket support, Redis caching, async processing
+The frontend connects exclusively to the `/predict/free` endpoint.
 
 ---
 
@@ -64,24 +27,31 @@ Full implementation uses:
 ```
 backend/
 ├── app/
-│   ├── models/
-│   │   ├── xgboost_model.py          # XGBoost with SHAP
-│   │   ├── lstm_predictor.py         # LSTM neural network
-│   │   ├── transformer_model.py      # Transformer with attention
-│   │   └── modern_oracle.py          # Ensemble orchestrator
-│   ├── features/
-│   │   └── advanced_engineering.py   # 150+ feature pipeline
-│   ├── data/
-│   │   └── football_data_collector.py # Football-Data.org API v4
 │   ├── api/
-│   │   └── main.py                   # FastAPI server
+│   │   └── main.py                       # FastAPI server
+│   ├── features/
+│   │   ├── free_tier_features.py         # 86-feature pipeline (active)
+│   │   └── advanced_engineering.py       # 150+ feature pipeline (Pro-tier, deferred — 63 methods return 0.0)
+│   ├── models/
+│   │   ├── xgboost_model.py              # XGBoost (Pro-tier wrapper, unused at runtime)
+│   │   ├── lstm_predictor.py             # LSTM (scaffolded, untrained)
+│   │   ├── transformer_model.py          # Transformer (scaffolded, untrained)
+│   │   └── modern_oracle.py              # Ensemble orchestrator (scaffolded, untrained)
+│   ├── data/
+│   │   └── football_data_collector.py    # Football-Data.org API v4 client
 │   └── security/
-│       ├── auth.py                   # JWT / OAuth2
+│       ├── auth.py                       # JWT / OAuth2 (not wired into main.py)
 │       ├── validators.py
 │       └── secrets.py
-├── docs/
-│   └── FOR_BEGINNERS.md
-├── tests/                            # Empty — tests to be written
+├── models/
+│   └── xgboost_free_tier.joblib          # Trained free-tier model
+├── tests/
+│   ├── test_free_tier_features.py        # 39 feature engineering tests
+│   ├── test_train_free_tier.py           # 12 training pipeline tests
+│   └── test_predict_free_tier.py         # 11 API endpoint tests
+├── spreadsheets/
+│   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
+├── train_free_tier.py                    # Active training script
 ├── requirements.txt
 ├── environment.yml
 ├── Dockerfile
@@ -100,15 +70,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Or use the setup script:
-
-```bash
-./setup.sh
-```
-
 ### Configuration
 
-Add your Football-Data.org API key to `.env`:
+Create a `.env` file in `backend/`:
 
 ```bash
 FOOTBALL_DATA_API_KEY=your_key_here
@@ -119,155 +83,105 @@ OPENAI_API_KEY=your_key_here  # Optional — only needed for LangChain natural l
 
 ```bash
 uvicorn app.api.main:app --reload --port 8000
-# API: http://localhost:8000
+# API:              http://localhost:8000
 # Interactive docs: http://localhost:8000/docs
 ```
 
-Redis and MLflow are optional — the server starts without them.
+Redis, MLflow, and LangChain are all optional — the server starts and serves predictions without them.
 
 ---
 
-## How Predictions Work
+## Working Endpoints
 
-### Step 1: Data Collection
-```python
-# Football-Data.org API v4
-data = {
-    'recent_form': get_last_5_matches(team),
-    'head_to_head': get_previous_meetings(home, away),
-    'team_strength': get_league_position(team),
+### Health check
+```bash
+GET /health
+```
+
+### Free-tier prediction (active — used by the frontend)
+```bash
+POST /predict/free
+Content-Type: application/json
+
+{
+  "home_team": "Arsenal FC",
+  "away_team": "Chelsea FC",
+  "match_date": "2026-03-22"
 }
 ```
 
-### Step 2: Feature Engineering
-```python
-features = {
-    'home_win_rate_last_5': 0.6,
-    'avg_goals_scored': 2.1,
-    'days_since_last_match': 4,
-    # ... 150+ more features
-}
+Returns home win / draw / away win probabilities with confidence scores.
+
+### Free-tier model info
+```bash
+GET /models/free-tier/info
 ```
 
-### Step 3: Ensemble Prediction
-```python
-# Three models, weighted average
-probabilities = ensemble.predict(features)
-# Returns: [0.45, 0.30, 0.25] = [Home Win, Draw, Away Win]
-```
+Returns model metadata: accuracy, feature count, training date.
 
 ---
 
-## Feature Categories (150+ total)
+## Training the Free-Tier Model
 
-1. **Basic Stats** (20): Goals, points, positions, win/draw/loss rates
-2. **Advanced Metrics** (30): xG, possession, shot accuracy, defensive efficiency
-3. **Form & Momentum** (25): Weighted form, streaks, volatility, bounce-back rates
-4. **Head-to-Head** (15): Historical results, venue records
-5. **Contextual** (20): Derby matches, fatigue, fixture congestion, season stage
-6. **Betting Market** (15): Odds movements, value calculations
-7. **Tactical Style** (20): Playing style, tempo, pressing, set pieces
-8. **Player Impact** (10): Key players, injuries, squad depth
-9. **Time Series** (15): Trends, seasonality, mean reversion
-10. **External Factors** (10): Weather, travel, crowd impact
+The training script expects the CSV data in `backend/spreadsheets/KnowledgeFilesCSV/`. This directory is gitignored — you need to supply the CSVs manually.
+
+```bash
+cd backend
+python train_free_tier.py
+```
+
+This runs an XGBoost model with a logistic regression baseline, using a chronological train/test split. The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
+
+Current result: **51.0% accuracy** (3-class: home win / draw / away win).
+
+### Feature engineering
+
+`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 86 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier).
 
 ---
 
-## Running the API
+## Pro-Tier (Deferred)
 
-### Start the Server
+`app/features/advanced_engineering.py` contains a 150+ feature pipeline. 63 of its methods currently return hardcoded `0.0` — they cover tactics, player-level data, betting market signals, weather, and advanced metrics that require a paid data source. The LSTM, Transformer, and oracle ensemble models in `app/models/` are scaffolded but untrained.
 
-```bash
-# Minimal (no Redis, no MLflow required)
-uvicorn app.api.main:app --reload --port 8000
-
-# With optional services (Docker)
-docker run -d -p 6379:6379 redis
-mlflow ui --port 5000
-uvicorn app.api.main:app --reload --port 8000
-```
-
-### API Endpoints
-
-#### Ensemble Prediction
-```bash
-curl -X POST "http://localhost:8000/predict" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"home_team": "Arsenal FC", "away_team": "Chelsea FC", "include_details": true}'
-```
-
-#### Natural Language Query (requires OpenAI key)
-```bash
-curl -X POST "http://localhost:8000/predict/natural" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What are the chances of Liverpool beating Man City?"}'
-```
-
-#### Batch Predictions
-```bash
-curl -X POST "http://localhost:8000/predict/batch" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "matches": [
-      {"home_team": "Arsenal FC", "away_team": "Chelsea FC"},
-      {"home_team": "Liverpool FC", "away_team": "Manchester City FC"}
-    ]
-  }'
-```
-
-#### WebSocket Live Updates
-```python
-import asyncio, websockets, json
-
-async def get_live_predictions():
-    uri = "ws://localhost:8000/ws/predictions"
-    async with websockets.connect(uri) as websocket:
-        await websocket.send(json.dumps({
-            "action": "subscribe",
-            "match": "Arsenal FC vs Chelsea FC"
-        }))
-        while True:
-            prediction = await websocket.recv()
-            print(f"Live update: {prediction}")
-
-asyncio.run(get_live_predictions())
-```
+Pro-tier work is explicitly out of scope for the current phase.
 
 ---
 
-## Testing
+## Tests
 
 ```bash
-pytest
-pytest --cov=app
+cd backend
+pytest tests/
+pytest tests/ -v          # verbose
+pytest tests/ --cov=app   # with coverage
 ```
 
-No tests exist yet. Frontend has 364 Vitest tests across 21 files; backend is next.
+62 tests across 3 files, all passing:
+- `test_free_tier_features.py` — 39 tests covering the feature engineering pipeline
+- `test_train_free_tier.py` — 12 tests covering the training script
+- `test_predict_free_tier.py` — 11 tests covering the `/predict/free` API endpoint
+
+CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
 ---
 
-## Common Questions
+## Known Limitations
 
-### Why XGBoost?
-It's a gradient-boosted decision tree that learns from mistakes iteratively. It's fast, accurate, and SHAP values let us explain every prediction — important for betting decisions.
-
-### What's Feature Engineering?
-Taking raw data ("Arsenal scored 2 goals") and turning it into useful numbers for the model ("average goals per game: 1.8", "goals scored per shot: 0.12").
-
-### How Accurate Is It?
-Models are currently untrained scaffolds — the accuracy depends on training with real historical data. The feature engineering pipeline is built to support strong predictions once trained.
+- `torch` is in `environment.yml` but not `requirements.txt` — LSTM/Transformer models non-functional via `pip install` alone
+- `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start as-is
+- `app/security/` modules (`auth.py`, `secrets.py`, `validators.py`) are not imported by `main.py` — unused at runtime
+- CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it
+- Security modules (`auth.py`, `secrets.py`, `validators.py`) exist in `app/security/` but are not imported by `main.py` — unused at runtime
+- `advanced_engineering.py`: `_is_derby_match()` uses API-format team names but training CSVs use short names — derby detection always returns `0.0` during training
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- See `requirements.txt` for all package dependencies
-- Football-Data.org API key (free tier available)
-- OpenAI API key (optional — only for natural language queries)
+- Football-Data.org API key (free tier sufficient for the active prediction path)
+- OpenAI API key (optional — only for LangChain natural language queries)
 
 ---
 

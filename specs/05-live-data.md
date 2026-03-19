@@ -16,7 +16,7 @@ The following items from this spec have been **implemented**:
 The following items **remain unimplemented**:
 
 - **Requirement 4 (LiveTicker enhancement):** Not verified whether `LiveTicker.svelte` shows live scores with pulsing indicator.
-- **Requirement 5 (WebSocket / LiveService):** `liveService.ts` does not exist. No WebSocket integration.
+- **Requirement 5 (WebSocket / LiveService):** DONE. `liveService.ts` created (P3f) with shared Svelte stores. Uses WebSocket when backend is available (`VITE_BACKEND_WS_URL` env var, falling back to `hostname:8000`), polling otherwise. `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to shared stores.
 
 ---
 
@@ -27,6 +27,7 @@ The following items **remain unimplemented**:
 | `frontend/src/components/LiveMatches.svelte` | Fully implemented — fetches live data, smart polling, match cards, empty state with countdown |
 | `frontend/src/components/LiveTicker.svelte` | Fetches upcoming/recent matches — live score integration not verified |
 | `frontend/src/services/dataService.ts` | `getLiveMatches()` implemented with 60s cache |
+| `frontend/src/services/liveService.ts` | Fully implemented — shared Svelte stores, WebSocket with exponential reconnect, polling fallback |
 
 ---
 
@@ -133,10 +134,11 @@ class LiveService {
   }
 
   private connectWebSocket() {
-    this.ws = new WebSocket('ws://localhost:8000/ws')
+    const wsBase = import.meta.env.VITE_BACKEND_WS_URL ?? `ws://${location.hostname}:8000`
+    this.ws = new WebSocket(`${wsBase}/ws/predictions`)
     this.ws.onmessage = ({ data }) => {
-      const { liveMatches } = JSON.parse(data)
-      liveMatchesStore.set(liveMatches)
+      const parsed = JSON.parse(data)
+      liveMatchesStore.set(parsed.matches ?? [])
     }
     this.ws.onerror = () => this.startPolling()  // fallback
   }

@@ -65,7 +65,7 @@ Component → DataService
               ↓
            Memory cache (Map)   → instant, cleared on page reload
               ↓ miss
-           IndexedDB cache      → 5 min TTL (most data), 60s TTL (live)
+           IndexedDB cache      → 24h TTL (historical), 30min TTL (team-recent), 60s TTL (live)
               ↓ miss
            Football-Data.org API
 ```

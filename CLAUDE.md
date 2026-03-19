@@ -134,7 +134,7 @@ These specs are the single source of truth for requirements.
 - ~~`betHistoryService.storeBet()` never called~~ — FIXED: wired into KellyCalculator and ValueBets via "Track Bet" buttons. Bets now flow to BettingHistory display and ROI/P&L calculations
 - ~~`ChatBot.svelte:420` uses `{@html renderMarkdown()}` which renders unsanitised HTML~~ **FIXED:** `renderMarkdown()` output now sanitised via `DOMPurify.sanitize()` with explicit tag/attribute allowlist
 - ~~`Predictions.svelte:215` — `was_correct: false` hardcoded when storing predictions~~ **FIXED:** `was_correct` removed from initial prediction object, made optional on `Prediction` type
-- ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests, and production build on push/PR to `main` and `v3.0-*` branches
+- ~~No CI/CD~~ **FIXED:** `.github/workflows/ci.yml` runs type check, unit tests, and production build on push/PR to `main` and `v3.0-*` branches. Backend Python tests (62 tests via pytest) now also run in CI (P5c). Node version reads from `.nvmrc` instead of hardcoded `20` (P5g)
 - `docker-compose.yml` references missing files (`config.yml`, `nginx.conf`, `notebooks/`) — cannot start
 - ~~Test quality: 16 tautological tests in `types.test.ts`, 6 conditional assertions in `value.test.ts` that silently pass~~ **FIXED:** tautological tests removed (18→4), conditional assertions made unconditional. ~~`predictions.test.ts` tests a dead module~~ **REMOVED** (P4f). `kelly.test.ts:240` guarded arb assertion also removed. See P4h in IMPLEMENTATION_PLAN.md
 - ~~`EloRatingSystem.processCompletedMatches()` exists but is never called~~ **FIXED:** `sharedEloSystem.processCompletedMatches()` now called from `dataService.reconcilePredictions()` — ELO ratings auto-update when match results load
@@ -164,7 +164,7 @@ These specs are the single source of truth for requirements.
 - `backend/spreadsheets/` is gitignored — cloning the repo does NOT include the CSV training data needed for `train_free_tier.py`
 - MIT licensed for open-source collaboration
 - ~~`main.py:724-725`: `/predict/free` rate limiter broken — `client_ip` always `"unknown"`~~ **FIXED:** `_get_client_ip()` extracts real IP from `X-Forwarded-For` header with `request.client.host` fallback (P5a)
-- `LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken
+- ~~`LiveMatches.svelte`: tab panels declare `aria-controls="panel-live"` etc. but panel `<div>` elements have no `id` attributes — ARIA association broken~~ **FIXED:** panels now have matching `id="panel-live"`, `id="panel-recent"`, `id="panel-upcoming"` attributes
 - ~~`ChatBot.test.ts`: DOMPurify mock returns raw HTML unchanged~~ **FIXED:** mock now uses spy, test verifies `sanitize()` is called with response content (P5e)
 - ~~`betBuilder.ts:316-333`: Crystal Palace/Brighton rivalry broken — uses `'Brighton and Hove Albion'` but API sends `'Brighton & Hove Albion FC'`, `normaliseTeamName()` doesn't handle `&` vs `and`~~ **FIXED:** `normaliseTeamName()` now converts `&` to `and`
 - ~~`frontend/package.json`: `@types/node` pinned to `^25.5.0` but runtime is Node 20 (per `.nvmrc` and CI)~~ **FIXED:** pinned to `^20.17.0`
@@ -197,7 +197,7 @@ These specs are the single source of truth for requirements.
 - `betBuilder.ts:441`: `'Over 7.5 corners'` selection string hardcoded — not derived from the calculated `corners` predictions object
 - Backend `/standings` endpoint: `pd.DataFrame` serialisation was fixed with `.to_dict(orient='records')` — updating prior CLAUDE.md note
 - `advancedPredictions.ts`: `processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on Match type — matches with valid results but undefined status are silently skipped
-- Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)
+- ~~Backend unused imports: `main.py:24` imports `timedelta` (unused), `modern_oracle.py:18` imports `asyncio` (unused)~~ **FIXED:** `timedelta` import removed from `main.py` (P5s), `asyncio` import removed from `modern_oracle.py` (P5s). `main.py` still imports `asyncio` but it IS used (WebSocket handler line 566)
 - `predictionTracker.ts` now exports `getCalibrationFactors()` — computes per-band accuracy factors from settled predictions. `optimizedPredictions.ts` applies these as a final multiplier in `predictMatch()` (Spec 01 Req 5)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

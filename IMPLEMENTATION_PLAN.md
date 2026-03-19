@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 27 March 2026 (eleventh planning audit — P5m/i done, P5g/P5t partial completed)
+Last updated: 19 March 2026 (twelfth update — P5c done, P5g node-version fixed, spec body text synced)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
-| P5 Hardening | ~25/26 (96%) | CI config, error contract docs, WebSocket URL, dead code remaining; accessibility, rate limiter, confidence calibration done |
+| P5 Hardening | ~27/28 (96%) | Backend CI done, node-version fixed; Playwright E2E in CI, vite proxy production gap remaining |
 
 **Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -197,11 +197,9 @@ Additionally, the free-tier feature engineer is initialised with an empty DataFr
 - [ ] Log a clear warning when CSV data is unavailable and the engineer is running on empty data
 - [ ] Document how to obtain the CSV training data in the README or a setup script
 
-### P5c. Backend CI Pipeline
+### P5c. Backend CI Pipeline — DONE
 
-The 62 backend tests are never run in CI. A Python regression will not be caught automatically.
-
-- [ ] Add a Python job to `.github/workflows/ci.yml` — `pip install -r requirements.txt && python -m pytest tests/ -v`
+- [x] Added `backend` job to `.github/workflows/ci.yml` — Python 3.11 (matching Dockerfile), `pip install -r requirements.txt httpx`, `python -m pytest tests/ -v`. Runs in parallel with frontend job
 - [ ] Consider adding Playwright E2E tests to CI (heavier, needs `npx playwright install`)
 
 ### P5e. Test Quality — DONE
@@ -226,7 +224,7 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 
 ### P5g. Config & Infrastructure — PARTIAL
 
-- [ ] `.github/workflows/ci.yml`: hardcodes `node-version: 20` instead of reading `.nvmrc`. Use `node-version-file: .nvmrc` for consistency (blocked — push requires `workflow` OAuth scope)
+- [x] `.github/workflows/ci.yml`: now uses `node-version-file: .nvmrc` instead of hardcoded `node-version: 20`
 - [x] `.gitignore`: `backend/chroma_db/` IS already gitignored (line 20) — the prior CLAUDE.md note was incorrect. No action needed
 - [ ] `vite.config.ts`: `GET /api/chat` dev proxy has no production equivalent — `api/chat.ts` Edge Function only handles POST. Frontend `checkServerKey()` probe may 405 in production
 - [x] `liveService.ts:247-249`: WebSocket `onmessage` handler for `data.liveMatches` dead code removed — backend never sends this payload; test updated
