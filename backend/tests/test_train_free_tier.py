@@ -22,7 +22,11 @@ from app.features.free_tier_features import FreeTierFeatureEngineer
 from train_free_tier import (
     build_dataset,
     chronological_split,
+    compute_recency_weights,
+    train_stacked_ensemble,
+    predict_with_ensemble,
     LABEL_MAP,
+    LABEL_NAMES,
     MIN_PRIOR_MATCHES,
 )
 
@@ -223,3 +227,106 @@ class TestModelSaveLoad:
         assert loaded['tier'] == 'free'
         assert loaded['version'] == '1.0.0-free'
         assert len(loaded['feature_names']) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Recency weights
+# ---------------------------------------------------------------------------
+
+class TestRecencyWeights:
+    """compute_recency_weights should decay older seasons."""
+
+    def test_returns_none_without_seasons(self):
+        assert compute_recency_weights(None) is None
+        assert compute_recency_weights(np.array([])) is None
+
+    def test_most_recent_season_gets_weight_one(self):
+        seasons = np.array(['2022/23', '2023/24', '2024/25'])
+        weights = compute_recency_weights(seasons)
+        assert weights[-1] == pytest.approx(1.0)
+
+    def test_older_seasons_decay(self):
+        seasons = np.array(['2022/23', '2023/24', '2024/25'])
+        weights = compute_recency_weights(seasons, recency_decay=0.85)
+        assert weights[0] < weights[1] < weights[2]
+        assert weights[0] == pytest.approx(0.85 ** 2, abs=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Stacked ensemble
+# ---------------------------------------------------------------------------
+
+class TestStackedEnsemble:
+    """Test OvR stacked ensemble training and prediction."""
+
+    @pytest.fixture
+    def ensemble_data(self):
+        """Build dataset large enough for stacked ensemble training."""
+        df = _build_mini_dataset(60)
+        engineer = FreeTierFeatureEngineer(df)
+        X, y, names, seasons = build_dataset(df, engineer)
+
+        # Need enough samples for 70/30 base/meta split + validation
+        X_train, y_train, X_val, y_val = chronological_split(X, y, 0.2)
+        return X_train, y_train, X_val, y_val, names, seasons[:len(X_train)]
+
+    def test_ensemble_returns_valid_structure(self, ensemble_data):
+        """Ensemble result should contain classifiers, meta_learner, meta_scaler."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        X_train, y_train, X_val, y_val, names, seasons = ensemble_data
+        if len(X_train) < 10:
+            pytest.skip('Not enough training samples')
+
+        result = train_stacked_ensemble(
+            X_train, y_train, X_val, y_val, names, seasons_train=seasons,
+        )
+
+        assert 'classifiers' in result
+        assert 'meta_learner' in result
+        assert 'meta_scaler' in result
+        assert len(result['classifiers']) == 3
+
+    def test_ensemble_probabilities_sum_to_one(self, ensemble_data):
+        """Ensemble predictions should produce valid probability distributions."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        X_train, y_train, X_val, y_val, names, seasons = ensemble_data
+        if len(X_train) < 10:
+            pytest.skip('Not enough training samples')
+
+        result = train_stacked_ensemble(
+            X_train, y_train, X_val, y_val, names, seasons_train=seasons,
+        )
+
+        probs = result['val_probs']
+        assert probs.shape == (len(X_val), 3)
+        # Each row should sum to ~1.0
+        row_sums = probs.sum(axis=1)
+        np.testing.assert_allclose(row_sums, 1.0, atol=1e-6)
+
+    def test_predict_with_ensemble(self, ensemble_data):
+        """predict_with_ensemble should produce consistent output shape."""
+        try:
+            import xgboost  # noqa: F401
+        except (ImportError, Exception):
+            pytest.skip('xgboost not available')
+
+        X_train, y_train, X_val, y_val, names, seasons = ensemble_data
+        if len(X_train) < 10:
+            pytest.skip('Not enough training samples')
+
+        result = train_stacked_ensemble(
+            X_train, y_train, X_val, y_val, names, seasons_train=seasons,
+        )
+
+        preds = predict_with_ensemble(result, X_val, names)
+        assert preds.shape == (len(X_val), 3)
+        row_sums = preds.sum(axis=1)
+        np.testing.assert_allclose(row_sums, 1.0, atol=1e-6)

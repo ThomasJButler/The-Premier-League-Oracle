@@ -216,7 +216,7 @@ class FreeTierFeatureEngineer:
         features.update(self._derived(home_team, away_team, pre_match))
         features.update(self._half_time(home_team, away_team, pre_match))
         features.update(self._match_stats(home_team, away_team, pre_match))
-        features.update(self._draw_indicators(home_team, away_team, pre_match))
+        features.update(self._draw_indicators(home_team, away_team, pre_match, match_date))
         features.update(self._elo_features(home_team, away_team, match_date))
 
         # Ensure every feature present; replace NaN with 0.0
@@ -994,7 +994,9 @@ class FreeTierFeatureEngineer:
         return f
 
     def _draw_indicators(self, home_team: str, away_team: str,
-                         data: pd.DataFrame) -> Dict[str, float]:
+                         data: pd.DataFrame,
+                         match_date: Optional[datetime] = None,
+                         ) -> Dict[str, float]:
         """
         8 features: explicit draw-prediction signals.
 
@@ -1020,7 +1022,7 @@ class FreeTierFeatureEngineer:
         f['form_closeness'] = 1.0 / (1.0 + abs(h_ppg - a_ppg))
 
         # 2. Standings closeness: inverse of position gap (higher = closer)
-        standings = self._get_standings(data)
+        standings = self._compute_standings(data, match_date)
         h_pos = standings.get(home_team, {}).get('position', 10)
         a_pos = standings.get(away_team, {}).get('position', 10)
         f['standings_closeness'] = 1.0 / (1.0 + abs(h_pos - a_pos))

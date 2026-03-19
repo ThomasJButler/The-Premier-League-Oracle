@@ -117,8 +117,9 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 - [x] **Elo-based features** — 5 new features (`home_elo`, `away_elo`, `elo_difference`, `elo_expected_home`, `elo_home_advantage`). Precomputed O(n) running Elo ratings (K=32, home advantage=65, default 1500) matching the frontend algorithm. 6 new tests (batch 18)
 - [x] **Recency weighting** — `compute_sample_weights()` now applies exponential decay (0.85 per older season) alongside class weights. `build_dataset()` returns season labels; `train_xgboost()` passes them to sample weighting
 
-**Larger effort (for later):**
-- [ ] **Stacked ensemble** — train separate binary classifiers (H vs not-H, D vs not-D, A vs not-A) and stack them
+**Larger effort:**
+- [x] **Stacked ensemble** — 3 One-vs-Rest XGBoost binary classifiers (Home/Draw/Away vs rest) with a logistic regression meta-learner. Draw classifier has dedicated tuning: `max_depth=4`, `lr=0.03`, `scale_pos_weight=~3.35`, higher regularisation. Meta-learner trained on chronological OOF predictions (70/30 base/meta split within training data) to avoid leakage. Final base classifiers retrained on full training data. `predict_with_ensemble()` helper for inference. `/predict/free` endpoint auto-uses ensemble when present in model file
+- [x] **Draw indicator bug fix** — `_draw_indicators()` called non-existent `_get_standings()`. Fixed to `_compute_standings(data, match_date)` with `match_date` threaded through the method chain. Affects `standings_closeness` and `form_closeness` features
 - [ ] **Odds-as-features** — the CSVs contain ~80 bookmaker odds columns. Using closing odds as features would dramatically boost accuracy (bookmakers are the strongest predictor), but makes the model dependent on having odds data at inference time
 - [ ] **Rolling cross-validation** — instead of a single 80/20 split, use expanding-window CV (train on seasons 1–N, validate on N+1) for more robust evaluation
 

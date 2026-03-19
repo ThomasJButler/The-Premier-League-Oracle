@@ -233,6 +233,8 @@ async def lifespan(app: FastAPI):
             }
             if payload.get('calibrators'):
                 logger.info("Probability calibrators loaded")
+            if payload.get('stacked_ensemble'):
+                logger.info("Stacked ensemble loaded (3 OvR classifiers + meta-learner)")
             logger.info(
                 "Free-tier model loaded: version %s, %d features",
                 payload.get('version', 'unknown'),
@@ -803,24 +805,33 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         feature_names = free_tier_metadata.get('feature_names', FreeTierFeatureEngineer.FEATURE_NAMES)
         feature_vec = [features[name] for name in feature_names]
 
-        # Predict
         import xgboost as xgb
         dmatrix = xgb.DMatrix(
             [feature_vec], feature_names=feature_names,
         )
-        raw_probs = free_tier_model.predict(dmatrix)[0]
 
-        # Apply probability calibration if calibrators are available
-        calibrators = free_tier_metadata.get('calibrators')
-        if calibrators and len(calibrators) == 3:
-            cal_probs = np.array([
-                float(cal.predict([raw_probs[i]])[0])
-                for i, cal in enumerate(calibrators)
+        # Use stacked ensemble if available, otherwise fall back to single model
+        stacked = free_tier_metadata.get('stacked_ensemble')
+        if stacked and stacked.get('classifiers') and stacked.get('meta_learner'):
+            # Stacked ensemble: 3 OvR classifiers → meta-learner
+            ovr_probs = np.column_stack([
+                clf.predict(dmatrix) for clf in stacked['classifiers']
             ])
-            total = cal_probs.sum()
-            probs = cal_probs / total if total > 0 else raw_probs
+            ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
+            probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            probs = raw_probs
+            # Single XGBoost with calibration
+            raw_probs = free_tier_model.predict(dmatrix)[0]
+            calibrators = free_tier_metadata.get('calibrators')
+            if calibrators and len(calibrators) == 3:
+                cal_probs = np.array([
+                    float(cal.predict([raw_probs[i]])[0])
+                    for i, cal in enumerate(calibrators)
+                ])
+                total = cal_probs.sum()
+                probs = cal_probs / total if total > 0 else raw_probs
+            else:
+                probs = raw_probs
 
         home_prob = float(probs[0])
         draw_prob = float(probs[1])
@@ -875,6 +886,17 @@ async def free_tier_model_info():
             detail="Free-tier model not loaded",
         )
 
+    stacked = free_tier_metadata.get('stacked_ensemble')
+    ensemble_info = None
+    if stacked:
+        ens_metrics = free_tier_metadata.get('ensemble_metrics', {})
+        ensemble_info = {
+            "active": True,
+            "architecture": "3 OvR binary classifiers + logistic regression meta-learner",
+            "accuracy": ens_metrics.get('accuracy', 0.0),
+            "per_class_accuracy": ens_metrics.get('per_class_accuracy', {}),
+        }
+
     return {
         "version": free_tier_metadata.get('version', 'unknown'),
         "tier": free_tier_metadata.get('tier', 'free'),
@@ -891,6 +913,7 @@ async def free_tier_model_info():
                 key=lambda x: x[1], reverse=True,
             )[:20]
         ),
+        "stacked_ensemble": ensemble_info,
     }
 
 

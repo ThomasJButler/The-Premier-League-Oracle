@@ -2,6 +2,25 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 1 April 2026 — Stacked ensemble for draw prediction, standings bug fix
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Stacked OvR Ensemble
+
+- **3 One-vs-Rest binary classifiers** (Home/Draw/Away vs rest) trained alongside the existing single XGBoost. Draw classifier has dedicated tuning: `max_depth=4`, `lr=0.03`, `scale_pos_weight=~3.35`, higher regularisation
+- **Logistic regression meta-learner** combines the 3 binary classifier outputs into final H/D/A probabilities. Trained on chronological OOF predictions (70/30 base/meta split within training data) to avoid data leakage
+- **`predict_with_ensemble()` helper** for clean inference from the stacked ensemble
+- **`/predict/free` auto-detection:** endpoint uses stacked ensemble when present in model file, falls back to single XGBoost + calibration otherwise
+- **Model info endpoint** updated to report ensemble architecture and per-class accuracy
+- **6 new tests** for recency weights and stacked ensemble (3 recency, 3 ensemble)
+
+### Bug fix: `_draw_indicators` standings
+
+- **`free_tier_features.py:1023`** called non-existent `_get_standings(data)` — fixed to `_compute_standings(data, match_date)` with `match_date` threaded through the method chain. Restores 2 of 8 draw indicator features (`standings_closeness`, related calculations)
+
+---
+
 ## 1 April 2026 — Progressive data loader, rate-limit queue, stale file cleanup
 
 **Branch:** `v3.0-BackendMLTraining`

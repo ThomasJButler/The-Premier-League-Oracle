@@ -230,6 +230,29 @@ def compute_sample_weights(
     return weights
 
 
+def compute_recency_weights(
+    seasons: Optional[np.ndarray] = None,
+    recency_decay: float = 0.85,
+) -> Optional[np.ndarray]:
+    """
+    Compute recency-only sample weights (no class balancing).
+
+    Used by OvR binary classifiers where class imbalance is handled via
+    XGBoost's `scale_pos_weight` instead of sample weights.
+    """
+    if seasons is None or len(seasons) == 0:
+        return None
+
+    unique_seasons = sorted(set(seasons))
+    n_seasons = len(unique_seasons)
+    season_weight_map = {}
+    for i, season in enumerate(unique_seasons):
+        age = n_seasons - 1 - i
+        season_weight_map[season] = recency_decay ** age
+
+    return np.array([season_weight_map.get(s, 1.0) for s in seasons])
+
+
 def train_xgboost(
     X_train: np.ndarray, y_train: np.ndarray,
     X_val: np.ndarray, y_val: np.ndarray,
@@ -526,6 +549,203 @@ def train_logistic_baseline(
     }
 
 
+def train_stacked_ensemble(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_val: np.ndarray, y_val: np.ndarray,
+    feature_names: List[str],
+    seasons_train: Optional[np.ndarray] = None,
+) -> dict:
+    """
+    Train a stacked ensemble of 3 One-vs-Rest binary classifiers + meta-learner.
+
+    Architecture:
+      Level 0: Three XGBoost binary classifiers (Home-vs-rest, Draw-vs-rest, Away-vs-rest)
+      Level 1: Logistic regression meta-learner on OvR probability triplets
+
+    Why this works for draws:
+      The multi:softprob model minimises overall log loss, which under-predicts
+      the minority class (draws ~23%). A dedicated draw binary classifier with
+      tuned scale_pos_weight and conservative hyperparameters can learn subtle
+      draw patterns that get lost in the 3-class optimisation.
+
+    To avoid data leakage in meta-learner training, training data is split
+    chronologically: first 70% trains base classifiers, last 30% generates
+    predictions for meta-learner training. Final base classifiers are then
+    retrained on the full training set.
+
+    Returns dict with classifiers, meta_learner, meta_scaler, and val_probs.
+    """
+    import xgboost as xgb
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+
+    # Per-class hyperparameters — draw classifier is more conservative
+    class_configs = {
+        0: {  # Home win
+            'max_depth': 6, 'learning_rate': 0.05, 'min_child_weight': 3,
+            'subsample': 0.8, 'colsample_bytree': 0.8, 'gamma': 0.1,
+            'reg_alpha': 0.05, 'reg_lambda': 1.0,
+        },
+        1: {  # Draw — shallower trees, lower LR, more regularisation
+            'max_depth': 4, 'learning_rate': 0.03, 'min_child_weight': 5,
+            'subsample': 0.8, 'colsample_bytree': 0.7, 'gamma': 0.2,
+            'reg_alpha': 0.1, 'reg_lambda': 2.0,
+        },
+        2: {  # Away win
+            'max_depth': 6, 'learning_rate': 0.05, 'min_child_weight': 3,
+            'subsample': 0.8, 'colsample_bytree': 0.8, 'gamma': 0.1,
+            'reg_alpha': 0.05, 'reg_lambda': 1.0,
+        },
+    }
+
+    # Chronological split of training data for meta-learner
+    meta_split = int(len(X_train) * 0.7)
+    X_base = X_train[:meta_split]
+    y_base = y_train[:meta_split]
+    X_meta_train = X_train[meta_split:]
+    y_meta_train = y_train[meta_split:]
+    seasons_base = seasons_train[:meta_split] if seasons_train is not None else None
+    recency_base = compute_recency_weights(seasons_base)
+
+    logger.info(
+        'Stacked ensemble: %d base-train, %d meta-train, %d validation',
+        len(X_base), len(X_meta_train), len(X_val),
+    )
+
+    # ---- Stage 1: Train base classifiers on base-split for OOF predictions ----
+    meta_probs = np.zeros((len(X_meta_train), 3))
+
+    for class_idx, class_name in enumerate(LABEL_NAMES):
+        y_bin_base = (y_base == class_idx).astype(int)
+        y_bin_meta = (y_meta_train == class_idx).astype(int)
+
+        n_pos = int(y_bin_base.sum())
+        n_neg = len(y_bin_base) - n_pos
+        spw = n_neg / max(n_pos, 1)
+
+        config = class_configs[class_idx]
+        params = {
+            'objective': 'binary:logistic',
+            'eval_metric': 'logloss',
+            'scale_pos_weight': spw,
+            'seed': 42,
+            'verbosity': 0,
+            **config,
+        }
+
+        dtrain = xgb.DMatrix(X_base, label=y_bin_base, feature_names=feature_names,
+                             weight=recency_base)
+        dmeta = xgb.DMatrix(X_meta_train, label=y_bin_meta, feature_names=feature_names)
+
+        model = xgb.train(
+            params, dtrain, num_boost_round=500,
+            evals=[(dmeta, 'val')],
+            early_stopping_rounds=30,
+            verbose_eval=False,
+        )
+
+        meta_probs[:, class_idx] = model.predict(dmeta)
+        logger.info(
+            '  Base %s classifier (stage 1): best iter %d, scale_pos_weight=%.2f',
+            class_name, model.best_iteration, spw,
+        )
+
+    # ---- Stage 2: Train meta-learner on OOF predictions ----
+    scaler = StandardScaler()
+    meta_probs_scaled = scaler.fit_transform(meta_probs)
+
+    meta_learner = LogisticRegression(
+        max_iter=1000, multi_class='multinomial', solver='lbfgs',
+        random_state=42,
+    )
+    meta_learner.fit(meta_probs_scaled, y_meta_train)
+
+    meta_train_acc = float(np.mean(
+        meta_learner.predict(meta_probs_scaled) == y_meta_train
+    ))
+    logger.info('  Meta-learner accuracy on meta-train: %.1f%%', meta_train_acc * 100)
+
+    # ---- Stage 3: Retrain base classifiers on FULL training data ----
+    recency_full = compute_recency_weights(seasons_train)
+    final_classifiers = []
+
+    for class_idx, class_name in enumerate(LABEL_NAMES):
+        y_bin_full = (y_train == class_idx).astype(int)
+        y_bin_val = (y_val == class_idx).astype(int)
+
+        n_pos = int(y_bin_full.sum())
+        n_neg = len(y_bin_full) - n_pos
+        spw = n_neg / max(n_pos, 1)
+
+        config = class_configs[class_idx]
+        params = {
+            'objective': 'binary:logistic',
+            'eval_metric': 'logloss',
+            'scale_pos_weight': spw,
+            'seed': 42,
+            'verbosity': 0,
+            **config,
+        }
+
+        evals_result: Dict = {}
+        dtrain = xgb.DMatrix(X_train, label=y_bin_full, feature_names=feature_names,
+                             weight=recency_full)
+        dval = xgb.DMatrix(X_val, label=y_bin_val, feature_names=feature_names)
+
+        model = xgb.train(
+            params, dtrain, num_boost_round=500,
+            evals=[(dtrain, 'train'), (dval, 'val')],
+            early_stopping_rounds=30,
+            evals_result=evals_result,
+            verbose_eval=False,
+        )
+
+        val_loss = evals_result['val']['logloss'][model.best_iteration]
+        final_classifiers.append(model)
+        logger.info(
+            '  Final %s classifier: best iter %d, val logloss %.4f',
+            class_name, model.best_iteration, val_loss,
+        )
+
+    # ---- Generate ensemble predictions on validation set ----
+    dval = xgb.DMatrix(X_val, feature_names=feature_names)
+    ovr_probs = np.column_stack([
+        clf.predict(dval) for clf in final_classifiers
+    ])
+
+    ovr_scaled = scaler.transform(ovr_probs)
+    ensemble_probs = meta_learner.predict_proba(ovr_scaled)
+
+    return {
+        'classifiers': final_classifiers,
+        'meta_learner': meta_learner,
+        'meta_scaler': scaler,
+        'class_configs': class_configs,
+        'val_probs': ensemble_probs,
+    }
+
+
+def predict_with_ensemble(
+    ensemble: dict,
+    X: np.ndarray,
+    feature_names: List[str],
+) -> np.ndarray:
+    """
+    Generate predictions from the stacked ensemble.
+
+    Takes the ensemble dict (classifiers, meta_learner, meta_scaler) and
+    returns an (n_samples, 3) probability matrix.
+    """
+    import xgboost as xgb
+
+    dmatrix = xgb.DMatrix(X, feature_names=feature_names)
+    ovr_probs = np.column_stack([
+        clf.predict(dmatrix) for clf in ensemble['classifiers']
+    ])
+    ovr_scaled = ensemble['meta_scaler'].transform(ovr_probs)
+    return ensemble['meta_learner'].predict_proba(ovr_scaled)
+
+
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
@@ -625,7 +845,10 @@ def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
 # ---------------------------------------------------------------------------
 
 def save_model(xgb_result: dict, feature_names: List[str],
-               metrics: Dict, training_info: Dict) -> str:
+               metrics: Dict, training_info: Dict,
+               ensemble_result: Optional[dict] = None,
+               ensemble_metrics: Optional[Dict] = None,
+               ) -> str:
     """Save trained model with metadata to joblib."""
     import joblib
 
@@ -637,7 +860,7 @@ def save_model(xgb_result: dict, feature_names: List[str],
         'feature_names': feature_names,
         'params': xgb_result['params'],
         'feature_importance': xgb_result['importance'],
-        'version': '2.0.0-free',
+        'version': '3.0.0-free',
         'tier': 'free',
         'training_date': datetime.utcnow().isoformat(),
         'training_samples': training_info.get('training_samples', 0),
@@ -646,6 +869,17 @@ def save_model(xgb_result: dict, feature_names: List[str],
         'training_seasons': training_info.get('seasons', []),
         'metrics': metrics,
     }
+
+    # Include stacked ensemble if trained
+    if ensemble_result is not None:
+        payload['stacked_ensemble'] = {
+            'classifiers': ensemble_result['classifiers'],
+            'meta_learner': ensemble_result['meta_learner'],
+            'meta_scaler': ensemble_result['meta_scaler'],
+        }
+        if ensemble_metrics is not None:
+            payload['ensemble_metrics'] = ensemble_metrics
+        logger.info('Stacked ensemble included in model file')
 
     joblib.dump(payload, MODEL_PATH)
     logger.info('Model saved to %s', MODEL_PATH)
@@ -763,21 +997,38 @@ def main():
     lr_result = train_logistic_baseline(X_train_active, y_train, X_val_active, y_val)
     lr_metrics = evaluate(y_val, lr_result['val_probs'], label='Logistic Regression')
 
-    # 9. Comparison
+    # 9. Train stacked ensemble (OvR binary classifiers + meta-learner)
+    logger.info('\n=== Training Stacked Ensemble ===')
+    ensemble_result = train_stacked_ensemble(
+        X_train_active, y_train, X_val_active, y_val,
+        active_feature_names, seasons_train=seasons_train,
+    )
+    ensemble_metrics = evaluate(y_val, ensemble_result['val_probs'], label='Stacked Ensemble')
+
+    # 10. Comparison (all three models)
     xgb_acc = xgb_metrics['accuracy']
     lr_acc = lr_metrics['accuracy']
-    lift = (xgb_acc - lr_acc) * 100
+    ens_acc = ensemble_metrics['accuracy']
     logger.info(
-        '\n=== Comparison ===\n'
-        'XGBoost accuracy: %.1f%% vs Logistic Regression baseline: %.1f%% (%+.1f%% lift)',
-        xgb_acc * 100, lr_acc * 100, lift,
+        '\n=== Model Comparison ===\n'
+        'Stacked Ensemble: %.1f%% | XGBoost (calibrated): %.1f%% | LR baseline: %.1f%%',
+        ens_acc * 100, xgb_acc * 100, lr_acc * 100,
     )
-    if lift < 3.0:
-        logger.warning(
-            'XGBoost lift < 3%% over LR — investigate feature engineering quality',
-        )
+    logger.info(
+        'Ensemble vs XGBoost: %+.1f%% | Ensemble vs LR: %+.1f%%',
+        (ens_acc - xgb_acc) * 100, (ens_acc - lr_acc) * 100,
+    )
 
-    # 10. Top features
+    # Per-class comparison
+    xgb_per = xgb_metrics.get('per_class_accuracy', {})
+    ens_per = ensemble_metrics.get('per_class_accuracy', {})
+    logger.info('\n  Per-class accuracy (Ensemble vs XGBoost):')
+    for name in LABEL_NAMES:
+        e = ens_per.get(name, 0) * 100
+        x = xgb_per.get(name, 0) * 100
+        logger.info('    %-10s %5.1f%% vs %5.1f%% (%+.1f%%)', name, e, x, e - x)
+
+    # 11. Top features
     sorted_imp = sorted(
         xgb_result['importance'].items(), key=lambda x: x[1], reverse=True,
     )
@@ -785,13 +1036,17 @@ def main():
     for i, (name, imp) in enumerate(sorted_imp[:20], 1):
         logger.info('  %2d. %-35s %.4f', i, name, imp)
 
-    # 11. Save model (with calibrators and selected features)
+    # 12. Save model (with calibrators, selected features, and stacked ensemble)
     training_info = {
         'training_samples': len(X_train_active),
         'seasons': seasons,
     }
     xgb_result['calibrators'] = cal_result['calibrators']
-    save_model(xgb_result, active_feature_names, xgb_metrics, training_info)
+    save_model(
+        xgb_result, active_feature_names, xgb_metrics, training_info,
+        ensemble_result=ensemble_result,
+        ensemble_metrics=ensemble_metrics,
+    )
 
     # 12. Calibration curve
     cal_path = os.path.join(MODEL_DIR, 'calibration_curve.png')
