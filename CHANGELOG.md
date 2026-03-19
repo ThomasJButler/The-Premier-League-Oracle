@@ -2,6 +2,41 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 27 March 2026 — Spec 07 complete: shadcn Dialog and Sheet, sidebar refactor, dead code removal
+
+**Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.82`
+
+### Spec 07 — shadcn Dialog component
+- Created custom `$lib/components/ui/dialog/` (Root, Content, Header, Footer, Title, Description)
+- Uses Svelte context API for close handler propagation, `focusTrap` action, body scroll lock, focus save/restore
+- No bits-ui dependency — matches existing component pattern
+
+### Spec 07 — shadcn Sheet component
+- Created custom `$lib/components/ui/sheet/` (Root, Content)
+- Configurable `side` prop (left/right/top/bottom) with fly transitions
+- Focus trap, escape key, and click-outside-to-close
+
+### Spec 07 — ApiSetupWizard migration
+- Migrated from hand-rolled modal to shadcn Dialog compound component
+- Removed duplicated focus trap, escape key, and scroll lock logic (now handled by Dialog)
+
+### Spec 07 — Sidebar mobile Sheet migration
+- Extracted `SidebarNav.svelte` — shared nav content used by both desktop aside and mobile Sheet
+- Desktop: CSS transform slide with `<aside>`
+- Mobile: Sheet overlay with side="left"
+- Removed ~100 lines of duplicated nav rendering and manual overlay code
+
+### Dead code removal
+- Removed `.card-stats` / `.card-stats:hover` from `app.css` (unused)
+- Removed stale comments from Dashboard.svelte and Predictions.svelte
+
+### Stats
+- Frontend: 382 Vitest tests passing, 0 type errors
+- Spec 07 progress: 75% → 100% (17/17 criteria met)
+- Overall: ~84% → ~86%
+
+---
+
 ## 19 March 2026 — P2r/P2s/P5a: Backend runtime crash fix, dead deps cleanup, data guards
 
 **Branch:** `v3.0-BackendMLTraining` · **Tag:** `v0.0.81`

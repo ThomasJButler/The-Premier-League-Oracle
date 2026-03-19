@@ -1,34 +1,36 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { Key, Shield, Zap, BookOpen, Info, ExternalLink, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
-  import { focusTrap } from '$lib/utils';
+  import * as Dialog from '$lib/components/ui/dialog';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
-  
+
   const dispatch = createEventDispatcher();
-  
+
+  export let open = true;
+
   let apiKey = '';
   let isValidating = false;
   let currentStep = 1;
   let validationError = '';
   let validationSuccess = false;
   let selectedProvider: 'football-data' = 'football-data';
-  
+
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
     { id: 2, title: 'Privacy & Security', icon: Shield },
     { id: 3, title: 'API Setup', icon: Key },
     { id: 4, title: 'Ready!', icon: BookOpen }
   ];
-  
+
   async function validateAndSave() {
     if (!apiKey.trim()) return;
-    
+
     isValidating = true;
     validationError = '';
     validationSuccess = false;
-    
+
     try {
       const api = footballDataAPI;
       api.setApiKey(apiKey.trim());
@@ -52,7 +54,7 @@
       isValidating = false;
     }
   }
-  
+
   function nextStep() {
     if (currentStep < 4) {
       currentStep++;
@@ -65,32 +67,13 @@
     }
   }
 
-  /** Restore focus to the element that was active before the dialog opened. */
-  let previousActiveElement: HTMLElement | null = null;
-
-  onMount(() => {
-    previousActiveElement = document.activeElement as HTMLElement | null;
-    return () => {
-      previousActiveElement?.focus();
-    };
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent
-  function handleKeydown(e: any) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      dismiss();
-    }
-  }
-
   function dismiss() {
     dispatch('complete', { apiKey: '', provider: selectedProvider });
   }
 </script>
 
-<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="presentation" on:click|self={dismiss}>
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="bg-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-label="API Setup Wizard" use:focusTrap on:keydown={handleKeydown}>
+<Dialog.Root {open} on:close={dismiss}>
+  <Dialog.Content class="max-w-2xl max-h-[85vh] flex flex-col rounded-3xl shadow-2xl p-0">
     <div class="flex-shrink-0">
     <!-- Header -->
     <div class="p-8 pb-0">
@@ -113,7 +96,7 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Step indicator -->
       <div class="flex items-center gap-3 mb-8">
         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-white">
@@ -126,7 +109,7 @@
       </div>
     </div>
     </div>
-    
+
     <!-- Content -->
     <div class="flex-1 px-8 pb-8 overflow-y-auto min-h-0">
       {#if currentStep === 1}
@@ -142,7 +125,7 @@
               and ensemble statistical analysis.
             </p>
           </div>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
             <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
               <div class="w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-lg flex items-center justify-center mb-3">
@@ -151,7 +134,7 @@
               <h4 class="font-semibold mb-1">Live Predictions</h4>
               <p class="text-sm text-muted-foreground">Real-time match predictions with confidence scores</p>
             </div>
-            
+
             <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
               <div class="w-8 h-8 bg-green-100 dark:bg-green-800 rounded-lg flex items-center justify-center mb-3">
                 <Shield class="w-4 h-4 text-green-600" />
@@ -159,7 +142,7 @@
               <h4 class="font-semibold mb-1">Privacy First</h4>
               <p class="text-sm text-muted-foreground">Your API key stays local, never shared</p>
             </div>
-            
+
             <div class="p-4 bg-gradient-to-br from-slate-50 to-teal-50 dark:from-slate-900/20 dark:to-teal-900/20 rounded-xl">
               <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mb-3">
                 <BookOpen class="w-4 h-4 text-teal-600" />
@@ -169,7 +152,7 @@
             </div>
           </div>
         </div>
-        
+
       {:else if currentStep === 2}
         <!-- Privacy & Security Step -->
         <div class="space-y-4">
@@ -180,7 +163,7 @@
             <h3 class="text-xl font-bold mb-1">Privacy & Security</h3>
             <p class="text-sm text-muted-foreground">Your data and privacy are our top priority</p>
           </div>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
@@ -191,7 +174,7 @@
                 Your API key is stored locally in your browser and never transmitted to our servers.
               </p>
             </div>
-            
+
             <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Shield class="w-4 h-4 text-green-600" />
@@ -201,7 +184,7 @@
                 We don't collect, store, or analyze your personal data or usage patterns.
               </p>
             </div>
-            
+
             <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Zap class="w-4 h-4 text-teal-600" />
@@ -211,7 +194,7 @@
                 All data comes directly from your chosen API provider, bypassing our servers.
               </p>
             </div>
-            
+
             <div class="p-4 bg-muted rounded-xl">
               <h4 class="font-semibold mb-2 flex items-center gap-2 text-sm">
                 <BookOpen class="w-4 h-4 text-amber-600" />
@@ -222,20 +205,20 @@
               </p>
             </div>
           </div>
-          
+
           <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
             <div class="flex items-start gap-2">
               <Info class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p class="text-xs text-blue-800 dark:text-blue-200">
-                  <strong>Important:</strong> This application is for research and educational purposes only. 
+                  <strong>Important:</strong> This application is for research and educational purposes only.
                   Please use responsibly and in accordance with your API provider's terms of service.
                 </p>
               </div>
             </div>
           </div>
         </div>
-        
+
       {:else if currentStep === 3}
         <!-- API Setup Step -->
         <div class="space-y-6">
@@ -248,7 +231,7 @@
               Enter your Football-Data.org key to get started
             </p>
           </div>
-          
+
           <div class="space-y-4">
             <div>
               <label for="apiKey" class="block text-sm font-medium text-foreground mb-2">
@@ -265,22 +248,22 @@
               {#if apiKey.length > 0 && apiKey.length < 10}
                 <p class="text-red-600 text-sm mt-1">API key seems too short</p>
               {/if}
-              
+
               <!-- Validation Error Display -->
               {#if validationError}
                 <div class="mt-3 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700">
                   <p class="text-red-700 dark:text-red-300 text-sm">{validationError}</p>
                 </div>
               {/if}
-              
+
               <!-- Validation Success Display -->
               {#if validationSuccess}
                 <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-700">
-                  <p class="text-green-700 dark:text-green-300 text-sm">✅ API key validated successfully!</p>
+                  <p class="text-green-700 dark:text-green-300 text-sm">API key validated successfully!</p>
                 </div>
               {/if}
             </div>
-            
+
             <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
               <div class="flex items-start gap-3">
                 <Info class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -291,9 +274,9 @@
                   <p class="text-sm text-amber-700 dark:text-amber-300 mb-3">
                     Get a free API key from Football-Data.org. The free tier includes 10 requests per minute.
                   </p>
-                  <a 
-                    href="https://www.football-data.org/client/register" 
-                    target="_blank" 
+                  <a
+                    href="https://www.football-data.org/client/register"
+                    target="_blank"
                     rel="noopener noreferrer"
                     class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200"
                   >
@@ -304,7 +287,7 @@
             </div>
           </div>
         </div>
-        
+
       {:else if currentStep === 4}
         <!-- Success Step -->
         <div class="text-center space-y-6">
@@ -317,31 +300,31 @@
               Your API key has been validated and saved. You're ready to explore Premier League predictions!
             </p>
           </div>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <div class="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl">
-              <h4 class="font-semibold mb-2">💡 Recommended Usage</h4>
+              <h4 class="font-semibold mb-2">Recommended Usage</h4>
               <ul class="text-sm text-muted-foreground space-y-1">
-                <li>• Check daily predictions</li>
-                <li>• Monitor team performance</li>
-                <li>• Use Kelly Calculator for betting</li>
+                <li>Check daily predictions</li>
+                <li>Monitor team performance</li>
+                <li>Use Kelly Calculator for betting</li>
               </ul>
             </div>
-            
+
             <div class="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
-              <h4 class="font-semibold mb-2">📚 Learn More</h4>
+              <h4 class="font-semibold mb-2">Learn More</h4>
               <ul class="text-sm text-muted-foreground space-y-1">
-                <li>• View tutorial documentation</li>
-                <li>• Understand prediction models</li>
-                <li>• Explore value betting</li>
+                <li>View tutorial documentation</li>
+                <li>Understand prediction models</li>
+                <li>Explore value betting</li>
               </ul>
             </div>
           </div>
         </div>
       {/if}
-      
+
     </div>
-    
+
     <!-- Navigation -->
     <div class="flex-shrink-0 px-8 pb-8">
       <div class="flex justify-between items-center pt-6 border-t border-border">
@@ -352,7 +335,7 @@
         >
           Previous
         </Button>
-        
+
         <div class="flex gap-3">
           {#if currentStep === 3}
             <Button
@@ -383,5 +366,5 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
+  </Dialog.Content>
+</Dialog.Root>

@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (thirteenth update — P2r/P2s items done, P5a CSV warning done)
+Last updated: 27 March 2026 (fourteenth update — Spec 07 UI/UX completed: Dialog, Sheet, dead code, form strings)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~84% Complete
+## Project Status: ~86% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -16,7 +16,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P2 Next Sprint | 22/24 (92%) | 2 partial — Docker, CI gaps; backend deps cleaned |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
-| P4 Polish | 8/8 (100%) | Minor deferred sub-items only |
+| P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | ~28/29 (97%) | Backend CI done, node-version fixed, CSV warning logged; Playwright E2E in CI, vite proxy production gap remaining |
 
 **Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
@@ -515,7 +515,7 @@ All feature specifications in `specs/`:
 | `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~75% — remaining: Dialog (Req 5), Sheet (Req 8), dead code. Form strings confirmed computed from real match data at runtime (not hardcoded). **Markers: 13/17** |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | **100% — ALL 17/17 criteria met** — Dialog, Sheet, dead code removal, form strings all completed |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---

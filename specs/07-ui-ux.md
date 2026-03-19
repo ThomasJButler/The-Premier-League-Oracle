@@ -198,16 +198,16 @@ The following must have proper ARIA labels:
 
 ## Acceptance Criteria
 
-> Updated 25 March 2026 — Button, Card, Badge migrations complete
+> Updated 27 March 2026 — All acceptance criteria met. Full shadcn migration complete (Button, Card, Badge, Dialog, Sheet). Dead code removed. Form strings computed from live data.
 
 - [x] shadcn-svelte initialised — `components.json` created, five components installed (Button, Card, Badge, Separator, Skeleton), `$lib/utils.ts` created with `cn()` utility (P2a, P2a-fix)
 - [x] shadcn CSS variables fully mapped to existing palette in `app.css` — all 16 variables defined in `:root` and `.dark` blocks
 - [x] Button component replaces all `.btn*` CSS classes — migrated across Settings, ChatBot, ApiSetupWizard, Dashboard, Predictions (only `.btn-neon` kept as special-effect class override)
 - [x] Card component wraps glassmorphism cards — `<Card class="card-glass">` in Dashboard (8 cards) and ChatBot (2 cards)
-- [ ] Dialog component replaces ApiSetupWizard modal (not done — ApiSetupWizard still uses hand-rolled modal)
+- [x] Dialog component replaces ApiSetupWizard modal — `Dialog.Root` + `Dialog.Content` from `$lib/components/ui/dialog`; manual focus trap, escape handler, click-outside, and focus save/restore all removed (Dialog handles natively)
 - [x] Badge component replaces all `.badge*` CSS classes — migrated across Dashboard, MatchList, Predictions with `info` and `neutral` variants added
 - [x] Dark mode restores from localStorage on page load — shared theme store with localStorage persistence (P1b)
-- [ ] Sidebar uses shadcn Sheet on mobile (not done — still uses CSS transform)
+- [x] Sidebar uses shadcn Sheet on mobile — `Sheet.Root` + `Sheet.Content` with `side="left"`; desktop sidebar remains as fixed `<aside>`; manual backdrop, focusTrap, and escape handler removed; nav content extracted to `SidebarNav.svelte`
 - [x] Probability bars have ARIA `role="meter"` attributes (P4b)
 - [x] Kelly calculator inputs have proper `<label>` elements (P4b)
 - [x] `prefers-reduced-motion` respected across animated elements (P4b)
@@ -217,5 +217,5 @@ The following must have proper ARIA labels:
 - [x] Semantic `<table>` for TopScorers (P4b)
 - [x] Marquee semantics for LiveTicker (P4b)
 - [x] Chart accessibility improvements (P4b)
-- [ ] Dead code removed from Dashboard and BettingHistory
-- [ ] Form strings computed from real data, not hardcoded (hardcoded `'WWDLW'` strings remain in `Predictions.svelte`)
+- [x] Dead code removed from Dashboard and BettingHistory — dead `.card-stats` CSS removed from `app.css`; stale comments removed from `Dashboard.svelte` and `Predictions.svelte`; BettingHistory was already clean
+- [x] Form strings computed from real data, not hardcoded — `Predictions.svelte` uses `optimizedPrediction.homeForm` / `awayForm` from `dataService.getTeamForm()` via `analyzeRecentForm()`; `'?????'` fallback is intentional for unavailable data

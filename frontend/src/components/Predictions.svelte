@@ -226,7 +226,6 @@
           match.referee
         );
         
-        // Convert to legacy format for compatibility
         const prediction = {
           predictedResult: optimizedPrediction.predictedResult,
           confidence: optimizedPrediction.confidence,

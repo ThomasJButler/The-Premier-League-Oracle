@@ -122,8 +122,6 @@
       loading = true;
       error = null;
       
-      // Data provider is Football-Data.org (configured in Settings)
-
       // Get recent and upcoming matches from API
       const [recent, upcoming] = await Promise.all([
         dataService.getMatches({ recent: true, days: 30 }),
