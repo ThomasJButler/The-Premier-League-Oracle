@@ -302,11 +302,6 @@ Do NOT invent specific injury news, transfer rumours, or manager quotes. Only re
     keysToRemove.forEach(key => localStorage.removeItem(key));
   }
 
-  /** Invalidate the server key cache (e.g. after deployment changes) */
-  invalidateServerKeyCache(): void {
-    this.serverKeyAvailable = null;
-    localStorage.removeItem(SERVER_KEY_CHECK);
-  }
 }
 
 export const aiAnalysisService = new AIAnalysisService();

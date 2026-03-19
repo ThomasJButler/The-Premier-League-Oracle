@@ -2,6 +2,29 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5ak/P5s/P5an — dead code removal, test_setup false confidence
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5ak — Dead service methods removed
+- Removed `backendService.predictBatch()`, `backendService.getTeamStats()`, and `headers(includeAuth)` auth branch — none called from any component
+- Removed `KellyCalculator.simulate()` — Monte Carlo simulation with no UI integration
+- Removed `aiAnalysis.invalidateServerKeyCache()` — no component calls this
+- Deleted 11 corresponding tests (honest coverage reduction)
+
+### P5s — Dead variable cleanup
+- Removed `selectedProvider` from ApiSetupWizard.svelte — single-value union `'football-data'`, never changed, parent ignores the dispatched value
+- `bttsNo` investigated and confirmed NOT dead — actively used by ValueBets.svelte as a validation gate for BTTS market scanning
+
+### P5an — test_setup.py false confidence fixed
+- Renamed `backend/test_setup.py` to `backend/check_imports.py` — pytest no longer collects it as a passing test. The file makes zero assertions and was providing false confidence in CI
+
+### Stats
+- P5 Hardening: ~45/49 (92%)
+- Frontend: 373 tests, 0 type errors (honest reduction from dead-code test removal)
+
+---
+
 ## 30 March 2026 — P5ad/P5u/P5al/P5ab — fatigue model, live display, bet correlation
 
 **Branch:** `v3.0-BackendMLTraining`

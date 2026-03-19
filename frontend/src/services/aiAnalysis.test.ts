@@ -38,8 +38,9 @@ describe('AIAnalysisService', () => {
     });
     Object.defineProperty(localStorage, 'length', { get: () => store.size, configurable: true });
 
-    // Reset the service's in-memory server key cache
-    aiAnalysisService.invalidateServerKeyCache();
+    // Reset the service's in-memory server key cache between tests
+    (aiAnalysisService as unknown as { serverKeyAvailable: boolean | null }).serverKeyAvailable = null;
+    localStorage.removeItem('ai_analysis_server_key');
   });
 
   afterEach(() => {
@@ -321,26 +322,4 @@ describe('AIAnalysisService', () => {
     });
   });
 
-  describe('invalidateServerKeyCache', () => {
-    it('should clear cached server key state', async () => {
-      // First call probes the server
-      vi.mocked(fetch).mockResolvedValueOnce({
-        status: 400,
-        json: async () => ({ error: 'Messages array required.' }),
-      } as unknown as Response);
-      await aiAnalysisService.hasApiKey();
-
-      // Invalidate
-      aiAnalysisService.invalidateServerKeyCache();
-
-      // Second call should probe again
-      vi.mocked(fetch).mockResolvedValueOnce({
-        status: 400,
-        json: async () => ({ error: 'No API key configured.' }),
-      } as unknown as Response);
-      const result = await aiAnalysisService.hasApiKey();
-      expect(result).toBe(false);
-      expect(fetch).toHaveBeenCalledTimes(2);
-    });
-  });
 });

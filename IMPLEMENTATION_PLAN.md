@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (nineteenth update — P5ad/P5u/P5al fixed, P5ab marked stale)
+Last updated: 30 March 2026 (twentieth update — P5ak/P5s/P5an dead code removal, test_setup false confidence)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,9 +17,9 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~42/49 (86%) | P5ad fatigue simplified, P5u minute display, P5al correlation fix, P5ab stale |
+| P5 Hardening | ~45/49 (92%) | P5ak dead methods, P5an test_setup, P5s selectedProvider, +prior batch |
 
-**Frontend:** 384 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 373 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -329,8 +329,8 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 - [x] `main.py:24`: `timedelta` import removed
 - [x] `modern_oracle.py:18`: `asyncio` import removed
 - [x] `SeasonStats.svelte:96`: `currentStreak` dead variable removed
-- [ ] `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as `'football-data'` (single-value union), assigned but functionally trivial
-- [ ] `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used — "BTTS No" value bets are never generated. Vestigial field
+- [x] `ApiSetupWizard.svelte`: `selectedProvider` dead variable removed — typed as `'football-data'` (single-value union), parent ignores the dispatched value
+- ~~`value.ts`: `MarketOdds.bttsNo` field~~ **NOT DEAD:** actively used by ValueBets.svelte UI as a validation gate for BTTS market scanning. Left alone
 
 ### P5t. Frontend Resilience — PARTIAL
 
@@ -438,15 +438,14 @@ Three different spinner implementations exist across components (none use the `s
 
 - [x] Added aria-expanded={isSidebarOpen} to sidebar toggle button, with isSidebarOpen prop passed from App.svelte
 
-### P5ak. Dead Service Methods
+### P5ak. Dead Service Methods — DONE
 
-Several exported service methods are never called from any component or test:
-
-- [ ] `backendService.predictBatch()` — fully implemented but no consumer exists
-- [ ] `backendService.getTeamStats()` — fully implemented but no consumer exists
-- [ ] `backendService.headers(includeAuth=true)` — the bearer-token branch is never reached (all callers use `this.headers()` without arguments)
-- [ ] `KellyCalculator.simulate()` — Monte Carlo simulation with `Math.random()`, never called from any component or test
-- [ ] `aiAnalysis.invalidateServerKeyCache()` — public method, no caller exists
+- [x] `backendService.predictBatch()` — removed (never called from any component)
+- [x] `backendService.getTeamStats()` — removed (never called from any component)
+- [x] `backendService.headers(includeAuth=true)` — simplified to no-arg `headers()`, removed dead `getToken()` helper
+- [x] `KellyCalculator.simulate()` — removed (Monte Carlo simulation with no UI integration)
+- [x] `aiAnalysis.invalidateServerKeyCache()` — removed (no caller exists)
+- [x] Deleted 11 corresponding tests (8 backendService, 2 kelly, 1 aiAnalysis) — honest coverage reduction
 
 ### P5al. betBuilder correlationAdjustment Inconsistency — DONE
 
@@ -460,11 +459,11 @@ Several exported service methods are never called from any component or test:
 
 - [ ] Add a non-root user (e.g. `RUN adduser --disabled-password appuser`) and `USER appuser` directive
 
-### P5an. test_setup.py False Confidence
+### P5an. test_setup.py False Confidence — DONE
 
-`backend/test_setup.py` defines `test_imports()` which prints import status but makes zero assertions. pytest collects it and reports it as "passed" regardless of whether imports actually succeeded — providing false confidence in CI output.
+`backend/test_setup.py` defined `test_imports()` which printed import status but made zero assertions. pytest collected it and reported it as "passed" regardless of whether imports actually succeeded — providing false confidence in CI output.
 
-- [ ] Either add proper assertions that fail when critical imports are missing, or rename to a non-test file (e.g. `check_imports.py`) so pytest does not collect it
+- [x] Renamed `backend/test_setup.py` to `backend/check_imports.py` — pytest no longer collects it as a passing test
 
 ---
 
@@ -719,7 +718,7 @@ All feature specifications in `specs/`:
 | `advancedPredictions.test.ts` | 21 | Passing |
 | `betHistoryService.test.ts` | 27 | Passing |
 | `footballData.test.ts` | 23 | Passing |
-| `kelly.test.ts` | 13 | Passing |
+| `kelly.test.ts` | 11 | Passing |
 | `types.test.ts` | 4 | Passing |
 | `predictionTracker.test.ts` | 24 | Passing |
 | `ChatBot.test.ts` | 18 | Passing |
@@ -735,9 +734,9 @@ All feature specifications in `specs/`:
 | `Settings.test.ts` | 16 | Passing |
 | `LiveMatches.test.ts` | 9 | Passing |
 | `liveService.test.ts` | 14 | Passing |
-| `backendService.test.ts` | 19 | Passing |
-| `aiAnalysis.test.ts` | 24 | Passing |
-| **Total** | **384** | **All passing** |
+| `backendService.test.ts` | 11 | Passing |
+| `aiAnalysis.test.ts` | 23 | Passing |
+| **Total** | **373** | **All passing** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

@@ -113,8 +113,8 @@ These specs are the single source of truth for requirements.
 - Backend server starts with graceful degradation — all heavy deps (shap, optuna, redis, sklearn, joblib, langchain, torch) are optional with availability flags; ML endpoints disabled when deps missing but `/health` returns 200. Oracle ensemble model loading removed from startup (no `xgboost_model.pkl`, `lstm_model.pt`, `transformer_model.pt`). Frontend uses `/predict/free` endpoint exclusively
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
-- ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. `test_setup.py` still only checks imports
-- Frontend has 384 Vitest tests across 23 test files, all passing (was 351 — 24 added: aiAnalysis.test.ts)
+- ~~Backend has 0% test coverage~~ **FIXED:** 62 backend tests across 3 files (39 feature engineering, 12 training pipeline, 11 API endpoints) — all passing. ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
+- Frontend has 373 Vitest tests across 23 test files, all passing (was 384 — 11 tests removed with dead service methods in P5ak)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 8 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -203,8 +203,8 @@ These specs are the single source of truth for requirements.
 - ~~`SeasonStats.svelte:96`: `currentStreak` variable is dead code — declared and initialised to `0` but never written to or read; the streak calculation uses a separate local `streak` variable at line 118~~ **FIXED:** dead variable removed (P5s)
 - ~~`LiveMatches.svelte:85-90`: `getMinute()` only computed elapsed time for `IN_PLAY`/`PAUSED` — matches in `EXTRA_TIME` or `PENALTY_SHOOTOUT` showed empty minute string~~ **FIXED:** `getMinute()` now handles all live statuses — `EXTRA_TIME` shows elapsed minutes (or "ET"), `PENALTY_SHOOTOUT` shows "PEN" (P5u)
 - `liveService.ts:244-249`: WebSocket `onmessage` handler parses incoming JSON then discards it entirely — the connection exists but delivers no data to any store. Dead infrastructure until the backend sends a payload the frontend needs
-- `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used to generate "BTTS No" value bets — vestigial field
-- `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial
+- `value.ts`: `MarketOdds.bttsNo` — investigated and confirmed NOT dead. Actively used by ValueBets.svelte UI as a validation gate for BTTS market scanning
+- ~~`ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial~~ **FIXED:** removed (P5s)
 - Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
 - **Sixteenth audit (29 March 2026) — 23 new items discovered:**
 - ~~`App.svelte:79`: `hasApiKey = true` set unconditionally on wizard dismiss — even when no key entered~~ **FIXED:** `handleApiSetupComplete` now early-returns when `apiKey` is empty (P1g)
@@ -230,9 +230,9 @@ These specs are the single source of truth for requirements.
 - ~~`App.svelte:113`: `animate-fadeIn` (camelCase) silently ignored — Tailwind generates `animate-fade-in` (kebab-case)~~ **FIXED:** changed to `animate-fade-in` (P5ah)
 - ~~`Help.svelte`: Uses `prose prose-slate dark:prose-invert` classes (6 instances) and local `@apply .prose h2/h3/h4` rules, but `@tailwindcss/typography` is NOT installed. All typography styling silently non-functional~~ **FIXED:** installed `@tailwindcss/typography` and added to `tailwind.config.js` plugins (P5ai)
 - ~~`Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state~~ **FIXED:** added `aria-expanded={isSidebarOpen}` with prop from App.svelte (P5aj)
-- Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()` (P5ak)
+- ~~Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()`~~ **FIXED:** all five removed, `headers()` simplified to no-arg, dead `getToken()` helper also removed. 11 corresponding tests deleted (P5ak)
 - ~~`betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types~~ **FIXED:** all four combo types ("Safe Builder", "Value Builder", "High Risk Builder", "Goals Galore") now apply `correlationAdjustment()` for consistent confidence calculations (P5al)
 - `backend/Dockerfile`: No non-root user created — app runs as root inside container (P5am)
-- `backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI (P5an)
+- ~~`backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI~~ **FIXED:** renamed to `backend/check_imports.py` so pytest no longer collects it as a passing test (P5an)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

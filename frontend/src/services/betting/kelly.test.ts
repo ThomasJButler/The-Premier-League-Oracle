@@ -134,34 +134,6 @@ describe('KellyCalculator', () => {
     });
   });
 
-  describe('simulate', () => {
-    it('should run Monte Carlo simulation', () => {
-      const opportunities = [
-        { probability: 0.6, odds: 2.0 },
-        { probability: 0.55, odds: 2.5 }
-      ];
-
-      const simulation = KellyCalculator.simulate(1000, opportunities, 100, 0.5);
-
-      expect(simulation.finalBankroll).toBeGreaterThan(0);
-      expect(simulation.maxBankroll).toBeGreaterThanOrEqual(simulation.finalBankroll);
-      expect(simulation.minBankroll).toBeLessThanOrEqual(simulation.finalBankroll);
-      expect(simulation.bustRate).toBeGreaterThanOrEqual(0);
-      expect(simulation.bustRate).toBeLessThanOrEqual(100);
-    });
-
-    it('should show higher bust rate with aggressive betting', () => {
-      const riskyOpportunities = [
-        { probability: 0.51, odds: 2.5 }
-      ];
-
-      const conservativeResult = KellyCalculator.simulate(1000, riskyOpportunities, 100, 0.25);
-      const aggressiveResult = KellyCalculator.simulate(1000, riskyOpportunities, 100, 1.0);
-
-      expect(aggressiveResult.bustRate).toBeGreaterThanOrEqual(conservativeResult.bustRate);
-    });
-  });
-
   describe('edge cases and error handling', () => {
     it('should handle negative bankroll gracefully', () => {
       const opportunity: BettingOpportunity = {

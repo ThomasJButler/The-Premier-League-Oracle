@@ -15,7 +15,6 @@
   let currentStep = 1;
   let validationError = '';
   let validationSuccess = false;
-  let selectedProvider: 'football-data' = 'football-data';
 
   const steps = [
     { id: 1, title: 'Welcome', icon: Zap },
@@ -68,7 +67,7 @@
   }
 
   function dismiss() {
-    dispatch('complete', { apiKey: '', provider: selectedProvider });
+    dispatch('complete', { apiKey: '' });
   }
 </script>
 
@@ -351,7 +350,7 @@
           {:else if currentStep === 4}
             <Button
               on:click={() => {
-                dispatch('complete', { apiKey: apiKey.trim(), provider: selectedProvider });
+                dispatch('complete', { apiKey: apiKey.trim() });
               }}
             >
               Start Using App
