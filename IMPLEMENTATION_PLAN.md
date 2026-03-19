@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twentieth update — P5ak/P5s/P5an dead code removal, test_setup false confidence)
+Last updated: 30 March 2026 (twenty-first update — P5af backend paths, P5am Dockerfile non-root user)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~45/49 (92%) | P5ak dead methods, P5an test_setup, P5s selectedProvider, +prior batch |
+| P5 Hardening | ~47/49 (96%) | P5af backend paths, P5am Dockerfile non-root user |
 
 **Frontend:** 373 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
@@ -408,11 +408,12 @@ Several test files have assertions that pass when they shouldn't:
 - [ ] `test_free_tier_features.py`: H2H test conditionally skips assertions when `h2h_total_matches == 0`; basic stats test uses weak `or` assertion
 - [ ] `test_predict_free_tier.py`: No happy-path test for `/predict/free` with a loaded model; no test for `_get_client_ip()` X-Forwarded-For extraction
 
-### P5af. Backend Path Fragility
+### P5af. Backend Path Fragility — DONE
 
-`main.py`: Model and CSV paths use `Path("models")` and `Path("../spreadsheets")` relative to the current working directory, not relative to the file. Starting the server from any directory other than `backend/` silently fails to load the model.
+`main.py`: Model and CSV paths used `Path("models")` and `Path("spreadsheets")` relative to the current working directory. Starting the server from any directory other than `backend/` silently failed to load the model.
 
-- [ ] Resolve paths relative to `__file__` (e.g. `Path(__file__).parent.parent.parent / "models"`) for robustness
+- [x] Added `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` constant — anchors all file paths to the `backend/` directory regardless of CWD
+- [x] Updated model path (`models/xgboost_free_tier.joblib`) and CSV path (`spreadsheets/KnowledgeFilesCSV/`) to use `BACKEND_ROOT`
 
 ### P5ag. Spinner and Button Inconsistency
 
@@ -453,11 +454,14 @@ Three different spinner implementations exist across components (none use the `s
 
 - [x] Applied `correlationAdjustment()` to all four combo types. Selections now extracted to named arrays (`safeSelections`, `aggressiveSelections`) for consistency with the existing `valueSelections`/`goalsSelections` pattern
 
-### P5am. Dockerfile Runs as Root
+### P5am. Dockerfile Runs as Root — DONE
 
-`backend/Dockerfile` creates no non-root user. The application runs as root inside the container, which is a security concern for production deployments.
+`backend/Dockerfile` created no non-root user. The application ran as root inside the container.
 
-- [ ] Add a non-root user (e.g. `RUN adduser --disabled-password appuser`) and `USER appuser` directive
+- [x] Added `RUN adduser --disabled-password --no-create-home appuser` and `USER appuser` directive
+- [x] Removed stale `COPY config.yml .` (file doesn't exist, broke Docker build)
+- [x] Removed misleading `EXPOSE 5000` (MLflow port, Pro-tier only)
+- [x] Removed `git` from apt-get (not needed at runtime)
 
 ### P5an. test_setup.py False Confidence — DONE
 

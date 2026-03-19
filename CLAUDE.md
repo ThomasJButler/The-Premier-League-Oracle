@@ -218,7 +218,7 @@ These specs are the single source of truth for requirements.
 - `backtest.ts`: ELO `saveToStorage()` fires on every match during backtest — ~300+ unnecessary localStorage writes (P5ab)
 - ~~`betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation~~ **FIXED:** corrected to 0.26 + 0.46 + 0.28 = 1.0 (P5ac)
 - `advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)
-- `main.py`: Model/CSV paths resolve relative to CWD, not `__file__` — server fails silently when started from non-`backend/` directory (P5af)
+- ~~`main.py`: Model/CSV paths resolve relative to CWD, not `__file__`~~ **FIXED:** `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` anchors all paths to `backend/` regardless of CWD (P5af)
 - ~~`requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI~~ **FIXED:** added httpx==0.27.2 to requirements.txt (P2t)
 - ~~`.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered~~ **FIXED:** added *.joblib and frontend/.env.local/.env.production.local patterns (P2u)
 - ~~`environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r~~ **FIXED:** removed dead security deps, moved Pro-tier deps to commented section (P2v)
@@ -232,7 +232,7 @@ These specs are the single source of truth for requirements.
 - ~~`Header.svelte`: Sidebar toggle button missing `aria-expanded` — screen readers can't determine sidebar state~~ **FIXED:** added `aria-expanded={isSidebarOpen}` with prop from App.svelte (P5aj)
 - ~~Dead service methods never called: `backendService.predictBatch()`, `backendService.getTeamStats()`, `backendService.headers(includeAuth)` branch, `KellyCalculator.simulate()`, `aiAnalysis.invalidateServerKeyCache()`~~ **FIXED:** all five removed, `headers()` simplified to no-arg, dead `getToken()` helper also removed. 11 corresponding tests deleted (P5ak)
 - ~~`betBuilder.ts`: `correlationAdjustment()` only applied to 2 of 4 combo types~~ **FIXED:** all four combo types ("Safe Builder", "Value Builder", "High Risk Builder", "Goals Galore") now apply `correlationAdjustment()` for consistent confidence calculations (P5al)
-- `backend/Dockerfile`: No non-root user created — app runs as root inside container (P5am)
+- ~~`backend/Dockerfile`: No non-root user created — app runs as root inside container~~ **FIXED:** added `appuser` non-root user, removed stale `COPY config.yml`, removed misleading MLflow port (P5am)
 - ~~`backend/test_setup.py`: `test_imports()` makes zero assertions — always "passes" in pytest regardless of import status. False confidence in CI~~ **FIXED:** renamed to `backend/check_imports.py` so pytest no longer collects it as a passing test (P5an)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

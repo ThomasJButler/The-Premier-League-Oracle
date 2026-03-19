@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — P5af/P5am — backend path robustness, Dockerfile security
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### P5af — Backend path fragility fixed
+- Added `BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent` constant to `main.py` — model and CSV paths now resolve relative to `backend/` regardless of which directory `uvicorn` is started from
+
+### P5am — Dockerfile security hardened
+- Added non-root `appuser` user — container no longer runs as root
+- Removed stale `COPY config.yml .` that broke Docker build on clean clones
+- Removed misleading `EXPOSE 5000` (MLflow port, Pro-tier only)
+- Removed `git` from apt-get dependencies (not needed at runtime)
+
+### Stats
+- P5 Hardening: ~47/49 (96%)
+
+---
+
 ## 30 March 2026 — P5ak/P5s/P5an — dead code removal, test_setup false confidence
 
 **Branch:** `v3.0-BackendMLTraining`

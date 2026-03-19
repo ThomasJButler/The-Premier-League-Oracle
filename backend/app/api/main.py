@@ -30,6 +30,10 @@ from pathlib import Path
 import os
 import numpy as np
 
+# Anchor all file paths to the backend/ directory, not the CWD.
+# main.py lives at backend/app/api/main.py → 3 levels up = backend/
+BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
+
 # Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -211,7 +215,7 @@ async def lifespan(app: FastAPI):
 
     # Load free-tier model if available
     global free_tier_model, free_tier_metadata, free_tier_engineer
-    free_tier_model_path = Path("models") / "xgboost_free_tier.joblib"
+    free_tier_model_path = BACKEND_ROOT / "models" / "xgboost_free_tier.joblib"
     if free_tier_model_path.exists() and FREE_TIER_AVAILABLE:
         try:
             import joblib
@@ -249,7 +253,7 @@ async def lifespan(app: FastAPI):
             free_tier_engineer = FreeTierFeatureEngineer(empty_df)
 
             # Try loading CSV data for richer predictions
-            csv_dir = Path("spreadsheets") / "KnowledgeFilesCSV"
+            csv_dir = BACKEND_ROOT / "spreadsheets" / "KnowledgeFilesCSV"
             if csv_dir.exists():
                 try:
                     csv_data = FreeTierFeatureEngineer.load_csvs(str(csv_dir))
