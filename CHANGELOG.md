@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 30 March 2026 — Backend API hardening (security + deprecation fixes)
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Security
+- **Global exception handler no longer leaks error details:** Removed `str(exc)` from the 500 response body — now returns a generic "Internal server error" message. Full error is still logged server-side for debugging
+
+### Deprecation fixes
+- **Pydantic v2 compliance:** `response.dict()` → `response.model_dump()` in the Oracle prediction cache path
+
+### Bug fixes
+- **WebSocket `active_websockets` changed from `List` to `set`:** `list.remove()` raises `ValueError` if the socket was never appended (e.g. if `accept()` succeeded but the socket was never added due to an early exception). `set.discard()` is safe and O(1)
+
+### Cleanup
+- **Stale CLAUDE.md note:** "broken links in FOR_BEGINNERS.md and README.md" marked as resolved — no broken links remain in either file
+
+---
+
 ## 30 March 2026 — README docs, warnings cleanup, CORS
 
 **Branch:** `v3.0-BackendMLTraining`

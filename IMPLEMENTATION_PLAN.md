@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 30 March 2026 (twenty-seventh update — README docs, warnings cleanup, CORS)
+Last updated: 30 March 2026 (twenty-eighth update — main.py security/deprecation fixes)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
@@ -574,11 +574,11 @@ Priority features to implement with real data:
 - [ ] `auth.py`: HS256 used despite docstring claiming RS256
 - [ ] **All 3 security files** (`auth.py`, `secrets.py`, `validators.py`) are **completely unused at runtime** — not imported by `main.py`. Consider removing or properly wiring them
 - [ ] `main.py` bearer tokens on `/predict/natural` and `/admin/retrain` are **never verified** — any bearer string passes
-- [ ] `main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details
+- [x] `main.py` global exception handler — no longer leaks `str(exc)`, returns generic message; full error logged server-side (batch 17)
 - [ ] `main.py` WebSocket handler missing `oracle` null guard — silent disconnect when deps missing
-- [ ] `main.py`: `response.dict()` deprecated in Pydantic v2 — should be `.model_dump()`
+- [x] `main.py`: `response.dict()` → `.model_dump()` (Pydantic v2) (batch 17)
 - [x] `main.py`: CORS — added `allow_origin_regex` for `*.vercel.app` to cover production + preview deployments (batch 16)
-- [ ] `main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if socket was never appended. Use `set.discard()`
+- [x] `main.py` WebSocket: `active_websockets` changed from `List` to `set` — `.add()`/`.discard()` replaces `.append()`/`.remove()` (batch 17)
 - [ ] `secrets.py`: Azure Key Vault imported but no provider class; hard imports `boto3`, `hvac`, `azure` with no guards
 - [ ] `secrets.py`: `SecureConfig.__init__` requires `DATABASE_URL` which doesn't exist
 - [ ] `secrets.py`: audit log in-memory only

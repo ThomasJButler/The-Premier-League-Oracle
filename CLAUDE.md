@@ -126,7 +126,7 @@ These specs are the single source of truth for requirements.
 - `Prediction` type in `types/index.ts` is a dead legacy interface — diverges from `StoredPrediction` (the actual runtime type)
 - `Help.svelte` had 5 major inaccuracies fixed in P1f; remaining issues: "offline data caching" claim (no Service Worker), "CSV export" (exports JSON), aspirational feature claims, made-up accuracy percentages in "Golden Rules"
 - `.gitignore` has `backend/.env` (fixed 18 March 2026) — API keys protected
-- `backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files
+- ~~`backend/docs/FOR_BEGINNERS.md` and `backend/README.md` have broken links to deleted guide files~~ **STALE:** no broken links remain in either file
 - ~~No `vercel.json` exists~~ **FIXED:** `vercel.json` created with build command, output directory, and SPA catch-all rewrite. Football-Data.org sends `Access-Control-Allow-Origin: *` so direct browser calls work in production
 - CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` — 2,191 matches across 5.75 seasons with shots, corners, cards, odds columns (richer than what the free API provides). These are the primary source for ML training
 - `torch` is missing from `requirements.txt` but present in `environment.yml` — LSTM/Transformer models non-functional via pip install alone
@@ -237,5 +237,8 @@ These specs are the single source of truth for requirements.
 - ~~`advanced_engineering.py`: `warnings.filterwarnings('ignore')` at module level silences all Python warnings globally~~ **FIXED:** removed along with unused `warnings` import
 - `main.py`: CORS now includes `allow_origin_regex=r"https://.*\.vercel\.app"` to cover Vercel production + preview deployments (in addition to localhost dev/preview origins)
 - `backend/README.md` updated — feature count 86→94, test count 62→67, CSV training data source documented with required columns, duplicate security-modules bullet removed
+- ~~`main.py` global exception handler returns raw `str(exc)` in response body, leaking internal error details~~ **FIXED:** error response now returns generic "Internal server error" message only; full error logged server-side
+- ~~`main.py`: `response.dict()` deprecated in Pydantic v2~~ **FIXED:** changed to `.model_dump()`
+- ~~`main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if socket was never appended~~ **FIXED:** `active_websockets` changed from `List` to `set` — uses `.add()` and `.discard()` (safe, O(1))
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

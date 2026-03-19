@@ -90,7 +90,7 @@ MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 # Global instances
 oracle: Optional['ModernPremierLeagueOracle'] = None
 redis_client = None
-active_websockets: List[WebSocket] = []
+active_websockets: set[WebSocket] = set()
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
@@ -379,7 +379,7 @@ async def predict_match(
             await redis_client.setex(
                 cache_key,
                 3600,  # 1 hour TTL
-                json.dumps(response.dict())
+                json.dumps(response.model_dump())
             )
         
         return response
@@ -545,7 +545,7 @@ async def websocket_predictions(websocket: WebSocket):
     Clients can subscribe to live predictions as matches approach.
     """
     await websocket.accept()
-    active_websockets.append(websocket)
+    active_websockets.add(websocket)
     
     try:
         while True:
@@ -579,11 +579,11 @@ async def websocket_predictions(websocket: WebSocket):
                     await asyncio.sleep(60)  # Update every minute
                     
     except WebSocketDisconnect:
-        active_websockets.remove(websocket)
+        active_websockets.discard(websocket)
         logger.info("WebSocket client disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        active_websockets.remove(websocket)
+        active_websockets.discard(websocket)
 
 
 # Feature importance endpoint
@@ -871,13 +871,12 @@ async def free_tier_model_info():
 # Error handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    """Global exception handler."""
+    """Global exception handler — logs full error server-side, returns generic message to client."""
     logger.error(f"Unhandled exception: {exc}")
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
-            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }
     )
