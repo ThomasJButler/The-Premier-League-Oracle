@@ -2,6 +2,32 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Eighteenth audit: zero warnings, error propagation, a11y fixes
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Fixed
+
+- **svelte-check: 0 errors, 0 warnings** (was 0 errors, 7 warnings):
+  - Dialog/Sheet: added `a11y-no-noninteractive-element-interactions` ignore for `role="dialog"` false positive
+  - MatchList: changed `<label>` to `<span>` for "Quick Filters" heading (not a form control — WCAG)
+  - SeasonStats: removed redundant local `.line-clamp-2` CSS rule (Tailwind 3.4 has this built-in)
+  - Help: removed `@apply` style block — `@tailwindcss/typography` prose plugin handles heading sizes
+- **footballData.ts: error swallowing fixed** — `fetchWithCache()` now re-throws auth failure and rate-limit errors instead of silently returning `null`. Users see "API key invalid" or "Rate limit exceeded" rather than blank screens. Transient/network errors still degrade gracefully
+- **SeasonStats: empty dataset crash** — `highestScoringMatch` reduce guarded with `completedMatches.length > 0`. Was producing "undefined vs undefined" when no completed matches exist
+- **Dashboard: stale profit chart** — `refresh()` now calls `initProfitChart()` after data reload. Chart was not updating on user-triggered refresh
+- **LiveMatches: ARIA panel fix** — "No Live Matches" fallback now carries `id="panel-live" role="tabpanel" aria-labelledby="tab-live"`. Tab buttons' `aria-controls` references were dangling (WCAG 4.1.2)
+- **Predictions: flip card keyboard trap** — Buttons on hidden card faces now get `tabindex={-1}` to prevent Tab focus on `aria-hidden` content (WCAG 2.1.1)
+- **SeasonStats: dead code** — removed unused `currentUnbeaten` variable
+
+### Added
+
+- 2 new tests for 403 auth failure and 403 rate-limit error propagation
+- Frontend now at **404 Vitest tests** across 24 files (was 402)
+- Eighteenth audit findings documented in `IMPLEMENTATION_PLAN.md` (7 low/medium items)
+
+---
+
 ## 2 April 2026 — Spec sync and plan cleanup
 
 **Branch:** `v3.0-BackendMLTraining`

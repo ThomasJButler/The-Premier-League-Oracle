@@ -19,7 +19,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 49/49 (100%) | ALL DONE |
 
-**Frontend:** 402 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -152,6 +152,18 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 
 - [x] Added `backend` job to `.github/workflows/ci.yml` — Python 3.11 (matching Dockerfile), `pip install -r requirements.txt httpx`, `python -m pytest tests/ -v`. Runs in parallel with frontend job
 - [ ] Consider adding Playwright E2E tests to CI (heavier, needs `npx playwright install`)
+
+### P5g. Eighteenth Audit (April 2026) — PARTIAL
+
+New issues discovered, not yet fixed:
+
+- [ ] `liveService.ts:188-192` — `scheduleNextPoll()` timer race: if a poll takes longer than the interval, concurrent polls can run (medium, unlikely in practice)
+- [ ] `liveService.ts:74-84` — `matchEventsStore` not cleared on `stop()`, stale events possible on rapid remount (low)
+- [ ] `optimizedPredictions.ts:746-752` — `combineModels` can return NaN if all sub-model probabilities are 0 (low)
+- [ ] `StandingsTable.svelte` / `types/index.ts` — `Standing.form` typed as non-nullable `string` but API can return `null` (low)
+- [ ] `Predictions.svelte:62-64` — `aiAnalysisErrors` map never cleared on re-prediction (low)
+- [ ] `optimizedPredictions.ts:484` — `getEnhancedTeamStats` is `async` but never calls `await` (low, code quality)
+- [ ] `StandingsTable.svelte` and `TopScorers.svelte` — `catch (err: any)` should be `catch (err: unknown)` (low)
 
 ### P5f. Type Safety — PARTIAL
 

@@ -114,7 +114,7 @@ These specs are the single source of truth for requirements.
 - Backend feature engineering: 0 `np.random.*` calls in feature methods (was 102), but **63 methods return hardcoded `0.0`** — tactics, player-level, betting market, weather, advanced metrics features all stubbed (count corrected from 49 in third audit). **2 `np.random` calls remain**: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation). ~~`lstm_predictor.py:537-540` (synthetic training data fallback)~~ **FIXED:** `None` guard added so synthetic fallback no longer reached when real data present (P2r)
 - Backend security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — not imported by `main.py`
 - ~~Backend has 0% test coverage~~ **FIXED:** 86 backend tests across 3 files (45 feature engineering incl. Elo leakage, 25 training pipeline incl. rolling CV + stacked ensemble + recency weights, 16 API endpoints) — all non-skip tests pass (7 skip without libomp). ~~`test_setup.py` still only checks imports~~ **FIXED:** renamed to `check_imports.py` so pytest no longer collects it (P5an)
-- Frontend has 402 Vitest tests across 24 test files, all passing
+- Frontend has **404 Vitest tests** across 24 test files, all passing (was 402)
 - 43 Playwright E2E tests across 6 spec files (0 skipped), run in 3 viewports = 123 total executions
 - 9 components have unit tests (Dashboard, BettingHistory, ChatBot, LiveMatches, Predictions, Settings, KellyCalculator, ValueBets, AccumulatorBuilder) — 10 components untested
 - `betBuilder.ts` has 40 tests and `value.ts` has 38 tests — both fully covered
@@ -253,5 +253,11 @@ These specs are the single source of truth for requirements.
 - ~~`main.py`: `response.dict()` deprecated in Pydantic v2~~ **FIXED:** changed to `.model_dump()`
 - ~~`main.py` WebSocket handler: `active_websockets.remove(websocket)` will raise `ValueError` if socket was never appended~~ **FIXED:** `active_websockets` changed from `List` to `set` — uses `.add()` and `.discard()` (safe, O(1))
 - `main.py` WebSocket handler: `oracle` null guard added (closes with 1008 + error JSON), `match` field validated before `.split()`, prediction errors caught and reported as JSON instead of silently disconnecting
+- **Eighteenth audit (April 2026):** `svelte-check` now reports **0 errors, 0 warnings** — all 7 previous warnings resolved (dialog/sheet a11y ignore, MatchList label→span, SeasonStats redundant CSS, Help `@apply` removal)
+- `footballData.ts:fetchWithCache()` now re-throws auth failure and rate-limit errors — callers must handle these (previously silently returned null). Transient/network errors still return null
+- `SeasonStats.svelte:247`: `highestScoringMatch` reduce guarded with `completedMatches.length > 0` — was crashing on empty dataset
+- `Dashboard.svelte:129`: `refresh()` now calls `initProfitChart()` — chart was stale after user-triggered data reload
+- LiveMatches "No Live Matches" fallback now has proper ARIA tabpanel attributes (`id="panel-live"`, `role="tabpanel"`, `aria-labelledby="tab-live"`)
+- Predictions flip card buttons now use `tabindex={-1}` to prevent keyboard focus on `aria-hidden` content
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
