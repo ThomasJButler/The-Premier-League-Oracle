@@ -2,6 +2,47 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## March 2026 — P6c: Repository cleanup — remove dead code and archive Pro-tier
+
+**Branch:** `v3.0-Development`
+
+### Deleted (dead code — zero runtime imports)
+- `backend/app/security/auth.py` (550 lines) — JWT/OAuth2/RBAC, never imported by main.py
+- `backend/app/security/secrets.py` (655 lines) — AWS/Vault/Azure secrets, never imported
+- `backend/app/security/validators.py` (599 lines) — SQL/XSS/injection validators, never imported
+- `backend/app/security/` directory — removed entirely
+- `backend/environment.yml` (78 lines) — Conda spec redundant with requirements.txt, unused by Docker/CI
+
+### Archived to `pro-tier-archive` branch (pushed to remote)
+- `backend/app/features/advanced_engineering.py` (1,089 lines) — 150-feature pipeline, 63 methods return 0.0
+- `backend/app/models/modern_oracle.py` (744 lines) — Pro-tier ensemble orchestrator
+- `backend/app/models/xgboost_model.py` (470 lines) — Pro-tier XGBoost wrapper
+- `backend/app/models/lstm_predictor.py` (565 lines) — Pro-tier LSTM predictor
+- `backend/app/models/transformer_model.py` (670 lines) — Pro-tier Transformer predictor
+
+### Cleaned `main.py` (~600 lines removed)
+- Removed 10 Pro-tier endpoints: `/predict`, `/predict/natural`, `/predict/batch`, `/teams/{team_name}/stats`, `/standings`, `/models/performance`, `/ws/predictions`, `/features/importance`, `/betting/value`, `/admin/retrain`
+- Removed Oracle/Redis/WebSocket initialisation and shutdown logic
+- Removed unused imports: asyncio, json, WebSocket, WebSocketDisconnect, Depends, HTTPBearer
+- Removed Pro-tier Pydantic models: PredictionRequest, PredictionResponse, NaturalLanguageRequest, etc.
+- Health endpoint now returns `free_tier_model_loaded` instead of `models_loaded`/`redis_connected`
+
+### Cleaned `requirements.txt`
+- Removed `websockets==13.1` (WebSocket handler removed)
+- Removed `redis==5.2.0` (not used by free-tier)
+- Removed commented Pro-tier section (30 lines)
+- Added `openai` (needed for Oracle Chat RAG in P6b)
+
+### Other cleanup
+- `check_imports.py` — removed Pro-tier optional dependency checks (torch, shap, langchain, mlflow, ModernPremierLeagueOracle)
+- `frontend/src/types/index.ts` — removed dead `MLBatchResponse` interface, updated `MLHealthResponse` to match new backend response, fixed JSDoc on `MLPrediction`
+- `frontend/src/services/backendService.test.ts` — updated health check mocks to use `free_tier_model_loaded`
+- `backend/tests/test_predict_free_tier.py` — removed stale comment referencing deleted `/predict` endpoint
+
+**Impact:** ~4,600 lines of dead code removed, cleaner startup (no torch/Redis/MLflow warnings), faster pip install
+
+---
+
 ## April 2026 — Documentation accuracy sweep: active scope marked 100% complete
 
 **Branch:** `v3.0-BackendMLTraining`

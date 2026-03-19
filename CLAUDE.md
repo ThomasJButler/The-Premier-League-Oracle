@@ -63,12 +63,9 @@ uvicorn app.api.main:app --reload --port 8000
 
 ### Backend Structure (`backend/app/`)
 - `api/main.py` - FastAPI server with prediction endpoints
-- `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
-- `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
 - `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
 - `data/football_data_collector.py` - Historical data collection
-- `security/` - Auth, secrets, validators (entirely unused at runtime — not imported by main.py)
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -104,13 +101,13 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 | Item | Description | Status |
 |------|-------------|--------|
-| P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | Not started |
+| P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | **DONE** |
 | P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | Not started |
 | P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | Not started |
 | P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | Not started |
 | P6d | Docker & deployment documentation | Not started |
 
-**Active branches:** `v3.0-BackendMLTraining` (current), `pro-tier-archive` (archived Pro code)
+**Active branches:** `v3.0-BackendMLTraining` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
@@ -130,18 +127,12 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Svelte 4 `any` limitations: `SeasonStats.svelte` icon prop, `Sidebar/MobileNav` keydown handlers — cannot be resolved without `any`
 
 ### Backend Gotchas
-- Server starts with graceful degradation — heavy deps (shap, optuna, redis, sklearn, torch) are optional. ML endpoints disabled when deps missing but `/health` returns 200
-- 63 feature engineering methods return hardcoded `0.0` — Pro-tier only (tactics, player-level, betting, weather, advanced)
-- 2 `np.random` calls remain: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation) — both Pro-tier
-- Security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — targeted for deletion in P6c
-- `torch` missing from `requirements.txt` (only in `environment.yml`) — LSTM/Transformer non-functional via pip
+- Server starts cleanly — only free-tier dependencies required. Pro-tier code archived to `pro-tier-archive` branch
 - `backend/spreadsheets/` is gitignored — CSV training data (2,191 matches) not included in repo clone
-- `advanced_engineering.py` `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
 - CORS includes `allow_origin_regex=r"https://.*\.vercel\.app"` for Vercel production + preview deployments
 
 ### Data Constraints
 - Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
-- CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` has richer data (shots, corners, cards, odds) but this creates a training/inference mismatch — `FreeTierFeatureEngineer` handles gracefully
 - Free-tier ML model: 51.0% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
 
 ### Architecture Notes

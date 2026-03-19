@@ -7,7 +7,6 @@ Validates:
 - /predict/free returns 503 when model not loaded
 - /models/free-tier/info returns training metadata
 - Rate limiting returns 429 after threshold
-- Existing /predict endpoint is unchanged
 """
 
 import os

@@ -25,8 +25,7 @@ describe('BackendService', () => {
         json: async () => ({
           status: 'healthy',
           timestamp: '2026-03-18T12:00:00Z',
-          models_loaded: true,
-          redis_connected: true,
+          free_tier_model_loaded: true,
         }),
       } as unknown as Response);
 
@@ -44,8 +43,7 @@ describe('BackendService', () => {
         json: async () => ({
           status: 'degraded',
           timestamp: '2026-03-18T12:00:00Z',
-          models_loaded: false,
-          redis_connected: false,
+          free_tier_model_loaded: false,
         }),
       } as unknown as Response);
 
@@ -76,7 +74,7 @@ describe('BackendService', () => {
 
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ status: 'healthy', timestamp: '', models_loaded: true, redis_connected: true }),
+        json: async () => ({ status: 'healthy', timestamp: '', free_tier_model_loaded: true }),
       } as unknown as Response);
 
       // First call hits the network
@@ -93,7 +91,7 @@ describe('BackendService', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now + 31_000);
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ status: 'healthy', timestamp: '', models_loaded: true, redis_connected: true }),
+        json: async () => ({ status: 'healthy', timestamp: '', free_tier_model_loaded: true }),
       } as unknown as Response);
 
       await backendService.isAvailable();
@@ -103,7 +101,7 @@ describe('BackendService', () => {
     it('should refresh after invalidateCache()', async () => {
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
-        json: async () => ({ status: 'healthy', timestamp: '', models_loaded: true, redis_connected: true }),
+        json: async () => ({ status: 'healthy', timestamp: '', free_tier_model_loaded: true }),
       } as unknown as Response);
 
       await backendService.isAvailable();

@@ -19,11 +19,11 @@ Active branch: `v3.0-BackendMLTraining`
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
-| **P6 Final Push** | **0/5 (0%)** | **URGENT — Dashboard redesign, Oracle Chat RAG, repo cleanup, deployment docs, MVP quality** |
+| **P6 Final Push** | **1/5 (20%)** | **P6c DONE — Dashboard redesign, Oracle Chat RAG, deployment docs, MVP quality remaining** |
 
 **Frontend:** 507 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
-**Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch — future work
+**Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
@@ -39,30 +39,30 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 ### P6c. Repo Cleanup — Remove Dead Code
 
 **Files to DELETE:**
-- [ ] `backend/app/security/auth.py` (17.7 KB) — never imported by main.py
-- [ ] `backend/app/security/secrets.py` (20.3 KB) — never imported
-- [ ] `backend/app/security/validators.py` (20.0 KB) — never imported
-- [ ] `backend/app/security/__init__.py` — empty module init
-- [ ] `backend/environment.yml` — redundant with requirements.txt, conda not used in Docker/CI
+- [x] `backend/app/security/auth.py` (17.7 KB) — deleted
+- [x] `backend/app/security/secrets.py` (20.3 KB) — deleted
+- [x] `backend/app/security/validators.py` (20.0 KB) — deleted
+- [x] `backend/app/security/__init__.py` — didn't exist (done)
+- [x] `backend/environment.yml` — deleted
 
 **Files to ARCHIVE (create `pro-tier-archive` branch first, then delete from main):**
-- [ ] `backend/app/features/advanced_engineering.py` — 63/150 methods return 0.0, Pro-tier only
-- [ ] `backend/app/models/xgboost_model.py` — Pro-tier wrapper, unused
-- [ ] `backend/app/models/lstm_predictor.py` — Pro-tier, untrained, requires torch
-- [ ] `backend/app/models/transformer_model.py` — Pro-tier, untrained, requires torch
-- [ ] `backend/app/models/modern_oracle.py` — Pro-tier ensemble orchestrator, ChromaDB/LangChain
+- [x] `backend/app/features/advanced_engineering.py` — archived to `pro-tier-archive` branch, deleted from main
+- [x] `backend/app/models/xgboost_model.py` — archived, deleted
+- [x] `backend/app/models/lstm_predictor.py` — archived, deleted
+- [x] `backend/app/models/transformer_model.py` — archived, deleted
+- [x] `backend/app/models/modern_oracle.py` — archived, deleted
 
 **Clean `main.py`:**
-- [ ] Remove imports of `ModernPremierLeagueOracle` and Pro-tier model init on startup
-- [ ] Remove Pro-tier endpoints: `/predict` (not `/predict/free`), `/predict/natural`, `/predict/batch`, `/models/performance`, `/features/importance`, `/betting/value`, `/websocket_predictions`
-- [ ] Remove `active_websockets` set and WebSocket handler
-- [ ] This removes startup warnings about missing torch/Redis/MLflow
+- [x] Remove imports of `ModernPremierLeagueOracle` and Pro-tier model init on startup
+- [x] Remove Pro-tier endpoints: `/predict` (not `/predict/free`), `/predict/natural`, `/predict/batch`, `/models/performance`, `/features/importance`, `/betting/value`, `/websocket_predictions`
+- [x] Remove `active_websockets` set and WebSocket handler
+- [x] Startup warnings about missing torch/Redis/MLflow removed
 
 **Clean `requirements.txt`:**
-- [ ] Remove `websockets==13.1` (WebSocket handler removed)
-- [ ] Remove `redis==5.2.0` (not used by free-tier)
-- [ ] Remove commented Pro-tier section (lines 28-44) — files archived to branch
-- [ ] Add `openai` package (needed for `/chat/rag` in P6b)
+- [x] Remove `websockets==13.1` (WebSocket handler removed)
+- [x] Remove `redis==5.2.0` (not used by free-tier)
+- [x] Remove commented Pro-tier section — files archived to branch
+- [x] Add `openai` package (needed for `/chat/rag` in P6b)
 
 **Expected impact:** ~100KB dead code removed, cleaner startup, faster pip install
 
@@ -323,6 +323,11 @@ These are low-priority items deferred from completed priority tiers:
 
 ## Deferred Pro-Tier — P3a–d (Future Work)
 
+> **All Pro-tier files archived to `pro-tier-archive` branch (pushed to remote). Restore with:**
+> ```
+> git checkout pro-tier-archive -- backend/app/models/ backend/app/features/advanced_engineering.py
+> ```
+
 The full 150-feature Pro-tier pipeline requires the paid Football-Data.org API (xG, shots, possession, cards, corners, betting odds, player data). This is explicitly deferred until the free-tier model is stable and the user upgrades their API subscription.
 
 ### P3a. Real Feature Engineering
@@ -440,45 +445,10 @@ Priority features to implement with real data:
 
 | Location | Problem | Priority |
 |----------|---------|----------|
-| `advanced_engineering.py` | 63 methods return `0.0` (tactics, players, betting, weather, advanced) | P3a |
-| `advanced_engineering.py` | `0.45` fallback win rate when no match data | Low |
 | `football_data_collector.py` | `get_head_to_head()` returns empty DataFrame | P3b |
 | `football_data_collector.py` | `get_team_form()` confusing result-flip logic | P3b |
-| `lstm_predictor.py` | `get_feature_importance()` returns `np.random.random()` | P3c |
-| `modern_oracle.py` | `optimize_ensemble_weights()` returns `np.random.random()` | P3c |
-| `modern_oracle.py` | `_calculate_betting_value()` uses mock odds | P3c |
-| `modern_oracle.py` | Calls non-existent `data_collector.get_team_stats()` | P3b |
-| `modern_oracle.py` | Wrong kwarg `last_n=5` (should be `n_matches`) | P3b |
-| `modern_oracle.py` | LSTM sequence is 10× duplicate single row | P3c |
-| `transformer_model.py` | Save/load only saves 2 of 8 constructor params | P3c |
-| `transformer_model.py` | `val_accuracy` UnboundLocalError | P3c |
-| `transformer_model.py` | `num_decoder_layers` silently ignored | P3c |
-| `lstm/transformer_model.py` | Shallow `.copy()` on `state_dict()` — best model state mutable | P3c |
-| `auth.py` | `SECRET_KEY` regenerated every restart | P3d |
-| `auth.py` | Entirely unused at runtime — not imported by main.py | P3d |
-| `secrets.py` | Hard imports cloud SDKs — crash without them | P3d |
-| `secrets.py` | Entirely unused at runtime | P3d |
-| `validators.py` | `VALID_TEAMS` outdated (2023/24 season clubs) | P3d |
-| `validators.py` | `ValidationError` TypeError at runtime | P3d |
-| `validators.py` | SQL blacklist blocks "from"/"where" in NL queries | P3d |
-| `validators.py` | Entirely unused at runtime | P3d |
-| `main.py` | `/admin/retrain` returns mock response | P3c |
-| `main.py` | Bearer tokens on 2 endpoints never verified | P3d |
-| `main.py` | `total_features` hardcoded to `150`, not dynamically counted | Low |
-| `lstm_predictor.py` | `prepare_sequences` calls `scaler.fit_transform` on inference data | P3c |
-| `transformer_model.py` | Same `scaler.fit_transform` during inference bug | P3c |
-| `xgboost_model.py` | `_optimize_hyperparameters` wrong param for `xgb.train` | P3c |
-| `modern_oracle.py` | `train_all_models` uses random val split — data leakage | P3c |
 | `football_data_collector.py` | `get_team_form()` mixed `'H'`/`'A'` and `'W'`/`'L'` values | P3b |
-| `requirements.txt` | Missing `torch` — LSTM/Transformer non-functional via pip | P3d |
-| `requirements.txt` | `python-jose` + `passlib` unmaintained since 2022 | P3d |
-| `modern_oracle.py` | LangChain ReAct prompt missing required variables | P3c |
-| `modern_oracle.py` | Blocking `agent_executor.run()` in async method | P3c |
-| `advanced_engineering.py` | `_is_derby_match()` API names vs CSV short names — always `0.0` | P3a |
-| `advanced_engineering.py` | `_compute_league_positions()` cumulative all-time, not per-season | P3a |
-| `validators.py` | `html.escape()` corrupts `Brighton & Hove Albion` | P3d |
-| `requirements.txt` | Missing `langchain-community` | P2r |
-| `requirements.txt` | Missing `bcrypt` | P2r |
+| `football_data_collector.py` | `time.sleep()` in `_enforce_rate_limit()` blocks asyncio event loop | P3b |
 
 ---
 

@@ -167,7 +167,7 @@ export interface MatchEvent {
 
 // --- Backend ML Integration Types (spec 03) ---
 
-/** Response from the Python ML backend's POST /predict endpoint */
+/** Response from the Python ML backend's POST /predict/free endpoint */
 export interface MLPrediction {
   match: string;
   prediction: {
@@ -183,19 +183,11 @@ export interface MLPrediction {
   timestamp: string;
 }
 
-/** Response from the Python ML backend's POST /predict/batch endpoint */
-export interface MLBatchResponse {
-  predictions: Array<MLPrediction | { match: string; error: string }>;
-  total: number;
-  timestamp: string;
-}
-
 /** Response from the Python ML backend's GET /health endpoint */
 export interface MLHealthResponse {
   status: string;
   timestamp: string;
-  models_loaded: boolean;
-  redis_connected: boolean;
+  free_tier_model_loaded: boolean;
 }
 
 /** Thrown when the backend is unavailable or returns an error */
