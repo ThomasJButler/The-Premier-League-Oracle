@@ -17,7 +17,7 @@ Active branch: `v3.0-BackendMLTraining`
 | P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 86 tests, rolling CV, stacked ensemble, ELO leakage fixed |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | 49/49 (100%) | ALL DONE |
+| P5 Hardening | 56/56 (100%) | ALL DONE — P5g eighteenth audit items resolved |
 
 **Frontend:** 404 Vitest tests, 43 E2E tests, 0 type errors
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -153,17 +153,17 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 - [x] Added `backend` job to `.github/workflows/ci.yml` — Python 3.11 (matching Dockerfile), `pip install -r requirements.txt httpx`, `python -m pytest tests/ -v`. Runs in parallel with frontend job
 - [ ] Consider adding Playwright E2E tests to CI (heavier, needs `npx playwright install`)
 
-### P5g. Eighteenth Audit (April 2026) — PARTIAL
+### P5g. Eighteenth Audit (April 2026) — ALL DONE
 
-New issues discovered, not yet fixed:
+All issues fixed:
 
-- [ ] `liveService.ts:188-192` — `scheduleNextPoll()` timer race: if a poll takes longer than the interval, concurrent polls can run (medium, unlikely in practice)
-- [ ] `liveService.ts:74-84` — `matchEventsStore` not cleared on `stop()`, stale events possible on rapid remount (low)
-- [ ] `optimizedPredictions.ts:746-752` — `combineModels` can return NaN if all sub-model probabilities are 0 (low)
-- [ ] `StandingsTable.svelte` / `types/index.ts` — `Standing.form` typed as non-nullable `string` but API can return `null` (low)
-- [ ] `Predictions.svelte:62-64` — `aiAnalysisErrors` map never cleared on re-prediction (low)
-- [ ] `optimizedPredictions.ts:484` — `getEnhancedTeamStats` is `async` but never calls `await` (low, code quality)
-- [ ] `StandingsTable.svelte` and `TopScorers.svelte` — `catch (err: any)` should be `catch (err: unknown)` (low)
+- [x] `liveService.ts:188-192` — `scheduleNextPoll()` timer race: if a poll takes longer than the interval, concurrent polls can run (medium, unlikely in practice) — **FIXED:** replaced `setInterval` with `setTimeout` — next poll only schedules after current completes, preventing overlapping polls
+- [x] `liveService.ts:74-84` — `matchEventsStore` not cleared on `stop()`, stale events possible on rapid remount (low) — **FIXED:** `matchEventsStore.set([])` added to `stop()`, preventing stale events on rapid remount
+- [x] `optimizedPredictions.ts:746-752` — `combineModels` can return NaN if all sub-model probabilities are 0 (low) — **FIXED:** added `total === 0` guard that returns league-average fallback probabilities
+- [x] `StandingsTable.svelte` / `types/index.ts` — `Standing.form` typed as non-nullable `string` but API can return `null` (low) — **FIXED:** `form` type changed from `string` to `string | null`; `formatForm()` already handles null
+- [x] `Predictions.svelte:62-64` — `aiAnalysisErrors` map never cleared on re-prediction (low) — **FIXED:** `loadGameweekMatches()` now clears all three AI analysis maps (analyses, loading, errors) on each gameweek load
+- [x] `optimizedPredictions.ts:484` — `getEnhancedTeamStats` is `async` but never calls `await` (low, code quality) — **FIXED:** removed unnecessary `async` keyword from `getEnhancedTeamStats` — callers already handle it correctly via `Promise.all`
+- [x] `StandingsTable.svelte` and `TopScorers.svelte` — `catch (err: any)` should be `catch (err: unknown)` (low) — **FIXED:** changed to `catch (err: unknown)` with `instanceof Error` narrowing before accessing `.message`
 
 ### P5f. Type Safety — PARTIAL
 

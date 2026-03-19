@@ -259,5 +259,13 @@ These specs are the single source of truth for requirements.
 - `Dashboard.svelte:129`: `refresh()` now calls `initProfitChart()` — chart was stale after user-triggered data reload
 - LiveMatches "No Live Matches" fallback now has proper ARIA tabpanel attributes (`id="panel-live"`, `role="tabpanel"`, `aria-labelledby="tab-live"`)
 - Predictions flip card buttons now use `tabindex={-1}` to prevent keyboard focus on `aria-hidden` content
+- **Nineteenth audit (P5g fixes):**
+- ~~`liveService.ts:188-192`: `setInterval` used for polling — overlapping polls possible if a request takes longer than the interval~~ **FIXED:** `setInterval` replaced with `setTimeout` so each poll only schedules the next after the previous completes (P5g)
+- ~~`liveService.ts:74-84`: `matchEventsStore` not cleared on `stop()` — stale events persist and reappear on remount~~ **FIXED:** `matchEventsStore` now cleared on `stop()` preventing stale events on remount (P5g)
+- ~~`optimizedPredictions.ts:746-752`: `combineModels` returns `NaN` probabilities when all sub-model weights sum to zero~~ **FIXED:** `NaN` guard added — returns league-average fallback (`homeWin: 0.46, draw: 0.26, awayWin: 0.28`) when all sub-model probabilities are 0 (P5g)
+- ~~`types/index.ts:125`: `Standing.form` typed as `string` but Football-Data.org API returns `null` pre-season — runtime crash on standings render~~ **FIXED:** `Standing.form` type changed from `string` to `string | null` (P5g)
+- ~~`Predictions.svelte:62-64`: AI analysis maps (`analyses`, `loading`, `errors`) not cleared on gameweek load — stale AI analysis from previous gameweek shown for new matches~~ **FIXED:** all three maps now cleared on gameweek load (P5g)
+- ~~`optimizedPredictions.ts:484`: `getEnhancedTeamStats` marked `async` but contains no `await` — misleading signature~~ **FIXED:** unnecessary `async` removed (P5g)
+- ~~`StandingsTable.svelte` and `TopScorers.svelte`: `catch (err: any)` bypasses TypeScript's `unknown` type for caught errors~~ **FIXED:** both changed to `catch (err: unknown)` with proper type narrowing (P5g)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

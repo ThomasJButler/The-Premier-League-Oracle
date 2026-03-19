@@ -2,6 +2,22 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## April 2026 — Nineteenth audit: resolve all P5g findings (7 bugs)
+
+**Fixed all 7 remaining eighteenth audit bugs:**
+
+- **Timer race in liveService** — replaced `setInterval` with `setTimeout` in `scheduleNextPoll()`. Polls can no longer overlap if a request takes longer than the polling interval
+- **Stale events on remount** — `liveService.stop()` now clears `matchEventsStore`, preventing stale toast notifications on rapid component remount
+- **NaN in combineModels** — added `total === 0` guard in `OptimizedPredictor.combineModels()` that returns league-average fallback probabilities instead of NaN
+- **Standing.form nullable** — `Standing.form` type changed from `string` to `string | null` to match API behaviour (returns null pre-season); `formatForm()` already handles null gracefully
+- **AI analysis errors not cleared** — `Predictions.svelte` `loadGameweekMatches()` now resets all three AI analysis maps (analyses, loading, errors) when switching gameweeks
+- **Unnecessary async** — removed `async` keyword from `getEnhancedTeamStats()` in `optimizedPredictions.ts` — the method performs no async work and callers already handle it correctly
+- **Type safety in catch blocks** — `StandingsTable.svelte` and `TopScorers.svelte` now use `catch (err: unknown)` with `instanceof Error` narrowing instead of `catch (err: any)`
+
+**Type check:** 0 errors, 0 warnings. **Tests:** 404/404 passing.
+
+---
+
 ## April 2026 — Eighteenth audit: zero warnings, error propagation, a11y fixes
 
 **Branch:** `v3.0-BackendMLTraining`

@@ -34,15 +34,15 @@
       if (!standings || standings.length === 0) {
         error = 'No standings data available. The season may not have started yet.';
       }
-    } catch (err: any) {
-      if (err.message?.includes('API key')) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('API key')) {
         error = 'Please configure your Football-Data.org API key in Settings to view standings.';
-      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+      } else if (message.includes('403') || message.includes('401')) {
         error = 'Invalid API key. Please check your Football-Data.org API key in Settings.';
       } else {
         error = 'Failed to load standings. Please check your internet connection and try again.';
       }
-      // Error loading standings
     } finally {
       loading = false;
     }

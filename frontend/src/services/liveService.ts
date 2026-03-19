@@ -47,7 +47,7 @@ interface MatchSnapshot {
 // ---------------------------------------------------------------------------
 
 class LiveService {
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private consecutiveEmptyPolls = 0;
   private running = false;
   private previousStates = new Map<string, MatchSnapshot>();
@@ -71,14 +71,15 @@ class LiveService {
     this.scheduleNextPoll();
   }
 
-  /** Stop the service — cleans up all timers and event diff state. */
+  /** Stop the service — cleans up all timers, event diff state, and stale events. */
   stop(): void {
     this.running = false;
     this.previousStates.clear();
     this.consecutiveEmptyPolls = 0;
+    matchEventsStore.set([]);
 
     if (this.pollTimer) {
-      clearInterval(this.pollTimer);
+      clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
   }
@@ -178,14 +179,20 @@ class LiveService {
     return 'every 30 minutes';
   }
 
-  /** Schedule (or reschedule) the next polling cycle. */
+  /**
+   * Schedule the next polling cycle using setTimeout.
+   *
+   * setTimeout (not setInterval) ensures no overlapping polls — the next
+   * poll is only scheduled after the current one completes, even if the
+   * poll takes longer than the interval.
+   */
   private scheduleNextPoll(): void {
     if (!this.running) return;
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.pollTimer) clearTimeout(this.pollTimer);
 
     const interval = this.getPollingInterval();
 
-    this.pollTimer = setInterval(async () => {
+    this.pollTimer = setTimeout(async () => {
       await this.poll();
       // Re-evaluate interval after each poll (adaptive)
       this.scheduleNextPoll();

@@ -481,7 +481,7 @@ export class OptimizedPredictor {
     }
   }
 
-  private static async getEnhancedTeamStats(team: string, standings: Standing[]) {
+  private static getEnhancedTeamStats(team: string, standings: Standing[]) {
     const standing = standings.find(s => s.team.name === team);
 
     if (!standing) {
@@ -742,8 +742,12 @@ export class OptimizedPredictor {
       models.standings.awayWin * MODEL_WEIGHTS.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.away * ML_BACKEND_WEIGHT : 0);
 
-    // Normalize to ensure sum equals 1
+    // Normalise to ensure sum equals 1 — guard against all-zero edge case
     const total = homeWin + draw + awayWin;
+
+    if (total === 0) {
+      return { homeWin: DEFAULT_HOME_WIN_RATE, draw: 0.27, awayWin: 1 - DEFAULT_HOME_WIN_RATE - 0.27 };
+    }
 
     return {
       homeWin: homeWin / total,

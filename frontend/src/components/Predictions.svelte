@@ -142,6 +142,10 @@
     loading = true;
     error = null;
     predictions = [];
+    // Clear stale AI analysis state from previous gameweek
+    aiAnalyses = new Map();
+    aiAnalysisLoading = new Set();
+    aiAnalysisErrors = new Map();
     
     try {
       // Get all matches for the season

@@ -122,7 +122,7 @@ export interface Standing {
     crest: string;
   };
   playedGames: number;
-  form: string;
+  form: string | null;
   won: number;
   draw: number;
   lost: number;
