@@ -1,11 +1,15 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: March 2026 (P6 complete — MVP shipped)
+Last updated: 19 March 2026 (full audit confirmed — MVP verified clean)
 Active branch: `v3.0-Development`
 
 ---
 
-## Project Status: Final Push (P6 — MVP Ship)
+## Project Status: MVP Complete — Verified by Full Audit
+
+**Audit date:** 19 March 2026
+**Method:** 6 parallel agents audited all 8 specs, every frontend `lib/` and `services/` file, all backend modules, and every Svelte component. Searched for TODO/FIXME/HACK, stubs, hardcoded values, empty arrays, and mock data.
+**Result:** All P0–P6 items confirmed complete. 0 TODO/FIXME/HACK in production code. All documented stubs verified accurate. No undocumented issues found.
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -20,6 +24,7 @@ Active branch: `v3.0-Development`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
+| P7 Beyond MVP | 0/14 | Forward-looking improvements toward industry-standard accuracy |
 
 **Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -33,6 +38,43 @@ All completed P0–P4 work is documented in `CHANGELOG.md`.
 ## P6: Final Push (MVP Ship) — ALL DONE
 
 All P6 items complete — see CHANGELOG.md for details.
+
+---
+
+## P7: Beyond MVP — Toward the Sharpest Prediction Tool
+
+These are prioritised improvements to close the gap between MVP (51% accuracy) and industry-standard prediction platforms (52–58%). None are blockers; all build on the solid MVP foundation.
+
+### P7a. Model Accuracy Improvements (High Impact)
+
+- [ ] **Odds-as-features** — CSVs contain ~80 bookmaker odds columns (Bet365, Pinnacle, etc.). Using closing odds as features would dramatically boost accuracy since bookmakers are the strongest predictor. Trade-off: model becomes dependent on having odds data at inference time. Consider a dual-mode approach (with/without odds)
+- [ ] **Retrain with latest season data** — Current model trained on 2,191 matches through 2025/26 partial. A full 2025/26 season adds ~380 matches. Schedule retraining when season completes
+- [ ] **Draw prediction overhaul** — Currently 6.7% accuracy (essentially non-functional). Investigate: (a) separate draw-specialist model, (b) ordinal regression (H→D→A as ordered outcomes), (c) draw probability as gap between H/A probabilities rather than independent prediction
+- [ ] **Probability calibration improvement** — Log loss 1.034 is high. Current isotonic regression calibrators exist but need more training data and potentially Platt scaling comparison
+
+### P7b. AI Integration Upgrade (Medium Impact)
+
+- [ ] **Make AI model configurable** — `gpt-4o-mini` hardcoded in `ChatBot.svelte`, `main.py:513`, and `vite.config.ts:59`. Extract to environment variable (`ORACLE_AI_MODEL`) with Settings UI dropdown
+- [ ] **Claude integration** — Add Anthropic API as alternative to OpenAI for match analysis and Oracle Chat. Would require backend `rag.py` to support multiple providers
+- [ ] **AI-powered match insights** — Enhance `aiAnalysis.ts` to generate pre-match tactical analysis using form data, H2H stats, and ELO differentials as structured context
+
+### P7c. Seasonal Maintenance (Required Annually)
+
+- [ ] **SEED_RATINGS update** — `advancedPredictions.ts` contains 20 current PL teams. On promotion/relegation, add new teams and remove relegated ones. Mitigated by historical warm-up but still needed for clean initialisation
+- [ ] **teamColors update** — `Settings.svelte` hardcodes 20 team hex colours. Needs manual update on promotion/relegation
+- [ ] **ALIASES_MAP update** — `advancedPredictions.ts` contains ~45 team name aliases. New promoted teams may need aliases (e.g., "Burnley" → "Burnley FC")
+- [ ] **CSV_TO_API dict update** — `free_tier_features.py` maps 28 teams. Add promoted teams' canonical names
+
+### P7d. Frontend Enhancements (Low Impact, Polish)
+
+- [ ] **Backtest-derived ensemble weights** — `MODEL_WEIGHTS` (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%) are static. Run backtester to find optimal weights per season and auto-update
+- [ ] **Real bookmaker odds input** — Value bet detection uses model-derived odds only. Allow users to paste real bookmaker odds for more accurate value identification
+- [ ] **Prediction confidence from backend model** — When backend is available, use its calibrated probabilities to adjust frontend ensemble confidence rather than simple weight blending
+
+### P7e. Infrastructure (Low Priority)
+
+- [ ] **Playwright E2E in CI** — Currently only Vitest runs in CI. Playwright would catch real browser regressions but needs `npx playwright install` and adds ~2min to CI
+- [ ] **Rate-limit persistence** — Backend rate limiter is in-memory only. On horizontal scale (Vercel), each instance has its own counter. Consider Redis-backed rate limiting if abuse becomes an issue
 
 ---
 

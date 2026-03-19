@@ -2,6 +2,27 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — Full Codebase Audit & P7 Planning
+
+**Branch:** `v3.0-Development`
+
+### Verified: MVP codebase is clean
+- 6 parallel agents audited all 8 specs, every `frontend/src/lib/` and `services/` file, all backend modules, and every Svelte component
+- Confirmed 99/99 active acceptance criteria met across all 8 specs
+- 0 TODO/FIXME/HACK comments in production code
+- All documented stubs in IMPLEMENTATION_PLAN.md verified accurate — no undocumented issues
+- All empty arrays (`= []`) in Svelte components confirmed properly populated from API
+- No hardcoded accuracy values (user's concern about `accuracy: 0.65` — only found as UI colour thresholds)
+- No mock data in production code (only `/admin/retrain` endpoint, already documented as P3b)
+- No redundant documentation files to remove
+
+### Added: P7 Beyond MVP tier to IMPLEMENTATION_PLAN.md
+- P7a: Model accuracy improvements (odds-as-features, draw overhaul, calibration, retraining)
+- P7b: AI integration upgrade (configurable model, Claude support, tactical insights)
+- P7c: Seasonal maintenance checklist (SEED_RATINGS, teamColors, aliases, CSV_TO_API)
+- P7d: Frontend enhancements (backtest-derived weights, real odds input, backend confidence blending)
+- P7e: Infrastructure (Playwright in CI, rate-limit persistence)
+
 ## March 2026 — Kelly Criterion bug fix and ELO Historical Warm-up
 
 **Branch:** `v3.0-Development`

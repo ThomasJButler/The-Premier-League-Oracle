@@ -96,17 +96,19 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Check types before committing: `cd frontend && npm run check`
 - Run tests before committing: `cd frontend && npm run test:run`
 
-## Current Focus — P6 Final Push (MVP Ship)
+## Current Focus — P7 Beyond MVP
 
-**Execution order:** P6c → P6e → P6a → P6b → P6d (see `IMPLEMENTATION_PLAN.md` for full details)
+**P0–P6:** ALL DONE — MVP shipped and verified by full codebase audit (19 March 2026).
 
-| Item | Description | Status |
-|------|-------------|--------|
-| P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | **DONE** |
-| P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | **DONE** |
-| P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | **DONE** |
-| P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | **DONE** |
-| P6d | Docker & deployment documentation | **DONE** |
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details):
+
+| Item | Description | Priority |
+|------|-------------|----------|
+| P7a | Model accuracy — odds-as-features, draw overhaul, calibration, retraining | High |
+| P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
+| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
+| P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence | Low |
 
 **Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
