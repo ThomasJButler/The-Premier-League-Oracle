@@ -546,38 +546,64 @@ async def websocket_predictions(websocket: WebSocket):
     """
     await websocket.accept()
     active_websockets.add(websocket)
-    
+
+    # Oracle must be available for predictions — reject early if not
+    if oracle is None:
+        await websocket.send_json({
+            'type': 'error',
+            'message': 'Oracle system not available — ML endpoints disabled',
+        })
+        await websocket.close(code=1008, reason="Oracle not available")
+        active_websockets.discard(websocket)
+        return
+
     try:
         while True:
             # Wait for message from client
             data = await websocket.receive_json()
-            
+
             if data.get('action') == 'subscribe':
-                # Subscribe to match updates
-                match = data.get('match')
+                match_str = data.get('match')
+                if not match_str or not isinstance(match_str, str):
+                    await websocket.send_json({
+                        'type': 'error',
+                        'message': 'Missing or invalid "match" field — expected "TeamA vs TeamB"',
+                    })
+                    continue
+
+                teams = match_str.split(' vs ')
+                if len(teams) != 2:
+                    await websocket.send_json({
+                        'type': 'error',
+                        'message': 'Invalid match format — expected "TeamA vs TeamB"',
+                    })
+                    continue
+
                 await websocket.send_json({
                     'type': 'subscribed',
-                    'match': match,
-                    'message': f'Subscribed to updates for {match}'
+                    'match': match_str,
+                    'message': f'Subscribed to updates for {match_str}'
                 })
-                
-                # Send periodic updates
+
+                # Send periodic updates until the client disconnects
                 while True:
-                    # Make prediction
-                    teams = match.split(' vs ')
-                    if len(teams) == 2:
+                    try:
                         result = oracle.predict_match_ensemble(teams[0], teams[1])
-                        
                         await websocket.send_json({
                             'type': 'prediction_update',
-                            'match': match,
+                            'match': match_str,
                             'prediction': result['ensemble_prediction'],
                             'timestamp': datetime.now().isoformat()
                         })
-                    
-                    # Wait before next update
-                    await asyncio.sleep(60)  # Update every minute
-                    
+                    except Exception as pred_err:
+                        logger.warning("WS prediction failed for %s: %s", match_str, pred_err)
+                        await websocket.send_json({
+                            'type': 'error',
+                            'message': f'Prediction failed for {match_str}',
+                        })
+
+                    await asyncio.sleep(60)
+
     except WebSocketDisconnect:
         active_websockets.discard(websocket)
         logger.info("WebSocket client disconnected")

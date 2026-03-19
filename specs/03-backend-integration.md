@@ -188,11 +188,11 @@ python -m app.models.modern_oracle --train --seasons 2020,2021,2022,2023,2024
 
 > Updated 24 March 2026 — markers synced with IMPLEMENTATION_PLAN.md
 
-- [x] `BackendService` class created with `isAvailable()`, `predictMatch()`, `predictBatch()`
+- [x] `BackendService` class created with `isAvailable()`, `predictMatch()` — dead methods `predictBatch()` and `getTeamStats()` removed in P5ak
 - [x] Vite proxy configured for `/api/oracle`
 - [x] `useBackend` toggle in Settings, persisted to localStorage
 - [x] `OptimizedPredictor` calls backend when feature flag is on, falls back gracefully
-- [x] WebSocket connection established when backend available
-- [ ] Historical data collection command documented in `AGENTS.md`
+- [x] ~~WebSocket connection established when backend available~~ WebSocket infrastructure removed in P5v — `liveService` is now polling-only with adaptive intervals. The backend `/ws/predictions` endpoint still exists but the frontend no longer connects to it
+- [x] Historical data collection command documented in `AGENTS.md`
 - [x] ML prediction type defined in `frontend/src/types/index.ts`
 - [x] Settings UI shows backend connection status (connected / disconnected)

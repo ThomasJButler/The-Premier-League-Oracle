@@ -16,7 +16,7 @@ The following items from this spec have been **implemented**:
 The following items **remain unimplemented**:
 
 - **Requirement 4 (LiveTicker enhancement):** Not verified whether `LiveTicker.svelte` shows live scores with pulsing indicator.
-- **Requirement 5 (WebSocket / LiveService):** DONE. `liveService.ts` created (P3f) with shared Svelte stores. Uses WebSocket when backend is available (`VITE_BACKEND_WS_URL` env var, falling back to `hostname:8000`), polling otherwise. `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to shared stores.
+- **Requirement 5 (WebSocket / LiveService):** DONE (then simplified). `liveService.ts` created (P3f) with shared Svelte stores. WebSocket infrastructure was later removed in P5v — `liveService` is now polling-only with adaptive intervals. `LiveMatches.svelte` and `LiveTicker.svelte` subscribe to shared stores.
 
 ---
 
@@ -27,7 +27,7 @@ The following items **remain unimplemented**:
 | `frontend/src/components/LiveMatches.svelte` | Fully implemented — fetches live data, smart polling, match cards, empty state with countdown |
 | `frontend/src/components/LiveTicker.svelte` | Fetches upcoming/recent matches — live score integration not verified |
 | `frontend/src/services/dataService.ts` | `getLiveMatches()` implemented with 60s cache |
-| `frontend/src/services/liveService.ts` | Fully implemented — shared Svelte stores, WebSocket with exponential reconnect, polling fallback |
+| `frontend/src/services/liveService.ts` | Fully implemented — shared Svelte stores, polling-only with adaptive intervals (WebSocket removed in P5v) |
 
 ---
 
@@ -174,7 +174,7 @@ export const liveService = new LiveService()
 - [x] Smart polling manager adjusts interval based on live state (30s/5min/30min with adaptive backoff)
 - [x] LiveMatches shows real scores with current minute when in play
 - [x] `liveService.ts` created with shared Svelte stores (`liveMatchesStore`, `recentMatchesStore`, `upcomingMatchesStore`, `hasLiveMatches`, `pollLabel`) (P3f)
-- [x] `LiveService` uses WebSocket when backend available (`ws://{hostname}:8000/ws/predictions` with exponential reconnect), polling otherwise (P3f)
+- [x] ~~`LiveService` uses WebSocket when backend available~~ WebSocket infrastructure removed in P5v — `liveService` is now polling-only with adaptive intervals. Shared stores remain and are updated via polling
 - [x] `LiveMatches.svelte` and `LiveTicker.svelte` refactored to subscribe to shared stores (P3f)
 - [x] Graceful empty state with next fixture countdown
 - [ ] Match event notifications (goals, red cards, etc.) — not done
