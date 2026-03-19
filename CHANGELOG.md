@@ -2,6 +2,16 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## March 2026 — Kelly Criterion bug fix and ELO Historical Warm-up
+
+**Branch:** `v3.0-Development`
+
+### Fixed: calculateKelly parameter mismatch (kelly.ts / Predictions.svelte)
+- `calculateKelly()` wrapper mapped its 4th argument to `maxStakePercentage` (a stake ceiling), but `Predictions.svelte` passed `prediction.confidence` (0.5–0.9) there — meaning confidence had no effect on stake sizing (the 25% `MAX_KELLY` hard cap always took priority)
+- The actual `confidenceLevel` (which scales the recommended stake) silently defaulted to 0.6 for all predictions regardless of model confidence
+- **Fix:** Renamed the 4th parameter from `kellyFraction` to `confidenceLevel` and added `maxStakePercentage` as a separate 5th parameter with a conservative 5% default
+- Now higher-confidence predictions correctly recommend larger stakes, and lower-confidence predictions recommend smaller ones
+
 ## March 2026 — ELO Historical Warm-up: 5-season data now feeds ELO system
 
 **Branch:** `v3.0-Development`
