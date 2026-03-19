@@ -101,9 +101,9 @@ These specs are the single source of truth for requirements.
 - Run tests before committing: `cd frontend && npm run test:run`
 
 ### Current Focus Areas
-- **Project ~85% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
+- **Project ~82% complete** — see `IMPLEMENTATION_PLAN.md` for remaining work only (completed items archived to `CHANGELOG.md`)
 - **Free-tier ML model trained** — first run complete (51.0% accuracy, model at `backend/models/xgboost_free_tier.joblib`). Frontend now calls `/predict/free` endpoint. Legacy `xgboost_model.pkl` deleted (was incompatible). Improvement roadmap in IMPLEMENTATION_PLAN.md
-- **Remaining work:** P2 partial (Docker, backend deps, CI), P5 hardening (rate limiter, test quality, type safety), deferred Pro-tier (P3a–d)
+- **Remaining work:** P1g (wizard dismiss bug), P2 partial (Docker, CI, deps, .gitignore), P5 hardening (CSS bugs, prediction quality, test quality, dead code), deferred Pro-tier (P3a–d)
 - Active branches: `v3.0-BackendMLTraining` (backend ML), `v3.0-Frontend` (frontend), `v3.0-Development` (integration)
 - Ralph loop configured via `loop.sh` + `PROMPT_plan.md` + `PROMPT_build.md`
 
@@ -206,5 +206,24 @@ These specs are the single source of truth for requirements.
 - `value.ts`: `MarketOdds.bttsNo` field defined in interface but never used to generate "BTTS No" value bets — vestigial field
 - `ApiSetupWizard.svelte`: `selectedProvider` is a dead variable — typed as single-value union `'football-data'`, functionally trivial
 - Spec 02 status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
+- **Sixteenth audit (29 March 2026) — 23 new items discovered:**
+- `App.svelte:79`: `hasApiKey = true` set unconditionally on wizard dismiss — even when no key entered. App attempts data load without a key (P1g)
+- `app.css:376-387`: Dead `.live-ticker` and `.ticker-content` global rules — `.ticker-content` references deleted `@keyframes scroll`. Both overridden by LiveTicker local styles (P5w)
+- `Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` undefined — silently no hover effect (P5x)
+- `Dashboard.svelte:87`: `dark:text-primary-light` undefined — icon renders wrong colour in dark mode (P5x)
+- `MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` only defined locally in `Predictions.svelte` — animations never run in those components (P5x)
+- `SeasonStats.svelte:374`: Division by `totalGoals` produces `NaN%` when no goals scored (P5y)
+- `renderMarkdown.ts`: Numbered lists wrap `<li class="list-decimal">` in `<ul>` instead of `<ol>` — semantic HTML error (P5z)
+- `optimizedPredictions.ts`: Home advantage double-counted — ELO adds 65 points AND form adds `*1.1`/`*0.9` momentum (P5aa)
+- `backtest.ts`: ELO `saveToStorage()` fires on every match during backtest — ~300+ unnecessary localStorage writes (P5ab)
+- `betBuilder.ts:calculateHalfTimeResult`: HT priors sum to 0.95 not 1.0 — systematic bias before normalisation (P5ac)
+- `advancedPredictions.ts`: `FatigueAnalyzer.recentFixtures` always passed as `1` — congestion formula branch is dead code (P5ad)
+- `main.py`: Model/CSV paths resolve relative to CWD, not `__file__` — server fails silently when started from non-`backend/` directory (P5af)
+- `requirements.txt`: `httpx` missing — needed for backend tests but only installed ad-hoc in CI (P2t)
+- `.gitignore`: `backend/models/*.joblib` not ignored; `frontend/.env.local` not covered (P2u)
+- `environment.yml`: Stale — still includes dead security deps removed from `requirements.txt` in P2r (P2v)
+- Test quality: `backtest.test.ts` encodes Kelly 1.05 bug as correct value; `liveService.test.ts` passes because WS handler is broken; `value.test.ts` 3 weak assertions; backend missing happy-path test for `/predict/free` (P5ae)
+- CI gaps: No coverage enforcement, no linting step, no E2E tests in pipeline (P2n extensions)
+- Multiple spinner implementations (3 different patterns, none using `spinner-branded` from `app.css`); raw `<button>` mixed with shadcn `<Button>` across components (P5ag)
 
 ### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

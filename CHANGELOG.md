@@ -2,6 +2,57 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 29 March 2026 — Sixteenth audit: 23 new items discovered via comprehensive parallel analysis
+
+**Branch:** `v3.0-BackendMLTraining`
+
+### Plan-only audit (no code changes)
+Full codebase audit using 7 parallel Sonnet agents covering: all 8 specs, frontend lib/services/components, backend Python code, all tests + CI, all config/infra files, and stub/TODO hunting.
+
+### Newly discovered bugs (P1/P5)
+- **P1g** `App.svelte:79`: wizard dismiss sets `hasApiKey = true` unconditionally — app attempts data load without a key
+- **P5w** `app.css:376-387`: dead `.live-ticker` and `.ticker-content` global rules referencing deleted keyframe
+- **P5x** `Dashboard.svelte`: two undefined Tailwind classes (`shadow-glow-primary-sm`, `text-primary-light`) — silently no-op
+- **P5x** `MatchList.svelte`, `BettingHistory.svelte`: `animate-fade-in` only defined locally in `Predictions.svelte` — animations never run
+- **P5y** `SeasonStats.svelte:374`: `NaN%` when `totalGoals === 0`
+- **P5z** `renderMarkdown.ts`: numbered lists use `<ul>` instead of `<ol>`
+
+### Prediction quality issues
+- **P5aa** Home advantage double-counted: ELO (+65 points) AND form analysis (*1.1 momentum)
+- **P5ac** `betBuilder.ts` HT priors sum to 0.95 not 1.0 — systematic bias
+- **P5ad** `FatigueAnalyzer.recentFixtures` always `1` — congestion formula branch dead
+
+### Infrastructure gaps
+- **P2t** `requirements.txt` missing `httpx` (needed for tests)
+- **P2u** `.gitignore` missing `*.joblib` and `frontend/.env.local`
+- **P2v** `environment.yml` stale — still includes dead security deps
+- **P5af** `main.py` model/CSV paths resolve relative to CWD, not `__file__`
+
+### Test quality discoveries
+- **P5ae** `backtest.test.ts` encodes Kelly 1.05 bug as correct expected value — actively prevents fix
+- **P5ae** `liveService.test.ts` WS test passes BECAUSE handler discards data
+- **P5ae** `value.test.ts` three array-shape-only assertions
+- **P5ae** Backend missing `/predict/free` happy-path test and `_get_client_ip` test
+- **P2n** CI has no coverage enforcement, no linting, no E2E tests
+
+### UI consistency
+- **P5ag** Three different spinner implementations, none using `spinner-branded`
+- **P5ag** Mix of raw `<button>` and shadcn `<Button>` across components
+- **P5ab** Backtest fires ~300+ unnecessary `saveToStorage()` calls
+
+### 10 new deferred minor items added
+Dashboard canvas accessibility, Help.svelte ARIA, TopScorers emoji labels, ChatBot privacy copy, Settings heading, AdvancedMatchPredictor constant confidence, processCompletedMatches status filter, betBuilder corners mismatch, Dockerfile broken COPY
+
+### Stats
+- Frontend: 382 Vitest tests, 43 E2E tests, 0 type errors (unchanged)
+- Backend: 62 pytest tests (unchanged)
+- P1: 100% → 94% (1 new bug)
+- P2: 92% → 81% (3 new items)
+- P5: 88% → 64% (12 new items)
+- Overall: ~85% → ~82% (denominator increased by 23)
+
+---
+
 ## 28 March 2026 — Fifteenth audit: newly discovered items, spec marker corrections
 
 **Branch:** `v3.0-BackendMLTraining`

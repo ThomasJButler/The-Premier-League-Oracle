@@ -1,25 +1,25 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 28 March 2026 (fifteenth update — full codebase re-audit, newly discovered items added)
+Last updated: 29 March 2026 (sixteenth update — comprehensive parallel audit, 23 new items discovered)
 Active branch: `v3.0-BackendMLTraining`
 
 ---
 
-## Project Status: ~85% Complete
+## Project Status: ~82% Complete
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
 | Priority | Status | Notes |
 |----------|--------|-------|
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
-| P1 High Priority | 16/16 (100%) | All frontend bugs, security, data layer fixes |
-| P2 Next Sprint | 22/24 (92%) | 2 partial — Docker, CI gaps; backend deps cleaned |
+| P1 High Priority | 16/17 (94%) | 1 new: wizard dismiss sets hasApiKey unconditionally |
+| P2 Next Sprint | 22/27 (81%) | 3 new: requirements.txt httpx, .gitignore gaps, environment.yml stale |
 | P3-Free ML Pipeline | DONE | 86 features, 62 tests, API endpoints wired |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
-| P5 Hardening | ~28/32 (88%) | Backend CI done, node-version fixed, CSV warning logged; newly discovered: LiveMatches minute gap, WebSocket no-op, dead code; Playwright E2E in CI, vite proxy production gap remaining |
+| P5 Hardening | ~28/44 (64%) | 12 new items: CSS bugs, fade-in inconsistency, NaN guard, dead global CSS, test quality, renderMarkdown semantics, home advantage double-count, backtest localStorage noise, HT priors, fatigue congestion dead branch, backend path fragility, spinner inconsistency |
 
-**Frontend:** Production-ready — 382 Vitest tests, 43 E2E tests, 0 type errors
+**Frontend:** 382 Vitest tests, 43 E2E tests, 0 type errors — 5 new bugs found (CSS/logic)
 **Backend free-tier:** Pipeline complete, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** NOT STARTED — explicitly deferred future work
 
@@ -141,12 +141,24 @@ curl -X POST http://localhost:8000/predict/free \
 
 ---
 
+## Remaining Work — P1 (Newly Discovered)
+
+### P1g. ApiSetupWizard Dismiss Bug
+
+`App.svelte:79`: When the wizard is dismissed without entering an API key, `hasApiKey` is set to `true` unconditionally. The app then attempts to load data without a key, causing silent failures.
+
+- [ ] Make `hasApiKey = true` conditional on `event.detail.apiKey` being non-empty in `handleApiSetupComplete`
+
+---
+
 ## Remaining Work — P2 (Partial Items)
 
 ### P2n. CI/CD Pipeline — PARTIAL
 
 - [x] GitHub Actions CI — type check, unit tests, production build on push/PR
 - [ ] Consider Playwright E2E in CI (heavier, but valuable — deferred to later)
+- [ ] Add coverage enforcement to CI — `vitest.config.ts` defines 80%/75%/80%/80% thresholds but CI runs `test:run` not `test:coverage`
+- [ ] Add linting step to CI (no ESLint or ruff currently runs in the pipeline)
 
 ### P2o. Docker Cleanup
 
@@ -175,6 +187,25 @@ curl -X POST http://localhost:8000/predict/free \
 - [ ] Add `langchain-community` — `modern_oracle.py` imports it but package is separate from `langchain` and not listed
 - [ ] Add `bcrypt` — `auth.py` uses `passlib` with `CryptContext(schemes=["bcrypt"])` which requires it
 - [x] Fix `main.py:590,594`: `/features/importance` endpoint accesses `oracle.lstm_model.model` and `oracle.transformer_model.model` without checking if they are not None — will `AttributeError` when torch missing
+
+### P2t. requirements.txt Missing httpx
+
+`httpx` is needed to run the backend test suite (pytest-asyncio async HTTP tests) but is not in `requirements.txt`. CI works around this with `pip install -r requirements.txt httpx` but a local `pip install -r requirements.txt` will fail to run tests.
+
+- [ ] Add `httpx` to `requirements.txt` (or create a `requirements-test.txt`)
+
+### P2u. .gitignore Gaps
+
+- [ ] `backend/models/*.joblib` not ignored — trained model file (`xgboost_free_tier.joblib`) is unprotected from accidental commit. Binary model files typically don't belong in version control
+- [ ] `frontend/.env.local` and `frontend/.env.production.local` not covered — standard Vite local override files could leak secrets if created
+
+### P2v. environment.yml Stale
+
+`backend/environment.yml` was not updated when dead deps were removed from `requirements.txt` in P2r.
+
+- [ ] Remove dead security module deps (`python-jose`, `passlib`, `cryptography`, `python-dotenv`, `sqlalchemy`) from `environment.yml`
+- [ ] Move `shap`, `optuna`, `mlflow` to a commented-out Pro-tier section (consistent with `requirements.txt`)
+- [ ] Confirm `httpx` is present (it is — but should also be in `requirements.txt` per P2t)
 
 ### P2s. LSTM Synthetic Training Data — DONE
 
@@ -321,6 +352,83 @@ Confirmed dead exports, unused constants, and orphaned CSS discovered in ninth a
 
 - [ ] Either wire parsed data into the appropriate store, or remove the WebSocket connection until the backend sends payload that the frontend needs. Currently the backend only sends prediction probability updates which nothing consumes
 
+### P5w. Dead Global CSS Rules
+
+`app.css` still contains `.live-ticker` (line 376) and `.ticker-content` (lines 379–387) global rules. The `.ticker-content` rule references the deleted `@keyframes scroll` animation. Both are overridden by `LiveTicker.svelte` local styles and are entirely dead.
+
+- [ ] Remove `.live-ticker` and `.ticker-content` global rules from `app.css`
+
+### P5x. Frontend CSS/Class Bugs
+
+Three undefined CSS classes silently produce no visual effect:
+
+- [ ] `Dashboard.svelte:408`: `hover:shadow-glow-primary-sm` — undefined Tailwind utility, hover effect does not work
+- [ ] `Dashboard.svelte:87`: `dark:text-primary-light` — undefined token, icon renders wrong colour in dark mode
+- [ ] `MatchList.svelte:125`, `BettingHistory.svelte:205`: `animate-fade-in` class used but only defined locally in `Predictions.svelte` — animations never run in those two components. Either move the keyframe to `app.css` or give each component its own local definition
+
+### P5y. SeasonStats NaN Guard
+
+`SeasonStats.svelte:374`: The "Second Half Goals" stat divides by `totalGoals` without a zero guard. When no goals have been scored (e.g. at season start), this produces `NaN%` in the UI.
+
+- [ ] Guard the division with `totalGoals > 0` check, display a fallback like "N/A" or "0%"
+
+### P5z. renderMarkdown Semantic HTML
+
+`renderMarkdown.ts`: Numbered list items produce `<li class="ml-4 list-decimal">` inside a `<ul>` wrapper. Numbered lists should use `<ol>`, not `<ul>`. This is semantically incorrect HTML and affects screen reader list navigation.
+
+- [ ] Use `<ol>` wrapper for numbered list items instead of `<ul>`
+
+### P5aa. Home Advantage Double-Counting
+
+The prediction ensemble applies home advantage twice:
+1. ELO model: `HOME_ADVANTAGE = 65` ELO points added in `EloRatingSystem.calculateWinProbability()`
+2. Form model: `homeMomentum * 1.1` / `awayMomentum * 0.9` in `optimizedPredictions.ts:analyzeRecentForm()`
+
+This systematically inflates home win probabilities. The fix is to remove the 10% form bias (the ELO home advantage is the correct one).
+
+- [ ] Remove `* 1.1` / `* 0.9` home/away momentum adjustments from `analyzeRecentForm()` — ELO already accounts for home advantage
+
+### P5ab. Backtest localStorage Noise
+
+`backtest.ts`: During a backtest run, `EloRatingSystem.updateRatings()` calls `saveToStorage()` on every match. These writes are immediately overwritten when the backtest restores the ELO snapshot at the end. This is unnecessary I/O (~300+ localStorage writes per full-season backtest).
+
+- [ ] Add a `suppressStorage` flag to `EloRatingSystem.updateRatings()` or skip `saveToStorage()` during backtest runs
+
+### P5ac. betBuilder Half-Time Prior Bias
+
+`betBuilder.ts:calculateHalfTimeResult()`: The HT result priors sum to 0.95, not 1.0 (`priorHome=0.25 + priorDraw=0.45 + priorAway=0.25`). Normalisation corrects the output, but the missing 5% introduces a small systematic bias.
+
+- [ ] Correct priors to sum to 1.0 (e.g. `0.26 + 0.46 + 0.28`, matching real PL HT distributions)
+
+### P5ad. FatigueAnalyzer Congestion Branch Dead
+
+`advancedPredictions.ts`: `FatigueAnalyzer.getFatigueMultiplier()` has a `recentFixtures` parameter for fixture congestion, but every caller passes `1`. The congestion component of the formula never activates.
+
+- [ ] Either wire `recentFixtures` from real match scheduling data, or simplify the formula to remove the dead congestion branch
+
+### P5ae. Test Quality — Newly Discovered Issues
+
+Several test files have assertions that pass when they shouldn't:
+
+- [ ] `backtest.test.ts:154-178`: Expected value `0.525` encodes the Kelly 1.05 inflation bug — actively prevents fixing the bug. Update to `0.50` when P1l is fixed
+- [ ] `liveService.test.ts:287-300`: WS test passes BECAUSE the handler discards data — test should assert data reaches the store (or be removed until P5v is resolved)
+- [ ] `value.test.ts`: Three tests assert only `Array.isArray(result)` — should also assert `result.length > 0` and check element shape
+- [ ] `test_free_tier_features.py`: H2H test conditionally skips assertions when `h2h_total_matches == 0`; basic stats test uses weak `or` assertion
+- [ ] `test_predict_free_tier.py`: No happy-path test for `/predict/free` with a loaded model; no test for `_get_client_ip()` X-Forwarded-For extraction
+
+### P5af. Backend Path Fragility
+
+`main.py`: Model and CSV paths use `Path("models")` and `Path("../spreadsheets")` relative to the current working directory, not relative to the file. Starting the server from any directory other than `backend/` silently fails to load the model.
+
+- [ ] Resolve paths relative to `__file__` (e.g. `Path(__file__).parent.parent.parent / "models"`) for robustness
+
+### P5ag. Spinner and Button Inconsistency
+
+Three different spinner implementations exist across components (none use the `spinner-branded` class from `app.css`). Multiple components use raw `<button>` instead of the shadcn `<Button>` component for the same category of actions (refresh, retry, filter).
+
+- [ ] Consolidate spinners to a single pattern or shared component
+- [ ] Migrate remaining raw `<button>` elements to shadcn `<Button>` where appropriate (StandingsTable, TopScorers, LiveMatches, MatchList refresh/retry/filter buttons)
+
 ---
 
 ## Deferred Minor Items (from P1/P4)
@@ -341,6 +449,15 @@ These are low-priority items deferred from completed priority tiers:
 - [ ] **P5u:** `ApiSetupWizard.svelte`: Close button `aria-label="Skip setup wizard"` is misleading — action is dismiss/close, not skip
 - [ ] **P5u:** `BettingHistory.svelte`: Stat card `animation-delay` inline styles not guarded by `prefers-reduced-motion`
 - [ ] **P5u:** `Spec 02` status section says "Backend ML proxy: NOT DONE" but `/api/oracle` proxy IS configured at `vite.config.ts:120` since P2b — spec status is stale
+- [ ] **P5x:** `Dashboard.svelte:436`: Profit/Loss `<canvas>` has no `role="img"` or `aria-label` (accessibility gap)
+- [ ] **P5x:** `Help.svelte:39`: Mobile menu `<nav>` has no `id`/`aria-controls` linking to the toggle button
+- [ ] **P5x:** `TopScorers.svelte:165`: Medal emoji `<span>` elements lack `aria-label`
+- [ ] **P5x:** `ChatBot.svelte:353`: Privacy copy says "never sent to our servers" — inaccurate for the server-proxy key path
+- [ ] **P5x:** `Settings.svelte:292`: Section heading says "API Provider Selection" — only one provider exists (misleading)
+- [ ] **P5x:** `AdvancedMatchPredictor.predictMatch` confidence is effectively constant (returns 0.85 or 0.75) — should vary with actual model signal
+- [ ] **P5x:** `advancedPredictions.ts:processCompletedMatches` filters `m.status === 'FINISHED'` but `status` is optional on `Match` type — add fallback to check `m.score.fullTime` presence
+- [ ] **P5x:** `betBuilder.ts:441`: `'Over 7.5 corners'` selection text mismatches the 8.5 threshold used for probability calculation
+- [ ] **P5x:** `Dockerfile:COPY config.yml .` references non-existent file — Docker build fails on clean clone. `EXPOSE 5000` is misleading (MLflow port, not the app)
 
 ---
 
@@ -531,13 +648,13 @@ All feature specifications in `specs/`:
 
 | File | Topic | Implementation Status |
 |------|-------|-----------------------|
-| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~88% — missing: Poisson from real stats (Req 2). Confidence calibration done (P5m). Poisson maxGoals consistency fixed (P5n). **Markers: 7/8** |
+| `specs/01-prediction-engine.md` | ELO, Poisson, fatigue, referee, confidence, backtesting | ~85% — missing: Poisson lambda from real stats (Req 2); home advantage double-counting discovered (P5aa); fatigue congestion branch dead (P5ad). **Markers: 7/8** |
 | `specs/02-data-pipeline.md` | Football-Data.org integration, caching, historical data | ~75% — missing: progressive 5-season bulk loader (Req 5), batch rate limiting (Req 7). Backend proxy marker stale (done since P2b). **Markers: 6/8 (1 stale)** |
 | `specs/03-backend-integration.md` | Python ML backend connection | ~90% — AGENTS.md historical data command added (Req 6 met). **Markers: 8/8** |
-| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12). **Markers: 11/12** |
+| `specs/04-betting-intelligence.md` | Kelly, value bets, bet history, accumulators | ~90% — missing: accumulator/combination bet UI (Req 12); HT prior bias discovered (P5ac). **Markers: 11/12** |
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | ~85% — missing: match event notifications (Req 9). Extra-time/penalty status filter fixed (P5q). **Markers: 9/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
-| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | **100% — ALL 17/17 criteria met** — Dialog, Sheet, dead code removal, form strings all completed |
+| `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | ~98% — all 17 structural criteria met; 5 new CSS/class bugs found in sixteenth audit (P5x). **Markers: 17/17 structural** |
 | `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---
