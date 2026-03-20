@@ -98,7 +98,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [x] **FAQ section** — Expanded from 8 to 12 questions covering the ensemble model, ML backend, team colour theming, local data storage, and betting tools. Existing answers enriched with specifics (Football-Data.org link, three-tier cache, PL-specific calibration)
 - [x] **README.md overhaul** — Complete rewrite reflecting v3.0 MVP: 522 tests, 99-feature XGBoost backend (not 150+ pro-tier), expanded feature list (team themes, skeleton loading, prediction tracking, zone colouring, betting suite), detailed architecture tree with file descriptions, conda environment note, CI/CD in tech stack. Screenshots kept as GitHub-hosted URLs (Playwright screenshots are gitignored)
 - [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
-- [] **Club Badges for all pages** — In the 'Top Scorers' there are club badges on the team section. Add these badges across all relevant pages, eg live matches, predictions, table, matches, standings etc.
+- [x] **Club Badges for all pages** — Team badges now appear across all relevant components: Predictions, LiveMatches, StandingsTable, MatchList, Dashboard, ValueBets, AccumulatorBuilder, KellyCalculator, BettingHistory, and MatchEventToast. Uses `getTeamLogo()` SVG generator (coloured rounded initials). TopScorers uses real API crests. SeasonStats intentionally excluded (stat cards with inline team name strings, not match rows)
 
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
