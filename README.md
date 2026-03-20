@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
 ![Status](https://img.shields.io/badge/status-active-success)
-![Tests](https://img.shields.io/badge/tests-522%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-561%20passing-brightgreen)
 
 A data-driven Premier League prediction platform that combines five statistical models into a weighted ensemble to predict match outcomes. Built with Svelte 4, TypeScript, and an optional Python ML backend.
 
@@ -80,7 +80,7 @@ All match data comes from the [Football-Data.org](https://www.football-data.org/
 ```bash
 cd frontend
 npm run check        # TypeScript + Svelte type checking (0 errors, 0 warnings)
-npm run test:run     # 522 unit tests (Vitest)
+npm run test:run     # 561 unit tests (Vitest)
 npm run test:e2e     # 43 E2E tests x 3 viewports (Playwright)
 ```
 
@@ -92,7 +92,7 @@ npm run test:e2e     # 43 E2E tests x 3 viewports (Playwright)
 | **Components** | shadcn-svelte (Button, Card, Badge, Dialog, Sheet, Skeleton, Separator) |
 | **Charts** | Chart.js with svelte-chartjs (theme-aware via CSS variables) |
 | **Caching** | IndexedDB three-tier: memory → IDB → API |
-| **Testing** | Vitest (540 tests, 33 files), Playwright (43 E2E tests, 6 specs) |
+| **Testing** | Vitest (561 tests, 34 files), Playwright (43 E2E tests, 6 specs) |
 | **Backend** | Python 3, FastAPI, XGBoost (optional — free-tier model, 114 features, 53.3% accuracy) |
 | **API** | Football-Data.org v4 (free tier: 10 req/min) |
 | **CI/CD** | GitHub Actions (type check, unit tests, coverage thresholds, ESLint, ruff, production build) |

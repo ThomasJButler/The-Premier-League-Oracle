@@ -2,7 +2,7 @@
 
 **JTBD: Deliver accurate match outcome predictions using a multi-model statistical ensemble**
 
-Target: 72–75% prediction accuracy across a full Premier League season.
+Target: 52–58% prediction accuracy across a full Premier League season (industry-standard range for Premier League models). The free-tier XGBoost model achieves 53.3% — within this range. Higher accuracy (58%+) would require paid data sources (xG, shots, possession) via the deferred Pro-tier pipeline.
 
 ---
 

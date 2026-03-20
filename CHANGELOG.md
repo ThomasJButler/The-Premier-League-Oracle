@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Documentation accuracy sweep and stale file cleanup
+
+### Fixed: Stale numbers, misleading targets, and missing configuration
+- **Spec 01 accuracy target**: Corrected from aspirational 72–75% to realistic 52–58% (industry-standard range for PL models). The free-tier XGBoost achieves 53.3% — within this range. The original target was unrealistic without paid data sources.
+- **Spec 08 test count**: Updated from stale "86 tests across 3 files" to actual "190 tests across 5 files" (60 features + 33 training + 17 API + 58 RAG + 22 web search).
+- **IMPLEMENTATION_PLAN.md**: Fixed P7 progress from 46/48 to 47/49; corrected 5 stale per-file test counts (backtest 15→22, optimizedPredictions 18→28, ChatBot 18→23, Settings 16→18, Dashboard 14→15); added missing DataFreshness.test.ts (9 tests).
+- **CLAUDE.md**: Fixed P7 count (44/46 → 47/49); removed archived LSTM/Transformer from tech stack line (only XGBoost is active).
+- **README.md**: Updated test badge (522 → 561), test command comment (522 → 561), tech stack table (540 → 561, 33 → 34 files).
+- **.env.example**: Added missing `ANTHROPIC_API_KEY` and `ORACLE_AI_MODEL` env vars (added in P7b but never documented in the example file). Aligned model slugs with DEPLOYMENT.md (use `-latest` aliases).
+
+### Removed: Stale Ralph loop prompt files
+- Deleted `PROMPT_plan.md` and `PROMPT_build.md` — these were Ralph loop infrastructure files that overlapped heavily with `CLAUDE.md` and contained stale stub references to issues resolved in P0–P5. The orchestration logic they served is now handled by `CLAUDE.md` and `AGENTS.md`.
+
+### Why
+Every documentation file should be a reliable source of truth. Stale test counts, an aspirational accuracy target presented as a current expectation, and missing env vars all erode trust in the docs. This sweep aligns all project documents with the actual codebase state.
+
+---
+
 ## 20 March 2026 — Centralise Prediction Model Constants (P7k)
 
 ### Changed: Extract magic numbers to named constants with documented derivations

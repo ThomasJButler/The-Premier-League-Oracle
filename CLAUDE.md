@@ -11,7 +11,7 @@ The Premier League Oracle is a data-driven football prediction platform that use
 ## Tech Stack
 
 - **Frontend**: Svelte 4.2.19 + TypeScript + Vite (in `frontend/`)
-- **Backend**: Python + FastAPI + XGBoost/LSTM/Transformer (in `backend/`)
+- **Backend**: Python + FastAPI + XGBoost (in `backend/`)
 - **Styling**: Tailwind CSS with dark/light mode support
 - **Data Source**: Football-Data.org API v4 (no Supabase)
 - **Caching**: IndexedDB 3-tier cache (memory -> IndexedDB -> API)
@@ -107,7 +107,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 **P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 44/46 items done):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 47/49 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|

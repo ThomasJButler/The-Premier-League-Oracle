@@ -264,7 +264,7 @@ When loading the model file at startup, validate that it contains the expected m
 
 ### 5. Testing (Priority: High)
 
-The backend has 86 tests across 3 files covering free-tier features, training pipeline, and API endpoints.
+The backend has 190 tests across 5 files covering free-tier features (60 incl. odds + Elo leakage), training pipeline (33 incl. rolling CV), API endpoints (17), RAG engine (58 incl. player data), and web search fallback (22 incl. cache + prompt injection).
 
 #### `backend/tests/test_free_tier_features.py`
 

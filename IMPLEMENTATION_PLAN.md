@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 46/48 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
+| P7 Beyond MVP | 47/49 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
 
 **Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -428,17 +428,17 @@ All feature specifications in `specs/`:
 | `kelly.test.ts` | 11 | Passing |
 | `types.test.ts` | 4 | Passing |
 | `predictionTracker.test.ts` | 22 | Passing |
-| `ChatBot.test.ts` | 18 | Passing |
+| `ChatBot.test.ts` | 23 | Passing |
 | `Predictions.test.ts` | 19 | Passing |
 | `BettingHistory.test.ts` | 15 | Passing |
 | `KellyCalculator.test.ts` | 15 | Passing |
-| `backtest.test.ts` | 15 | Passing |
-| `Dashboard.test.ts` | 14 | Passing |
-| `optimizedPredictions.test.ts` | 18 | Passing |
+| `backtest.test.ts` | 22 | Passing |
+| `Dashboard.test.ts` | 15 | Passing |
+| `optimizedPredictions.test.ts` | 28 | Passing |
 | `ValueBets.test.ts` | 12 | Passing |
 | `dataService.cache.test.ts` | 8 | Passing |
 | `dataService.test.ts` | 8 | Passing |
-| `Settings.test.ts` | 16 | Passing |
+| `Settings.test.ts` | 18 | Passing |
 | `LiveMatches.test.ts` | 9 | Passing |
 | `liveService.test.ts` | 24 | Passing |
 | `backendService.test.ts` | 11 | Passing |
@@ -453,6 +453,7 @@ All feature specifications in `specs/`:
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
 | `SeasonTimeline.test.ts` | 13 | Passing |
+| `DataFreshness.test.ts` | 9 | Passing |
 | **Total** | **561** | **All passing (34 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
