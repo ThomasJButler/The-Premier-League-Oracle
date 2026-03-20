@@ -2,6 +2,19 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i: Standings Table Zone Colouring & Form Dots
+
+**Branch:** `v3.0-MVP`
+
+### Added: Standings table visual uplift (P7i items #2)
+- **Zone row backgrounds** — Subtle tinted backgrounds for Champions League (blue), Europa League (orange), Conference League (emerald), and relegation (red) zones. Combined with existing border stripes and position badges for clear zone identification
+- **Conference League zone** — 6th position now has emerald styling across all three visual indicators (border, badge, background) and appears in the legend
+- **Form dots** — Changed form indicators from square letter badges to round coloured dots (W green, D grey, L red) matching standard football app conventions
+- **Accessibility** — Form dots now have `aria-label`, `title`, and `role="list"/"listitem"` attributes for screen reader support
+- 3 new tests (Conference League legend, all four zones, form dot accessibility) — 515 Vitest tests total
+
+---
+
 ## 20 March 2026 — Second Full Codebase Audit
 
 **Branch:** `v3.0-MVP`

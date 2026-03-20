@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 0/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 2/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
-**Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 515 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -119,9 +119,9 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Prediction result indicators** — After a match finishes, show whether the prediction was correct/wrong with a visual indicator (green tick / red cross) directly on the card
 
 **Standings table:**
-- [ ] **Zone colouring** — Add Champions League (blue), Europa League (orange), relegation (red) zone background colours to the standings table rows. Standard in every football app, users expect it
-- [ ] **Form column** — Show last 5 results as coloured dots (green W, grey D, red L) in the standings table. The `form` field from the API contains this data (e.g., "W,W,D,L,W")
-- [ ] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek
+- [x] **Zone colouring** — Champions League (blue), Europa League (orange), Conference League (emerald), relegation (red) zone row backgrounds + border stripes + position badges. All four zones in legend
+- [x] **Form column** — Last 5 results as coloured round dots (green W, grey D, red L) with accessibility labels. Already used `form` field from API
+- [ ] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek. Note: free-tier API doesn't expose per-matchday position history, current implementation uses form-based proxy (3+ wins = up, 0-1 wins = down)
 
 **Live Matches:**
 - [ ] **Match timeline** — For in-play matches, show a simple progress bar (0-90 mins) with goal indicators at the minute they were scored. Creates visual drama
@@ -419,14 +419,14 @@ All feature specifications in `specs/`:
 | `aiAnalysis.test.ts` | 23 | Passing |
 | `AccumulatorBuilder.test.ts` | 17 | Passing |
 | `SeasonStats.test.ts` | 13 | Passing |
-| `StandingsTable.test.ts` | 15 | Passing |
+| `StandingsTable.test.ts` | 18 | Passing |
 | `TopScorers.test.ts` | 13 | Passing |
 | `Help.test.ts` | 13 | Passing |
 | `ApiSetupWizard.test.ts` | 13 | Passing |
 | `MatchList.test.ts` | 12 | Passing |
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
-| **Total** | **512** | **All passing (32 files)** |
+| **Total** | **515** | **All passing (32 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 
