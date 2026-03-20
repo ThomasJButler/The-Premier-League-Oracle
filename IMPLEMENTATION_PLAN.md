@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 12/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 15/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -76,9 +76,9 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 - [ ] **Playwright E2E in CI** — Currently only Vitest runs in CI. Playwright would catch real browser regressions but needs `npx playwright install` and adds ~2min to CI
 - [ ] **Rate-limit persistence** — Backend rate limiter is in-memory only. On horizontal scale (Vercel), each instance has its own counter. Consider Redis-backed rate limiting if abuse becomes an issue
-- [ ] **Pin `openai` in `requirements.txt`** — Only unpinned dependency; could pull in a breaking API change on fresh install. All other packages are version-pinned
-- [ ] **Pin `ruff` version in CI** — `.github/workflows/ci.yml` runs `pip install ruff` with no version constraint. A future ruff release could introduce new lint errors and break CI unexpectedly
-- [ ] **Clean stale ruff exclusions in `pyproject.toml`** — Excludes 7 files deleted or archived in P6c (`app/security/*.py`, `app/models/*.py`, `app/features/advanced_engineering.py`). Harmless but untidy dead configuration
+- [x] **Pin `openai` in `requirements.txt`** — Pinned to `openai==1.107.1` (matching locally installed version). All dependencies now version-pinned
+- [x] **Pin `ruff` version in CI** — Pinned to `ruff==0.15.7` in `.github/workflows/ci.yml`. Prevents new lint rules from unexpectedly breaking the build
+- [x] **Clean stale ruff exclusions in `pyproject.toml`** — Removed 8 exclude entries for files archived to `pro-tier-archive` branch (all confirmed MISSING from working tree). Only `app/notebooks/` exclusion remains
 
 ### P7f. Season Timeline (New Feature)
 

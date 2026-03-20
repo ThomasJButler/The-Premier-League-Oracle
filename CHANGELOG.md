@@ -2,6 +2,17 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7e: Pin Dependencies, Clean Config
+
+### Fixed: Pin unpinned dependencies (P7e)
+- **openai** pinned to `==1.107.1` in `requirements.txt` — was the only unpinned dependency, risking breaking API changes on fresh install
+- **ruff** pinned to `==0.15.7` in `.github/workflows/ci.yml` — prevents new lint rules from unexpectedly failing CI
+
+### Cleaned: Stale ruff exclusions removed (P7e)
+- Removed 8 exclude entries from `pyproject.toml` for files archived to `pro-tier-archive` branch (`app/models/lstm_predictor.py`, `app/models/transformer_model.py`, `app/models/modern_oracle.py`, `app/models/xgboost_model.py`, `app/security/auth.py`, `app/security/secrets.py`, `app/security/validators.py`, `app/features/advanced_engineering.py`). All confirmed MISSING from working tree. Only `app/notebooks/` exclusion remains
+
+---
+
 ## 20 March 2026 — P7g: README Overhaul
 
 ### Rewritten: README.md reflects v3.0 MVP state (P7g)
