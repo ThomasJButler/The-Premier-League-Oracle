@@ -972,26 +972,20 @@
                   </div>
 
                   <!-- Predicted Score Section -->
-                  <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <Target class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span class="font-semibold text-blue-800 dark:text-blue-200">Predicted Score</span>
-                    </div>
-                    <div class="text-2xl font-bold text-blue-700 dark:text-blue-300 text-center">
+                  <div class="mb-5 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Predicted Score</span>
+                    <div class="text-3xl font-bold text-blue-700 dark:text-blue-300 text-center mt-2">
                       {prediction.detailedAnalysis.predictedScore}
                     </div>
-                    <div class="text-sm text-center text-foreground mt-1">
+                    <div class="text-sm text-center text-muted-foreground mt-1">
                       Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
                   </div>
 
                   <!-- Form Section -->
-                  <div class="mb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <TrendingUp class="w-4 h-4 text-emerald-600" />
-                      <span class="font-semibold text-foreground">Recent Form</span>
-                    </div>
-                    <div class="space-y-2 text-sm">
+                  <div class="mb-5">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Form</span>
+                    <div class="space-y-2.5 text-sm mt-2">
                       <div class="flex justify-between items-center">
                         <span class="text-muted-foreground flex items-center gap-1.5">
                           <img src={getTeamLogo(prediction.home_team, 18)} alt="" class="w-[18px] h-[18px] rounded-full object-contain">
@@ -1026,15 +1020,12 @@
                   </div>
 
                   <!-- Key Factors -->
-                  <div class="mb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <BarChart3 class="w-4 h-4 text-blue-600" />
-                      <span class="font-semibold text-foreground">Key Factors</span>
-                    </div>
-                    <ul class="text-sm space-y-1">
+                  <div class="mb-5">
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Key Factors</span>
+                    <ul class="text-sm space-y-1.5 mt-2">
                       {#each prediction.detailedAnalysis.keyFactors as factor}
                         <li class="flex items-start gap-2">
-                          <span class="text-primary mt-1">•</span>
+                          <span class="text-primary mt-0.5 text-xs">&#9679;</span>
                           <span class="text-muted-foreground">{factor}</span>
                         </li>
                       {/each}
@@ -1043,11 +1034,8 @@
 
                   <!-- Betting Recommendation -->
                   {#if prediction.detailedAnalysis.recommendedStake > 0}
-                    <div class="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-700">
-                      <div class="flex items-center gap-2 mb-1">
-                        <Users class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                        <span class="font-semibold text-amber-800 dark:text-amber-200">Estimated Stake</span>
-                      </div>
+                    <div class="p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg border border-amber-200 dark:border-amber-700">
+                      <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Estimated Stake</span>
                       <div class="text-sm text-amber-700 dark:text-amber-300">
                         Kelly stake: {prediction.detailedAnalysis.recommendedStake.toFixed(1)}% of bankroll
                       </div>
@@ -1059,11 +1047,8 @@
                   
                   <!-- Bet Builder Section -->
                   {#if prediction.betBuilder}
-                    <div class="mt-4 p-3 bg-gradient-to-br from-slate-50 to-teal-50 dark:from-slate-950/30 dark:to-teal-950/30 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div class="flex items-center gap-2 mb-3">
-                        <Package class="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                        <span class="font-semibold text-slate-800 dark:text-slate-200">Bet Builder Markets</span>
-                      </div>
+                    <div class="mt-5 p-4 bg-gradient-to-br from-slate-50 to-teal-50 dark:from-slate-950/30 dark:to-teal-950/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <span class="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Bet Builder Markets</span>
                       
                       <!-- Quick Markets Grid -->
                       <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
@@ -1125,11 +1110,8 @@
 
                   <!-- AI Analysis Section -->
                   {#if aiAnalysisService.isEnabled()}
-                    <div class="mt-4 p-3 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg border border-violet-200 dark:border-violet-700">
-                      <div class="flex items-center gap-2 mb-2">
-                        <Sparkles class="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                        <span class="font-semibold text-violet-800 dark:text-violet-200">AI Analysis</span>
-                      </div>
+                    <div class="mt-5 p-4 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg border border-violet-200 dark:border-violet-700">
+                      <span class="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">AI Analysis</span>
                       {#if aiAnalyses.has(prediction.id)}
                         <div class="text-sm text-muted-foreground prose-chat">
                           {@html renderMarkdown(aiAnalyses.get(prediction.id) || '')}
