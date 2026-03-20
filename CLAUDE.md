@@ -103,7 +103,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 **P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 0/46 items):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 43/46 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|

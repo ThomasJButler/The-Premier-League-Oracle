@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 41/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 43/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
-**Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 540 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -278,17 +278,17 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 
 ## Remaining Work — P2 (Partial Items)
 
-### P2n. CI/CD Pipeline — PARTIAL
+### P2n. CI/CD Pipeline — DONE
 
-- [ ] Consider Playwright E2E in CI (heavier, but valuable — deferred to later)
+- [x] Playwright E2E in CI — implemented in P7e (parallel job in `.github/workflows/ci.yml`, Chromium-only, HTML report artifact)
 
 ---
 
 ## Remaining Work — P5 (Hardening)
 
-### P5c. Backend CI Pipeline — PARTIAL
+### P5c. Backend CI Pipeline — DONE
 
-- [ ] Consider adding Playwright E2E tests to CI (heavier, needs `npx playwright install`)
+- [x] Playwright E2E tests in CI — implemented in P7e
 
 P5g (eighteenth audit) and P5h (twentieth audit) — ALL DONE — see CHANGELOG.md for details.
 
@@ -297,7 +297,8 @@ P5g (eighteenth audit) and P5h (twentieth audit) — ALL DONE — see CHANGELOG.
 Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 
 - [ ] `SeasonStats.svelte:10` — `icon: any` required for Svelte 4 component constructor typing
-- [ ] `Sidebar.svelte:57` and `MobileNav.svelte:36` — `handleKeydown(e: any)` required because Svelte 4 types `on:keydown` as `CustomEvent`, not `KeyboardEvent`
+- [ ] `MobileNav.svelte:39` — `handleKeydown(e: any)` required because Svelte 4 types `on:keydown` as `CustomEvent`, not `KeyboardEvent`
+- [ ] `sheet-content.svelte:15` and `dialog-content.svelte:14` — `handleKeydown(e: any)` in shadcn UI components (same Svelte 4 limitation)
 
 ---
 
@@ -476,7 +477,8 @@ All feature specifications in `specs/`:
 | `MatchList.test.ts` | 12 | Passing |
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
-| **Total** | **519** | **All passing (32 files)** |
+| `SeasonTimeline.test.ts` | 13 | Passing |
+| **Total** | **535** | **All passing (33 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

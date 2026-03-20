@@ -142,7 +142,7 @@ python train_free_tier.py
 
 The training script produces:
 - An XGBoost model with a stacked OvR ensemble
-- 99 features (including 8 draw indicators and 5 Elo features)
+- 114 features (including 13 draw indicators, 5 Elo features, and 10 odds features)
 - Rolling cross-validation metrics logged to stdout
 
 ### API Endpoints

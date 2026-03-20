@@ -35,10 +35,7 @@ backend/
 │   │   └── xgboost_model.py              # XGBoost wrapper
 │   ├── data/
 │   │   └── football_data_collector.py    # Football-Data.org API v4 client
-│   └── security/
-│       ├── auth.py                       # JWT / OAuth2 (not wired into main.py)
-│       ├── validators.py
-│       └── secrets.py
+│   └── api/rag.py                       # DataFrame RAG engine for natural language queries
 ├── models/
 │   └── xgboost_free_tier.joblib          # Trained free-tier model
 ├── tests/
@@ -194,7 +191,7 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 ## Known Limitations
 
 - `docker-compose.yml` stripped to just `oracle-api` service — Pro-tier services (Redis, MLflow, Postgres, Jupyter, Nginx) commented out
-- `app/security/` modules (`auth.py`, `secrets.py`, `validators.py`) are not imported by `main.py` — unused at runtime
+- `app/security/` modules were deleted in P6c as dead code — if a proper auth layer is needed, write from scratch
 - CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it (see [Training](#training-the-free-tier-model) for how to obtain it)
 
 ---

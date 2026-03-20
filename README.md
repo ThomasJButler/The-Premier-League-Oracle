@@ -92,8 +92,8 @@ npm run test:e2e     # 43 E2E tests x 3 viewports (Playwright)
 | **Components** | shadcn-svelte (Button, Card, Badge, Dialog, Sheet, Skeleton, Separator) |
 | **Charts** | Chart.js with svelte-chartjs (theme-aware via CSS variables) |
 | **Caching** | IndexedDB three-tier: memory → IDB → API |
-| **Testing** | Vitest (522 tests, 32 files), Playwright (43 E2E tests, 6 specs) |
-| **Backend** | Python 3, FastAPI, XGBoost (optional — free-tier model, 99 features, 51% accuracy) |
+| **Testing** | Vitest (540 tests, 33 files), Playwright (43 E2E tests, 6 specs) |
+| **Backend** | Python 3, FastAPI, XGBoost (optional — free-tier model, 114 features, 53.3% accuracy) |
 | **API** | Football-Data.org v4 (free tier: 10 req/min) |
 | **CI/CD** | GitHub Actions (type check, unit tests, coverage thresholds, ESLint, ruff, production build) |
 | **Deployment** | Vercel |
@@ -121,13 +121,13 @@ frontend/src/
 backend/               # Python ML backend (optional)
 ├── app/api/main.py    # FastAPI server (/predict/free, /chat, /health)
 ├── app/api/rag.py     # DataFrame RAG engine for natural language queries
-├── app/features/      # 99-feature engineering pipeline (ELO, draw indicators, form)
+├── app/features/      # 114-feature engineering pipeline (ELO, draw indicators, odds, form)
 ├── app/data/          # Football-Data.org historical collector
 ├── models/            # Trained XGBoost model (.joblib)
 └── train_free_tier.py # Training script (XGBoost + stacked OvR ensemble)
 ```
 
-The frontend prediction engine runs entirely in the browser — no server required for core functionality. The Python backend is an optional enhancement that adds ML-based predictions (XGBoost with 99 engineered features) and Oracle Chat (natural language match queries via RAG).
+The frontend prediction engine runs entirely in the browser — no server required for core functionality. The Python backend is an optional enhancement that adds ML-based predictions (XGBoost with 114 engineered features, 53.3% accuracy) and Oracle Chat (natural language match queries via RAG).
 
 ## Python Backend (Optional)
 
