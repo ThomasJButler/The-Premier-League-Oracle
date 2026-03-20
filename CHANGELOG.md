@@ -2,6 +2,19 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7f: Season Timeline
+
+### Added: Interactive Season Timeline page (P7f — all 7 items complete)
+- New `SeasonTimeline.svelte` component with four data-driven sections:
+  - **Title Race** — cumulative points line chart for the top 6 teams (toggle to show all 20), team-coloured lines, hover tooltips
+  - **Relegation Battle** — bottom 6 teams' points progression with dashed safety line (17th place benchmark)
+  - **Key Results** — automatic detection of thrillers (5+ goals), upsets (bottom-3 beating top-6), comebacks (losing at HT, winning at FT), each with type badges and narrative detail
+  - **The Story So Far** — matchday-by-matchday narrative entries with mood-coloured borders: dramatic (amber), shock (red), celebration (green), with special treatments for matchday 1, goals galore, upset weekends, title race tightening
+- Wired into routing: `ViewName` union extended, `App.svelte` conditional, `SidebarNav` (Calendar icon in Main section), `MobileNav` (More menu)
+- Data sourced entirely from existing `dataService.getCurrentSeasonMatches()` and `dataService.getStandings()` — no new API calls
+- Responsive loading skeletons, error states for missing/empty data, matchday progress badge
+- **13 new tests** covering all sections, data detection, edge cases, and error paths (535 frontend tests total, 33 test files)
+
 ## 20 March 2026 — P7h: Player Data Enrichment for RAG
 
 ### Added: Player-grounded Oracle Chat responses (P7h)

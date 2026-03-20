@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 24/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 31/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline |
 
-**Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -84,13 +84,13 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 Interactive visual timeline showing key moments from the 2025/26 Premier League season:
 
-- [ ] **Timeline component** — `SeasonTimeline.svelte` with horizontal scrollable or vertical card layout
-- [ ] **Key results** — Shocks, upsets, record wins automatically detected from match results (e.g., largest margin, unexpected winners based on ELO)
-- [ ] **Title race progression** — Cumulative points line chart for top 3-4 teams using svelte-chartjs (already in project)
-- [ ] **Relegation battle** — Points gap to safety (17th place) over time, with visual tension indicators
-- [ ] **Automatic commentary** — Data-driven narrative for notable events (e.g., "Arsenal's 15-match unbeaten run ended here", "The day Ipswich Town beat Man City")
-- [ ] **Tone and personality** — Funny/sympathetic commentary, quotes, observations — the season story told with character
-- [ ] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier
+- [x] **Timeline component** — `SeasonTimeline.svelte` with vertical card layout, wired into routing (ViewName, SidebarNav, MobileNav)
+- [x] **Key results** — Shocks (bottom-3 beating top-6), thrillers (5+ goals), comebacks (losing at HT, winning at FT) automatically detected from match results with badges and detail text
+- [x] **Title race progression** — Cumulative points line chart for top 6 teams (toggle to show all 20) using svelte-chartjs with team colours
+- [x] **Relegation battle** — Bottom 6 teams' cumulative points with dashed safety line (17th place) benchmark
+- [x] **Automatic commentary** — Data-driven narrative entries: matchday 1 special, goals galore, upset weekends, title race tightening, pull clear events. Mood-coloured borders (dramatic/shock/celebration/routine)
+- [x] **Tone and personality** — Narrative voice with character ("The form book was torn up", "The curtain rises on a new Premier League campaign")
+- [x] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier. 13 tests covering all sections
 
 ### P7g. Frontend Polish (Medium Priority)
 
