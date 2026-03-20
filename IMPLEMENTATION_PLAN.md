@@ -19,7 +19,7 @@ Active branch: `v3.0-MVP`
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 27/27 (100%) | ALL DONE — Docker fixed, CI coverage enforced, .env.example created |
-| P3-Free ML Pipeline | DONE | 109 features (incl. 10 odds + 8 draw + 5 Elo), 96 training features, rolling CV, stacked ensemble, ELO leakage fixed |
+| P3-Free ML Pipeline | DONE | 114 features (incl. 10 odds + 13 draw + 5 Elo), 114 training features, rolling CV, stacked ensemble, ELO leakage fixed |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
@@ -28,7 +28,7 @@ Active branch: `v3.0-MVP`
 | P7 Beyond MVP | 41/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
-**Backend free-tier:** Pipeline complete with hyperparameter tuning, v2 training run done (51.9% accuracy with odds features, model saved)
+**Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
 
@@ -157,9 +157,9 @@ fix/<name>                 — bug fixes, merged via PR
 
 ---
 
-## Free-Tier ML Training: V2 RUN COMPLETE (odds-as-features)
+## Free-Tier ML Training: V3 RUN COMPLETE (draw features + dual calibration)
 
-**Model trained and saved to `backend/models/xgboost_free_tier.joblib`** (18 March 2026 — v1; 20 March 2026 — v2 with odds features).
+**Model trained and saved to `backend/models/xgboost_free_tier.joblib`** (18 March — v1; 20 March — v2 odds; 20 March — v3 draw features + calibration).
 
 ### Training Run Results
 
@@ -218,15 +218,43 @@ Split: 1,680 training / 420 validation (80/20 chronological)
 9. `odds_sharp_divergence` (0.015) — Pinnacle vs market gap (sharp money signal)
 10. `away_shots_avg` (0.015)
 
+#### v3 — draw features + dual calibration (20 March 2026)
+
+```
+Data: 2,191 matches from 6 CSV files (2020/21–2025/26)
+      2,100 samples after warmup filter (91 skipped), 114 features (86 + 13 draw + 5 Elo + 10 odds)
+Split: 1,680 training / 420 validation (80/20 chronological)
+```
+
+| Metric | XGBoost v3 | XGBoost v2 | Change |
+|--------|-----------|-----------|--------|
+| **Overall accuracy** | **53.3%** | 51.9% | +1.4% |
+| **Draw accuracy (raw)** | **16.3%** | 23.1% | −6.8% (calibration suppresses draw class) |
+| **Log loss** | **0.954** | 1.008 | −0.054 — significant calibration improvement |
+| **Brier score** | **0.573** | 0.594 | −0.021 |
+| **Home AUC-ROC** | **0.721** | 0.705 | +0.016 |
+| **Draw AUC-ROC** | **0.601** | 0.551 | +0.050 — best draw discrimination yet |
+| **Away AUC-ROC** | **0.735** | 0.711 | +0.024 |
+
+**Key findings (v3):**
+- Overall accuracy up significantly (+1.4%) — now within industry range (52–58%)
+- All three AUC-ROC values improved — the model *ranks* draw-prone matches correctly (0.601), but isotonic calibration then suppresses the draw class probability below the argmax threshold
+- New draw features in Top 20: `goal_difference_symmetry` (#12), `mid_table_indicator` (#14)
+- Stacked ensemble excluded (51.7% vs 53.3% calibrated XGBoost)
+- Dual calibration chose isotonic (log loss 0.954) over Platt (0.995) for this dataset
+
+**Draw calibration paradox:** The raw model predicts draws at 16.3% accuracy, but after isotonic calibration it drops to 0.0%. The calibrator learns "when the model thinks draw, it's usually wrong" and maps draw probabilities downward, pushing argmax toward H/A instead. Fix requires a post-calibration draw threshold (separate item).
+
 ### Benchmarking Context
 
 | Strategy | Expected Accuracy |
 |----------|-------------------|
 | Random guess (3-class) | ~33% |
 | Always predict home win | ~43% |
-| LR baseline (this run) | 44.5% |
+| LR baseline (this run) | 47.9% |
 | XGBoost v1 (no odds) | 51.0% |
-| **XGBoost v2 (with odds)** | **51.9%** |
+| XGBoost v2 (with odds) | 51.9% |
+| **XGBoost v3 (draw features + calibration)** | **53.3%** |
 | Good PL models (industry) | 52–58% |
 | Bookmaker-implied | 55–58% |
 

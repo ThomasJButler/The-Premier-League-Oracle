@@ -5,8 +5,8 @@
 | Component | Status |
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
-| Free-tier XGBoost model | **Trained** — 51.9% accuracy with odds features (retrained 20 March 2026) |
-| Free-tier feature engineering | 109 features (incl. 10 bookmaker odds), standalone, no heavy deps |
+| Free-tier XGBoost model | **Trained** — 53.3% accuracy with draw features + dual calibration (retrained 20 March 2026) |
+| Free-tier feature engineering | 114 features (incl. 13 draw indicators, 10 bookmaker odds, 5 Elo), standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
 | Backend tests | **163 tests across 4 files — all non-skip tests passing** |
 | Redis | Optional — server starts without it |
@@ -16,7 +16,7 @@
 
 ## What This Does
 
-The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with a stacked OvR ensemble, built on 99 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) have been archived to the `pro-tier-archive` branch.
+The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with isotonic calibration, built on 114 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) have been archived to the `pro-tier-archive` branch.
 
 The frontend connects exclusively to the `/predict/free` endpoint.
 
@@ -30,7 +30,7 @@ backend/
 │   ├── api/
 │   │   └── main.py                       # FastAPI server
 │   ├── features/
-│   │   └── free_tier_features.py         # 99-feature pipeline (active)
+│   │   └── free_tier_features.py         # 114-feature pipeline (active)
 │   ├── models/
 │   │   └── xgboost_model.py              # XGBoost wrapper
 │   ├── data/
@@ -158,11 +158,11 @@ python train_free_tier.py --cv --tune       # CV + tuning combined
 
 This trains an XGBoost model with a stacked OvR ensemble (3 binary classifiers + meta-learner for improved draw prediction) and a logistic regression baseline. Uses chronological train/validation split with recency-weighted samples (recent seasons weighted higher). The `--cv` flag runs expanding-window cross-validation before the final training for robust accuracy estimates across all seasons. The trained model is saved to `backend/models/xgboost_free_tier.joblib`.
 
-Current result: **51.0% accuracy** (3-class: home win / draw / away win).
+Current result: **53.3% accuracy** (3-class: home win / draw / away win).
 
 ### Feature engineering
 
-`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 99 features, no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier). The CSV training data is richer than the live API, providing shots, corners, and cards columns that feed additional features during training.
+`app/features/free_tier_features.py` — `FreeTierFeatureEngineer` class, 114 features (86 base + 13 draw indicators + 5 Elo + 10 odds), no heavy dependencies. Works standalone from the Football-Data.org free tier (no xG, shots, possession, cards, or corners — those aren't available on the free API tier). The CSV training data is richer than the live API, providing shots, corners, and cards columns that feed additional features during training.
 
 ---
 

@@ -67,7 +67,7 @@ uvicorn app.api.main:app --reload --port 8000
 ### Backend Structure (`backend/`)
 - `app/api/main.py` - FastAPI server with prediction + chat endpoints
 - `app/api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
-- `app/features/free_tier_features.py` - Free-tier feature engineering (109 features incl. 8 draw indicators + 5 Elo)
+- `app/features/free_tier_features.py` - Free-tier feature engineering (114 features incl. 13 draw indicators + 5 Elo + 10 odds)
 - `app/data/football_data_collector.py` - Historical data collection
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
 
@@ -143,7 +143,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Data Constraints
 - Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
-- Free-tier ML model: 51.9% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
+- Free-tier ML model: 53.3% accuracy (XGBoost + isotonic calibration). Draw AUC-ROC 0.601 (model ranks draw-prone matches correctly but calibration suppresses the class). Model at `backend/models/xgboost_free_tier.joblib`
 
 ### Architecture Notes
 - `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection
