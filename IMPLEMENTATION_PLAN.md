@@ -172,7 +172,7 @@ All feature specifications in `specs/`:
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | **100% — ALL 10/10 criteria met.** WebSocket superseded note added; polling-only with adaptive intervals. Status filter expanded (`EXTRA_TIME`/`PENALTY_SHOOTOUT`). Match event notifications via polling-diff. **Markers: 10/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | **100% — ALL 17/17 criteria met.** bits-ui note clarified (custom implementations, not bits-ui). Tabs section updated. Priority 6+ deferred items documented. **Markers: 17/17** |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. 114 features (incl. 13 draw + 5 Elo + 10 odds). Match count updated to 2,191. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | **100% — ALL 29/29 active criteria met.** P3-Free DONE, Pro-tier Req 6 deferred (no acceptance criteria). 114 features (incl. 13 draw + 5 Elo + 10 odds). Match count: 2,191. Rate limiter IP fix P5a (Req 4d). **Markers: 29/29** |
 
 ---
 

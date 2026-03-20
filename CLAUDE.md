@@ -91,7 +91,7 @@ All feature specifications live in `specs/`:
 - `05-live-data.md` - Live scores, smart polling — **100% (10/10)**
 - `06-prediction-tracking.md` - Accuracy tracking, auto-reconciliation — **100% (7/7)**
 - `07-ui-ux.md` - shadcn-svelte migration, dark mode, accessibility — **100% (17/17)**
-- `08-backend-training.md` - Backend ML training pipeline — **~95% (23/24)** Pro-tier Req 6 deferred
+- `08-backend-training.md` - Backend ML training pipeline — **100% (29/29 active)** Pro-tier Req 6 deferred (no acceptance criteria)
 
 These specs are the single source of truth for requirements. **All 99 active acceptance criteria met.**
 
