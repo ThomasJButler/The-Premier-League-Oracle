@@ -17,7 +17,7 @@ requests==2.32.3
 python-dotenv==1.0.1
 
 # AI (Oracle Chat RAG — P6b)
-openai
+openai==1.107.1
 
 # Testing
 pytest==8.3.3
