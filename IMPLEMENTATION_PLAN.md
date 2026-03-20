@@ -48,10 +48,10 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 ### P7a. Model Accuracy Improvements (High Impact)
 
-- [x] **Odds-as-features** — 10 bookmaker odds features added (Pinnacle implied probs, market average probs, overround, Asian handicap, over/under 2.5, sharp divergence). Dual-mode design: odds loaded from CSVs at training time, optional API parameter at inference time (falls back to no-odds mode gracefully). Results: overall accuracy 51.0% → 51.9%, draw accuracy 6.7% → 23.1%, log loss 1.034 → 1.008. Top features by importance: `odds_pinnacle_home` (0.0401), `odds_avg_away` (0.0360), `odds_avg_home` (0.0306). 15 new backend tests (160 total across 4 files)
+- [x] **Odds-as-features** — 10 bookmaker odds features added (Pinnacle implied probs, market average probs, overround, Asian handicap, over/under 2.5, sharp divergence). Dual-mode design: odds loaded from CSVs at training time, optional API parameter at inference time (falls back to no-odds mode gracefully). Results: overall accuracy 51.0% → 51.9%, draw accuracy 6.7% → 23.1%, log loss 1.034 → 1.008. Top features by importance: `odds_pinnacle_home` (0.0401), `odds_avg_away` (0.0360), `odds_avg_home` (0.0306). 15 new backend tests (163 total across 4 files)
 - [ ] **Retrain with latest season data** — Current model trained on 2,191 matches through 2025/26 partial. A full 2025/26 season adds ~380 matches. Schedule retraining when season completes
-- [ ] **Draw prediction overhaul** — Currently 6.7% accuracy (essentially non-functional). Investigate: (a) separate draw-specialist model, (b) ordinal regression (H→D→A as ordered outcomes), (c) draw probability as gap between H/A probabilities rather than independent prediction
-- [ ] **Probability calibration improvement** — Log loss 1.034 is high. Current isotonic regression calibrators exist but need more training data and potentially Platt scaling comparison
+- [ ] **Draw prediction overhaul** — Draw accuracy improved from 6.7% → 23.1% via odds-as-features, but still weakest class. Investigate: (a) separate draw-specialist model, (b) ordinal regression (H→D→A as ordered outcomes), (c) draw probability as gap between H/A probabilities rather than independent prediction
+- [x] **Probability calibration improvement** — Dual Platt/isotonic calibration system: `calibrate_probabilities()` now tries both methods and keeps whichever achieves lower log loss. Platt scaling (logistic sigmoid, 2 params/class) better suited for small validation sets (~420 samples) than isotonic's piecewise mapping. `apply_calibrators()` centralises method dispatch. `calibration_method` saved to model payload; inference path in `main.py` handles both types. Stacked ensemble gated on outperformance — only saved when it beats calibrated XGBoost. 3 new tests (163 total across 4 files)
 
 ### P7b. AI Integration Upgrade (Medium Impact)
 
@@ -468,4 +468,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**160 tests across 4 files** — all non-skip tests pass. Covers free-tier features (60 incl. 15 new odds-as-features tests + Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
+**163 tests across 4 files** — all non-skip tests pass. Covers free-tier features (55 incl. 10 odds-as-features tests + Elo leakage), training pipeline (33 incl. rolling CV, odds extraction, calibrator dispatch, 8 skip without libomp), API endpoints (17), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
