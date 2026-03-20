@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 4/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 5/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 517 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -115,7 +115,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [x] **Prediction Accuracy Trend chart** — Empty state already has CTA button linking to Predictions page. Shows "No accuracy data yet" with guidance text
 
 **Prediction cards:**
-- [ ] **Richer match cards** — The MCI vs ARS card is sparse. Add team crests, form indicators (WWDLW dots), league position badges, and the model's confidence bar inline. Make each card tell a story at a glance
+- [x] **Richer match cards** — Added form dots (W/D/L) under team names + proportional probability bars (blue H, amber D, green A) replacing flat text percentages. Team crests already present via `getTeamLogo()`. League position badges deferred (needs standings data cross-reference)
 - [ ] **Prediction result indicators** — After a match finishes, show whether the prediction was correct/wrong with a visual indicator (green tick / red cross) directly on the card
 
 **Standings table:**

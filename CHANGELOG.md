@@ -2,6 +2,15 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i: Prediction Cards, Dashboard Empty State & Standings Uplift
+
+### Added: Richer prediction cards (P7i item #3)
+- **Form dots on front face** — Coloured W/D/L dots under each team name showing the last 5 results. Makes each card tell a story at a glance, matching the StandingsTable dot pattern
+- **Proportional probability bars** — Replaced flat text percentages with coloured width segments (blue Home, amber Draw, green Away). The predicted outcome is highlighted and bar widths reflect actual probabilities
+- Form string parser handles both comma-separated and continuous formats
+
+---
+
 ## 20 March 2026 — P7i: Dashboard Empty State & Standings Uplift
 
 ### Added: Dashboard onboarding empty state (P7i item #1)
