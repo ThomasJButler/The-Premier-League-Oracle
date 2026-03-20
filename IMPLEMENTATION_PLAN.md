@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 2/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 4/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
-**Frontend:** 515 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 517 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -110,9 +110,9 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 > These three alone would take the app from "technically impressive" to "I'd show this to my mates".
 
 **Dashboard first impression:**
-- [ ] **Empty state design** — Replace "0.0%", "£0.00", "0" stat cards with welcoming onboarding content when no predictions exist yet. Show a call-to-action ("Generate your first prediction") instead of zeroes. First impressions matter for conversion
+- [x] **Empty state design** — Welcoming onboarding card replaces zero stat cards when no predictions/bets exist. Shows Oracle description, "Generate Your First Prediction" primary CTA, and "View Standings" secondary CTA. All chart/activity empty states now also have navigation buttons
 - [ ] **Dashboard hero section** — Add a featured upcoming match or "match of the day" at the top of the dashboard instead of jumping straight into empty stats. Pull from next fixture data
-- [ ] **Prediction Accuracy Trend chart** — Currently shows an empty chart on first load. Show a placeholder illustration or hide the section until data exists
+- [x] **Prediction Accuracy Trend chart** — Empty state already has CTA button linking to Predictions page. Shows "No accuracy data yet" with guidance text
 
 **Prediction cards:**
 - [ ] **Richer match cards** — The MCI vs ARS card is sparse. Add team crests, form indicators (WWDLW dots), league position badges, and the model's confidence bar inline. Make each card tell a story at a glance
@@ -407,7 +407,7 @@ All feature specifications in `specs/`:
 | `BettingHistory.test.ts` | 15 | Passing |
 | `KellyCalculator.test.ts` | 15 | Passing |
 | `backtest.test.ts` | 15 | Passing |
-| `Dashboard.test.ts` | 12 | Passing |
+| `Dashboard.test.ts` | 14 | Passing |
 | `optimizedPredictions.test.ts` | 18 | Passing |
 | `ValueBets.test.ts` | 12 | Passing |
 | `dataService.cache.test.ts` | 8 | Passing |
@@ -426,7 +426,7 @@ All feature specifications in `specs/`:
 | `MatchList.test.ts` | 12 | Passing |
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
-| **Total** | **515** | **All passing (32 files)** |
+| **Total** | **517** | **All passing (32 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

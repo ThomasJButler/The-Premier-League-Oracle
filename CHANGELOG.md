@@ -2,6 +2,16 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i: Dashboard Empty State & Standings Uplift
+
+### Added: Dashboard onboarding empty state (P7i item #1)
+- **Welcoming onboarding card** replaces zero stat cards (`0.0%`, `£0.00`, `0`) when no predictions or bets exist. Shows Oracle description with primary CTA ("Generate Your First Prediction") and secondary CTA ("View Standings")
+- **CTA buttons on all empty states** — accuracy chart links to Predictions, P&L chart links to Kelly Calculator, predictions tab and upcoming matches have proper Button components instead of plain text links
+- Tracks raw prediction/bet counts separately from tweened animation values for reliable empty state detection
+- 2 new tests (onboarding card visibility, stat cards visibility) — 517 Vitest tests total
+
+---
+
 ## 20 March 2026 — P7i: Standings Table Zone Colouring & Form Dots
 
 **Branch:** `v3.0-MVP`
