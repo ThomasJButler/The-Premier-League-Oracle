@@ -61,6 +61,7 @@ except ImportError as e:
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
@@ -499,14 +500,28 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
             detail="Rate limit exceeded — maximum 60 requests per minute",
         )
 
+    # Determine which AI provider to use
+    ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
+    use_anthropic = ai_model.startswith("claude")
+
     # Resolve API key: server env var takes priority, then request header
-    api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+    if use_anthropic:
+        api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
+        provider_name = "Anthropic"
+        env_var_name = "ANTHROPIC_API_KEY"
+        header_name = "X-Anthropic-Key"
+    else:
+        api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+        provider_name = "OpenAI"
+        env_var_name = "OPENAI_API_KEY"
+        header_name = "X-OpenAI-Key"
+
     if not api_key:
         raise HTTPException(
             status_code=400,
             detail=(
-                "No OpenAI API key configured. "
-                "Set the OPENAI_API_KEY environment variable or pass via X-OpenAI-Key header."
+                f"No {provider_name} API key configured. "
+                f"Set the {env_var_name} environment variable or pass via {header_name} header."
             ),
         )
 
@@ -522,35 +537,46 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     # Build RAG-augmented system prompt
     system_prompt, has_data = build_rag_prompt(df, request_body.message)
 
-    # Assemble messages for OpenAI
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
-
-    # Add conversation history (last 10 non-system messages)
+    # Assemble conversation messages
+    user_messages: list[dict[str, str]] = []
     for msg in request_body.conversation_history[-10:]:
         role = msg.get('role', '')
         content = msg.get('content', '')
         if role in ('user', 'assistant') and content:
-            messages.append({"role": role, "content": content})
-
-    # Add current user message
-    messages.append({"role": "user", "content": request_body.message})
+            user_messages.append({"role": role, "content": content})
+    user_messages.append({"role": "user", "content": request_body.message})
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
-        response = client.chat.completions.create(
-            model=ai_model,
-            messages=messages,  # type: ignore[arg-type]
-            max_tokens=800,
-            temperature=0.7,
-        )
-        reply = response.choices[0].message.content or ""
+        if use_anthropic:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=ai_model,
+                max_tokens=800,
+                system=system_prompt,
+                messages=user_messages,  # type: ignore[arg-type]
+            )
+            reply = response.content[0].text if response.content else ""
+        else:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            messages: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt},
+                *user_messages,
+            ]
+            response = client.chat.completions.create(
+                model=ai_model,
+                messages=messages,  # type: ignore[arg-type]
+                max_tokens=800,
+                temperature=0.7,
+            )
+            reply = response.choices[0].message.content or ""
+
         return ChatRAGResponse(reply=reply, grounded=has_data)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Chat RAG OpenAI call failed: %s", e)
+        logger.error("Chat RAG %s call failed: %s", provider_name, e)
         raise HTTPException(
             status_code=502,
             detail="Failed to generate response — please try again",

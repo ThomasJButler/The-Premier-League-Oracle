@@ -578,9 +578,9 @@
             {#if aiKeyAvailable === null}
               Checking…
             {:else if aiKeyAvailable}
-              Ready — using {localStorage.getItem('openai_api_key') ? 'your OpenAI key' : 'server-side key'}
+              Ready — using {localStorage.getItem('openai_api_key') ? 'your API key' : 'server-side key'}
             {:else}
-              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY
+              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
             {/if}
           </p>
         </div>
@@ -619,8 +619,9 @@
       <span>AI Model</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Choose which OpenAI model powers Oracle Chat and AI Match Analysis.
-      Larger models produce richer analysis but cost more per request.
+      Choose which model powers Oracle Chat and AI Match Analysis.
+      Supports OpenAI (GPT) and Anthropic (Claude). Larger models
+      produce richer analysis but cost more per request.
     </p>
 
     <div class="flex items-center gap-3">

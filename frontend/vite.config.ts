@@ -4,10 +4,17 @@ import path from 'path'
 import type { IncomingMessage, ServerResponse } from 'http'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_VERSION = '2023-06-01';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const ALLOWED_MODELS = [
-  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo',
+  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo',
+  'claude-3-5-haiku-latest', 'claude-3-5-sonnet-latest', 'claude-3-opus-latest',
 ];
+
+function isAnthropicModel(model: string): boolean {
+  return model.startsWith('claude');
+}
 
 /**
  * Vite plugin that mirrors the api/chat.ts Edge Function locally.
@@ -30,19 +37,12 @@ function chatApiProxy(): Plugin {
         let body = '';
         req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
         req.on('end', async () => {
-          let parsed: { messages?: unknown[]; apiKey?: string; model?: string };
+          let parsed: { messages?: Array<{ role: string; content: string }>; apiKey?: string; model?: string };
           try {
             parsed = JSON.parse(body);
           } catch {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: 'Invalid JSON body.' }));
-            return;
-          }
-
-          const apiKey = process.env.OPENAI_API_KEY || parsed.apiKey;
-          if (!apiKey) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'No API key configured. Please enter your OpenAI key.' }));
             return;
           }
 
@@ -60,27 +60,87 @@ function chatApiProxy(): Plugin {
             ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
             ?? DEFAULT_MODEL;
 
-          try {
-            const upstream = await fetch(OPENAI_API_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                model: resolvedModel,
-                messages: parsed.messages,
-                max_tokens: 800,
-                temperature: 0.7,
-              }),
-            });
+          const useAnthropic = isAnthropicModel(resolvedModel);
 
-            const data = await upstream.text();
-            res.statusCode = upstream.status;
-            res.end(data);
+          // Resolve API key: env var takes priority, then request body
+          const apiKey = useAnthropic
+            ? (process.env.ANTHROPIC_API_KEY || parsed.apiKey)
+            : (process.env.OPENAI_API_KEY || parsed.apiKey);
+
+          if (!apiKey) {
+            const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: `No API key configured. Please enter your ${provider} key.` }));
+            return;
+          }
+
+          try {
+            if (useAnthropic) {
+              // Extract system message — Anthropic uses a separate `system` field
+              let systemPrompt = '';
+              const userMessages: Array<{ role: string; content: string }> = [];
+              for (const msg of parsed.messages) {
+                if (msg.role === 'system') {
+                  systemPrompt += (systemPrompt ? '\n' : '') + msg.content;
+                } else {
+                  userMessages.push({ role: msg.role, content: msg.content });
+                }
+              }
+
+              const upstream = await fetch(ANTHROPIC_API_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': apiKey,
+                  'anthropic-version': ANTHROPIC_VERSION,
+                },
+                body: JSON.stringify({
+                  model: resolvedModel,
+                  max_tokens: 800,
+                  ...(systemPrompt ? { system: systemPrompt } : {}),
+                  messages: userMessages,
+                }),
+              });
+
+              if (!upstream.ok) {
+                res.statusCode = upstream.status;
+                res.end(JSON.stringify({ error: `Anthropic API error (${upstream.status}).` }));
+                return;
+              }
+
+              const data = await upstream.json() as { content?: Array<{ text?: string }>; model?: string; usage?: unknown };
+              const text = data.content?.[0]?.text || '';
+
+              // Normalise to OpenAI response shape
+              res.statusCode = 200;
+              res.end(JSON.stringify({
+                choices: [{ message: { role: 'assistant', content: text } }],
+                model: data.model,
+                usage: data.usage,
+              }));
+            } else {
+              const upstream = await fetch(OPENAI_API_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                  model: resolvedModel,
+                  messages: parsed.messages,
+                  max_tokens: 800,
+                  temperature: 0.7,
+                }),
+              });
+
+              const data = await upstream.text();
+              res.statusCode = upstream.status;
+              res.end(data);
+            }
           } catch {
+            const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
             res.statusCode = 502;
-            res.end(JSON.stringify({ error: 'Failed to connect to OpenAI.' }));
+            res.end(JSON.stringify({ error: `Failed to connect to ${provider}.` }));
           }
         });
       });

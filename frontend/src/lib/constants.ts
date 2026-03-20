@@ -34,15 +34,23 @@ export const DEFAULT_HOME_WIN_RATE = 0.46;
 export const DEFAULT_DRAW_RATE = 0.27;
 
 /**
- * AI_MODELS defines the OpenAI models available in the Settings dropdown.
+ * AI_MODELS defines the models available in the Settings dropdown.
  * The server-side allowlist in api/chat.ts and vite.config.ts must match.
+ * Provider is detected from the model ID: claude-* → Anthropic, gpt-* → OpenAI.
  */
 export const AI_MODELS = [
   { id: 'gpt-4o-mini', label: 'GPT-4o Mini (fastest, cheapest)' },
   { id: 'gpt-4o', label: 'GPT-4o (balanced)' },
   { id: 'gpt-4-turbo', label: 'GPT-4 Turbo (powerful)' },
-  { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (legacy)' },
+  { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku (fastest, cheapest)' },
+  { id: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet (balanced)' },
+  { id: 'claude-3-opus-latest', label: 'Claude 3 Opus (powerful)' },
 ] as const;
+
+/** Determine the API provider from a model ID. */
+export function getModelProvider(modelId: string): 'openai' | 'anthropic' {
+  return modelId.startsWith('claude') ? 'anthropic' : 'openai';
+}
 
 export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
 export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';
