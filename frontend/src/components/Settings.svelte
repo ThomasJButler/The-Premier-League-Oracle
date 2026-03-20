@@ -31,8 +31,9 @@
   let favouriteTeam = '';
   let plTeams: string[] = [];
 
-  // Team brand colours for the favourite-team picker — update each season
-  // when promotion/relegation changes the PL squad.
+  // Team brand colours for the favourite-team picker.
+  // Keys MUST match [data-team="..."] selectors in app.css.
+  // SEASONAL UPDATE: add promoted teams, remove relegated, update app.css too.
   const teamColors: Record<string, string> = {
     'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
     'Brentford': '#FF0000', 'Brighton': '#0057B8', 'Chelsea': '#034694',

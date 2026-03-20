@@ -64,11 +64,18 @@ export class EloRatingSystem {
   private processedMatchIds: Set<string> = new Set();
 
   // Default seed ratings — used only when no localStorage data exists.
-  // Keyed by canonical Football-Data.org names (with FC suffix).
-  // Cold-start ELO ratings for new users — should be updated each season to
-  // reflect the current PL squad. Teams not listed here fall back to
-  // DEFAULT_RATING (1500). Once matches are processed, ratings are stored in
-  // localStorage and these seeds are no longer used.
+  // Keyed by canonical Football-Data.org API v4 names (with FC suffix).
+  //
+  // SEASONAL UPDATE CHECKLIST (do this each summer after promotion/relegation):
+  //   1. Remove relegated teams from SEED_RATINGS
+  //   2. Add promoted teams with ratings ~1300–1350 (newly promoted)
+  //   3. Adjust existing ratings based on final league position
+  //   4. Ensure ALIASES below covers new teams' short names
+  //   5. Update teamColors in Settings.svelte and teamLogos.ts
+  //   6. Update CSV_TO_API/_ALIASES in backend free_tier_features.py
+  //
+  // Teams not listed here fall back to DEFAULT_RATING (1500). Once matches
+  // are processed, ratings are stored in localStorage and seeds are unused.
   private static readonly SEED_RATINGS: Record<string, number> = {
     'Manchester City FC': 1850,
     'Arsenal FC': 1800,
@@ -108,6 +115,7 @@ export class EloRatingSystem {
     'newcastle united': 'Newcastle United FC',
     'newcastle': 'Newcastle United FC',
     'brighton & hove albion': 'Brighton & Hove Albion FC',
+    'brighton and hove albion': 'Brighton & Hove Albion FC',
     'brighton': 'Brighton & Hove Albion FC',
     'aston villa': 'Aston Villa FC',
     'west ham united': 'West Ham United FC',
@@ -120,6 +128,7 @@ export class EloRatingSystem {
     'everton': 'Everton FC',
     'nottingham forest': 'Nottingham Forest FC',
     'nottm forest': 'Nottingham Forest FC',
+    "nott'm forest": 'Nottingham Forest FC',
     'afc bournemouth': 'AFC Bournemouth',
     'bournemouth': 'AFC Bournemouth',
     'leicester city': 'Leicester City FC',
@@ -135,6 +144,7 @@ export class EloRatingSystem {
     'luton': 'Luton Town FC',
     'burnley': 'Burnley FC',
     'sheffield united': 'Sheffield United FC',
+    'sheffield utd': 'Sheffield United FC',
   };
 
   constructor() {
