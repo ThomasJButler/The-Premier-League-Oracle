@@ -8,7 +8,7 @@
 #   ./loop.sh coach        # Coach mode: 1 build iteration + dashboard summary
 #   ./loop.sh coach 5      # Coach mode: 5 build iterations with dashboard after each
 #   ./loop.sh view         # Interactive run picker — browse all past runs
-#   ./loop.sh view 8       # Multi-run grid of last 8 runs with stats + cost
+#   ./loop.sh view 5.      # Multi-run grid of last 5 runs with stats + cost
 #   ./loop.sh view path/to/file.jsonl  # View dashboard for specific JSONL
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
