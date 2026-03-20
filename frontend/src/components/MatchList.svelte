@@ -127,7 +127,7 @@
 
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold font-display text-foreground">Match Schedule</h2>
+    <h1 class="text-2xl font-bold font-display text-foreground">Match Schedule</h1>
 
     <div class="flex items-center gap-4">
       <!-- Season selector -->

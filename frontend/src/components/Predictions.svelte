@@ -405,7 +405,7 @@
 <div class="space-y-6 animate-fade-in">
   <!-- Header with Gameweek Selector -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold font-display text-foreground">Match Predictions</h2>
+    <h1 class="text-2xl font-bold font-display text-foreground">Match Predictions</h1>
     
     <div class="flex flex-wrap items-center gap-3 sm:gap-4">
       <!-- Gameweek Selector -->

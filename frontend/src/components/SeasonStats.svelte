@@ -660,7 +660,7 @@
 
 <div class="season-stats">
   <div class="mb-8">
-    <h2 class="text-2xl font-bold font-display text-foreground mb-2">Season Stats</h2>
+    <h1 class="text-2xl font-bold font-display text-foreground mb-2">Season Stats</h1>
     <p class="text-muted-foreground">Discover unique insights from this season's data</p>
   </div>
 

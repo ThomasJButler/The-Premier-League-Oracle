@@ -205,7 +205,7 @@
 </script>
 
 <div class="space-y-6 animate-fade-in">
-  <h2 class="text-2xl font-bold font-display text-foreground">Betting History</h2>
+  <h1 class="text-2xl font-bold font-display text-foreground">Betting History</h1>
 
   <!-- Summary Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

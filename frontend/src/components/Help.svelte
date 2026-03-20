@@ -70,7 +70,7 @@
         <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 sm:p-8" in:fade={{ duration: 200 }}>
           {#if selectedSection === 'getting-started'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Getting Started</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Getting Started</h2>
               
               <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">Quick Setup Guide</h3>
@@ -131,7 +131,7 @@
 
           {:else if selectedSection === 'predictions'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Understanding Predictions</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Understanding Predictions</h2>
               
               <div class="mb-8">
                 <h3 class="text-xl font-semibold mb-4">Our Five-Component Ensemble</h3>
@@ -291,7 +291,7 @@
 
           {:else if selectedSection === 'maximizing'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Maximizing Prediction Accuracy</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Maximizing Prediction Accuracy</h2>
               
               <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🎯 The Golden Rules</h3>
@@ -336,7 +336,7 @@
 
           {:else if selectedSection === 'features'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Features Guide</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Features Guide</h2>
               
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
@@ -409,7 +409,7 @@
 
           {:else if selectedSection === 'security'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Privacy & Security</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Privacy & Security</h2>
               
               <div class="bg-green-50 dark:bg-green-900/20 p-6 rounded-xl mb-8">
                 <h3 class="text-xl font-semibold mb-4">🔒 Your Data is Safe</h3>
@@ -461,7 +461,7 @@
 
           {:else if selectedSection === 'faq'}
             <div class="prose prose-slate dark:prose-invert max-w-none">
-              <h2 class="text-3xl font-bold mb-6 font-display text-foreground">Frequently Asked Questions</h2>
+              <h2 class="text-xl font-bold mb-6 font-display text-foreground">Frequently Asked Questions</h2>
               
               <div class="space-y-6">
                 <div class="p-6 bg-muted rounded-xl">

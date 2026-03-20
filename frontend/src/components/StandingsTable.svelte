@@ -116,7 +116,7 @@
           <Trophy class="w-8 h-8 text-white" />
         </div>
         <div>
-          <h2 class="text-2xl font-bold font-display text-foreground">Premier League Table</h2>
+          <h1 class="text-2xl font-bold font-display text-foreground">Premier League Table</h1>
           <p class="text-sm text-muted-foreground">{getSeasonLabel()} Season Standings</p>
         </div>
       </div>
