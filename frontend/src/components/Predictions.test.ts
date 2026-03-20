@@ -149,7 +149,7 @@ vi.mock('lucide-svelte', () => {
   return {
     TrendingUp: stub, Target: stub, Users: stub, BarChart3: stub,
     Calculator: stub, Package: stub, ChevronDown: stub, ChevronUp: stub,
-    FlaskConical: stub
+    FlaskConical: stub, Sparkles: stub, Loader2: stub, CheckCircle2: stub, XCircle: stub
   };
 });
 
@@ -247,7 +247,7 @@ describe('Predictions Component', () => {
     expect(screen.getByText('Failed to load matches. Please try again.')).toBeInTheDocument();
   });
 
-  it('should show message when all matches in gameweek are completed', async () => {
+  it('should show completed matches with actual score and no-prediction message', async () => {
     const pastMatch = makeMatch({
       matchday: 20,
       date: new Date(Date.now() - 86400000).toISOString(),
@@ -256,12 +256,91 @@ describe('Predictions Component', () => {
       away_goals: 1
     });
     vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([pastMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([]);
 
     const { component } = render(Predictions);
     await (component as any).loadGameweekMatches(20);
     await act();
 
-    expect(screen.getByText(/All matches in this gameweek have already been played/)).toBeInTheDocument();
+    // Completed matches should now be shown (not hidden behind an error message)
+    expect(screen.getByText('Arsenal')).toBeInTheDocument();
+    expect(screen.getByText('Liverpool')).toBeInTheDocument();
+    // Actual score should be displayed
+    expect(screen.getByTestId('actual-score')).toHaveTextContent('2-1');
+    expect(screen.getByText('Full Time')).toBeInTheDocument();
+    // Without a stored prediction, shows "no prediction made"
+    expect(screen.getByText(/no prediction made/)).toBeInTheDocument();
+  });
+
+  it('should show correct indicator for a correctly predicted completed match', async () => {
+    const pastMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() - 86400000).toISOString(),
+      result: 'H',
+      home_goals: 2,
+      away_goals: 1
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([pastMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_1',
+      matchId: pastMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.72,
+      actualResult: 'H',
+      actualHomeGoals: 2,
+      actualAwayGoals: 1,
+      isCorrect: true,
+      timestamp: new Date().toISOString(),
+      matchDate: pastMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    expect(screen.getByTestId('result-correct')).toBeInTheDocument();
+    expect(screen.getByTestId('result-verdict')).toHaveTextContent('Correct prediction');
+  });
+
+  it('should show incorrect indicator for a wrongly predicted completed match', async () => {
+    const pastMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() - 86400000).toISOString(),
+      result: 'A',
+      home_goals: 0,
+      away_goals: 2
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([pastMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_2',
+      matchId: pastMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.72,
+      actualResult: 'A',
+      actualHomeGoals: 0,
+      actualAwayGoals: 2,
+      isCorrect: false,
+      timestamp: new Date().toISOString(),
+      matchDate: pastMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    expect(screen.getByTestId('result-incorrect')).toBeInTheDocument();
+    expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Incorrect/);
+    expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Away Win/);
   });
 
   it('should filter matches by gameweek number', async () => {

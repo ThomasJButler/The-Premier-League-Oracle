@@ -72,7 +72,7 @@ interface H2HAnalysis {
  * Used by combineModels() for computation and returned in predictions for transparency.
  * If you change these, the actual model behaviour AND reported weights stay in sync.
  */
-const MODEL_WEIGHTS = {
+export const MODEL_WEIGHTS = {
   elo: 0.25,
   poisson: 0.30,
   form: 0.20,

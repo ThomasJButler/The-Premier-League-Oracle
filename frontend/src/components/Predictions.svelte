@@ -12,7 +12,7 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2 } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2, CheckCircle2, XCircle } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
@@ -20,7 +20,7 @@
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
 
-  let predictions: Array<Match & { 
+  let predictions: Array<Match & {
     prediction?: Prediction;
     detailedAnalysis?: {
       predictedScore: string;
@@ -34,6 +34,7 @@
     };
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
+    storedResult?: boolean; // true = correct, false = incorrect, undefined = pending/unsettled
   }> = [];
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
@@ -150,34 +151,65 @@
     aiAnalyses = new Map();
     aiAnalysisLoading = new Set();
     aiAnalysisErrors = new Map();
-    
+
     try {
       // Get all matches for the season
       const allMatches = await dataService.getCurrentSeasonMatches();
-      
+
       // Filter for selected gameweek using the matchday field from the API
       const gameweekMatches = allMatches.filter(m => m.matchday === gameweek);
-      
-      // Filter to only show future matches (after current date/time)
-      const now = new Date();
-      const futureMatches = gameweekMatches.filter(match => {
-        const matchDate = new Date(match.date);
-        return matchDate > now || !match.result; // Show future matches or matches without results
-      });
-      
-      // If no future matches in this gameweek, show a message
-      if (futureMatches.length === 0 && gameweekMatches.length > 0) {
-        error = 'All matches in this gameweek have already been played. Please select a future gameweek.';
+
+      if (gameweekMatches.length === 0) {
+        error = 'No matches found for this gameweek.';
         loading = false;
         return;
       }
-      
-      // Initialize matches with pending status
-      predictions = futureMatches.map(match => ({
-        ...match,
-        predictionStatus: 'pending' as const
-      }));
-      
+
+      // Show ALL matches in the gameweek — both upcoming and completed
+      // For completed matches with stored predictions, reconstruct the prediction display
+      predictions = gameweekMatches.map(match => {
+        const storedPreds = predictionTracker.getMatchPredictions(match.id);
+        // Use the most recent stored prediction for this match (if any)
+        const stored = storedPreds.length > 0
+          ? storedPreds.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+          : null;
+
+        if (stored) {
+          // Reconstruct prediction card data from the stored prediction
+          return {
+            ...match,
+            prediction: {
+              predicted_result: stored.predictedResult,
+              confidence_score: stored.confidence,
+              predicted_home_goals: stored.predictedHomeGoals,
+              predicted_away_goals: stored.predictedAwayGoals,
+              prediction_date: stored.timestamp,
+              created_at: stored.timestamp,
+              id: stored.id,
+              match_id: match.id
+            },
+            detailedAnalysis: {
+              predictedScore: `${stored.predictedHomeGoals}-${stored.predictedAwayGoals}`,
+              keyFactors: [] as string[],
+              confidence: stored.confidence * 100,
+              homeForm: '-',
+              awayForm: '-',
+              h2hRecord: '-',
+              poissonProbs: { homeWin: 0, draw: 0, awayWin: 0 },
+              recommendedStake: 0
+            },
+            predictionStatus: 'complete' as const,
+            storedResult: stored.isCorrect
+          };
+        }
+
+        // No stored prediction — show as pending (ready for prediction generation)
+        return {
+          ...match,
+          predictionStatus: 'pending' as const
+        };
+      });
+
       // Load full accuracy breakdown from PredictionTracker
       const fullStats = predictionTracker.getAccuracyStats(90);
       if (fullStats.totalPredictions > 0) {
@@ -191,7 +223,7 @@
         const correct10 = recent10.filter(p => p.isCorrect).length;
         rollingLast10Accuracy = (correct10 / recent10.length) * 100;
       }
-      
+
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
       // Error loading predictions
@@ -631,15 +663,28 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {#each predictions as prediction, i (prediction.id)}
         <div class="flip-card relative" style="animation-delay: {i * 50}ms">
-          <!-- Status Indicator Overlay -->
-          {#if prediction.predictionStatus === 'processing'}
+          <!-- Result Indicator — shows whether the prediction was correct after match finishes -->
+          {#if prediction.result && prediction.storedResult === true}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none" data-testid="result-correct">
+              <div class="bg-green-500 text-white rounded-full p-1.5 animate-scale-in shadow-lg" title="Prediction correct">
+                <CheckCircle2 class="w-5 h-5" />
+              </div>
+            </div>
+          {:else if prediction.result && prediction.storedResult === false}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none" data-testid="result-incorrect">
+              <div class="bg-red-500 text-white rounded-full p-1.5 animate-scale-in shadow-lg" title="Prediction incorrect">
+                <XCircle class="w-5 h-5" />
+              </div>
+            </div>
+          <!-- Status Indicator Overlay — shows prediction generation progress -->
+          {:else if prediction.predictionStatus === 'processing'}
             <div class="absolute inset-0 bg-blue-500/10 rounded-lg z-10 flex items-center justify-center pointer-events-none">
               <div class="bg-card rounded-lg p-3 shadow-lg flex items-center gap-2">
                 <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-sm font-medium">Analyzing...</span>
+                <span class="text-sm font-medium">Analysing...</span>
               </div>
             </div>
-          {:else if prediction.predictionStatus === 'complete'}
+          {:else if prediction.predictionStatus === 'complete' && !prediction.result}
             <div class="absolute top-2 right-2 z-10 pointer-events-none">
               <div class="bg-green-500 text-white rounded-full p-1 animate-scale-in">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -659,7 +704,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" aria-hidden={flippedCards.has(prediction.id)}>
+            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -686,11 +731,25 @@
                     {/if}
                   </div>
                   <div class="text-center">
-                    <span class="text-xl font-bold text-muted-foreground">vs</span>
-                    {#if prediction.detailedAnalysis}
-                      <div class="text-2xl font-bold text-primary mt-1">
-                        {prediction.detailedAnalysis.predictedScore}
+                    {#if prediction.result && prediction.home_goals !== null && prediction.away_goals !== null}
+                      <!-- Completed match: show actual score prominently, predicted score smaller -->
+                      <div class="text-2xl font-bold text-foreground" data-testid="actual-score">
+                        {prediction.home_goals}-{prediction.away_goals}
                       </div>
+                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Full Time</div>
+                      {#if prediction.detailedAnalysis}
+                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                          Predicted: {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
+                    {:else}
+                      <!-- Upcoming match: show predicted score -->
+                      <span class="text-xl font-bold text-muted-foreground">vs</span>
+                      {#if prediction.detailedAnalysis}
+                        <div class="text-2xl font-bold text-primary mt-1">
+                          {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
                     {/if}
                   </div>
                   <div class="flex flex-col items-center w-1/3">
@@ -728,6 +787,22 @@
                 </div>
               {/if}
 
+              <!-- Result verdict banner for settled matches with predictions -->
+              {#if prediction.result && prediction.prediction}
+                <div
+                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
+                  data-testid="result-verdict"
+                >
+                  {#if prediction.storedResult === true}
+                    Correct prediction
+                  {:else if prediction.storedResult === false}
+                    Incorrect — actual result: {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
+                  {:else}
+                    Awaiting result
+                  {/if}
+                </div>
+              {/if}
+
               {#if prediction.prediction && prediction.detailedAnalysis}
                 <Button
                   variant="outline"
@@ -738,8 +813,13 @@
                   tabindex={flippedCards.has(prediction.id) ? -1 : 0}
                 >
                   <Calculator class="w-4 h-4" />
-                  Tap for Analysis
+                  {prediction.result ? 'View Analysis' : 'Tap for Analysis'}
                 </Button>
+              {:else if prediction.result}
+                <!-- Completed match with no prediction — show actual result only -->
+                <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
+                  {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'} — no prediction made
+                </div>
               {:else}
                 <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
                   Click "Predict Gameweek" to generate analysis
