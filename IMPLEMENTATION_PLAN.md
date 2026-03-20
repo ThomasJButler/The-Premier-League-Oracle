@@ -94,6 +94,31 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
 - [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
 
+### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
+
+**Dashboard first impression:**
+- [ ] **Empty state design** — Replace "0.0%", "£0.00", "0" stat cards with welcoming onboarding content when no predictions exist yet. Show a call-to-action ("Generate your first prediction") instead of zeroes. First impressions matter for conversion
+- [ ] **Dashboard hero section** — Add a featured upcoming match or "match of the day" at the top of the dashboard instead of jumping straight into empty stats. Pull from next fixture data
+- [ ] **Prediction Accuracy Trend chart** — Currently shows an empty chart on first load. Show a placeholder illustration or hide the section until data exists
+
+**Prediction cards:**
+- [ ] **Richer match cards** — The MCI vs ARS card is sparse. Add team crests, form indicators (WWDLW dots), league position badges, and the model's confidence bar inline. Make each card tell a story at a glance
+- [ ] **Prediction result indicators** — After a match finishes, show whether the prediction was correct/wrong with a visual indicator (green tick / red cross) directly on the card
+
+**Standings table:**
+- [ ] **Zone colouring** — Add Champions League (blue), Europa League (orange), relegation (red) zone background colours to the standings table rows. Standard in every football app, users expect it
+- [ ] **Form column** — Show last 5 results as coloured dots (green W, grey D, red L) in the standings table. The `form` field from the API contains this data (e.g., "W,W,D,L,W")
+- [ ] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek
+
+**Live Matches:**
+- [ ] **Match timeline** — For in-play matches, show a simple progress bar (0-90 mins) with goal indicators at the minute they were scored. Creates visual drama
+- [ ] **Score animation** — Animate score changes when a goal is scored during polling updates
+
+**General UI polish:**
+- [ ] **Loading states** — Replace generic spinners with skeleton screens that match the layout of the content they're loading (already done for Season Stats — extend to other pages)
+- [ ] **Micro-interactions** — Add subtle hover effects, card press states, and transition animations between views for a more premium feel
+- [ ] **Typography hierarchy** — Review font sizes across pages for consistency. Dashboard headers vs card labels vs stat values should have a clear visual hierarchy
+
 ### P7h. RAG Intelligence (Medium Priority)
 
 - [ ] **Player data enrichment** — Query Football-Data.org free API for player data (`/teams/{id}/`, `/competitions/PL/scorers`) at backend startup. Inject into RAG context so player-specific questions get grounded answers instead of generic AI knowledge
