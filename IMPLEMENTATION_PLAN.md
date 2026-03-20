@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 31/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline |
+| P7 Beyond MVP | 35/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -61,10 +61,10 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 ### P7c. Seasonal Maintenance (Required Annually)
 
-- [ ] **SEED_RATINGS update** — `advancedPredictions.ts` contains 20 current PL teams. On promotion/relegation, add new teams and remove relegated ones. Mitigated by historical warm-up but still needed for clean initialisation
-- [ ] **teamColors update** — `Settings.svelte` hardcodes 20 team hex colours. Needs manual update on promotion/relegation
-- [ ] **ALIASES_MAP update** — `advancedPredictions.ts` contains ~45 team name aliases. New promoted teams may need aliases (e.g., "Burnley" → "Burnley FC")
-- [ ] **CSV_TO_API dict update** — `free_tier_features.py` maps 28 teams. Add promoted teams' canonical names
+- [x] **SEED_RATINGS update** — 20 current PL teams correctly seeded. Added comprehensive 6-step seasonal update checklist in code comments documenting the promotion/relegation process (SEED_RATINGS → ALIASES → teamColors → CSV_TO_API)
+- [x] **teamColors update** — Settings.svelte and teamLogos.ts both cover all 20 current PL teams. Added comment noting `data-team` CSS selector coupling in app.css
+- [x] **ALIASES_MAP update** — Expanded to 48 entries (from ~45): added `"brighton and hove albion"`, `"nott'm forest"`, `"sheffield utd"` aliases. Already covers likely promoted teams (Leeds, Sunderland, Luton, Burnley, Sheffield United)
+- [x] **CSV_TO_API dict update** — Fixed Brighton API name from `"Brighton and Hove Albion FC"` (wrong) to `"Brighton & Hove Albion FC"` (matches Football-Data.org canonical name). Added `"Brighton & Hove Albion"` reverse alias
 
 ### P7d. Frontend Enhancements (Low Impact, Polish)
 

@@ -2,6 +2,15 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7c: Seasonal Maintenance
+
+### Improved: Team name maps and seasonal update process (P7c — all 4 items complete)
+- **Bug fix:** Brighton API name in `CSV_TO_API` was `"Brighton and Hove Albion FC"` (with "and") but Football-Data.org uses `"Brighton & Hove Albion FC"` (with "&") — could cause lookup failures during team normalisation
+- Added `"Brighton & Hove Albion"` reverse alias in backend `_ALIASES`
+- Expanded frontend ELO `ALIASES` from ~45 to 48 entries: added `"brighton and hove albion"`, `"nott'm forest"`, `"sheffield utd"` for broader name matching across data sources
+- Added comprehensive 6-step seasonal update checklist in `SEED_RATINGS` comment documenting the promotion/relegation process
+- Improved `teamColors` comment in Settings.svelte noting coupling with `[data-team]` CSS selectors in app.css
+
 ## 20 March 2026 — P7f: Season Timeline
 
 ### Added: Interactive Season Timeline page (P7f — all 7 items complete)
