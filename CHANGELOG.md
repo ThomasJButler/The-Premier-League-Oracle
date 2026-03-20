@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Centralise Prediction Model Constants (P7k)
+
+### Changed: Extract magic numbers to named constants with documented derivations
+- New constants in `constants.ts`: ~30 prediction parameters extracted from `optimizedPredictions.ts`, grouped by domain:
+  - **ELO draw formula**: `ELO_DRAW_BASE_RATE` (0.265 = 2000-2024 PL average), `ELO_DRAW_SCALE` (600), bounds [0.10, 0.35]
+  - **Poisson bounds**: lambda clamp [0.3, 4.5], fallback averages (home 1.5, away 1.2, league 1.35)
+  - **Form analysis**: recency weights [0.35, 0.25, 0.20, 0.12, 0.08], draw weight 0.33, form-derived draw probability params
+  - **Confidence**: bounds [0.25, 0.95], boost/penalty thresholds, model disagreement penalty (0.08)
+  - **Standings**: position step 0.025
+  - **ML backend**: agreement boost/disagreement penalty caps and factors
+  - **Referee**: adjustment bounds (±3%) and noise threshold (0.5%)
+  - **Season**: `PREMIER_LEAGUE_GAMEWEEKS` (38)
+- `Predictions.svelte` and `SeasonTimeline.svelte`: replaced hardcoded `38` with `PREMIER_LEAGUE_GAMEWEEKS` import
+- **Why:** 15+ magic numbers scattered across `optimizedPredictions.ts` made tuning opaque. Now all parameters are in one file with comments explaining their derivation. Resolves 6 Active Stubs items.
+- **Pure refactor**: 0 behavioural changes, 561/561 tests pass without modifications
+
+---
+
 ## 20 March 2026 — Apply Backtest-Derived Ensemble Weights (P7j)
 
 ### Added: Dynamic ensemble weight persistence

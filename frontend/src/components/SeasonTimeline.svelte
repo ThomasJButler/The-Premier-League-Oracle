@@ -17,6 +17,7 @@
   import { dataService } from '../services/dataService';
   import type { Match, Standing } from '../types';
   import { getTeamColor } from '../utils/teamLogos';
+  import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
   import { Card } from '$lib/components/ui/card';
   import { Badge } from '$lib/components/ui/badge';
   import { Trophy, TrendingUp, AlertTriangle, Flame, Target, Calendar, ChevronDown, ChevronUp, Zap, Shield, ArrowDownUp } from 'lucide-svelte';
@@ -43,7 +44,7 @@
   let keyResults: KeyResult[] = [];
   let narrativeEntries: NarrativeEntry[] = [];
   let currentMatchday = 0;
-  let totalMatchdays = 38;
+  let totalMatchdays = PREMIER_LEAGUE_GAMEWEEKS;
 
   // View controls
   let showAllTitleTeams = false;

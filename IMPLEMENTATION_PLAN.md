@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 44/46 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
+| P7 Beyond MVP | 46/48 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
 
 **Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -126,6 +126,11 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 ### P7j. Ensemble Weight Persistence (New Feature)
 
 - [x] **Apply backtest-derived weights** — `getActiveModelWeights()`, `saveModelWeights()`, `resetModelWeights()`, `hasCustomWeights()` in `optimizedPredictions.ts`. Users can apply optimal weights from the backtest panel in Predictions.svelte, persisted to localStorage. Dashboard "How We Predict" reads active weights dynamically. 10 new tests. 561 total Vitest tests (34 files)
+
+### P7k. Prediction Model Constants Extraction (Code Quality)
+
+- [x] **Centralise magic numbers** — Extracted ~30 prediction model parameters from `optimizedPredictions.ts` to named, documented constants in `constants.ts`. Covers ELO draw formula (base rate, scale, bounds), Poisson lambda bounds and fallbacks, form recency weights and draw parameters, confidence thresholds, standings position step, ML adjustment caps, and referee adjustment bounds. All derivations documented (e.g. 0.265 = 2000-2024 PL average draw rate)
+- [x] **PREMIER_LEAGUE_GAMEWEEKS constant** — Replaces hardcoded `38` in `Predictions.svelte` and `SeasonTimeline.svelte`. Single source of truth for the matchday count
 
 ---
 
@@ -359,17 +364,14 @@ The three security files (`auth.py`, `secrets.py`, `validators.py`) were deleted
 | `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
 | `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) | Low |
 | `optimizedPredictions.ts` | `MODEL_WEIGHTS` — users can now apply backtest-derived weights via Predictions panel (persisted to localStorage) | Resolved |
-| `optimizedPredictions.ts` | `eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600)` — base 26.5% and scale 600 hardcoded | Low |
-| `optimizedPredictions.ts` | Form weight array `[0.35, 0.25, 0.20, 0.12, 0.08]` — arbitrary decay | Low |
-| `optimizedPredictions.ts` | Confidence boost/penalty thresholds and values — all hardcoded | Low |
+| `optimizedPredictions.ts` | ELO draw, form weights, confidence, standings step — all extracted to named constants in `constants.ts` with documented derivations | Resolved |
 | `optimizedPredictions.ts` | Fallback prediction returns static `{result: 'D', confidence: 0.33, goals: 1-1, odds: 3.0/3.3/3.0}` | Low |
-| `optimizedPredictions.ts` | `getStandingsProbabilities` — `0.025` per position-difference step is arbitrary | Low |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | Low |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | Low |
 | `betBuilder.ts` | `ftBias = 0.4` — HT-FT correlation arbitrarily set at 40% | Low |
 | `betBuilder.ts` | `homeCleanSheet` prediction threshold 0.3 — no empirical basis | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated margin | Low |
-| `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
+| `Predictions.svelte` | `totalGameweeks` — now uses `PREMIER_LEAGUE_GAMEWEEKS` from `constants.ts` | Resolved |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
 
 ### Backend

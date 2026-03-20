@@ -4,7 +4,21 @@ import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
-import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE } from './constants';
+import {
+  VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE,
+  POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX, POISSON_FALLBACK_HOME_GOALS,
+  POISSON_FALLBACK_AWAY_GOALS, POISSON_FALLBACK_AVG_GOALS,
+  ELO_DRAW_BASE_RATE, ELO_DRAW_SCALE, ELO_DRAW_MIN, ELO_DRAW_MAX,
+  FORM_RECENCY_WEIGHTS, FORM_DRAW_WEIGHT, FORM_SCORE_MIN, FORM_SCORE_MAX,
+  FORM_EXCELLENT_THRESHOLD, FORM_POOR_THRESHOLD,
+  FORM_DRAW_BASE, FORM_DRAW_SENSITIVITY, FORM_DRAW_MIN, FORM_DRAW_MAX,
+  STANDINGS_POSITION_STEP,
+  CONFIDENCE_MIN, CONFIDENCE_MAX, CONFIDENCE_BOOST_THRESHOLD, CONFIDENCE_BOOST_AMOUNT,
+  CONFIDENCE_PENALTY_THRESHOLD, CONFIDENCE_PENALTY_AMOUNT, MODEL_DISAGREEMENT_PENALTY,
+  ML_AGREEMENT_BOOST_MAX, ML_AGREEMENT_BOOST_FACTOR,
+  ML_DISAGREEMENT_PENALTY_MAX, ML_DISAGREEMENT_PENALTY_FACTOR,
+  REFEREE_ADJUSTMENT_MAX, REFEREE_ADJUSTMENT_THRESHOLD,
+} from './constants';
 
 export interface ModelOutputs {
   elo: { home: number; draw: number; away: number };
@@ -167,7 +181,7 @@ export class OptimizedPredictor {
     const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
 
     if (completed.length === 0) {
-      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
+      return { avgHomeGoals: POISSON_FALLBACK_HOME_GOALS, avgAwayGoals: POISSON_FALLBACK_AWAY_GOALS, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
     }
 
     // League totals
@@ -253,21 +267,20 @@ export class OptimizedPredictor {
       const lambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
       const lambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
 
-      // Clamp to sensible range (0.3 – 4.5 goals)
       return {
-        lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
-        lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+        lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
+        lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
       };
     }
 
     // Fallback: derive from overall stats (no home/away split available)
-    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || 1.35;
+    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
     const lambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
     const lambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
 
     return {
-      lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
-      lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+      lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
+      lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
     };
   }
 
@@ -359,8 +372,8 @@ export class OptimizedPredictor {
       // Apply fatigue: tired teams score less (lambda × fatigue) and concede
       // more (opponent lambda ÷ fatigue). Multipliers are in [0.85, 1.0] so
       // the adjustment is modest but data-driven per spec 01.
-      const homeGoalsExpected = Math.max(0.3, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
-      const awayGoalsExpected = Math.max(0.3, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
+      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
+      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
@@ -391,8 +404,8 @@ export class OptimizedPredictor {
       // 9. Combine all models with weighted approach
       // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)
       const ratingDiffAbs = Math.abs(homeElo - awayElo);
-      const eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600);
-      const eloDrawClamped = Math.max(0.10, Math.min(0.35, eloDrawProb));
+      const eloDrawProb = ELO_DRAW_BASE_RATE * Math.exp(-ratingDiffAbs / ELO_DRAW_SCALE);
+      const eloDrawClamped = Math.max(ELO_DRAW_MIN, Math.min(ELO_DRAW_MAX, eloDrawProb));
       const eloHomeProb = eloWinProbability * (1 - eloDrawClamped);
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
 
@@ -416,10 +429,9 @@ export class OptimizedPredictor {
         try {
           const refereeStats = await RefereeAnalyzer.getRefereeStats(referee);
           const homeWinBias = refereeStats.homeWinRate - leagueHomeWinRate;
-          // Clamp adjustment to ±3%
-          const adjustment = Math.max(-0.03, Math.min(0.03, homeWinBias));
+          const adjustment = Math.max(-REFEREE_ADJUSTMENT_MAX, Math.min(REFEREE_ADJUSTMENT_MAX, homeWinBias));
 
-          if (Math.abs(adjustment) > 0.005) {
+          if (Math.abs(adjustment) > REFEREE_ADJUSTMENT_THRESHOLD) {
             adjustedProbabilities.homeWin += adjustment;
             adjustedProbabilities.awayWin -= adjustment;
 
@@ -463,12 +475,12 @@ export class OptimizedPredictor {
 
         if (mlAgreesWithEnsemble) {
           // Boost confidence — both the TS ensemble and Python ML agree
-          const boost = Math.min(0.08, mlPrediction.confidence * 0.1);
+          const boost = Math.min(ML_AGREEMENT_BOOST_MAX, mlPrediction.confidence * ML_AGREEMENT_BOOST_FACTOR);
           mlAdjustedConfidence += boost;
           insights.push(`ML backend confirms ${prediction.result === 'H' ? 'home win' : prediction.result === 'A' ? 'away win' : 'draw'} (${(mlPrediction.confidence * 100).toFixed(0)}% confidence) — boosted`);
         } else {
           // Penalise confidence — models disagree
-          const penalty = Math.min(0.10, (1 - mlPrediction.confidence) * 0.12);
+          const penalty = Math.min(ML_DISAGREEMENT_PENALTY_MAX, (1 - mlPrediction.confidence) * ML_DISAGREEMENT_PENALTY_FACTOR);
           mlAdjustedConfidence -= penalty;
           insights.push(`ML backend predicts ${mlTopOutcome === 'H' ? 'home win' : mlTopOutcome === 'A' ? 'away win' : 'draw'} instead — lower confidence`);
         }
@@ -481,7 +493,7 @@ export class OptimizedPredictor {
       const bandFactor = mlAdjustedConfidence > 0.7 ? calibration.highBand
         : mlAdjustedConfidence >= 0.5 ? calibration.mediumBand
         : calibration.lowBand;
-      const confidence = Math.max(0.25, Math.min(0.95, mlAdjustedConfidence * bandFactor));
+      const confidence = Math.max(CONFIDENCE_MIN, Math.min(CONFIDENCE_MAX, mlAdjustedConfidence * bandFactor));
 
       if (modelsDisagree) {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
@@ -497,15 +509,15 @@ export class OptimizedPredictor {
       );
 
       // Add form insights
-      if (formAnalysis.homeFormScore > 0.7) {
+      if (formAnalysis.homeFormScore > FORM_EXCELLENT_THRESHOLD) {
         insights.push(`${homeTeam} in excellent form (last 5: ${formAnalysis.homeFormString})`);
-      } else if (formAnalysis.homeFormScore < 0.3) {
+      } else if (formAnalysis.homeFormScore < FORM_POOR_THRESHOLD) {
         insights.push(`${homeTeam} struggling with form (last 5: ${formAnalysis.homeFormString})`);
       }
 
-      if (formAnalysis.awayFormScore > 0.7) {
+      if (formAnalysis.awayFormScore > FORM_EXCELLENT_THRESHOLD) {
         insights.push(`${awayTeam} in excellent form (last 5: ${formAnalysis.awayFormString})`);
-      } else if (formAnalysis.awayFormScore < 0.3) {
+      } else if (formAnalysis.awayFormScore < FORM_POOR_THRESHOLD) {
         insights.push(`${awayTeam} struggling with form (last 5: ${formAnalysis.awayFormString})`);
       }
 
@@ -629,14 +641,13 @@ export class OptimizedPredictor {
       }
       
       let score = 0;
-      const weights = [0.35, 0.25, 0.20, 0.12, 0.08]; // Recent matches weighted more
-      
+
       form.slice(0, 5).forEach((match, idx) => {
-        if (match.result === 'W') score += 1 * weights[idx];
-        else if (match.result === 'D') score += 0.33 * weights[idx];
+        if (match.result === 'W') score += 1 * FORM_RECENCY_WEIGHTS[idx];
+        else if (match.result === 'D') score += FORM_DRAW_WEIGHT * FORM_RECENCY_WEIGHTS[idx];
       });
-      
-      return Math.max(0.1, Math.min(0.9, score)); // Ensure reasonable bounds
+
+      return Math.max(FORM_SCORE_MIN, Math.min(FORM_SCORE_MAX, score));
     };
 
     const homeFormScore = calculateFormScore(homeForm);
@@ -656,7 +667,7 @@ export class OptimizedPredictor {
     
     // Add variance based on form difference
     const formDiff = Math.abs(homeMomentum - awayMomentum);
-    const drawProb = Math.max(0.15, Math.min(0.35, 0.25 - formDiff * 0.3));
+    const drawProb = Math.max(FORM_DRAW_MIN, Math.min(FORM_DRAW_MAX, FORM_DRAW_BASE - formDiff * FORM_DRAW_SENSITIVITY));
     
     // Calculate win probabilities
     const totalMomentum = homeMomentum + awayMomentum;
@@ -778,10 +789,10 @@ export class OptimizedPredictor {
     const positionDiff = awayPosition - homePosition;
     
     // Convert position difference to probability
-    let homeWinProb = 0.5 + (positionDiff * 0.025); // Better position = higher probability
+    let homeWinProb = 0.5 + (positionDiff * STANDINGS_POSITION_STEP);
     homeWinProb = Math.max(0.15, Math.min(0.85, homeWinProb));
     
-    let awayWinProb = 0.5 - (positionDiff * 0.025);
+    let awayWinProb = 0.5 - (positionDiff * STANDINGS_POSITION_STEP);
     awayWinProb = Math.max(0.10, Math.min(0.70, awayWinProb));
     
     const remaining = 1 - homeWinProb - awayWinProb;
@@ -896,23 +907,22 @@ export class OptimizedPredictor {
     let confidence = maxProb;
 
     // Boost confidence if there's a clear favourite
-    if (probDifference > 0.2) {
-      confidence += 0.1;
-    } else if (probDifference < 0.1) {
-      confidence -= 0.1;
+    if (probDifference > CONFIDENCE_BOOST_THRESHOLD) {
+      confidence += CONFIDENCE_BOOST_AMOUNT;
+    } else if (probDifference < CONFIDENCE_PENALTY_THRESHOLD) {
+      confidence -= CONFIDENCE_PENALTY_AMOUNT;
     }
 
     // Penalise when key models (ELO & Poisson) disagree on the outcome
     if (modelsDisagree) {
-      confidence -= 0.08;
+      confidence -= MODEL_DISAGREEMENT_PENALTY;
     }
 
     // Apply fatigue adjustment — uncertain when teams are tired
     const avgFatigue = (fatigueFactor.homeFatigue + fatigueFactor.awayFatigue) / 2;
     confidence *= avgFatigue;
 
-    // Ensure confidence is within bounds
-    return Math.max(0.25, Math.min(0.95, confidence));
+    return Math.max(CONFIDENCE_MIN, Math.min(CONFIDENCE_MAX, confidence));
   }
 
   private static predictGoals(

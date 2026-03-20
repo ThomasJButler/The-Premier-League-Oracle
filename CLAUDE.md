@@ -50,7 +50,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `betBuilder.ts` - Multi-market prediction generator
   - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised)
   - `backtest.ts` - Ensemble backtesting engine (BacktestRunner, WeightOptimiser)
-  - `constants.ts` - Shared constants (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`)
+  - `constants.ts` - Shared constants and prediction model configuration. League defaults (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`, `PREMIER_LEAGUE_GAMEWEEKS`), ELO draw formula params, Poisson bounds, form recency weights, confidence thresholds, standings step, ML/referee adjustment caps. All documented with derivations
   - `utils.ts` - Shared utilities (`cn()`, `focusTrap()`, `getSeasonYear()`, `getSeasonLabel()`)
 - `services/` - Data and business logic:
   - `api/footballData.ts` - Football-Data.org API client with rate limiting + request queue

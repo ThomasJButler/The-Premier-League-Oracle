@@ -4,6 +4,7 @@
   import { predictionTracker } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
   import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
+  import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
@@ -52,7 +53,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  const totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
+  const totalGameweeks = PREMIER_LEAGUE_GAMEWEEKS;
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;
