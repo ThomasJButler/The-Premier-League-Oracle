@@ -2,6 +2,14 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7b: Enhanced AI Match Insights
+
+### Improved: Richer AI analysis prompts (P7b)
+- `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields
+- AI prompt now includes **Poisson model probabilities** (Home/Draw/Away percentages) and **H2H record** when available
+- Prompt refactored from monolithic template to **section-based builder** — conditional sections only appear when enrichment data exists
+- `Predictions.svelte` passes `detailedAnalysis.h2hRecord` and `detailedAnalysis.poissonProbs` to the AI analysis input
+
 ## 20 March 2026 — P7b: Configurable AI Model
 
 ### Added: AI model selector in Settings (P7b)

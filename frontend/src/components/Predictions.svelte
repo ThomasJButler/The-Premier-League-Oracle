@@ -89,6 +89,9 @@
       homeForm: detail.homeForm,
       awayForm: detail.awayForm,
       insights: detail.keyFactors,
+      // P7b enrichment — pass H2H record and Poisson model to the AI prompt
+      h2hRecord: detail.h2hRecord,
+      poissonProbs: detail.poissonProbs,
     };
 
     try {

@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 22/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 23/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -57,7 +57,7 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 - [x] **Make AI model configurable** — Extracted hardcoded `gpt-4o-mini` from `api/chat.ts`, `vite.config.ts`, and `backend/main.py`. Model resolution: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Settings UI dropdown (4 models) saves preference to localStorage. ChatBot and aiAnalysis both include the saved model in requests. Server-side allowlist prevents arbitrary model injection
 - [ ] **Claude integration** — Add Anthropic API as alternative to OpenAI for match analysis and Oracle Chat. Would require backend `rag.py` to support multiple providers
-- [ ] **AI-powered match insights** — Enhance `aiAnalysis.ts` to generate pre-match tactical analysis using form data, H2H stats, and ELO differentials as structured context
+- [x] **AI-powered match insights** — Enhanced `aiAnalysis.ts` prompt with H2H record and Poisson model probabilities (homeWin/draw/awayWin percentages). `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields. Prompt now uses section-based builder pattern for cleaner conditional enrichment. Predictions.svelte passes the extra data from `detailedAnalysis`
 
 ### P7c. Seasonal Maintenance (Required Annually)
 
