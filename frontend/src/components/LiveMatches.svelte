@@ -97,6 +97,48 @@
     return '';
   }
 
+  /**
+   * Extract a numeric minute from the match for the timeline progress bar.
+   * Falls back to estimating from kickoff time when the API doesn't provide it.
+   */
+  function getNumericMinute(match: Match): number {
+    if (match.minute != null) return match.minute;
+    const liveStatuses = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'];
+    if (liveStatuses.includes(match.status ?? '')) {
+      if (match.status === 'PAUSED') return 45;
+      const kickoff = new Date(match.date).getTime();
+      const elapsed = Math.floor((Date.now() - kickoff) / 60_000);
+      return Math.max(0, Math.min(120, elapsed));
+    }
+    return 0;
+  }
+
+  /**
+   * Calculate match progress as a percentage (0–100).
+   * Normal time maps 0–90' to 0–100%. Half-time clamps at 50%.
+   * Extra time/penalties show as 100% (full bar).
+   */
+  function getMatchProgress(match: Match): number {
+    if (match.status === 'EXTRA_TIME' || match.status === 'PENALTY_SHOOTOUT') return 100;
+    if (match.status === 'PAUSED') return 50;
+    const minute = getNumericMinute(match);
+    return Math.min(100, Math.max(0, (minute / 90) * 100));
+  }
+
+  /**
+   * Return the progress bar colour based on match phase.
+   * First half = green, second half transitions to amber/red for tension.
+   */
+  function getProgressColour(match: Match): string {
+    if (match.status === 'EXTRA_TIME' || match.status === 'PENALTY_SHOOTOUT') {
+      return 'bg-red-500';
+    }
+    const minute = getNumericMinute(match);
+    if (minute <= 45) return 'bg-green-500';
+    if (minute <= 70) return 'bg-amber-500';
+    return 'bg-red-500';
+  }
+
   function getStatusBadge(match: Match): { text: string; class: string } {
     switch (match.status) {
       case 'IN_PLAY':
@@ -277,12 +319,16 @@
               <div class="text-xs text-muted-foreground mt-1">Home</div>
             </div>
 
-            <!-- Score -->
+            <!-- Score (animated on goal) -->
             <div class="text-center">
-              <div class="text-3xl font-bold">
-                <span class="text-primary">{match.home_goals ?? 0}</span>
-                <span class="mx-2 text-muted-foreground">-</span>
-                <span class="text-primary">{match.away_goals ?? 0}</span>
+              <div class="text-3xl font-bold flex items-center justify-center gap-2">
+                {#key match.home_goals}
+                  <span class="text-primary inline-block animate-score-pop">{match.home_goals ?? 0}</span>
+                {/key}
+                <span class="text-muted-foreground">-</span>
+                {#key match.away_goals}
+                  <span class="text-primary inline-block animate-score-pop">{match.away_goals ?? 0}</span>
+                {/key}
               </div>
             </div>
 
@@ -296,9 +342,30 @@
             </div>
           </div>
 
+          <!-- Match Timeline Progress Bar -->
+          <div class="mt-4 pt-3 border-t border-border">
+            <div class="relative" role="progressbar" aria-label="Match progress" aria-valuenow={getNumericMinute(match)} aria-valuemin={0} aria-valuemax={90}>
+              <!-- Track -->
+              <div class="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  class="h-full rounded-full transition-all duration-1000 {getProgressColour(match)}"
+                  style="width: {getMatchProgress(match)}%"
+                ></div>
+              </div>
+              <!-- Half-time marker -->
+              <div class="absolute top-0 left-1/2 -translate-x-px w-0.5 h-1.5 bg-muted-foreground/40 rounded-full"></div>
+              <!-- Time labels -->
+              <div class="flex justify-between mt-1 text-[10px] text-muted-foreground font-mono">
+                <span>0'</span>
+                <span>45'</span>
+                <span>{match.status === 'EXTRA_TIME' || match.status === 'PENALTY_SHOOTOUT' ? '120' : '90'}'</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Half-time score if available -->
           {#if match.first_half_home_goals != null && match.first_half_away_goals != null}
-            <div class="mt-3 pt-3 border-t border-border">
+            <div class="mt-2">
               <div class="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock class="w-4 h-4" />
                 <span>HT: {match.first_half_home_goals} - {match.first_half_away_goals}</span>

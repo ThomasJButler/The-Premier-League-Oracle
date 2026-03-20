@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i: Match Timeline & Score Animation
+
+### Added: Live match timeline progress bar (P7i)
+- In-play matches now show a **progress bar** (0–90' or 0–120' for extra time) beneath the scoreline
+- Colour transitions by phase: **green** (first half) → **amber** (60–70') → **red** (final 20' and extra time)
+- Half-time marker at the 50% point for visual reference
+- `getNumericMinute()` falls back to kickoff-time estimation when the API doesn't provide the `minute` field
+- ARIA `progressbar` role with value attributes for screen readers
+- Time labels show 0', 45', and 90' (or 120' for extra time/penalties)
+
+### Added: Score animation on goal events (P7i)
+- Score digits wrapped in Svelte `{#key}` blocks — each goal triggers a **scale-pop animation** (1.5× → 1×, 0.5s ease-out)
+- `scorePop` keyframe added to `app.css` with `prefers-reduced-motion: reduce` guard
+- Fires automatically when polling detects a score change — no additional state tracking needed
+
+### Housekeeping: Position change arrows already implemented (P7i)
+- `getMovementIcon()` using form-based proxy (3+ wins = up, 0–1 wins = down) was already present in `StandingsTable.svelte` — marked as complete in IMPLEMENTATION_PLAN
+
 ## 20 March 2026 — P7e: Pin Dependencies, Clean Config
 
 ### Fixed: Pin unpinned dependencies (P7e)

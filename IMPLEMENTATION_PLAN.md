@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 15/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 18/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -121,11 +121,11 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 **Standings table:**
 - [x] **Zone colouring** — Champions League (blue), Europa League (orange), Conference League (emerald), relegation (red) zone row backgrounds + border stripes + position badges. All four zones in legend
 - [x] **Form column** — Last 5 results as coloured round dots (green W, grey D, red L) with accessibility labels. Already used `form` field from API
-- [ ] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek. Note: free-tier API doesn't expose per-matchday position history, current implementation uses form-based proxy (3+ wins = up, 0-1 wins = down)
+- [x] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek. Uses form-based proxy (3+ wins = up, 0-1 wins = down) since the free-tier API doesn't expose per-matchday position history. Implemented via `getMovementIcon()` using Lucide ChevronUp/ChevronDown/Minus icons with colour coding
 
 **Live Matches:**
-- [ ] **Match timeline** — For in-play matches, show a simple progress bar (0-90 mins) with goal indicators at the minute they were scored. Creates visual drama
-- [ ] **Score animation** — Animate score changes when a goal is scored during polling updates
+- [x] **Match timeline** — In-play matches now show a progress bar (0–90' or 0–120' for extra time) with half-time marker, colour-coded by phase (green → amber → red). Uses `getNumericMinute()` falling back to kickoff-time estimation when the API doesn't provide `minute`. ARIA progressbar role for accessibility
+- [x] **Score animation** — Score digits wrapped in `{#key}` blocks so they animate with a `scorePop` CSS keyframe (scale 1.5→1, 0.5s ease-out) whenever the value changes between polls. `prefers-reduced-motion` guard disables animation
 
 **General UI polish:**
 - [x] **Loading states** — Replaced generic spinners with content-shaped skeleton screens in all 5 remaining pages: Predictions (3-col card grid), StandingsTable (full table with legend + 10 rows), LiveMatches (stacked match cards with 7-col grid), MatchList (match rows with team/score/status), TopScorers (6-column table with 8 rows). Uses existing `.skeleton` shimmer class from `app.css`

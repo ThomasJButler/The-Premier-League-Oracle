@@ -366,6 +366,23 @@
     @apply text-xs font-medium;
   }
 
+  /* Score pop — brief scale-up when a goal is scored */
+  .animate-score-pop {
+    animation: scorePop 0.5s ease-out;
+  }
+
+  @keyframes scorePop {
+    0% { transform: scale(1.5); opacity: 0.5; }
+    50% { transform: scale(1.05); opacity: 0.95; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-score-pop {
+      animation: none;
+    }
+  }
+
 }
 
 /* ─── ATMOSPHERE & TEXTURE ─── */
