@@ -196,6 +196,10 @@
   }
   
   onMount(async () => {
+    // Populate team list immediately — these names match the CSS
+    // [data-team="..."] selectors in app.css. Update on promotion/relegation.
+    plTeams = Object.keys(teamColors).sort();
+
     // Load saved settings
     const savedFootballDataKey = localStorage.getItem('football_data_api_key');
     
@@ -219,10 +223,11 @@
       lastSync = savedLastSync;
     }
     
-    // Load favourite team
+    // Load favourite team — restore both local state and DOM attribute
     const savedTeam = localStorage.getItem('favourite_team');
     if (savedTeam) {
       favouriteTeam = savedTeam;
+      document.documentElement.dataset.team = savedTeam;
     }
 
     // Load AI analysis settings
@@ -265,16 +270,6 @@
       cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
     }
 
-    // Load team list from current standings (no hardcoded season list)
-    try {
-      const standings = await dataService.getStandings();
-      if (standings.length > 0) {
-        plTeams = standings.map(s => s.team.name).sort();
-      }
-    } catch {
-      // API unavailable — fall back to the static team list from the colour map
-      plTeams = Object.keys(teamColors).sort();
-    }
   });
 </script>
 
