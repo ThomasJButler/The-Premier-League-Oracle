@@ -1,15 +1,16 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 19 March 2026 (full audit confirmed — MVP verified clean)
-Active branch: `v3.0-Development`
+Last updated: 20 March 2026 (second full audit confirmed — MVP still clean)
+Active branch: `v3.0-MVP`
 
 ---
 
-## Project Status: MVP Complete — Verified by Full Audit
+## Project Status: MVP Complete — Verified by Two Full Audits
 
-**Audit date:** 19 March 2026
-**Method:** 6 parallel agents audited all 8 specs, every frontend `lib/` and `services/` file, all backend modules, and every Svelte component. Searched for TODO/FIXME/HACK, stubs, hardcoded values, empty arrays, and mock data.
-**Result:** All P0–P6 items confirmed complete. 0 TODO/FIXME/HACK in production code. All documented stubs verified accurate. No undocumented issues found.
+**Latest audit:** 20 March 2026
+**Method:** 7 parallel agents audited all 8 specs, every frontend `lib/` and `services/` file, all Svelte components, all backend modules, CI/CD configuration, and project config files. Searched for TODO/FIXME/HACK, stubs, hardcoded values, empty arrays, mock data, and redundant files.
+**Result:** All P0–P6 items confirmed complete. 0 TODO/FIXME/HACK in production code. All documented stubs verified accurate. 4 minor housekeeping items added to P7e/P7g. No regressions or undocumented issues found.
+**Previous audit:** 19 March 2026 — identical conclusions (6 agents).
 
 **v3.0 scope (excluding deferred Pro-tier P3a–d):**
 
@@ -24,7 +25,7 @@ Active branch: `v3.0-Development`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 0/20 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 0/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -75,6 +76,9 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 - [ ] **Playwright E2E in CI** — Currently only Vitest runs in CI. Playwright would catch real browser regressions but needs `npx playwright install` and adds ~2min to CI
 - [ ] **Rate-limit persistence** — Backend rate limiter is in-memory only. On horizontal scale (Vercel), each instance has its own counter. Consider Redis-backed rate limiting if abuse becomes an issue
+- [ ] **Pin `openai` in `requirements.txt`** — Only unpinned dependency; could pull in a breaking API change on fresh install. All other packages are version-pinned
+- [ ] **Pin `ruff` version in CI** — `.github/workflows/ci.yml` runs `pip install ruff` with no version constraint. A future ruff release could introduce new lint errors and break CI unexpectedly
+- [ ] **Clean stale ruff exclusions in `pyproject.toml`** — Excludes 7 files deleted or archived in P6c (`app/security/*.py`, `app/models/*.py`, `app/features/advanced_engineering.py`). Harmless but untidy dead configuration
 
 ### P7f. Season Timeline (New Feature)
 
@@ -93,6 +97,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Team theme toggle broken** — Settings page team colour toggle not applying. Dark/light mode works fine; issue is specifically with team-specific colour themes. Investigate `Settings.svelte` team colour handling and CSS variable application
 - [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
 - [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
+- [ ] **Dashboard model weights display** — "How We Predict" section in `Dashboard.svelte` hardcodes weight percentages as display strings (ELO 25%, Poisson 30%, etc.) rather than reading from `optimizedPredictions.ts` `MODEL_WEIGHTS`. Could drift silently if weights are tuned
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
 

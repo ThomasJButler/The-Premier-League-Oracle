@@ -2,6 +2,28 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Second Full Codebase Audit
+
+**Branch:** `v3.0-MVP`
+
+### Confirmed: MVP codebase remains clean
+- 7 parallel agents re-audited all 8 specs, every frontend file (lib, services, components), all backend modules, CI/CD configuration, and project config files
+- All P0–P6 items confirmed complete — 99/99 active acceptance criteria still met
+- 0 TODO/FIXME/HACK in production code (reconfirmed)
+- All documented stubs in IMPLEMENTATION_PLAN.md verified accurate
+- No regressions since previous audit (19 March 2026)
+
+### Added: 4 new housekeeping items to P7
+- P7e: Pin `openai` version in `requirements.txt` (only unpinned dependency)
+- P7e: Pin `ruff` version in CI (unpinned `pip install ruff` could break CI)
+- P7e: Clean stale ruff exclusions in `pyproject.toml` (7 deleted/archived file paths)
+- P7g: Dashboard "How We Predict" weights are display strings, not read from `MODEL_WEIGHTS` constant
+
+### Fixed: P7 item count
+- Status table said "0/20" but 46 items exist after P7f–P7i additions — corrected to 0/46
+
+---
+
 ## 19 March 2026 — Full Codebase Audit & P7 Planning
 
 **Branch:** `v3.0-Development`

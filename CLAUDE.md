@@ -99,9 +99,9 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ## Current Focus — P7 Beyond MVP
 
-**P0–P6:** ALL DONE — MVP shipped and verified by full codebase audit (19 March 2026).
+**P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 0/46 items):
 
 | Item | Description | Priority |
 |------|-------------|----------|
@@ -109,9 +109,13 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
 | P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
 | P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
-| P7e | Infrastructure — Playwright in CI, rate-limit persistence | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin `openai`/`ruff` versions | Low |
+| P7f | Season Timeline — interactive visual timeline of 2025/26 key moments | New feature |
+| P7g | Frontend Polish — team theme toggle fix, FAQ, README overhaul, Dashboard weights display | Medium |
+| P7h | RAG Intelligence — player data enrichment, web search fallback | Medium |
+| P7i | Frontend Design Uplift — empty states, richer prediction cards, standings zones, loading states | Medium |
 
-**Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
+**Active branches:** `v3.0-MVP` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
