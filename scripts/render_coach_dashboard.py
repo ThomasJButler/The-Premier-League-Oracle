@@ -1049,12 +1049,28 @@ class MultiRunViewer:
         if self.last_n > 0:
             jsonl_files = jsonl_files[:self.last_n]
 
-        # Quick-parse all runs
-        runs = [quick_parse_jsonl(p) for p in jsonl_files]
+        # Quick-parse all runs — only show completed ones in "past" view
+        runs = [r for r in (quick_parse_jsonl(p) for p in jsonl_files) if r["complete"]]
+
+        if not runs:
+            print("No completed runs found in .claude-run/", file=sys.stderr)
+            return 1
 
         self._render_grid(runs)
         self._render_file_heatmap(runs)
         self._render_totals(runs)
+
+        # Quick summary of the latest completed run
+        latest = runs[0]
+        changed = sorted(latest["files_changed"])
+        basenames = [os.path.basename(f) for f in changed[:6]]
+        self.renderer.writeln(f"  {BOLD}Latest run:{RESET} {latest['timestamp']} — "
+                              f"{latest['tool_ok']} tools, "
+                              f"{len(latest['files_changed'])} files, "
+                              f"${latest['cost_usd']:.2f}")
+        if basenames:
+            self.renderer.writeln(f"    Changed: {', '.join(basenames)}")
+        self.renderer.writeln()
 
         # Interactive selection
         self.renderer.writeln(f"  {BOLD}Enter run # to expand (or q to quit):{RESET} ")
@@ -1071,6 +1087,7 @@ class MultiRunViewer:
             if 0 <= idx < len(runs):
                 self.renderer.writeln()
                 dashboard = CoachDashboard(runs[idx]["path"])
+                dashboard.teaching = True
                 return dashboard.run()
             else:
                 print(f"Invalid selection: {choice}", file=sys.stderr)
@@ -1238,6 +1255,7 @@ class FollowViewer:
 
             # Show live dashboard — blocks until the JSONL gets a result event
             dashboard = CoachDashboard(latest)
+            dashboard.teaching = True
             dashboard.run()
 
             # Quick-parse for grid stats
