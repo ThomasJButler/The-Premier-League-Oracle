@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 11/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 12/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -96,7 +96,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 - [x] **Team theme toggle fixed** — Settings page was populating the favourite team dropdown from Football-Data.org API names (e.g., "Liverpool FC", "Wolves") which don't match the CSS `[data-team="..."]` selectors. Fixed by sourcing dropdown options from the canonical `teamColors` keys. Also moved `plTeams` init to top of `onMount` and restored DOM `data-team` attribute on mount
 - [x] **FAQ section** — Expanded from 8 to 12 questions covering the ensemble model, ML backend, team colour theming, local data storage, and betting tools. Existing answers enriched with specifics (Football-Data.org link, three-tier cache, PL-specific calibration)
-- [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
+- [x] **README.md overhaul** — Complete rewrite reflecting v3.0 MVP: 522 tests, 99-feature XGBoost backend (not 150+ pro-tier), expanded feature list (team themes, skeleton loading, prediction tracking, zone colouring, betting suite), detailed architecture tree with file descriptions, conda environment note, CI/CD in tech stack. Screenshots kept as GitHub-hosted URLs (Playwright screenshots are gitignored)
 - [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)

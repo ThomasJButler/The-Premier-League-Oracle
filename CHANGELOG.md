@@ -2,6 +2,18 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7g: README Overhaul
+
+### Rewritten: README.md reflects v3.0 MVP state (P7g)
+- Updated test count badge (507 → 522) and all references throughout
+- Expanded feature list: team colour themes, skeleton loading, prediction tracking with result indicators, zone-coloured standings, full betting suite (Kelly, value bets, accumulators, bet history)
+- Corrected backend description: 99-feature free-tier XGBoost (not "150+ features" which was pro-tier), conda environment requirement, `/predict/free` endpoint
+- Detailed architecture tree with file-level descriptions for both frontend and backend
+- Added CI/CD row (GitHub Actions), component library row (shadcn-svelte), and API rate limit note to tech stack
+- Updated responsible usage section with betting disclaimer
+
+---
+
 ## 20 March 2026 — P7i/P7g: Micro-interactions, Typography, FAQ
 
 ### Added: Micro-interactions and motion-safe accessibility (P7i)
