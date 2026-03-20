@@ -1,7 +1,7 @@
 """
 Free-tier feature engineering for Premier League match prediction.
 
-Computes ~99 features from match data available on the Football-Data.org
+Computes ~109 features from match data available on the Football-Data.org
 free API tier + historical CSV data. No stubs — every feature computes
 a real value from the data (0.0 only when insufficient history exists).
 
@@ -12,6 +12,7 @@ separate for future paid API integration.
 Data sources:
     - Match results (goals, half-time, result) — free API + CSVs
     - Match stats (shots, corners, cards, fouls) — CSVs only
+    - Bookmaker odds (Pinnacle, market average) — CSVs only
     - Standings and dates — free API + CSVs
 """
 
@@ -98,10 +99,11 @@ DERBIES = {
 
 class FreeTierFeatureEngineer:
     """
-    Compute ~99 match prediction features from free-tier data.
+    Compute ~109 match prediction features from free-tier data.
 
     All features use only data strictly before the match date (no leakage).
     Designed for both CSV training and live API prediction.
+    Odds features are optional — 0.0 when unavailable (inference without odds).
 
     Required DataFrame columns (normalised names):
         date, home_team, away_team, home_goals, away_goals, result,
@@ -171,6 +173,19 @@ class FreeTierFeatureEngineer:
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
+        # Bookmaker odds (10) — strongest predictor; 0.0 when unavailable
+        # Pinnacle closing implied probabilities (sharpest market)
+        'odds_pinnacle_home', 'odds_pinnacle_draw', 'odds_pinnacle_away',
+        # Market average implied probabilities (always available in CSVs)
+        'odds_avg_home', 'odds_avg_draw', 'odds_avg_away',
+        # Market overround (measures bookmaker confidence/liquidity)
+        'odds_overround',
+        # Asian handicap line (encodes implied goal margin)
+        'odds_asian_handicap',
+        # Over/Under 2.5 implied probability
+        'odds_over_2_5_prob',
+        # Pinnacle-vs-average divergence (sharp money signal)
+        'odds_sharp_divergence',
     ]
 
     def __init__(self, data: pd.DataFrame):
@@ -194,12 +209,22 @@ class FreeTierFeatureEngineer:
         home_team: str,
         away_team: str,
         match_date: datetime | None = None,
+        odds: dict[str, float] | None = None,
     ) -> dict[str, float]:
         """
-        Compute all ~99 features for a match prediction.
+        Compute all ~109 features for a match prediction.
 
         Only data strictly before *match_date* is used (no leakage).
         Returns a dict keyed by FEATURE_NAMES with float values.
+
+        Args:
+            home_team: Home team name (CSV or API format).
+            away_team: Away team name (CSV or API format).
+            match_date: Match datetime — only prior data used. None = all data.
+            odds: Optional bookmaker odds dict. Keys are raw CSV column names
+                  (e.g. 'PSCH', 'PSCD', 'PSCA', 'AvgH', 'AvgD', 'AvgA',
+                  'AHCh', 'Avg>2.5', 'Avg<2.5'). When None, odds features
+                  are 0.0 — XGBoost handles this gracefully.
         """
         if match_date is not None:
             if isinstance(match_date, pd.Timestamp):
@@ -219,6 +244,7 @@ class FreeTierFeatureEngineer:
         features.update(self._match_stats(home_team, away_team, pre_match))
         features.update(self._draw_indicators(home_team, away_team, pre_match, match_date))
         features.update(self._elo_features(home_team, away_team, match_date))
+        features.update(self._odds_features(odds))
 
         # Ensure every feature present; replace NaN with 0.0
         result: dict[str, float] = {}
@@ -1186,6 +1212,150 @@ class FreeTierFeatureEngineer:
         # Home advantage magnitude: how much the home advantage shifts expectation
         exp_neutral = 1.0 / (1.0 + 10.0 ** ((away_elo - home_elo) / 400.0))
         f['elo_home_advantage'] = exp_home - exp_neutral
+
+        return f
+
+    @staticmethod
+    def _odds_features(
+        odds: dict[str, float] | None,
+    ) -> dict[str, float]:
+        """
+        Compute bookmaker-odds features from raw CSV odds columns.
+
+        Bookmaker odds are the single strongest predictor of match outcomes.
+        Pinnacle odds are the "sharpest" (lowest margin, accepts sharp bettors).
+        Market average odds provide a consensus view (available for all matches).
+
+        When odds are None (no odds available at inference time), all features
+        return 0.0. XGBoost handles this gracefully — tree splits on odds
+        features simply take the "no information" branch, and the model falls
+        back to the remaining 99 non-odds features.
+
+        Args:
+            odds: Dict of raw CSV column values, e.g.
+                  {'PSCH': 2.10, 'PSCD': 3.50, 'PSCA': 3.80,
+                   'AvgH': 2.05, 'AvgD': 3.45, 'AvgA': 3.75,
+                   'AHCh': -0.5, 'Avg>2.5': 1.85, 'Avg<2.5': 2.10}
+                  Opening odds (PSH/PSD/PSA) used as fallback for missing
+                  closing odds. AvgH/AvgD/AvgA used as fallback for Pinnacle.
+        """
+        f: dict[str, float] = {}
+
+        if odds is None:
+            f['odds_pinnacle_home'] = 0.0
+            f['odds_pinnacle_draw'] = 0.0
+            f['odds_pinnacle_away'] = 0.0
+            f['odds_avg_home'] = 0.0
+            f['odds_avg_draw'] = 0.0
+            f['odds_avg_away'] = 0.0
+            f['odds_overround'] = 0.0
+            f['odds_asian_handicap'] = 0.0
+            f['odds_over_2_5_prob'] = 0.0
+            f['odds_sharp_divergence'] = 0.0
+            return f
+
+        def _safe_float(key: str, fallback_key: str | None = None) -> float:
+            """Extract a float from odds dict, falling back to alternate key."""
+            val = odds.get(key)
+            if val is not None and not (isinstance(val, float) and np.isnan(val)):
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    pass
+            if fallback_key is not None:
+                val = odds.get(fallback_key)
+                if val is not None and not (isinstance(val, float) and np.isnan(val)):
+                    try:
+                        return float(val)
+                    except (ValueError, TypeError):
+                        pass
+            return 0.0
+
+        def _odds_to_prob(decimal_odds: float) -> float:
+            """Convert decimal odds to implied probability."""
+            return 1.0 / decimal_odds if decimal_odds > 1.0 else 0.0
+
+        # Pinnacle closing odds (sharpest market), falling back to opening
+        ps_h = _safe_float('PSCH', 'PSH')
+        ps_d = _safe_float('PSCD', 'PSD')
+        ps_a = _safe_float('PSCA', 'PSA')
+
+        # Market average closing odds, falling back to opening
+        avg_h = _safe_float('AvgCH', 'AvgH')
+        avg_d = _safe_float('AvgCD', 'AvgD')
+        avg_a = _safe_float('AvgCA', 'AvgA')
+
+        # Convert to implied probabilities
+        ps_h_prob = _odds_to_prob(ps_h)
+        ps_d_prob = _odds_to_prob(ps_d)
+        ps_a_prob = _odds_to_prob(ps_a)
+
+        avg_h_prob = _odds_to_prob(avg_h)
+        avg_d_prob = _odds_to_prob(avg_d)
+        avg_a_prob = _odds_to_prob(avg_a)
+
+        # Normalise Pinnacle probs to remove overround (sum to 1.0)
+        ps_total = ps_h_prob + ps_d_prob + ps_a_prob
+        if ps_total > 0:
+            f['odds_pinnacle_home'] = ps_h_prob / ps_total
+            f['odds_pinnacle_draw'] = ps_d_prob / ps_total
+            f['odds_pinnacle_away'] = ps_a_prob / ps_total
+        else:
+            # Pinnacle unavailable — fall back to market average
+            avg_total = avg_h_prob + avg_d_prob + avg_a_prob
+            if avg_total > 0:
+                f['odds_pinnacle_home'] = avg_h_prob / avg_total
+                f['odds_pinnacle_draw'] = avg_d_prob / avg_total
+                f['odds_pinnacle_away'] = avg_a_prob / avg_total
+            else:
+                f['odds_pinnacle_home'] = 0.0
+                f['odds_pinnacle_draw'] = 0.0
+                f['odds_pinnacle_away'] = 0.0
+
+        # Normalise market average probs
+        avg_total = avg_h_prob + avg_d_prob + avg_a_prob
+        if avg_total > 0:
+            f['odds_avg_home'] = avg_h_prob / avg_total
+            f['odds_avg_draw'] = avg_d_prob / avg_total
+            f['odds_avg_away'] = avg_a_prob / avg_total
+        else:
+            f['odds_avg_home'] = 0.0
+            f['odds_avg_draw'] = 0.0
+            f['odds_avg_away'] = 0.0
+
+        # Overround: how much above 100% the raw probs sum to.
+        # Lower = sharper market. Pinnacle ~2.5%, Bet365 ~5.5%.
+        # Scaled to roughly [0, 0.1] range.
+        if ps_total > 0:
+            f['odds_overround'] = ps_total - 1.0
+        elif avg_total > 0:
+            f['odds_overround'] = avg_total - 1.0
+        else:
+            f['odds_overround'] = 0.0
+
+        # Asian handicap line: negative = home favoured, positive = away
+        # Scaled to roughly [-3, +3] range — no normalisation needed.
+        ah_line = _safe_float('AHCh', 'AHh')
+        f['odds_asian_handicap'] = ah_line
+
+        # Over/Under 2.5 goals implied probability
+        ou_over = _safe_float('Avg>2.5')
+        ou_under = _safe_float('Avg<2.5')
+        ou_over_prob = _odds_to_prob(ou_over)
+        ou_under_prob = _odds_to_prob(ou_under)
+        ou_total = ou_over_prob + ou_under_prob
+        f['odds_over_2_5_prob'] = ou_over_prob / ou_total if ou_total > 0 else 0.0
+
+        # Sharp money divergence: how much Pinnacle deviates from market avg.
+        # Positive = Pinnacle gives higher home probability than market consensus.
+        # This captures "sharp money" movement on Pinnacle that recreational
+        # bookmakers haven't fully adjusted for.
+        if ps_total > 0 and avg_total > 0:
+            ps_home_norm = ps_h_prob / ps_total
+            avg_home_norm = avg_h_prob / avg_total
+            f['odds_sharp_divergence'] = ps_home_norm - avg_home_norm
+        else:
+            f['odds_sharp_divergence'] = 0.0
 
         return f
 

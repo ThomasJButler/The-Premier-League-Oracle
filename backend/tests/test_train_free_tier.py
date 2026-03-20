@@ -19,6 +19,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from train_free_tier import (
+    _extract_odds_from_row,
     _per_class_accuracy,
     build_dataset,
     chronological_split,
@@ -503,3 +504,68 @@ class TestRollingCrossValidation:
         folds = result.get('folds', [])
         if len(folds) >= 2:
             assert folds[1]['train_size'] > folds[0]['train_size']
+
+
+# ---------------------------------------------------------------------------
+# Tests: _extract_odds_from_row
+# ---------------------------------------------------------------------------
+
+class TestExtractOddsFromRow:
+    """Odds extraction from CSV rows for training."""
+
+    def test_extracts_standard_odds_columns(self):
+        """Should extract Pinnacle, Average, AH, and O/U columns."""
+        row = pd.Series({
+            'home_team': 'Arsenal', 'away_team': 'Chelsea',
+            'PSCH': 2.10, 'PSCD': 3.50, 'PSCA': 3.80,
+            'AvgH': 2.05, 'AvgD': 3.45, 'AvgA': 3.75,
+            'AHCh': -0.5, 'AHh': -0.25,
+            'Avg>2.5': 1.85, 'Avg<2.5': 2.10,
+        })
+        odds = _extract_odds_from_row(row)
+        assert odds is not None
+        assert odds['PSCH'] == 2.10
+        assert odds['AvgH'] == 2.05
+        assert odds['AHCh'] == -0.5
+        assert odds['Avg>2.5'] == 1.85
+
+    def test_returns_none_when_no_odds_columns(self):
+        """Should return None when no odds columns present."""
+        row = pd.Series({
+            'home_team': 'Arsenal', 'away_team': 'Chelsea',
+            'home_goals': 2, 'away_goals': 1,
+        })
+        odds = _extract_odds_from_row(row)
+        assert odds is None
+
+    def test_handles_nan_values(self):
+        """NaN values in odds columns should be skipped."""
+        row = pd.Series({
+            'AvgH': 2.05, 'AvgD': float('nan'), 'AvgA': 3.75,
+            'PSCH': float('nan'),
+        })
+        odds = _extract_odds_from_row(row)
+        assert odds is not None
+        assert 'AvgH' in odds
+        assert 'AvgD' not in odds  # NaN skipped
+        assert 'PSCH' not in odds  # NaN skipped
+
+    def test_build_dataset_includes_odds_features(self):
+        """build_dataset should produce 109-column feature matrix."""
+        df = _build_mini_dataset(40)
+        X, y, names, _ = build_dataset(df)
+        assert X.shape[1] == 109
+        assert 'odds_pinnacle_home' in names
+        assert 'odds_avg_home' in names
+
+    def test_build_dataset_odds_zero_without_csv_odds(self):
+        """Without odds columns in the DataFrame, odds features should be 0.0."""
+        df = _build_mini_dataset(40)
+        X, _, names, _ = build_dataset(df)
+        # Find the odds feature indices
+        odds_indices = [i for i, n in enumerate(names) if n.startswith('odds_')]
+        assert len(odds_indices) == 10
+        # All odds features should be 0.0 since _build_mini_dataset has no odds columns
+        for idx in odds_indices:
+            assert np.all(X[:, idx] == 0.0), \
+                f'{names[idx]} should be 0.0 without odds data in CSV'

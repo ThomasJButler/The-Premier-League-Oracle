@@ -87,6 +87,44 @@ def load_data(csv_dir: str) -> pd.DataFrame:
     return df
 
 
+def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
+    """
+    Extract bookmaker odds columns from a CSV row.
+
+    Returns a dict of raw odds values keyed by CSV column name,
+    or None if no odds columns are available (e.g. non-CSV data).
+    The keys match what FreeTierFeatureEngineer._odds_features() expects:
+    PSCH/PSCD/PSCA (Pinnacle closing), PSH/PSD/PSA (Pinnacle opening),
+    AvgCH/AvgCD/AvgCA and AvgH/AvgD/AvgA (market average),
+    AHCh/AHh (Asian handicap), Avg>2.5/Avg<2.5 (over/under).
+    """
+    # Odds columns that might exist in the CSV row.
+    # We check for the presence of at least AvgH (always available in CSVs).
+    odds_cols = [
+        'PSCH', 'PSCD', 'PSCA', 'PSH', 'PSD', 'PSA',
+        'AvgCH', 'AvgCD', 'AvgCA', 'AvgH', 'AvgD', 'AvgA',
+        'AHCh', 'AHh',
+        'Avg>2.5', 'Avg<2.5',
+    ]
+
+    # Quick check: if the key columns aren't in the row, no odds data
+    if 'AvgH' not in row.index and 'B365H' not in row.index:
+        return None
+
+    odds: dict[str, float] = {}
+    for col in odds_cols:
+        if col in row.index:
+            val = row[col]
+            if pd.notna(val):
+                try:
+                    odds[col] = float(val)
+                except (ValueError, TypeError):
+                    pass
+
+    # Return None if we didn't find any meaningful odds data
+    return odds if odds else None
+
+
 def build_dataset(
     df: pd.DataFrame,
     engineer: FreeTierFeatureEngineer | None = None,
@@ -96,6 +134,7 @@ def build_dataset(
 
     Iterates chronologically. For each match, uses only prior data
     (no leakage). Skips matches where either team has < MIN_PRIOR_MATCHES.
+    Extracts bookmaker odds from CSV rows to populate odds features.
 
     Returns:
         X: Feature matrix (n_samples, n_features)
@@ -111,6 +150,7 @@ def build_dataset(
     y_rows: list[int] = []
     season_rows: list[str] = []
     skipped = 0
+    odds_present_count = 0
 
     # Track how many matches each team has played (for warmup filter)
     team_match_counts: dict[str, int] = {}
@@ -141,8 +181,14 @@ def build_dataset(
         if isinstance(match_date, pd.Timestamp):
             match_date = match_date.to_pydatetime()
 
+        # Extract odds from the CSV row (these are known pre-match data,
+        # not leaked — bookmaker odds are published before kick-off)
+        odds = _extract_odds_from_row(row)
+        if odds is not None:
+            odds_present_count += 1
+
         try:
-            features = engineer.create_features(ht, at, match_date)
+            features = engineer.create_features(ht, at, match_date, odds=odds)
             feature_vec = np.array([features[name] for name in feature_names])
             X_rows.append(feature_vec)
             y_rows.append(LABEL_MAP[result])
@@ -156,8 +202,11 @@ def build_dataset(
             logger.info('Processed %d matches (%d skipped)...', len(X_rows), skipped)
 
     logger.info(
-        'Dataset built: %d samples, %d skipped (warmup/invalid), %d features',
+        'Dataset built: %d samples, %d skipped (warmup/invalid), %d features, '
+        '%d with odds data (%.1f%%)',
         len(X_rows), skipped, len(feature_names),
+        odds_present_count,
+        (odds_present_count / len(X_rows) * 100) if X_rows else 0.0,
     )
 
     X = np.array(X_rows)

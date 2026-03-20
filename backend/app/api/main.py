@@ -232,12 +232,24 @@ class FreeTierPredictionRequest(BaseModel):
     """Request for free-tier match prediction."""
     home_team: str = Field(..., description="Home team name")
     away_team: str = Field(..., description="Away team name")
+    odds_home: float | None = Field(
+        None, description="Optional bookmaker decimal odds for home win (e.g. 2.10)",
+    )
+    odds_draw: float | None = Field(
+        None, description="Optional bookmaker decimal odds for draw (e.g. 3.50)",
+    )
+    odds_away: float | None = Field(
+        None, description="Optional bookmaker decimal odds for away win (e.g. 3.80)",
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "home_team": "Arsenal",
                 "away_team": "Chelsea",
+                "odds_home": 1.85,
+                "odds_draw": 3.60,
+                "odds_away": 4.50,
             }
         }
 
@@ -307,7 +319,9 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
     """
     Predict match outcome using the free-tier XGBoost model.
 
-    Uses ~94 features derived from match results, form, H2H, draw indicators, and contextual data.
+    Uses ~109 features derived from match results, form, H2H, draw indicators,
+    Elo ratings, and contextual data. Optionally accepts bookmaker odds for
+    significantly improved accuracy (~55% with odds vs ~51% without).
     No paid API data required.
     """
     # Rate limiting — extract real client IP from request
@@ -335,8 +349,20 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         )
 
     try:
+        # Build odds dict from optional request fields.
+        # When odds are provided, the model can use bookmaker-implied
+        # probabilities — the single strongest predictor of match outcomes.
+        odds: dict[str, float] | None = None
+        if prediction_request.odds_home is not None:
+            odds = {}
+            odds['AvgH'] = prediction_request.odds_home
+            if prediction_request.odds_draw is not None:
+                odds['AvgD'] = prediction_request.odds_draw
+            if prediction_request.odds_away is not None:
+                odds['AvgA'] = prediction_request.odds_away
+
         # Compute features
-        features = free_tier_engineer.create_features(home, away)
+        features = free_tier_engineer.create_features(home, away, odds=odds)
         feature_names = free_tier_metadata.get('feature_names', FreeTierFeatureEngineer.FEATURE_NAMES)
         feature_vec = [features[name] for name in feature_names]
 
