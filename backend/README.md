@@ -8,7 +8,7 @@
 | Free-tier XGBoost model | **Trained** — 53.3% accuracy with draw features + dual calibration (retrained 20 March 2026) |
 | Free-tier feature engineering | 114 features (incl. 13 draw indicators, 10 bookmaker odds, 5 Elo), standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
-| Backend tests | **163 tests across 4 files — all non-skip tests passing** |
+| Backend tests | **190 tests across 5 files — all non-skip tests passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -39,10 +39,11 @@ backend/
 ├── models/
 │   └── xgboost_free_tier.joblib          # Trained free-tier model
 ├── tests/
-│   ├── test_free_tier_features.py        # 45 feature engineering tests (incl. Elo leakage)
-│   ├── test_train_free_tier.py           # 25 training pipeline tests (incl. rolling CV, ensemble)
+│   ├── test_free_tier_features.py        # 60 feature engineering tests (incl. Elo leakage)
+│   ├── test_train_free_tier.py           # 33 training pipeline tests (incl. rolling CV, ensemble)
 │   ├── test_predict_free_tier.py         # 17 API endpoint tests
-│   └── test_rag.py                       # 58 RAG engine tests
+│   ├── test_rag.py                       # 58 RAG engine tests (incl. 14 player data)
+│   └── test_web_search.py               # 22 web search fallback tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
 ├── train_free_tier.py                    # Active training script
@@ -178,11 +179,12 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-163 tests across 4 files, all non-skip tests passing (8 skip without libomp/XGBoost):
-- `test_free_tier_features.py` — 55 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
+190 tests across 5 files, all non-skip tests passing (8 skip without libomp/XGBoost):
+- `test_free_tier_features.py` — 60 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
 - `test_train_free_tier.py` — 33 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection, 5 odds extraction, and 3 calibrator dispatch tests)
 - `test_predict_free_tier.py` — 17 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
-- `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding)
+- `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding, 14 player data tests)
+- `test_web_search.py` — 22 tests covering the DuckDuckGo web search fallback (cache, prompt injection, graceful degradation)
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 

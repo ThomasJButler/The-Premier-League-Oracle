@@ -2,6 +2,19 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Housekeeping: stale file removal and doc accuracy
+
+### Removed
+- **`PROMPT_plan.md` and `PROMPT_build.md`** — previously documented as deleted but still present on disk. Now actually removed. These Ralph loop orchestration files are superseded by CLAUDE.md and AGENTS.md
+
+### Fixed
+- **Backend README test counts** — updated from 163 tests / 4 files to 190 tests / 5 files. Added missing `test_web_search.py` (22 tests) and corrected `test_free_tier_features.py` count (45 → 60) and `test_rag.py` description (added player data note). Project structure listing also updated to show all 5 test files
+
+### Test impact
+- All 561 frontend tests passing, 0 type errors, 0 svelte-check warnings
+
+---
+
 ## 20 March 2026 — Code quality: ESLint violations and doc accuracy
 
 ### Fixed
