@@ -24,7 +24,7 @@ Active branch: `v3.0-Development`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 0/14 | Forward-looking improvements toward industry-standard accuracy |
+| P7 Beyond MVP | 0/20 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -87,6 +87,51 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Automatic commentary** — Data-driven narrative for notable events (e.g., "Arsenal's 15-match unbeaten run ended here", "The day Ipswich Town beat Man City")
 - [ ] **Tone and personality** — Funny/sympathetic commentary, quotes, observations — the season story told with character
 - [ ] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier
+
+### P7g. Frontend Polish (Medium Priority)
+
+- [ ] **Team theme toggle broken** — Settings page team colour toggle not applying. Dark/light mode works fine; issue is specifically with team-specific colour themes. Investigate `Settings.svelte` team colour handling and CSS variable application
+- [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
+- [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
+
+### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
+
+> **Top 3 highest-impact items for converting free → paid users:**
+>
+> 1. **Empty state design** — this is what every new user sees first. Zeroes everywhere screams "unfinished". A welcoming onboarding flow with a clear CTA will dramatically improve first impressions.
+> 2. **Standings zone colouring + form dots** — every football fan expects this. It's table stakes. Without it, the app feels like a dev project rather than a product.
+> 3. **Richer prediction cards with team crests** — the crests are already available from the Football-Data.org API (`team.crest` URL). Adding them plus form indicators transforms the cards from "data display" to "match preview".
+>
+> These three alone would take the app from "technically impressive" to "I'd show this to my mates".
+
+**Dashboard first impression:**
+- [ ] **Empty state design** — Replace "0.0%", "£0.00", "0" stat cards with welcoming onboarding content when no predictions exist yet. Show a call-to-action ("Generate your first prediction") instead of zeroes. First impressions matter for conversion
+- [ ] **Dashboard hero section** — Add a featured upcoming match or "match of the day" at the top of the dashboard instead of jumping straight into empty stats. Pull from next fixture data
+- [ ] **Prediction Accuracy Trend chart** — Currently shows an empty chart on first load. Show a placeholder illustration or hide the section until data exists
+
+**Prediction cards:**
+- [ ] **Richer match cards** — The MCI vs ARS card is sparse. Add team crests, form indicators (WWDLW dots), league position badges, and the model's confidence bar inline. Make each card tell a story at a glance
+- [ ] **Prediction result indicators** — After a match finishes, show whether the prediction was correct/wrong with a visual indicator (green tick / red cross) directly on the card
+
+**Standings table:**
+- [ ] **Zone colouring** — Add Champions League (blue), Europa League (orange), relegation (red) zone background colours to the standings table rows. Standard in every football app, users expect it
+- [ ] **Form column** — Show last 5 results as coloured dots (green W, grey D, red L) in the standings table. The `form` field from the API contains this data (e.g., "W,W,D,L,W")
+- [ ] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek
+
+**Live Matches:**
+- [ ] **Match timeline** — For in-play matches, show a simple progress bar (0-90 mins) with goal indicators at the minute they were scored. Creates visual drama
+- [ ] **Score animation** — Animate score changes when a goal is scored during polling updates
+
+**General UI polish:**
+- [ ] **Loading states** — Replace generic spinners with skeleton screens that match the layout of the content they're loading (already done for Season Stats — extend to other pages)
+- [ ] **Micro-interactions** — Add subtle hover effects, card press states, and transition animations between views for a more premium feel
+- [ ] **Typography hierarchy** — Review font sizes across pages for consistency. Dashboard headers vs card labels vs stat values should have a clear visual hierarchy
+
+### P7h. RAG Intelligence (Medium Priority)
+
+- [ ] **Player data enrichment** — Query Football-Data.org free API for player data (`/teams/{id}/`, `/competitions/PL/scorers`) at backend startup. Inject into RAG context so player-specific questions get grounded answers instead of generic AI knowledge
+- [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
+- [ ] **AI model configurable** — `gpt-4o-mini` hardcoded in `ChatBot.svelte`, `main.py`, `vite.config.ts`. Extract to environment variable with Settings UI dropdown (existing P7b item)
 
 ---
 
