@@ -67,9 +67,13 @@ uvicorn app.api.main:app --reload --port 8000
 ### Backend Structure (`backend/`)
 - `app/api/main.py` - FastAPI server with prediction + chat endpoints
 - `app/api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
+- `app/api/web_search.py` - DuckDuckGo web search fallback when RAG cannot ground a response (TTL cache, graceful degradation)
 - `app/features/free_tier_features.py` - Free-tier feature engineering (114 features incl. 13 draw indicators + 5 Elo + 10 odds)
 - `app/data/football_data_collector.py` - Historical data collection
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
+
+### Vercel Edge Functions (`api/`)
+- `api/chat.ts` - Vercel Edge Function for AI chat proxying (OpenAI + Anthropic). Resolves model from request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Server-side API keys take priority over user-provided keys
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.

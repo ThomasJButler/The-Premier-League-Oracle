@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P1f data freshness indicator complete)
+Last updated: 20 March 2026 (documentation cleanup)
 Active branch: `v3.0-MVP`
 
 ---
@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 45/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 46/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 549 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -48,96 +48,85 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 ### P7a. Model Accuracy Improvements (High Impact)
 
-- [x] **Odds-as-features** — 10 bookmaker odds features added (Pinnacle implied probs, market average probs, overround, Asian handicap, over/under 2.5, sharp divergence). Dual-mode design: odds loaded from CSVs at training time, optional API parameter at inference time (falls back to no-odds mode gracefully). Results: overall accuracy 51.0% → 51.9%, draw accuracy 6.7% → 23.1%, log loss 1.034 → 1.008. Top features by importance: `odds_pinnacle_home` (0.0401), `odds_avg_away` (0.0360), `odds_avg_home` (0.0306). 15 new backend tests (163 total across 4 files)
+- [x] **Odds-as-features** — 10 bookmaker odds features from CSV columns (Pinnacle implied probs, market averages, overround, Asian handicap, over/under 2.5, sharp divergence). Dual-mode: loaded from CSVs at training time, optional at inference time. Results: accuracy 51.0% → 51.9%, draw accuracy 6.7% → 23.1%, log loss 1.034 → 1.008. See v2 training results below
 - [ ] **Retrain with latest season data** — Current model trained on 2,191 matches through 2025/26 partial. A full 2025/26 season adds ~380 matches. Schedule retraining when season completes
-- [x] **Draw prediction overhaul** — Three-pronged approach: (1) 5 new draw-targeted features (goal difference symmetry, season PPG closeness, mid-table indicator, elo draw band, combined goals per game) — model now 114 features; (2) v3 training: overall 53.3% (+1.4%), draw AUC-ROC 0.601 (model correctly ranks draw-prone matches); (3) raw-probs-for-classification fix — inference uses raw XGBoost argmax for predicted outcome (recovers ~16% draw accuracy) while returning calibrated probabilities for confidence estimates. Remaining: a dedicated draw-specialist model or ordinal regression could push further
-- [x] **Probability calibration improvement** — Dual Platt/isotonic calibration system: `calibrate_probabilities()` now tries both methods and keeps whichever achieves lower log loss. Platt scaling (logistic sigmoid, 2 params/class) better suited for small validation sets (~420 samples) than isotonic's piecewise mapping. `apply_calibrators()` centralises method dispatch. `calibration_method` saved to model payload; inference path in `main.py` handles both types. Stacked ensemble gated on outperformance — only saved when it beats calibrated XGBoost. 3 new tests (163 total across 4 files)
+- [x] **Draw prediction overhaul** — 5 new draw-targeted features (model now 114 features), raw-probs-for-classification fix at inference, dual calibration. Overall accuracy 53.3% (+1.4%), draw AUC-ROC 0.601. See v3 training results below
+- [x] **Probability calibration improvement** — Dual Platt/isotonic system: `calibrate_probabilities()` tries both and keeps the lower log loss result. `calibration_method` saved to model payload; inference path in `main.py` handles both types. Stacked ensemble only saved when it beats calibrated XGBoost
 
 ### P7b. AI Integration Upgrade (Medium Impact)
 
-- [x] **Make AI model configurable** — Extracted hardcoded `gpt-4o-mini` from `api/chat.ts`, `vite.config.ts`, and `backend/main.py`. Model resolution: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Settings UI dropdown (4 models) saves preference to localStorage. ChatBot and aiAnalysis both include the saved model in requests. Server-side allowlist prevents arbitrary model injection
-- [x] **Claude integration** — Full Anthropic API support across all layers. `api/chat.ts` (Vercel Edge Function) and `vite.config.ts` (dev proxy) both detect Claude models via `startsWith('claude')` prefix, route to Anthropic Messages API with separate system prompt field, normalise response to OpenAI shape. Backend `main.py` `/chat/rag` endpoint uses `anthropic` Python SDK when model is Claude. `constants.ts` adds three Claude models (Haiku, Sonnet, Opus) with `getModelProvider()` helper. ChatBot.svelte sends provider-specific headers and shows dual-provider UI. Added `anthropic==0.49.0` to backend requirements
-- [x] **AI-powered match insights** — Enhanced `aiAnalysis.ts` prompt with H2H record and Poisson model probabilities (homeWin/draw/awayWin percentages). `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields. Prompt now uses section-based builder pattern for cleaner conditional enrichment. Predictions.svelte passes the extra data from `detailedAnalysis`
+- [x] **Make AI model configurable** — Hardcoded `gpt-4o-mini` extracted from `api/chat.ts`, `vite.config.ts`, and `backend/main.py`. Model resolution: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Settings UI dropdown saves to localStorage. Server-side allowlist prevents arbitrary model injection
+- [x] **Claude integration** — Full Anthropic API support. `api/chat.ts` and `vite.config.ts` detect Claude via `startsWith('claude')`, route to Anthropic Messages API, normalise to OpenAI response shape. Backend uses `anthropic` Python SDK. `constants.ts` exposes three Claude models with `getModelProvider()` helper. `anthropic==0.49.0` added to requirements
+- [x] **AI-powered match insights** — `aiAnalysis.ts` prompt enriched with H2H record and Poisson probabilities. `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields
 
 ### P7c. Seasonal Maintenance (Required Annually)
 
-- [x] **SEED_RATINGS update** — 20 current PL teams correctly seeded. Added comprehensive 6-step seasonal update checklist in code comments documenting the promotion/relegation process (SEED_RATINGS → ALIASES → teamColors → CSV_TO_API)
-- [x] **teamColors update** — Settings.svelte and teamLogos.ts both cover all 20 current PL teams. Added comment noting `data-team` CSS selector coupling in app.css
-- [x] **ALIASES_MAP update** — Expanded to 48 entries (from ~45): added `"brighton and hove albion"`, `"nott'm forest"`, `"sheffield utd"` aliases. Already covers likely promoted teams (Leeds, Sunderland, Luton, Burnley, Sheffield United)
-- [x] **CSV_TO_API dict update** — Fixed Brighton API name from `"Brighton and Hove Albion FC"` (wrong) to `"Brighton & Hove Albion FC"` (matches Football-Data.org canonical name). Added `"Brighton & Hove Albion"` reverse alias
+- [x] **SEED_RATINGS update** — 20 current PL teams correctly seeded. 6-step seasonal update checklist added in code comments (SEED_RATINGS → ALIASES → teamColors → CSV_TO_API)
+- [x] **teamColors update** — Settings.svelte and teamLogos.ts cover all 20 current PL teams
+- [x] **ALIASES_MAP update** — Expanded to 48 entries; covers likely promoted teams (Leeds, Sunderland, Luton, Burnley, Sheffield United)
+- [x] **CSV_TO_API dict update** — Fixed Brighton API name to `"Brighton & Hove Albion FC"` (Football-Data.org canonical)
 
 ### P7d. Frontend Enhancements (Low Impact, Polish)
 
-- [x] **Backtest-derived ensemble weights** — `WeightOptimiser` class in `backtest.ts` tests ~10,000 weight combinations (5% step grid) against stored per-model outputs from a backtest run. `ModelOutputs` interface added to `optimizedPredictions.ts`, populated during `predictMatch()`. Results shown in Predictions page backtest section: optimal weights grid with current vs recommended, accuracy gain badge, and log loss. 5 new tests (540 total, 33 files)
-- [x] **Real bookmaker odds input** — Already fully implemented in `ValueBets.svelte`. Users enter real bookmaker odds (1X2, Over/Under 2.5, BTTS) which are compared against model probabilities to find edges. The engine was never using model-derived odds — it always required user input via `MarketOdds` interface
-- [x] **Prediction confidence from backend model** — When the ML backend is available, its predicted outcome is compared against the frontend ensemble's prediction. Agreement boosts confidence by up to 8% (scaled by ML confidence), disagreement penalises by up to 10%. Insight messages added for both cases. Applied before historical calibration band factors
+- [x] **Backtest-derived ensemble weights** — `WeightOptimiser` in `backtest.ts` tests ~10,000 weight combinations (5% step grid). Results shown in Predictions backtest section: optimal weights vs current, accuracy gain badge, log loss
+- [x] **Real bookmaker odds input** — Implemented in `ValueBets.svelte` via `MarketOdds` interface. Users enter real odds; engine compares against model probabilities to find edges
+- [x] **Prediction confidence from backend model** — Agreement with ML backend boosts confidence up to 8%; disagreement penalises up to 10%. Applied before historical calibration band factors
 
 ### P7e. Infrastructure (Low Priority)
 
-- [x] **Playwright E2E in CI** — Added `e2e` job to `.github/workflows/ci.yml` running as a separate parallel job alongside frontend and backend checks. Installs Chromium only (`--with-deps` for Ubuntu) to keep CI fast. All 43 E2E tests (6 specs × 3 viewports) run against the Vite dev server with mocked API routes. Uploads HTML test report as artifact on failure (14-day retention)
+- [x] **Playwright E2E in CI** — `e2e` parallel job in `.github/workflows/ci.yml`. Chromium-only, runs all 43 tests (6 specs × 3 viewports) against Vite dev server with mocked routes. HTML report artifact on failure (14-day retention)
 - [ ] **Rate-limit persistence** — Backend rate limiter is in-memory only. On horizontal scale (Vercel), each instance has its own counter. Consider Redis-backed rate limiting if abuse becomes an issue
-- [x] **Pin `openai` in `requirements.txt`** — Pinned to `openai==1.107.1` (matching locally installed version). All dependencies now version-pinned
-- [x] **Pin `ruff` version in CI** — Pinned to `ruff==0.15.7` in `.github/workflows/ci.yml`. Prevents new lint rules from unexpectedly breaking the build
-- [x] **Clean stale ruff exclusions in `pyproject.toml`** — Removed 8 exclude entries for files archived to `pro-tier-archive` branch (all confirmed MISSING from working tree). Only `app/notebooks/` exclusion remains
+- [x] **Pin `openai` in `requirements.txt`** — Pinned to `openai==1.107.1`. All dependencies now version-pinned
+- [x] **Pin `ruff` version in CI** — Pinned to `ruff==0.15.7` in `.github/workflows/ci.yml`
+- [x] **Clean stale ruff exclusions in `pyproject.toml`** — Removed 8 exclude entries for pro-tier-archived files. Only `app/notebooks/` exclusion remains
 
 ### P7f. Season Timeline (New Feature)
 
-Interactive visual timeline showing key moments from the 2025/26 Premier League season:
-
 - [x] **Timeline component** — `SeasonTimeline.svelte` with vertical card layout, wired into routing (ViewName, SidebarNav, MobileNav)
-- [x] **Key results** — Shocks (bottom-3 beating top-6), thrillers (5+ goals), comebacks (losing at HT, winning at FT) automatically detected from match results with badges and detail text
-- [x] **Title race progression** — Cumulative points line chart for top 6 teams (toggle to show all 20) using svelte-chartjs with team colours
-- [x] **Relegation battle** — Bottom 6 teams' cumulative points with dashed safety line (17th place) benchmark
-- [x] **Automatic commentary** — Data-driven narrative entries: matchday 1 special, goals galore, upset weekends, title race tightening, pull clear events. Mood-coloured borders (dramatic/shock/celebration/routine)
-- [x] **Tone and personality** — Narrative voice with character ("The form book was torn up", "The curtain rises on a new Premier League campaign")
-- [x] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier. 13 tests covering all sections
+- [x] **Key results** — Shocks, thrillers (5+ goals), comebacks auto-detected from match results with badges
+- [x] **Title race progression** — Cumulative points line chart for top 6 teams (toggle to all 20) with team colours
+- [x] **Relegation battle** — Bottom 6 teams' cumulative points with dashed 17th-place safety line
+- [x] **Automatic commentary** — Data-driven narrative: matchday 1, goals galore, upsets, title tightening. Mood-coloured borders (dramatic/shock/celebration/routine)
+- [x] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` (free tier). 13 tests
 
 ### P7g. Frontend Polish (Medium Priority)
 
-- [x] **Team theme toggle fixed** — Settings page was populating the favourite team dropdown from Football-Data.org API names (e.g., "Liverpool FC", "Wolves") which don't match the CSS `[data-team="..."]` selectors. Fixed by sourcing dropdown options from the canonical `teamColors` keys. Also moved `plTeams` init to top of `onMount` and restored DOM `data-team` attribute on mount
-- [x] **FAQ section** — Expanded from 8 to 12 questions covering the ensemble model, ML backend, team colour theming, local data storage, and betting tools. Existing answers enriched with specifics (Football-Data.org link, three-tier cache, PL-specific calibration)
-- [x] **README.md overhaul** — Complete rewrite reflecting v3.0 MVP: 522 tests, 99-feature XGBoost backend (not 150+ pro-tier), expanded feature list (team themes, skeleton loading, prediction tracking, zone colouring, betting suite), detailed architecture tree with file descriptions, conda environment note, CI/CD in tech stack. Screenshots kept as GitHub-hosted URLs (Playwright screenshots are gitignored)
-- [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
-- [x] **Club Badges for all pages** — Team badges now appear across all relevant components: Predictions, LiveMatches, StandingsTable, MatchList, Dashboard, ValueBets, AccumulatorBuilder, KellyCalculator, BettingHistory, and MatchEventToast. Uses `getTeamLogo()` SVG generator (coloured rounded initials). TopScorers uses real API crests. SeasonStats intentionally excluded (stat cards with inline team name strings, not match rows)
+- [x] **Team theme toggle fixed** — Settings dropdown now sources options from canonical `teamColors` keys (not Football-Data.org API names) so `[data-team="..."]` CSS selectors match correctly. `data-team` DOM attribute restored on mount
+- [x] **FAQ section** — Expanded from 8 to 12 questions covering ensemble model, ML backend, team themes, local storage, and betting tools
+- [x] **README.md overhaul** — Complete rewrite for v3.0 MVP with accurate test counts, architecture tree, feature list, conda note, and CI/CD details
+- [x] **Dashboard model weights display** — "How We Predict" reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` (single source of truth)
+- [x] **Club Badges for all pages** — `getTeamLogo()` SVG badges across Predictions, LiveMatches, StandingsTable, MatchList, Dashboard, ValueBets, AccumulatorBuilder, KellyCalculator, BettingHistory, MatchEventToast. TopScorers uses real API crests
 
 
-### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
-
-> **Top 3 highest-impact items for converting free → paid users:**
->
-> 1. **Empty state design** — this is what every new user sees first. Zeroes everywhere screams "unfinished". A welcoming onboarding flow with a clear CTA will dramatically improve first impressions.
-> 2. **Standings zone colouring + form dots** — every football fan expects this. It's table stakes. Without it, the app feels like a dev project rather than a product.
-> 3. **Richer prediction cards with team crests** — the crests are already available from the Football-Data.org API (`team.crest` URL). Adding them plus form indicators transforms the cards from "data display" to "match preview".
->
-> These three alone would take the app from "technically impressive" to "I'd show this to my mates".
+### P7i. Frontend Design Uplift (Medium Priority)
 
 **Dashboard first impression:**
-- [x] **Empty state design** — Welcoming onboarding card replaces zero stat cards when no predictions/bets exist. Shows Oracle description, "Generate Your First Prediction" primary CTA, and "View Standings" secondary CTA. All chart/activity empty states now also have navigation buttons
-- [x] **Dashboard hero section** — Featured upcoming match card in the hero section showing team badges (via `getTeamLogo()`), team names (responsive — hidden below 480px), kick-off time, and Zap CTA icon. Skeleton placeholder while loading, gracefully hidden when no upcoming matches exist
-- [x] **Prediction Accuracy Trend chart** — Empty state already has CTA button linking to Predictions page. Shows "No accuracy data yet" with guidance text
+- [x] **Empty state design** — Onboarding card with "Generate Your First Prediction" CTA replaces zero stat cards. Chart/activity empty states also have navigation buttons
+- [x] **Dashboard hero section** — Featured upcoming match card with team badges, kick-off time, and Zap CTA. Skeleton while loading, hidden when no upcoming matches
+- [x] **Prediction Accuracy Trend chart** — Empty state CTA links to Predictions page
 
 **Prediction cards:**
-- [x] **Richer match cards** — Added form dots (W/D/L) under team names + proportional probability bars (blue H, amber D, green A) replacing flat text percentages. Team crests already present via `getTeamLogo()`. League position badges deferred (needs standings data cross-reference)
-- [x] **Prediction result indicators** — Completed matches now show: green CheckCircle2 icon for correct predictions, red XCircle for incorrect, actual score with "Full Time" label, result verdict banner, and coloured card borders. Predictions view shows all gameweek matches (not just future ones), reconstructing stored prediction data from `predictionTracker`. 3 new tests (519 total)
+- [x] **Richer match cards** — Form dots (W/D/L) under team names + proportional probability bars (blue H, amber D, green A). League position badges deferred
+- [x] **Prediction result indicators** — Completed matches show correct/incorrect icon, actual score, result verdict banner, coloured borders. All gameweek matches shown (not just future)
 
 **Standings table:**
-- [x] **Zone colouring** — Champions League (blue), Europa League (orange), Conference League (emerald), relegation (red) zone row backgrounds + border stripes + position badges. All four zones in legend
-- [x] **Form column** — Last 5 results as coloured round dots (green W, grey D, red L) with accessibility labels. Already used `form` field from API
-- [x] **Position change arrows** — Small up/down/neutral arrows showing whether a team has moved since last gameweek. Uses form-based proxy (3+ wins = up, 0-1 wins = down) since the free-tier API doesn't expose per-matchday position history. Implemented via `getMovementIcon()` using Lucide ChevronUp/ChevronDown/Minus icons with colour coding
+- [x] **Zone colouring** — CL (blue), Europa (orange), Conference (emerald), relegation (red) row backgrounds + position badges + legend
+- [x] **Form column** — Last 5 results as coloured dots (green W, grey D, red L) with accessibility labels
+- [x] **Position change arrows** — Up/down/neutral icons via `getMovementIcon()` using form-based proxy (free tier lacks per-matchday position history)
 
 **Live Matches:**
-- [x] **Match timeline** — In-play matches now show a progress bar (0–90' or 0–120' for extra time) with half-time marker, colour-coded by phase (green → amber → red). Uses `getNumericMinute()` falling back to kickoff-time estimation when the API doesn't provide `minute`. ARIA progressbar role for accessibility
-- [x] **Score animation** — Score digits wrapped in `{#key}` blocks so they animate with a `scorePop` CSS keyframe (scale 1.5→1, 0.5s ease-out) whenever the value changes between polls. `prefers-reduced-motion` guard disables animation
+- [x] **Match timeline** — Progress bar (0–90' or 0–120' extra time) with half-time marker, colour-coded by phase. ARIA progressbar role
+- [x] **Score animation** — `{#key}` blocks trigger `scorePop` CSS keyframe on score change. `prefers-reduced-motion` guard
 
 **General UI polish:**
-- [x] **Loading states** — Replaced generic spinners with content-shaped skeleton screens in all 5 remaining pages: Predictions (3-col card grid), StandingsTable (full table with legend + 10 rows), LiveMatches (stacked match cards with 7-col grid), MatchList (match rows with team/score/status), TopScorers (6-column table with 8 rows). Uses existing `.skeleton` shimmer class from `app.css`
-- [x] **Micro-interactions** — Prediction flip cards: hover lift + shadow + active press state with `prefers-reduced-motion` guard. Dashboard stat cards: motion-safe guards + active press feedback. MatchList/LiveMatches: motion-safe prefix on hover translate. Removed dead `animate-float-subtle` CSS
-- [x] **Typography hierarchy** — Fixed h2→h1 semantic heading promotion in 5 page components (Predictions, StandingsTable, MatchList, SeasonStats, BettingHistory) for accessibility. Fixed Help.svelte inverted hierarchy (section h2s were text-3xl, larger than the text-2xl page h1 — now text-xl)
+- [x] **Loading states** — Content-shaped skeleton screens in all 5 remaining pages using `.skeleton` shimmer from `app.css`
+- [x] **Micro-interactions** — Hover lift + press states on prediction cards and stat cards. `prefers-reduced-motion` guards throughout. Removed dead `animate-float-subtle` CSS
+- [x] **Typography hierarchy** — h2→h1 semantic heading fix in 5 page components. Fixed Help.svelte inverted hierarchy (section headings were larger than the page h1)
 
 ### P7h. RAG Intelligence (Medium Priority)
 
-- [x] **Player data enrichment** — Loads player data from two sources at startup: `fact_player_stats.csv` (3,638 records with xG, per-90 metrics) and Football-Data.org `/competitions/PL/scorers` API (top 30 current season scorers). RAG intent parser extended with player name extraction and scorer-specific keyword detection. New query functions: `_query_player_profile()` (individual player lookup with CSV xG data), `_query_team_players()` (team-scoped top scorers), `_query_top_scorers()` (league-wide leaderboard). Prompt builder advertises player data availability. 14 new tests (58 total RAG tests)
-- [x] **Web search fallback** — When RAG returns `grounded: false`, DuckDuckGo web search fetches current Premier League information and injects it into the system prompt. New module `app/api/web_search.py` with `SearchResult` dataclass, `search_premier_league()` function (scoped queries, 15-min TTL cache, 100-entry cap), and `inject_search_context()` prompt formatter. `main.py` orchestrates via `asyncio.to_thread()`. Degrades gracefully — if duckduckgo-search isn't installed or search fails, falls back silently to existing ungrounded behaviour. 22 new tests (190 total across 5 files)
+- [x] **Player data enrichment** — Two data sources at startup: `fact_player_stats.csv` (3,638 records, xG/per-90 metrics) and Football-Data.org `/competitions/PL/scorers` (top 30). New query functions: `_query_player_profile()`, `_query_team_players()`, `_query_top_scorers()`. 14 new tests (58 total RAG tests)
+- [x] **Web search fallback** — When RAG returns `grounded: false`, DuckDuckGo search (`app/api/web_search.py`) fetches PL info and injects into the system prompt. 15-min TTL cache, 100-entry cap. Degrades gracefully if `duckduckgo-search` not installed. 22 new tests (190 total across 5 files)
 - [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
 
 ---
@@ -270,8 +259,9 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 
 - [x] **Odds-as-features** — DONE (v2). 10 bookmaker odds features added from CSV columns. Overall accuracy +0.9%, draw accuracy +16.4%, log loss −0.026. Dual-mode: uses odds from CSVs at training time, optional at inference time
 
+- [x] **Draw prediction overhaul** — DONE (v3). Three-pronged approach: 5 new draw-targeted features (114 total), raw-probs-for-classification fix at inference, dual calibration. Draw AUC-ROC 0.601; overall accuracy 53.3%. A dedicated draw-specialist model or ordinal regression could push further (future work)
+
 **Remaining:**
-- [ ] **Draw prediction overhaul** — v2 lifted draw accuracy to 23.1% but a dedicated draw-specialist model or ordinal regression could push this further
 - [ ] **Retrain with full 2025/26 season data** — add ~380 matches once the season completes
 
 ---
