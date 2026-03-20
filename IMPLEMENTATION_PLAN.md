@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 5/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 8/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
-**Frontend:** 519 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -94,7 +94,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 ### P7g. Frontend Polish (Medium Priority)
 
-- [ ] **Team theme toggle broken** — Settings page team colour toggle not applying. Dark/light mode works fine; issue is specifically with team-specific colour themes. Investigate `Settings.svelte` team colour handling and CSS variable application
+- [x] **Team theme toggle fixed** — Settings page was populating the favourite team dropdown from Football-Data.org API names (e.g., "Liverpool FC", "Wolves") which don't match the CSS `[data-team="..."]` selectors. Fixed by sourcing dropdown options from the canonical `teamColors` keys. Also moved `plTeams` init to top of `onMount` and restored DOM `data-team` attribute on mount
 - [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
 - [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
 - [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
@@ -111,7 +111,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 **Dashboard first impression:**
 - [x] **Empty state design** — Welcoming onboarding card replaces zero stat cards when no predictions/bets exist. Shows Oracle description, "Generate Your First Prediction" primary CTA, and "View Standings" secondary CTA. All chart/activity empty states now also have navigation buttons
-- [ ] **Dashboard hero section** — Add a featured upcoming match or "match of the day" at the top of the dashboard instead of jumping straight into empty stats. Pull from next fixture data
+- [x] **Dashboard hero section** — Featured upcoming match card in the hero section showing team badges (via `getTeamLogo()`), team names (responsive — hidden below 480px), kick-off time, and Zap CTA icon. Skeleton placeholder while loading, gracefully hidden when no upcoming matches exist
 - [x] **Prediction Accuracy Trend chart** — Empty state already has CTA button linking to Predictions page. Shows "No accuracy data yet" with guidance text
 
 **Prediction cards:**
@@ -128,7 +128,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Score animation** — Animate score changes when a goal is scored during polling updates
 
 **General UI polish:**
-- [ ] **Loading states** — Replace generic spinners with skeleton screens that match the layout of the content they're loading (already done for Season Stats — extend to other pages)
+- [x] **Loading states** — Replaced generic spinners with content-shaped skeleton screens in all 5 remaining pages: Predictions (3-col card grid), StandingsTable (full table with legend + 10 rows), LiveMatches (stacked match cards with 7-col grid), MatchList (match rows with team/score/status), TopScorers (6-column table with 8 rows). Uses existing `.skeleton` shimmer class from `app.css`
 - [ ] **Micro-interactions** — Add subtle hover effects, card press states, and transition animations between views for a more premium feel
 - [ ] **Typography hierarchy** — Review font sizes across pages for consistency. Dashboard headers vs card labels vs stat values should have a clear visual hierarchy
 

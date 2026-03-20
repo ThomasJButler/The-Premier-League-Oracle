@@ -2,6 +2,31 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i/P7g: Skeleton Loading, Hero Match, Team Theme Fix
+
+### Added: Content-shaped skeleton loading screens (P7i)
+- **Predictions** — 3-column card grid skeleton with date/badge, team logos, form dots, probability bar, and button placeholders
+- **StandingsTable** — Full table skeleton with zone legend, 11-column header, and 10 shimmer rows (position badge, team logo, stat columns, form dots)
+- **LiveMatches** — Stacked match card skeletons with status badge, 7-column grid (home/score/away), and activity icon placeholder
+- **MatchList** — Match row skeletons with team names, logos, score, and status badge in responsive grid
+- **TopScorers** — 6-column table skeleton with rank badges, player names, team crests, and stat columns (8 rows)
+- All skeletons use the existing `.skeleton` shimmer animation from `app.css`
+- 4 tests updated from `.animate-spin` to `.skeleton` assertion — 522 Vitest tests total
+
+### Added: Featured match card in Dashboard hero section (P7i)
+- **Featured upcoming match** displayed alongside branding in the hero area — shows team badges via `getTeamLogo()`, team names (hidden below 480px for mobile), kick-off time, and Zap CTA icon
+- Skeleton placeholder while data loads, gracefully hidden when no upcoming matches exist
+- 1 new test verifying featured match rendering with mock upcoming data
+
+### Fixed: Team theme toggle not applying favourite team colours (P7g)
+- **Root cause**: Settings dropdown was populated from Football-Data.org API team names (e.g., "Liverpool FC", "Wolves") which don't match the CSS `[data-team="Liverpool"]` selectors in `app.css`
+- **Fix**: Dropdown now sources options from the canonical `teamColors` keys which are the single source of truth for team naming throughout the app
+- Moved `plTeams` initialisation to top of `onMount` for immediate availability
+- Restored `data-team` DOM attribute on mount so the theme persists across page navigations
+- 2 new tests (dropdown source verification, DOM attribute mechanism) — covers the fix without depending on `onMount` in jsdom
+
+---
+
 ## 20 March 2026 — P7i/P7g: Prediction Result Indicators & Model Weights Fix
 
 ### Added: Prediction result indicators on cards (P7i)
