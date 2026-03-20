@@ -107,19 +107,23 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 **P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 47/49 items done):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 57/59 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|
 | P7a | Model accuracy — odds-as-features, draw overhaul, calibration, retraining | High |
-| P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
-| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
+| P7b | AI integration — configurable model, Claude support | Medium |
+| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases | Required annually |
 | P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
-| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin `openai`/`ruff` versions | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin versions | Low |
 | P7f | Season Timeline — interactive visual timeline of 2025/26 key moments | New feature |
-| P7g | Frontend Polish — team theme toggle fix, FAQ, README overhaul, Dashboard weights display | Medium |
+| P7g | Frontend Polish — team theme toggle, FAQ, README, Dashboard weights | Medium |
 | P7h | RAG Intelligence — player data enrichment, web search fallback | Medium |
-| P7i | Frontend Design Uplift — empty states, richer prediction cards, standings zones, loading states | Medium |
+| P7i | Frontend Design Uplift — empty states, richer cards, standings zones | Medium |
+| P7j | Ensemble Weight Persistence — apply/save/reset backtest weights | Done |
+| P7k | Prediction Model Constants Extraction — named constants in constants.ts | Done |
+| P7l | UI Polish & Betting Fixes — form display, crests, ticker, debounce | Done |
+| P7m | Design Refinements — team-coloured bars, hero uplift, accent theming, nav, skeletons | Done |
 
 **Active branches:** `v3.0-MVP` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
