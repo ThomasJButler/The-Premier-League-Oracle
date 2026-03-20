@@ -2,6 +2,20 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Apply Backtest-Derived Ensemble Weights (P7j)
+
+### Added: Dynamic ensemble weight persistence
+- New functions in `optimizedPredictions.ts`: `getActiveModelWeights()`, `saveModelWeights()`, `resetModelWeights()`, `hasCustomWeights()` — users can apply optimal weights found by the backtest `WeightOptimiser` grid search
+- Predictions backtest panel: "Apply Optimal Weights" button saves optimised weights to localStorage; "Reset to Defaults" reverts. Current weights now read dynamically instead of hardcoded values
+- Dashboard "How We Predict": reads active weights via `getActiveModelWeights()`, shows "Using backtest-optimised weights" note when custom weights are active
+- `combineModels()` and effective weight reporting now use `getActiveModelWeights()` instead of static `MODEL_WEIGHTS`
+- backtest.ts `WeightOptimiser.optimise()` compares against active weights (not just hardcoded defaults)
+- **Why:** The backtest infrastructure (10,626 weight combinations grid search) already existed but was display-only. Users could see "these weights would improve accuracy by X%" but couldn't apply them. Now the loop is closed.
+- **10 new Vitest tests** covering: save/load/reset/validate custom weights, corrupted data fallback, NaN rejection, missing keys fallback, sum validation, integration with `predictMatch()`
+- **561 Vitest tests** (34 files), all passing
+
+---
+
 ## 20 March 2026 — Documentation Cleanup and Test Quality Improvements
 
 ### Fixed: Documentation accuracy and redundant files

@@ -15,6 +15,7 @@ The Premier League Oracle has two independently deployable components:
 | `OPENAI_API_KEY` | Frontend (Edge Function) + Backend | No | OpenAI API key for the Oracle Chat. Without it, users must provide their own key in the chat UI |
 | `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Claude model support (added in P7b). Without it, the chat falls back to OpenAI or requires a user-supplied key |
 | `FOOTBALL_DATA_API_KEY` | Backend | No | Football-Data.org API key for live match data. Server starts without it but match endpoints return empty data |
+| `ORACLE_AI_MODEL` | Frontend (Edge Function) | No | AI model for Oracle Chat (optional). Default: gpt-4o-mini. Supports gpt-4o-mini, gpt-4o, gpt-4-turbo, claude-3-5-haiku-latest, claude-3-5-sonnet-latest, claude-3-opus-latest |
 
 ---
 
@@ -48,9 +49,9 @@ The `api/chat.ts` file at the repository root is a Vercel Edge Function that pro
 **Important:** Vercel must be configured to deploy from the **repository root** (not `frontend/`) for the Edge Function to be picked up. If you set the root directory to `frontend/`, the `api/` directory at the repo root will be outside the deployment scope and the Edge Function will not work. In that case, users fall back to providing their own OpenAI key in the chat UI.
 
 **How it works:**
-- Accepts `POST /api/chat` with `{ messages: [...], apiKey?: string }`
-- Uses `process.env.OPENAI_API_KEY` if set, otherwise falls back to the user-provided key
-- Calls OpenAI's `gpt-4o-mini` model with `max_tokens: 800`
+- Accepts `POST /api/chat` with `{ messages: [...], apiKey?: string, model?: string }`
+- Supports both OpenAI and Anthropic (Claude) models — the active model is resolved from the request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default
+- Uses server-side API keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) if set, otherwise falls back to the user-provided key
 - Returns the response JSON to the frontend
 
 ### Local Development

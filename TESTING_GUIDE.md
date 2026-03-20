@@ -29,7 +29,7 @@ cd frontend
 # TypeScript + Svelte type check (must pass before committing)
 npm run check
 
-# Unit tests — 549 tests across 34 files
+# Unit tests — 561 tests across 34 files
 npm run test:run          # One-shot, no watch
 npm run test              # Watch mode (re-runs on file changes)
 npm run test:coverage     # With coverage report (thresholds: 60/65/65/60)
@@ -117,7 +117,7 @@ python train_free_tier.py
 Run this when you haven't touched the project in a while:
 
 - [ ] `cd frontend && npm run check` → 0 errors, 0 warnings
-- [ ] `cd frontend && npm run test:run` → 549 tests pass
+- [ ] `cd frontend && npm run test:run` → 561 tests pass
 - [ ] `conda activate anaconda-ml-ai && cd backend && python -m pytest tests/ -v` → 190 tests pass (8 skip OK)
 - [ ] Backend starts: `uvicorn app.api.main:app --reload --port 8000`
 - [ ] `curl http://localhost:8000/health` → healthy, model loaded

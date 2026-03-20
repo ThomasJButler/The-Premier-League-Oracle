@@ -25,20 +25,14 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 46/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 44/46 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
 
-**Frontend:** 551 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
 
 All completed P0–P4 work is documented in `CHANGELOG.md`.
-
----
-
-## P6: Final Push (MVP Ship) — ALL DONE
-
-All P6 items complete — see CHANGELOG.md for details.
 
 ---
 
@@ -128,6 +122,10 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 - [x] **Player data enrichment** — Two data sources at startup: `fact_player_stats.csv` (3,638 records, xG/per-90 metrics) and Football-Data.org `/competitions/PL/scorers` (top 30). New query functions: `_query_player_profile()`, `_query_team_players()`, `_query_top_scorers()`. 14 new tests (58 total RAG tests)
 - [x] **Web search fallback** — When RAG returns `grounded: false`, DuckDuckGo search (`app/api/web_search.py`) fetches PL info and injects into the system prompt. 15-min TTL cache, 100-entry cap. Degrades gracefully if `duckduckgo-search` not installed. 22 new tests (190 total across 5 files)
 - [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
+
+### P7j. Ensemble Weight Persistence (New Feature)
+
+- [x] **Apply backtest-derived weights** — `getActiveModelWeights()`, `saveModelWeights()`, `resetModelWeights()`, `hasCustomWeights()` in `optimizedPredictions.ts`. Users can apply optimal weights from the backtest panel in Predictions.svelte, persisted to localStorage. Dashboard "How We Predict" reads active weights dynamically. 10 new tests. 561 total Vitest tests (34 files)
 
 ---
 
@@ -266,21 +264,7 @@ All quick-win and medium-effort improvements implemented (class weights, calibra
 
 ---
 
-## Remaining Work — P2 (Partial Items)
-
-### P2n. CI/CD Pipeline — DONE
-
-- [x] Playwright E2E in CI — implemented in P7e (parallel job in `.github/workflows/ci.yml`, Chromium-only, HTML report artifact)
-
----
-
 ## Remaining Work — P5 (Hardening)
-
-### P5c. Backend CI Pipeline — DONE
-
-- [x] Playwright E2E tests in CI — implemented in P7e
-
-P5g (eighteenth audit) and P5h (twentieth audit) — ALL DONE — see CHANGELOG.md for details.
 
 ### P5f. Type Safety — PARTIAL
 
@@ -374,7 +358,7 @@ The three security files (`auth.py`, `secrets.py`, `validators.py`) were deleted
 | `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
 | `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
 | `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) | Low |
-| `optimizedPredictions.ts` | `MODEL_WEIGHTS` — static ensemble weights, not derived from backtesting | Low |
+| `optimizedPredictions.ts` | `MODEL_WEIGHTS` — users can now apply backtest-derived weights via Predictions panel (persisted to localStorage) | Resolved |
 | `optimizedPredictions.ts` | `eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600)` — base 26.5% and scale 600 hardcoded | Low |
 | `optimizedPredictions.ts` | Form weight array `[0.35, 0.25, 0.20, 0.12, 0.08]` — arbitrary decay | Low |
 | `optimizedPredictions.ts` | Confidence boost/penalty thresholds and values — all hardcoded | Low |
@@ -384,7 +368,6 @@ The three security files (`auth.py`, `secrets.py`, `validators.py`) were deleted
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | Low |
 | `betBuilder.ts` | `ftBias = 0.4` — HT-FT correlation arbitrarily set at 40% | Low |
 | `betBuilder.ts` | `homeCleanSheet` prediction threshold 0.3 — no empirical basis | Low |
-| `ChatBot.svelte` | Model hardcoded as `gpt-4o-mini` | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated margin | Low |
 | `Predictions.svelte` | `totalGameweeks = 38` hardcoded — never updated from API season data | Low |
 | `value.ts` | `MIN_CONFIDENCE = 0.55` — filters out most draw/away predictions | Low |
@@ -468,7 +451,7 @@ All feature specifications in `specs/`:
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
 | `SeasonTimeline.test.ts` | 13 | Passing |
-| **Total** | **535** | **All passing (33 files)** |
+| **Total** | **561** | **All passing (34 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 

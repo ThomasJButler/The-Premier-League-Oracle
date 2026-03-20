@@ -46,7 +46,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `components/betting/` - Betting UI (KellyCalculator, ValueBets, AccumulatorBuilder)
 - `lib/` - Core prediction libraries:
   - `advancedPredictions.ts` - Statistical models (ELO, Poisson, xG, Fatigue, Referee)
-  - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
+  - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model). `MODEL_WEIGHTS` defines default weights (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%) but active weights are dynamic — user-applicable via backtest results and persisted to localStorage. Key exports: `getActiveModelWeights`, `saveModelWeights`, `resetModelWeights`, `hasCustomWeights`
   - `betBuilder.ts` - Multi-market prediction generator
   - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised)
   - `backtest.ts` - Ensemble backtesting engine (BacktestRunner, WeightOptimiser)
@@ -126,7 +126,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 551 Vitest tests (34 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
+- **Frontend:** 561 Vitest tests (34 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
 - **Backend:** 190 pytest tests (5 files), all passing
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
