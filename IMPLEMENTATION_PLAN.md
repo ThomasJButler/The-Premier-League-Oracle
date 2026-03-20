@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 35/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 36/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -56,7 +56,7 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 ### P7b. AI Integration Upgrade (Medium Impact)
 
 - [x] **Make AI model configurable** — Extracted hardcoded `gpt-4o-mini` from `api/chat.ts`, `vite.config.ts`, and `backend/main.py`. Model resolution: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Settings UI dropdown (4 models) saves preference to localStorage. ChatBot and aiAnalysis both include the saved model in requests. Server-side allowlist prevents arbitrary model injection
-- [ ] **Claude integration** — Add Anthropic API as alternative to OpenAI for match analysis and Oracle Chat. Would require backend `rag.py` to support multiple providers
+- [x] **Claude integration** — Full Anthropic API support across all layers. `api/chat.ts` (Vercel Edge Function) and `vite.config.ts` (dev proxy) both detect Claude models via `startsWith('claude')` prefix, route to Anthropic Messages API with separate system prompt field, normalise response to OpenAI shape. Backend `main.py` `/chat/rag` endpoint uses `anthropic` Python SDK when model is Claude. `constants.ts` adds three Claude models (Haiku, Sonnet, Opus) with `getModelProvider()` helper. ChatBot.svelte sends provider-specific headers and shows dual-provider UI. Added `anthropic==0.49.0` to backend requirements
 - [x] **AI-powered match insights** — Enhanced `aiAnalysis.ts` prompt with H2H record and Poisson model probabilities (homeWin/draw/awayWin percentages). `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields. Prompt now uses section-based builder pattern for cleaner conditional enrichment. Predictions.svelte passes the extra data from `detailedAnalysis`
 
 ### P7c. Seasonal Maintenance (Required Annually)

@@ -2,6 +2,17 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7b: Claude/Anthropic Integration
+
+### Added: Multi-provider AI support — OpenAI and Anthropic (P7b — Claude integration complete)
+- **Frontend:** Added three Claude models to Settings dropdown: Claude 3.5 Haiku (fastest/cheapest), Claude 3.5 Sonnet (balanced), Claude 3 Opus (powerful). New `getModelProvider()` helper detects provider from model ID prefix
+- **ChatBot.svelte:** Dynamic provider-specific headers (`X-OpenAI-Key` / `X-Anthropic-Key`), updated UI to "Connect AI Provider" with links to both OpenAI and Anthropic key consoles, placeholder updated to `sk-... or sk-ant-...`
+- **Vercel Edge Function (`api/chat.ts`):** Complete rewrite with dual provider routing. Claude models route to Anthropic Messages API (system prompt as separate field, `x-api-key` header, `anthropic-version` header). Responses normalised to OpenAI shape (`choices[0].message.content`) so the frontend needs no provider awareness
+- **Dev proxy (`vite.config.ts`):** Mirrored dual-provider logic in `chatApiProxy()` middleware for local development without `vercel dev`
+- **Backend RAG (`main.py`):** Anthropic provider path using `anthropic` Python SDK `messages.create()`. Model detection via `startswith("claude")`. System prompt passed as separate parameter per Anthropic API spec
+- **Dependencies:** Added `anthropic==0.49.0` to `backend/requirements.txt`
+- **Tests:** Updated 12 ChatBot test assertions to match new UI copy (placeholder, header text, provider links). All 535 frontend tests passing
+
 ## 20 March 2026 — P7c: Seasonal Maintenance
 
 ### Improved: Team name maps and seasonal update process (P7c — all 4 items complete)
