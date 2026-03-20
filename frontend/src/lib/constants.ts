@@ -32,3 +32,23 @@ export const DEFAULT_HOME_WIN_RATE = 0.46;
  * - optimizedPredictions.ts (getStandingsProbabilities, combineModels zero-guard)
  */
 export const DEFAULT_DRAW_RATE = 0.27;
+
+/**
+ * AI_MODELS defines the OpenAI models available in the Settings dropdown.
+ * The server-side allowlist in api/chat.ts and vite.config.ts must match.
+ */
+export const AI_MODELS = [
+  { id: 'gpt-4o-mini', label: 'GPT-4o Mini (fastest, cheapest)' },
+  { id: 'gpt-4o', label: 'GPT-4o (balanced)' },
+  { id: 'gpt-4-turbo', label: 'GPT-4 Turbo (powerful)' },
+  { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (legacy)' },
+] as const;
+
+export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
+export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';
+
+/** Read the user's saved model preference from localStorage. */
+export function getSavedAiModel(): string {
+  if (typeof localStorage === 'undefined') return DEFAULT_AI_MODEL;
+  return localStorage.getItem(AI_MODEL_STORAGE_KEY) || DEFAULT_AI_MODEL;
+}

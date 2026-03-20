@@ -513,8 +513,9 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     try:
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
+        ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=ai_model,
             messages=messages,  # type: ignore[arg-type]
             max_tokens=800,
             temperature=0.7,

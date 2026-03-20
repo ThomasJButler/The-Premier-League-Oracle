@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 18/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 22/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -55,7 +55,7 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 ### P7b. AI Integration Upgrade (Medium Impact)
 
-- [ ] **Make AI model configurable** — `gpt-4o-mini` hardcoded in `ChatBot.svelte`, `main.py:513`, and `vite.config.ts:59`. Extract to environment variable (`ORACLE_AI_MODEL`) with Settings UI dropdown
+- [x] **Make AI model configurable** — Extracted hardcoded `gpt-4o-mini` from `api/chat.ts`, `vite.config.ts`, and `backend/main.py`. Model resolution: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Settings UI dropdown (4 models) saves preference to localStorage. ChatBot and aiAnalysis both include the saved model in requests. Server-side allowlist prevents arbitrary model injection
 - [ ] **Claude integration** — Add Anthropic API as alternative to OpenAI for match analysis and Oracle Chat. Would require backend `rag.py` to support multiple providers
 - [ ] **AI-powered match insights** — Enhance `aiAnalysis.ts` to generate pre-match tactical analysis using form data, H2H stats, and ELO differentials as structured context
 
@@ -136,7 +136,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 - [ ] **Player data enrichment** — Query Football-Data.org free API for player data (`/teams/{id}/`, `/competitions/PL/scorers`) at backend startup. Inject into RAG context so player-specific questions get grounded answers instead of generic AI knowledge
 - [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
-- [ ] **AI model configurable** — `gpt-4o-mini` hardcoded in `ChatBot.svelte`, `main.py`, `vite.config.ts`. Extract to environment variable with Settings UI dropdown (existing P7b item)
+- [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
 
 ---
 

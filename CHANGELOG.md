@@ -2,6 +2,21 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7b: Configurable AI Model
+
+### Added: AI model selector in Settings (P7b)
+- New **AI Model** section in Settings with dropdown for 4 OpenAI models: GPT-4o Mini, GPT-4o, GPT-4 Turbo, GPT-3.5 Turbo
+- Model preference saved to localStorage (`oracle_ai_model`) and included in `/api/chat` request bodies
+- Both `ChatBot.svelte` and `aiAnalysis.ts` now send the user's model selection to the server
+- Server-side resolution chain: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default
+- **Security**: server-side allowlist (`ALLOWED_MODELS`) prevents arbitrary model injection — unknown models fall back to default
+- Constants exported from `lib/constants.ts`: `AI_MODELS`, `DEFAULT_AI_MODEL`, `AI_MODEL_STORAGE_KEY`, `getSavedAiModel()`
+
+### Changed: Remove hardcoded `gpt-4o-mini` (P7b)
+- `api/chat.ts` (Vercel Edge function): model now resolved from request body or env var
+- `frontend/vite.config.ts` (dev proxy): same resolution chain as production
+- `backend/app/api/main.py`: reads `ORACLE_AI_MODEL` env var, defaults to `gpt-4o-mini`
+
 ## 20 March 2026 — P7i: Match Timeline & Score Animation
 
 ### Added: Live match timeline progress bar (P7i)

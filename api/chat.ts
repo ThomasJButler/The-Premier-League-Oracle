@@ -3,9 +3,14 @@ export const config = {
 };
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'gpt-4o-mini';
 const MAX_TOKENS = 800;
 const TEMPERATURE = 0.7;
+
+/** Supported models that users can select via Settings. */
+const ALLOWED_MODELS = [
+  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo',
+];
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -19,14 +24,14 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  let body: { messages?: unknown[]; apiKey?: string };
+  let body: { messages?: unknown[]; apiKey?: string; model?: string };
   try {
     body = await req.json();
   } catch {
     return jsonResponse({ error: 'Invalid JSON body.' }, 400);
   }
 
-  const { messages, apiKey: userKey } = body;
+  const { messages, apiKey: userKey, model: requestedModel } = body;
 
   // Server-side key takes priority over user-provided key
   const apiKey = process.env.OPENAI_API_KEY || userKey;
@@ -42,6 +47,13 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse({ error: 'Messages array required.' }, 400);
   }
 
+  // Resolve model: request body → env var → default. Only allow known models.
+  const envModel = process.env.ORACLE_AI_MODEL;
+  const resolvedModel =
+    (requestedModel && ALLOWED_MODELS.includes(requestedModel) ? requestedModel : null)
+    ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
+    ?? DEFAULT_MODEL;
+
   try {
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -50,7 +62,7 @@ export default async function handler(req: Request): Promise<Response> {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: resolvedModel,
         messages,
         max_tokens: MAX_TOKENS,
         temperature: TEMPERATURE,

@@ -6,6 +6,7 @@
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
+  import { getSavedAiModel } from '$lib/constants';
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -330,6 +331,7 @@ Current data:\n`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: apiMessages,
+        model: getSavedAiModel(),
         ...(!useServerKey && apiKey ? { apiKey } : {})
       })
     });

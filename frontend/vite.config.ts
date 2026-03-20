@@ -4,6 +4,10 @@ import path from 'path'
 import type { IncomingMessage, ServerResponse } from 'http'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const DEFAULT_MODEL = 'gpt-4o-mini';
+const ALLOWED_MODELS = [
+  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo',
+];
 
 /**
  * Vite plugin that mirrors the api/chat.ts Edge Function locally.
@@ -26,7 +30,7 @@ function chatApiProxy(): Plugin {
         let body = '';
         req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
         req.on('end', async () => {
-          let parsed: { messages?: unknown[]; apiKey?: string };
+          let parsed: { messages?: unknown[]; apiKey?: string; model?: string };
           try {
             parsed = JSON.parse(body);
           } catch {
@@ -48,6 +52,14 @@ function chatApiProxy(): Plugin {
             return;
           }
 
+          // Resolve model: request body → env var → default
+          const requestedModel = parsed.model;
+          const envModel = process.env.ORACLE_AI_MODEL;
+          const resolvedModel =
+            (requestedModel && ALLOWED_MODELS.includes(requestedModel) ? requestedModel : null)
+            ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
+            ?? DEFAULT_MODEL;
+
           try {
             const upstream = await fetch(OPENAI_API_URL, {
               method: 'POST',
@@ -56,7 +68,7 @@ function chatApiProxy(): Plugin {
                 'Authorization': `Bearer ${apiKey}`,
               },
               body: JSON.stringify({
-                model: 'gpt-4o-mini',
+                model: resolvedModel,
                 messages: parsed.messages,
                 max_tokens: 800,
                 temperature: 0.7,

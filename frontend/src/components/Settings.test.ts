@@ -45,7 +45,7 @@ vi.mock('lucide-svelte', () => {
   return {
     Settings: stub, Key: stub, Database: stub, RefreshCw: stub,
     CheckCircle: stub, AlertCircle: stub, Wifi: stub, Trophy: stub,
-    Sparkles: stub, Heart: stub, Cpu: stub
+    Sparkles: stub, Heart: stub, Cpu: stub, Bot: stub
   };
 });
 

@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles, Bot } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
   import { aiAnalysisService } from '../services/aiAnalysis';
+  import { AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY } from '$lib/constants';
   import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
@@ -57,6 +58,12 @@
   // AI Analysis
   let aiAnalysisEnabled = false;
   let aiKeyAvailable: boolean | null = null;
+  let selectedAiModel = DEFAULT_AI_MODEL;
+
+  function saveAiModel(model: string) {
+    selectedAiModel = model;
+    localStorage.setItem(AI_MODEL_STORAGE_KEY, model);
+  }
 
   function toggleAiAnalysis() {
     aiAnalysisEnabled = !aiAnalysisEnabled;
@@ -229,6 +236,9 @@
       favouriteTeam = savedTeam;
       document.documentElement.dataset.team = savedTeam;
     }
+
+    // Load AI model preference
+    selectedAiModel = localStorage.getItem(AI_MODEL_STORAGE_KEY) || DEFAULT_AI_MODEL;
 
     // Load AI analysis settings
     aiAnalysisEnabled = aiAnalysisService.isEnabled();
@@ -599,6 +609,36 @@
         </Button>
       </div>
     {/if}
+  </div>
+
+  <!-- AI Model Selection -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Bot class="w-5 h-5 text-primary" />
+      <span>AI Model</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Choose which OpenAI model powers Oracle Chat and AI Match Analysis.
+      Larger models produce richer analysis but cost more per request.
+    </p>
+
+    <div class="flex items-center gap-3">
+      <select
+        id="ai-model"
+        aria-label="AI model"
+        bind:value={selectedAiModel}
+        on:change={() => saveAiModel(selectedAiModel)}
+        class="flex-1 max-w-md px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
+      >
+        {#each AI_MODELS as model}
+          <option value={model.id}>{model.label}</option>
+        {/each}
+      </select>
+    </div>
+
+    <p class="text-xs text-muted-foreground mt-3">
+      The server can override this via the <code class="text-xs bg-muted px-1 py-0.5 rounded">ORACLE_AI_MODEL</code> environment variable.
+    </p>
   </div>
 
   <!-- Cache Management -->

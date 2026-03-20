@@ -9,6 +9,8 @@
  * Analyses are cached in localStorage for 24 hours per match.
  */
 
+import { getSavedAiModel } from '$lib/constants';
+
 // --- Types ---
 
 export interface AnalysisInput {
@@ -243,6 +245,7 @@ Do NOT invent specific injury news, transfer rumours, or manager quotes. Only re
           content: this.buildPrompt(input),
         },
       ],
+      model: getSavedAiModel(),
     };
 
     // Only send user key if server doesn't have one
