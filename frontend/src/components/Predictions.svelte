@@ -615,6 +615,43 @@
                 </div>
               {/each}
             </div>
+
+            <!-- Optimised Weights -->
+            {#if backtestResult.optimisedWeights}
+              <div class="mt-4 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                <div class="flex items-center gap-2 mb-2">
+                  <FlaskConical class="w-4 h-4 text-primary" />
+                  <span class="text-sm font-medium text-foreground">Optimised Weights</span>
+                  {#if backtestResult.optimisedWeights.improvement > 0}
+                    <Badge variant="outline" class="text-emerald-500 border-emerald-500/30">
+                      +{backtestResult.optimisedWeights.improvement.toFixed(1)}pp
+                    </Badge>
+                  {:else}
+                    <Badge variant="outline" class="text-muted-foreground">
+                      Current weights are optimal
+                    </Badge>
+                  {/if}
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                  {#each [
+                    { label: 'ELO', current: 25, optimal: backtestResult.optimisedWeights.elo * 100 },
+                    { label: 'Poisson', current: 30, optimal: backtestResult.optimisedWeights.poisson * 100 },
+                    { label: 'Form', current: 20, optimal: backtestResult.optimisedWeights.form * 100 },
+                    { label: 'H2H', current: 10, optimal: backtestResult.optimisedWeights.h2h * 100 },
+                    { label: 'Pos.', current: 15, optimal: backtestResult.optimisedWeights.standings * 100 }
+                  ] as w}
+                    <div class="p-1.5 rounded bg-muted/50">
+                      <div class="text-[10px] text-muted-foreground">{w.label}</div>
+                      <div class="text-xs font-bold text-primary">{w.optimal.toFixed(0)}%</div>
+                      <div class="text-[10px] text-muted-foreground">was {w.current}%</div>
+                    </div>
+                  {/each}
+                </div>
+                <p class="text-[10px] text-muted-foreground mt-2">
+                  Accuracy: {(backtestResult.optimisedWeights.accuracy * 100).toFixed(1)}% · Log Loss: {backtestResult.optimisedWeights.logLoss.toFixed(3)}
+                </p>
+              </div>
+            {/if}
           </div>
         {/if}
       </div>

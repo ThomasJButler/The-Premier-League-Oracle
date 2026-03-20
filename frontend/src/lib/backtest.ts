@@ -1,5 +1,5 @@
 import type { Match } from '../types';
-import { OptimizedPredictor, type EnhancedPredictionModel } from './optimizedPredictions';
+import { OptimizedPredictor, MODEL_WEIGHTS, type EnhancedPredictionModel, type ModelOutputs } from './optimizedPredictions';
 import { sharedEloSystem, EloRatingSystem } from './advancedPredictions';
 
 export interface BacktestResult {
@@ -14,6 +14,8 @@ export interface BacktestResult {
   logLoss: number;
   brierScore: number;
   predictions: BacktestPrediction[];
+  /** Optimal weights found by the weight optimiser (populated after run) */
+  optimisedWeights?: OptimisedWeights;
 }
 
 export interface BacktestPrediction {
@@ -25,6 +27,19 @@ export interface BacktestPrediction {
   correct: boolean;
   confidence: number;
   probabilities: { home: number; draw: number; away: number };
+  /** Raw per-model probabilities for weight optimisation */
+  modelOutputs?: ModelOutputs;
+}
+
+export interface OptimisedWeights {
+  elo: number;
+  poisson: number;
+  form: number;
+  h2h: number;
+  standings: number;
+  accuracy: number;
+  logLoss: number;
+  improvement: number; // percentage points over current weights
 }
 
 export type BacktestProgressCallback = (completed: number, total: number) => void;
@@ -140,7 +155,8 @@ export class BacktestRunner {
         actualResult: match.result!,
         correct: prediction.predictedResult === match.result,
         confidence: prediction.confidence,
-        probabilities
+        probabilities,
+        modelOutputs: prediction.modelOutputs
       });
 
       onProgress?.(i + 1, total);
@@ -160,7 +176,12 @@ export class BacktestRunner {
     }
     sharedEloSystem.setProcessedMatchIds(processedIdsSnapshot);
 
-    return this.computeMetrics(predictions);
+    const result = this.computeMetrics(predictions);
+
+    // Run weight optimisation over the stored model outputs
+    result.optimisedWeights = WeightOptimiser.optimise(predictions);
+
+    return result;
   }
 
   private computeMetrics(predictions: BacktestPrediction[]): BacktestResult {
@@ -239,5 +260,161 @@ export class BacktestRunner {
       brierScore,
       predictions
     };
+  }
+}
+
+/**
+ * WeightOptimiser — tests different ensemble weight combinations against
+ * stored model outputs from a backtest run.
+ *
+ * This is extremely fast because it doesn't re-run predictions. It just
+ * re-combines the already-computed per-model probabilities with different
+ * weights and scores the resulting predictions.
+ */
+export class WeightOptimiser {
+  /** Step size for weight grid (5% increments) */
+  private static readonly STEP = 0.05;
+
+  /**
+   * Generate all weight combinations that sum to 1.0 at the given step size.
+   * With 5 models and step=0.05, this produces ~10,626 combinations.
+   */
+  private static generateCombinations(): Array<{ elo: number; poisson: number; form: number; h2h: number; standings: number }> {
+    const step = this.STEP;
+    const combos: Array<{ elo: number; poisson: number; form: number; h2h: number; standings: number }> = [];
+
+    for (let elo = 0; elo <= 1; elo += step) {
+      for (let poisson = 0; poisson <= 1 - elo; poisson += step) {
+        for (let form = 0; form <= 1 - elo - poisson; form += step) {
+          for (let h2h = 0; h2h <= 1 - elo - poisson - form; h2h += step) {
+            const standings = 1 - elo - poisson - form - h2h;
+            // Floating point guard — standings should be ≥ 0
+            if (standings >= -0.001 && standings <= 1.001) {
+              combos.push({
+                elo: Math.round(elo * 100) / 100,
+                poisson: Math.round(poisson * 100) / 100,
+                form: Math.round(form * 100) / 100,
+                h2h: Math.round(h2h * 100) / 100,
+                standings: Math.round(Math.max(0, standings) * 100) / 100
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return combos;
+  }
+
+  /**
+   * Combine model outputs with given weights and return the predicted outcome.
+   */
+  private static combineWithWeights(
+    outputs: ModelOutputs,
+    weights: { elo: number; poisson: number; form: number; h2h: number; standings: number }
+  ): { home: number; draw: number; away: number; predicted: 'H' | 'D' | 'A' } {
+    const home =
+      outputs.elo.home * weights.elo +
+      outputs.poisson.home * weights.poisson +
+      outputs.form.home * weights.form +
+      outputs.h2h.home * weights.h2h +
+      outputs.standings.home * weights.standings;
+
+    const draw =
+      outputs.elo.draw * weights.elo +
+      outputs.poisson.draw * weights.poisson +
+      outputs.form.draw * weights.form +
+      outputs.h2h.draw * weights.h2h +
+      outputs.standings.draw * weights.standings;
+
+    const away =
+      outputs.elo.away * weights.elo +
+      outputs.poisson.away * weights.poisson +
+      outputs.form.away * weights.form +
+      outputs.h2h.away * weights.h2h +
+      outputs.standings.away * weights.standings;
+
+    const total = home + draw + away;
+    const pH = total > 0 ? home / total : 1 / 3;
+    const pD = total > 0 ? draw / total : 1 / 3;
+    const pA = total > 0 ? away / total : 1 / 3;
+
+    const predicted = pH > pD && pH > pA ? 'H' as const
+      : pA > pD && pA > pH ? 'A' as const
+      : 'D' as const;
+
+    return { home: pH, draw: pD, away: pA, predicted };
+  }
+
+  /**
+   * Find the weight combination that maximises accuracy over the backtest predictions.
+   * Returns null if fewer than 10 predictions have model outputs.
+   */
+  static optimise(predictions: BacktestPrediction[]): OptimisedWeights | undefined {
+    // Filter to predictions with stored model outputs
+    const withOutputs = predictions.filter(p => p.modelOutputs);
+    if (withOutputs.length < 10) return undefined;
+
+    const combos = this.generateCombinations();
+    let bestAccuracy = 0;
+    let bestLogLoss = Infinity;
+    let bestWeights = { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 };
+
+    // Score the current weights for comparison
+    const currentAccuracy = this.scoreWeights(withOutputs, MODEL_WEIGHTS);
+
+    for (const weights of combos) {
+      const accuracy = this.scoreWeights(withOutputs, weights);
+
+      if (accuracy > bestAccuracy) {
+        bestAccuracy = accuracy;
+        bestWeights = weights;
+        bestLogLoss = this.scoreLogLoss(withOutputs, weights);
+      } else if (accuracy === bestAccuracy) {
+        // Tie-break on log loss (lower is better)
+        const ll = this.scoreLogLoss(withOutputs, weights);
+        if (ll < bestLogLoss) {
+          bestLogLoss = ll;
+          bestWeights = weights;
+        }
+      }
+    }
+
+    return {
+      ...bestWeights,
+      accuracy: bestAccuracy,
+      logLoss: bestLogLoss,
+      improvement: Math.round((bestAccuracy - currentAccuracy) * 10000) / 100
+    };
+  }
+
+  private static scoreWeights(
+    predictions: BacktestPrediction[],
+    weights: { elo: number; poisson: number; form: number; h2h: number; standings: number }
+  ): number {
+    let correct = 0;
+    for (const p of predictions) {
+      if (!p.modelOutputs) continue;
+      const result = this.combineWithWeights(p.modelOutputs, weights);
+      if (result.predicted === p.actualResult) correct++;
+    }
+    return correct / predictions.length;
+  }
+
+  private static scoreLogLoss(
+    predictions: BacktestPrediction[],
+    weights: { elo: number; poisson: number; form: number; h2h: number; standings: number }
+  ): number {
+    let sum = 0;
+    for (const p of predictions) {
+      if (!p.modelOutputs) continue;
+      const result = this.combineWithWeights(p.modelOutputs, weights);
+      const probForActual =
+        p.actualResult === 'H' ? result.home
+        : p.actualResult === 'D' ? result.draw
+        : result.away;
+      sum += -Math.log(Math.max(1e-15, Math.min(1 - 1e-15, probForActual)));
+    }
+    return sum / predictions.length;
   }
 }

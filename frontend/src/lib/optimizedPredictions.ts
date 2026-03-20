@@ -6,6 +6,14 @@ import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
 import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE } from './constants';
 
+export interface ModelOutputs {
+  elo: { home: number; draw: number; away: number };
+  poisson: { home: number; draw: number; away: number };
+  form: { home: number; draw: number; away: number };
+  h2h: { home: number; draw: number; away: number };
+  standings: { home: number; draw: number; away: number };
+}
+
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
   confidence: number;
@@ -27,6 +35,8 @@ export interface EnhancedPredictionModel {
     draw: number;
     away: number;
   };
+  /** Raw per-model probabilities before ensemble combination (for weight optimisation) */
+  modelOutputs?: ModelOutputs;
 }
 
 // Home/away attack & defence strengths for the Poisson model
@@ -329,16 +339,15 @@ export class OptimizedPredictor {
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
-      const combinedProbabilities = this.combineModels(
-        {
-          elo: eloProbs,
-          poisson: poissonProbs,
-          form: formAnalysis.probabilities,
-          h2h: h2hAnalysis.probabilities,
-          standings: this.getStandingsProbabilities(homePosition, awayPosition)
-        },
-        mlPrediction
-      );
+      const standingsProbs = this.getStandingsProbabilities(homePosition, awayPosition);
+      const modelInputs = {
+        elo: eloProbs,
+        poisson: poissonProbs,
+        form: formAnalysis.probabilities,
+        h2h: h2hAnalysis.probabilities,
+        standings: standingsProbs
+      };
+      const combinedProbabilities = this.combineModels(modelInputs, mlPrediction);
 
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
       // Home win rate derived from actual completed matches (fallback 0.46 if no data)
@@ -452,6 +461,15 @@ export class OptimizedPredictor {
         ...(mlPrediction ? { ml: ML_BACKEND_WEIGHT } : {}),
       };
 
+      // Store raw model outputs for weight optimisation
+      const modelOutputs: ModelOutputs = {
+        elo: eloProbs,
+        poisson: { home: poissonProbs.homeWin, draw: poissonProbs.draw, away: poissonProbs.awayWin },
+        form: { home: formAnalysis.probabilities.homeWin, draw: formAnalysis.probabilities.draw, away: formAnalysis.probabilities.awayWin },
+        h2h: { home: h2hAnalysis.probabilities.homeWin, draw: h2hAnalysis.probabilities.draw, away: h2hAnalysis.probabilities.awayWin },
+        standings: { home: standingsProbs.homeWin, draw: standingsProbs.draw, away: standingsProbs.awayWin }
+      };
+
       return {
         predictedResult: prediction.result,
         confidence,
@@ -461,7 +479,8 @@ export class OptimizedPredictor {
         awayForm: formAnalysis.awayFormString,
         modelWeights: effectiveWeights,
         insights,
-        valueOdds
+        valueOdds,
+        modelOutputs
       };
 
     } catch (error) {
