@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i/P7g: Micro-interactions, Typography, FAQ
+
+### Added: Micro-interactions and motion-safe accessibility (P7i)
+- **Prediction flip cards** — hover lift (translateY -2px), shadow elevation, and active press state (scale 0.99), all wrapped in `prefers-reduced-motion` media query
+- **Dashboard stat cards** — motion-safe guards on existing hover translate, added active press scale feedback
+- **MatchList/LiveMatches cards** — wrapped `hover:-translate-y-0.5` with `motion-safe:` Tailwind prefix
+- **Dead CSS removed** — `animate-float-subtle` class and `floatSubtle` keyframes were defined in `app.css` but never used anywhere
+
+### Fixed: Heading hierarchy and typography consistency (P7i)
+- **Semantic h1 promotion** — 5 page components (Predictions, StandingsTable, MatchList, SeasonStats, BettingHistory) incorrectly used `h2` for their page title. Promoted to `h1` for correct accessibility semantics — screen readers expect one `h1` per routed page
+- **Help.svelte inverted hierarchy** — section `h2` headings were `text-3xl`, visually larger than the `text-2xl` page `h1`. Downsized to `text-xl` to restore correct visual hierarchy
+
+### Improved: FAQ section expanded and enriched (P7g)
+- Grew from 8 to 12 questions covering: how the ensemble model works, what the ML backend adds, team colour theming, local data storage, and improved context on betting tools and rate limiting
+- Existing answers enriched with specifics: Football-Data.org link, three-tier cache architecture, PL-specific calibration, and JSON export capabilities
+
+---
+
 ## 20 March 2026 — P7i/P7g: Skeleton Loading, Hero Match, Team Theme Fix
 
 ### Added: Content-shaped skeleton loading screens (P7i)
