@@ -48,7 +48,11 @@ vi.mock('../lib/optimizedPredictions', () => ({
       insights: ['ELO favours home', 'Strong H2H record'],
       valueOdds: { home: 1.80, draw: 3.50, away: 4.20 }
     }))
-  }
+  },
+  getActiveModelWeights: () => ({ elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 }),
+  saveModelWeights: vi.fn(() => true),
+  resetModelWeights: vi.fn(),
+  hasCustomWeights: vi.fn(() => false)
 }));
 
 // Mock PoissonPredictor

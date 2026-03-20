@@ -1,5 +1,5 @@
 import type { Match } from '../types';
-import { OptimizedPredictor, MODEL_WEIGHTS, type EnhancedPredictionModel, type ModelOutputs } from './optimizedPredictions';
+import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, type EnhancedPredictionModel, type ModelOutputs } from './optimizedPredictions';
 import { sharedEloSystem, EloRatingSystem } from './advancedPredictions';
 
 export interface BacktestResult {
@@ -360,8 +360,8 @@ export class WeightOptimiser {
     let bestLogLoss = Infinity;
     let bestWeights = { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 };
 
-    // Score the current weights for comparison
-    const currentAccuracy = this.scoreWeights(withOutputs, MODEL_WEIGHTS);
+    // Score the currently active weights (user-applied or default) for comparison
+    const currentAccuracy = this.scoreWeights(withOutputs, getActiveModelWeights());
 
     for (const weights of combos) {
       const accuracy = this.scoreWeights(withOutputs, weights);

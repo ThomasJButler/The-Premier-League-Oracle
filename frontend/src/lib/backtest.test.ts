@@ -9,7 +9,8 @@ vi.mock('./optimizedPredictions', () => ({
   OptimizedPredictor: {
     predictMatch: vi.fn()
   },
-  MODEL_WEIGHTS: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 }
+  MODEL_WEIGHTS: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+  getActiveModelWeights: () => ({ elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 })
 }));
 
 // Stateful fake for the shared ELO system — tracks real state so snapshot/restore

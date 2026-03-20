@@ -78,9 +78,9 @@ interface H2HAnalysis {
 }
 
 /**
- * Single source of truth for ensemble model weights.
- * Used by combineModels() for computation and returned in predictions for transparency.
- * If you change these, the actual model behaviour AND reported weights stay in sync.
+ * Default ensemble model weights — used as the baseline when no custom weights are saved.
+ * Users can apply backtest-derived optimal weights via the Predictions backtest panel,
+ * which are persisted to localStorage and read by getActiveModelWeights().
  */
 export const MODEL_WEIGHTS = {
   elo: 0.25,
@@ -89,6 +89,64 @@ export const MODEL_WEIGHTS = {
   h2h: 0.10,
   standings: 0.15
 } as const;
+
+/** Mutable weight shape for user-applied weights (same keys as MODEL_WEIGHTS). */
+export type ModelWeightValues = { elo: number; poisson: number; form: number; h2h: number; standings: number };
+
+const WEIGHTS_STORAGE_KEY = 'oracle_model_weights';
+
+/**
+ * Read the active ensemble weights — user-applied custom weights from localStorage,
+ * falling back to the built-in defaults. Validates that weights sum to ~1.0.
+ */
+export function getActiveModelWeights(): ModelWeightValues {
+  try {
+    const stored = localStorage.getItem(WEIGHTS_STORAGE_KEY);
+    if (!stored) return { ...MODEL_WEIGHTS };
+
+    const parsed = JSON.parse(stored) as ModelWeightValues;
+
+    // Validate shape: must have all five keys as numbers
+    const keys: (keyof ModelWeightValues)[] = ['elo', 'poisson', 'form', 'h2h', 'standings'];
+    for (const key of keys) {
+      if (typeof parsed[key] !== 'number' || isNaN(parsed[key]) || parsed[key] < 0) {
+        return { ...MODEL_WEIGHTS };
+      }
+    }
+
+    // Validate sum is approximately 1.0 (allow ±0.02 for floating-point rounding)
+    const sum = keys.reduce((s, k) => s + parsed[k], 0);
+    if (Math.abs(sum - 1.0) > 0.02) {
+      return { ...MODEL_WEIGHTS };
+    }
+
+    return parsed;
+  } catch {
+    return { ...MODEL_WEIGHTS };
+  }
+}
+
+/** Persist user-applied weights to localStorage. Weights must sum to 1.0 (±0.02). */
+export function saveModelWeights(weights: ModelWeightValues): boolean {
+  const keys: (keyof ModelWeightValues)[] = ['elo', 'poisson', 'form', 'h2h', 'standings'];
+  const sum = keys.reduce((s, k) => s + weights[k], 0);
+  if (Math.abs(sum - 1.0) > 0.02) return false;
+  for (const key of keys) {
+    if (typeof weights[key] !== 'number' || isNaN(weights[key]) || weights[key] < 0) return false;
+  }
+  localStorage.setItem(WEIGHTS_STORAGE_KEY, JSON.stringify(weights));
+  return true;
+}
+
+/** Remove custom weights, reverting to defaults. */
+export function resetModelWeights(): void {
+  localStorage.removeItem(WEIGHTS_STORAGE_KEY);
+}
+
+/** Check whether the user has applied custom weights. */
+export function hasCustomWeights(): boolean {
+  return localStorage.getItem(WEIGHTS_STORAGE_KEY) !== null;
+}
 
 /**
  * When the ML backend contributes to the ensemble, it gets this weight and
@@ -472,13 +530,14 @@ export class OptimizedPredictor {
       const valueOdds = this.calculateValueOdds(adjustedProbabilities);
 
       // Report the effective weights used in this prediction
+      const activeWeights = getActiveModelWeights();
       const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
       const effectiveWeights: EnhancedPredictionModel['modelWeights'] = {
-        elo: MODEL_WEIGHTS.elo * tsScale,
-        poisson: MODEL_WEIGHTS.poisson * tsScale,
-        form: MODEL_WEIGHTS.form * tsScale,
-        h2h: MODEL_WEIGHTS.h2h * tsScale,
-        standings: MODEL_WEIGHTS.standings * tsScale,
+        elo: activeWeights.elo * tsScale,
+        poisson: activeWeights.poisson * tsScale,
+        form: activeWeights.form * tsScale,
+        h2h: activeWeights.h2h * tsScale,
+        standings: activeWeights.standings * tsScale,
         ...(mlPrediction ? { ml: ML_BACKEND_WEIGHT } : {}),
       };
 
@@ -514,7 +573,7 @@ export class OptimizedPredictor {
         predictedAwayGoals: 1,
         homeForm: '?????',
         awayForm: '?????',
-        modelWeights: { ...MODEL_WEIGHTS },
+        modelWeights: { ...getActiveModelWeights() },
         insights: ['Using simplified prediction due to data limitations'],
         valueOdds: { home: 3.0, draw: 3.3, away: 3.0 }
       };
@@ -755,31 +814,33 @@ export class OptimizedPredictor {
     },
     mlPrediction?: MLPrediction | null
   ) {
+    // Read user-applied or default weights
+    const weights = getActiveModelWeights();
     // When the ML backend is contributing, scale TS weights down proportionally
     const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
 
     const homeWin =
-      models.elo.home * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.homeWin * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.homeWin * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.homeWin * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.homeWin * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.home * weights.elo * tsScale +
+      models.poisson.homeWin * weights.poisson * tsScale +
+      models.form.homeWin * weights.form * tsScale +
+      models.h2h.homeWin * weights.h2h * tsScale +
+      models.standings.homeWin * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.home * ML_BACKEND_WEIGHT : 0);
 
     const draw =
-      models.elo.draw * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.draw * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.draw * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.draw * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.draw * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.draw * weights.elo * tsScale +
+      models.poisson.draw * weights.poisson * tsScale +
+      models.form.draw * weights.form * tsScale +
+      models.h2h.draw * weights.h2h * tsScale +
+      models.standings.draw * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.draw * ML_BACKEND_WEIGHT : 0);
 
     const awayWin =
-      models.elo.away * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.awayWin * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.awayWin * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.awayWin * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.awayWin * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.away * weights.elo * tsScale +
+      models.poisson.awayWin * weights.poisson * tsScale +
+      models.form.awayWin * weights.form * tsScale +
+      models.h2h.awayWin * weights.h2h * tsScale +
+      models.standings.awayWin * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.away * ML_BACKEND_WEIGHT : 0);
 
     // Normalise to ensure sum equals 1 — guard against all-zero edge case

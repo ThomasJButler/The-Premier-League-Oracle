@@ -20,7 +20,7 @@
   import { predictionTracker } from '../services/predictionTracker';
   import { betHistoryService } from '../services/betting/betHistoryService';
   import type { Match } from '../types';
-  import { MODEL_WEIGHTS } from '../lib/optimizedPredictions';
+  import { getActiveModelWeights, hasCustomWeights } from '../lib/optimizedPredictions';
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
@@ -80,6 +80,10 @@
   let predictionsChange = '';
   let betsChange = '';
   let activityTab: 'predictions' | 'upcoming' = 'predictions';
+
+  // Active model weights — reads user-applied custom weights or defaults
+  const activeWeights = getActiveModelWeights();
+  const usingCustomWeights = hasCustomWeights();
 
   // Featured match — the next upcoming fixture (sorted by date)
   $: featuredMatch = realMatchData.length > 0
@@ -555,11 +559,11 @@
       <div class="mt-4">
         <div class="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           {#each [
-            { icon: BarChart2, label: 'ELO Ratings', desc: `${Math.round(MODEL_WEIGHTS.elo * 100)}% weight`, iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
-            { icon: TrendingUp, label: 'Poisson Model', desc: `${Math.round(MODEL_WEIGHTS.poisson * 100)}% weight`, iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-            { icon: Users, label: 'Form Analysis', desc: `${Math.round(MODEL_WEIGHTS.form * 100)}% weight`, iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
-            { icon: Target, label: 'Head-to-Head', desc: `${Math.round(MODEL_WEIGHTS.h2h * 100)}% weight`, iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
-            { icon: Trophy, label: 'Standings', desc: `${Math.round(MODEL_WEIGHTS.standings * 100)}% weight`, iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+            { icon: BarChart2, label: 'ELO Ratings', desc: `${Math.round(activeWeights.elo * 100)}% weight`, iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
+            { icon: TrendingUp, label: 'Poisson Model', desc: `${Math.round(activeWeights.poisson * 100)}% weight`, iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+            { icon: Users, label: 'Form Analysis', desc: `${Math.round(activeWeights.form * 100)}% weight`, iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+            { icon: Target, label: 'Head-to-Head', desc: `${Math.round(activeWeights.h2h * 100)}% weight`, iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+            { icon: Trophy, label: 'Standings', desc: `${Math.round(activeWeights.standings * 100)}% weight`, iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
           ] as method}
             <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50">
               <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
@@ -574,6 +578,9 @@
           <p class="text-xs text-muted-foreground">
             <strong class="text-accent">Ensemble Model:</strong> Combining {recentMatches.length} recent matches,
             current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
+            {#if usingCustomWeights}
+              <span class="text-primary font-medium"> Using backtest-optimised weights.</span>
+            {/if}
           </p>
         </div>
       </div>

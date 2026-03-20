@@ -3,7 +3,7 @@
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
-  import { OptimizedPredictor } from '../lib/optimizedPredictions';
+  import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
@@ -60,6 +60,8 @@
   let backtestProgress = 0;
   let backtestTotal = 0;
   let backtestError: string | null = null;
+  let weightsApplied = false;
+  let usingCustomWeights = hasCustomWeights();
 
   // AI analysis state — keyed by matchId
   let aiAnalyses: Map<string, string> = new Map();
@@ -624,11 +626,16 @@
 
             <!-- Optimised Weights -->
             {#if backtestResult.optimisedWeights}
+              {@const currentWeights = getActiveModelWeights()}
               <div class="mt-4 p-3 rounded-lg border border-primary/20 bg-primary/5">
                 <div class="flex items-center gap-2 mb-2">
                   <FlaskConical class="w-4 h-4 text-primary" />
                   <span class="text-sm font-medium text-foreground">Optimised Weights</span>
-                  {#if backtestResult.optimisedWeights.improvement > 0}
+                  {#if weightsApplied}
+                    <Badge variant="outline" class="text-emerald-500 border-emerald-500/30">
+                      Applied
+                    </Badge>
+                  {:else if backtestResult.optimisedWeights.improvement > 0}
                     <Badge variant="outline" class="text-emerald-500 border-emerald-500/30">
                       +{backtestResult.optimisedWeights.improvement.toFixed(1)}pp
                     </Badge>
@@ -640,22 +647,57 @@
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
                   {#each [
-                    { label: 'ELO', current: 25, optimal: backtestResult.optimisedWeights.elo * 100 },
-                    { label: 'Poisson', current: 30, optimal: backtestResult.optimisedWeights.poisson * 100 },
-                    { label: 'Form', current: 20, optimal: backtestResult.optimisedWeights.form * 100 },
-                    { label: 'H2H', current: 10, optimal: backtestResult.optimisedWeights.h2h * 100 },
-                    { label: 'Pos.', current: 15, optimal: backtestResult.optimisedWeights.standings * 100 }
+                    { label: 'ELO', current: currentWeights.elo * 100, optimal: backtestResult.optimisedWeights.elo * 100 },
+                    { label: 'Poisson', current: currentWeights.poisson * 100, optimal: backtestResult.optimisedWeights.poisson * 100 },
+                    { label: 'Form', current: currentWeights.form * 100, optimal: backtestResult.optimisedWeights.form * 100 },
+                    { label: 'H2H', current: currentWeights.h2h * 100, optimal: backtestResult.optimisedWeights.h2h * 100 },
+                    { label: 'Pos.', current: currentWeights.standings * 100, optimal: backtestResult.optimisedWeights.standings * 100 }
                   ] as w}
                     <div class="p-1.5 rounded bg-muted/50">
                       <div class="text-[10px] text-muted-foreground">{w.label}</div>
                       <div class="text-xs font-bold text-primary">{w.optimal.toFixed(0)}%</div>
-                      <div class="text-[10px] text-muted-foreground">was {w.current}%</div>
+                      <div class="text-[10px] text-muted-foreground">was {w.current.toFixed(0)}%</div>
                     </div>
                   {/each}
                 </div>
                 <p class="text-[10px] text-muted-foreground mt-2">
                   Accuracy: {(backtestResult.optimisedWeights.accuracy * 100).toFixed(1)}% · Log Loss: {backtestResult.optimisedWeights.logLoss.toFixed(3)}
                 </p>
+                <!-- Apply / Reset buttons -->
+                <div class="flex gap-2 mt-3">
+                  {#if !weightsApplied && backtestResult.optimisedWeights.improvement > 0}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      class="text-xs"
+                      on:click={() => {
+                        const ow = backtestResult?.optimisedWeights;
+                        if (!ow) return;
+                        const weights = { elo: ow.elo, poisson: ow.poisson, form: ow.form, h2h: ow.h2h, standings: ow.standings };
+                        if (saveModelWeights(weights)) {
+                          weightsApplied = true;
+                          usingCustomWeights = true;
+                        }
+                      }}
+                    >
+                      Apply Optimal Weights
+                    </Button>
+                  {/if}
+                  {#if usingCustomWeights}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="text-xs"
+                      on:click={() => {
+                        resetModelWeights();
+                        weightsApplied = false;
+                        usingCustomWeights = false;
+                      }}
+                    >
+                      Reset to Defaults
+                    </Button>
+                  {/if}
+                </div>
               </div>
             {/if}
           </div>
