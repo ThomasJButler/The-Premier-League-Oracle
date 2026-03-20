@@ -8,6 +8,7 @@ import type { Standing } from '../types';
 vi.mock('../services/dataService', () => ({
   dataService: {
     getStandings: vi.fn(),
+    getLastFetched: vi.fn(() => Date.now()),
   },
 }));
 
@@ -67,7 +68,7 @@ vi.mock('lucide-svelte', () => {
     $set() {}
   };
   return {
-    Trophy: stub, Minus: stub, ChevronUp: stub, ChevronDown: stub,
+    Trophy: stub, Minus: stub, ChevronUp: stub, ChevronDown: stub, Clock: stub,
   };
 });
 

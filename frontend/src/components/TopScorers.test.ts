@@ -7,6 +7,7 @@ import { dataService } from '../services/dataService';
 vi.mock('../services/dataService', () => ({
   dataService: {
     getTopScorers: vi.fn(),
+    getLastFetched: vi.fn(() => Date.now()),
   },
 }));
 
@@ -60,7 +61,7 @@ vi.mock('lucide-svelte', () => {
     $on() { return () => {}; }
     $set() {}
   };
-  return { Trophy: stub };
+  return { Trophy: stub, Clock: stub };
 });
 
 function makeRawScorer(overrides: Record<string, any> = {}) {

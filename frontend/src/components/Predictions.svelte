@@ -19,6 +19,7 @@
   import { aiAnalysisService } from '../services/aiAnalysis';
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
+  import DataFreshness from './DataFreshness.svelte';
 
   let predictions: Array<Match & {
     prediction?: Prediction;
@@ -38,6 +39,7 @@
   }> = [];
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
+  let dataTimestamp: number | null = null;
   let rollingLast10Accuracy = 0;
   let loading = true;
   let error: string | null = null;
@@ -158,6 +160,7 @@
     try {
       // Get all matches for the season
       const allMatches = await dataService.getCurrentSeasonMatches();
+      dataTimestamp = dataService.getLastFetched('matches');
 
       // Filter for selected gameweek using the matchday field from the API
       const gameweekMatches = allMatches.filter(m => m.matchday === gameweek);
@@ -408,8 +411,11 @@
 <div class="space-y-6 animate-fade-in">
   <!-- Header with Gameweek Selector -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h1 class="text-2xl font-bold font-display text-foreground">Match Predictions</h1>
-    
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold font-display text-foreground">Match Predictions</h1>
+      <DataFreshness timestamp={dataTimestamp} />
+    </div>
+
     <div class="flex flex-wrap items-center gap-3 sm:gap-4">
       <!-- Gameweek Selector -->
       <div class="flex items-center gap-2">

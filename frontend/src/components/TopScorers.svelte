@@ -5,6 +5,7 @@
   import { fade, fly } from 'svelte/transition';
   import { getSeasonLabel } from '../lib/utils';
   import { Button } from '$lib/components/ui/button';
+  import DataFreshness from './DataFreshness.svelte';
 
   interface Scorer {
     position?: number;
@@ -28,6 +29,7 @@
   let scorers: Scorer[] = [];
   let loading = true;
   let error = '';
+  let dataTimestamp: number | null = null;
 
   function handleImageError(e: Event) {
     const target = e.currentTarget;
@@ -52,7 +54,8 @@
       }
       
       const rawScorers = await dataService.getTopScorers();
-      
+      dataTimestamp = dataService.getLastFetched('scorers');
+
       // Transform data to consistent format
       scorers = rawScorers.map((s, index) => ({
         position: index + 1,
@@ -118,9 +121,12 @@
           <p class="text-sm text-muted-foreground">Premier League {getSeasonLabel()} Season</p>
         </div>
       </div>
-      <Button variant="ghost" size="sm" on:click={loadTopScorers} disabled={loading}>
-        {loading ? 'Refreshing...' : 'Refresh'}
-      </Button>
+      <div class="flex items-center gap-3">
+        <DataFreshness timestamp={dataTimestamp} />
+        <Button variant="ghost" size="sm" on:click={loadTopScorers} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
     </div>
   </div>
   

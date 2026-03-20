@@ -2,6 +2,18 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Data Freshness Indicator (P1f)
+
+### Added: "Last updated" indicator on all data displays
+- New `DataFreshness.svelte` component: displays relative time since last data fetch ("just now", "30s ago", "5m ago", "2h ago", "3d ago") with 30-second auto-refresh interval
+- New `getLastFetched(dataType)` method on `DataService`: exposes per-data-type cache timestamps (standings, matches, scorers, live) without changing existing return types
+- Integrated DataFreshness into 5 page components: StandingsTable, MatchList, Predictions, TopScorers, LiveMatches
+- LiveMatches: replaced verbose `lastRefresh.toLocaleTimeString()` display with the new component for consistent UX
+- **9 new Vitest tests** (549 total across 34 files): null rendering, relative time formatting at all thresholds (seconds/minutes/hours/days), accessibility title, auto-update over time, prop change reactivity
+- Updated lucide-svelte mocks in 4 existing test files to include `Clock` icon stub
+
+---
+
 ## 20 March 2026 — Web Search Fallback and Documentation Cleanup
 
 ### Added: Web search fallback for RAG chat (P7h)

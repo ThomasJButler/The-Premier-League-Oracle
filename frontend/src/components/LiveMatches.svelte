@@ -4,6 +4,7 @@
   import type { Match } from '../types';
   import { scale } from 'svelte/transition';
   import { format, formatDistanceToNow } from 'date-fns';
+  import DataFreshness from './DataFreshness.svelte';
   import { getTeamLogo } from '../utils/teamLogos';
   import {
     liveMatchesStore,
@@ -174,9 +175,7 @@
         </div>
       </div>
       <div class="flex items-center gap-4">
-        <div class="text-sm text-muted-foreground">
-          Last update: {lastRefresh.toLocaleTimeString()}
-        </div>
+        <DataFreshness timestamp={lastRefresh.getTime()} />
         <button
           on:click={loadMatches}
           class="px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"

@@ -12,7 +12,8 @@ vi.mock('../services/dataService', () => ({
     getCurrentSeasonMatches: vi.fn(() => Promise.resolve([])),
     getCurrentSeason: vi.fn(() => Promise.resolve({ currentMatchday: 20 })),
     getMatches: vi.fn(() => Promise.resolve([])),
-    getAllHistoricalMatches: vi.fn(() => Promise.resolve([]))
+    getAllHistoricalMatches: vi.fn(() => Promise.resolve([])),
+    getLastFetched: vi.fn(() => Date.now()),
   }
 }));
 
@@ -149,7 +150,7 @@ vi.mock('lucide-svelte', () => {
   return {
     TrendingUp: stub, Target: stub, Users: stub, BarChart3: stub,
     Calculator: stub, Package: stub, ChevronDown: stub, ChevronUp: stub,
-    FlaskConical: stub, Sparkles: stub, Loader2: stub, CheckCircle2: stub, XCircle: stub
+    FlaskConical: stub, Sparkles: stub, Loader2: stub, CheckCircle2: stub, XCircle: stub, Clock: stub
   };
 });
 

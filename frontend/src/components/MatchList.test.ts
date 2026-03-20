@@ -9,6 +9,7 @@ vi.mock('../services/dataService', () => ({
   dataService: {
     getAllSeasons: vi.fn(),
     getMatchesBySeason: vi.fn(),
+    getLastFetched: vi.fn(() => Date.now()),
   },
 }));
 
@@ -96,7 +97,7 @@ vi.mock('lucide-svelte', () => {
     $on() { return () => {}; }
     $set() {}
   };
-  return { ArrowUpDown: stub, Filter: stub, Users: stub };
+  return { ArrowUpDown: stub, Filter: stub, Users: stub, Clock: stub };
 });
 
 function makeSeason(overrides: Partial<Season> = {}): Season {

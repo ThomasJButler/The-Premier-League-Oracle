@@ -8,10 +8,12 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { getSeasonYear } from '../lib/utils';
+  import DataFreshness from './DataFreshness.svelte';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
+  let dataTimestamp: number | null = null;
   // Compute current season from date (July onwards = new season). Overwritten by API if available.
   const year = getSeasonYear();
   let selectedSeason = `${year}-${year + 1}`;
@@ -44,7 +46,8 @@
     error = null;
     try {
       matches = await dataService.getMatchesBySeason(selectedSeason);
-      
+      dataTimestamp = dataService.getLastFetched('matches');
+
       // Extract unique teams
       const teamSet = new Set<string>();
       matches.forEach(match => {
@@ -127,7 +130,10 @@
 
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h1 class="text-2xl font-bold font-display text-foreground">Match Schedule</h1>
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold font-display text-foreground">Match Schedule</h1>
+      <DataFreshness timestamp={dataTimestamp} />
+    </div>
 
     <div class="flex items-center gap-4">
       <!-- Season selector -->

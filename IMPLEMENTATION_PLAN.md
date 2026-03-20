@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (odds-as-features training run complete)
+Last updated: 20 March 2026 (P1f data freshness indicator complete)
 Active branch: `v3.0-MVP`
 
 ---
@@ -25,9 +25,9 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 44/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 45/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
-**Frontend:** 540 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 549 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -306,7 +306,7 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 
 These are low-priority items deferred from completed priority tiers:
 
-- [ ] **P1f:** "Last updated" indicator on data displays — deferred (requires data layer changes to track cache freshness)
+- [x] **P1f:** "Last updated" indicator on data displays — ✅ DataFreshness component with auto-refresh, integrated into 5 page components
 - [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed
 
@@ -423,7 +423,7 @@ All feature specifications in `specs/`:
 | `specs/05-live-data.md` | Live scores, smart polling, WebSocket | **100% — ALL 10/10 criteria met.** WebSocket superseded note added; polling-only with adaptive intervals. Status filter expanded (`EXTRA_TIME`/`PENALTY_SHOOTOUT`). Match event notifications via polling-diff. **Markers: 10/10** |
 | `specs/06-prediction-tracking.md` | Accuracy tracking, auto-reconciliation | **100% — ALL 7/7 criteria met** |
 | `specs/07-ui-ux.md` | shadcn-svelte migration, dark mode, accessibility | **100% — ALL 17/17 criteria met.** bits-ui note clarified (custom implementations, not bits-ui). Tabs section updated. Priority 6+ deferred items documented. **Markers: 17/17** |
-| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. Feature count corrected to 99 (incl. 8 draw + 5 Elo). Match count updated to 2,191. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
+| `specs/08-backend-training.md` | Backend training pipeline (free-tier + Pro-tier) | ~95% — P3-Free DONE, Pro-tier deferred. 114 features (incl. 13 draw + 5 Elo + 10 odds). Match count updated to 2,191. Rate limiter IP fix P5a (Req 4d). **Markers: 23/24** |
 
 ---
 

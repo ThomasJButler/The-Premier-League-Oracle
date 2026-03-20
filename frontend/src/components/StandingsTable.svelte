@@ -7,11 +7,13 @@
   import { getTeamLogo } from '../utils/teamLogos';
   import { getSeasonLabel } from '../lib/utils';
   import { Button } from '$lib/components/ui/button';
+  import DataFreshness from './DataFreshness.svelte';
 
   let standings: Standing[] = [];
   let loading = true;
   let error = '';
   let showFullTable = false;
+  let dataTimestamp: number | null = null;
   
   onMount(async () => {
     await loadStandings();
@@ -30,7 +32,8 @@
       }
       
       standings = await dataService.getStandings();
-      
+      dataTimestamp = dataService.getLastFetched('standings');
+
       if (!standings || standings.length === 0) {
         error = 'No standings data available. The season may not have started yet.';
       }
@@ -121,9 +124,12 @@
         </div>
       </div>
       
-      <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
-        {loading ? 'Refreshing...' : 'Refresh'}
-      </Button>
+      <div class="flex items-center gap-3">
+        <DataFreshness timestamp={dataTimestamp} />
+        <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
     </div>
   </div>
   

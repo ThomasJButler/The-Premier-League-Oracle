@@ -31,6 +31,8 @@ class DataService {
   private cacheDb: IDBDatabase | null = null;
   private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes default
   private readyPromise: Promise<void>;
+  private _lastCacheHitTimestamp: number = 0;
+  private lastFetchedTimestamps: Map<string, number> = new Map();
 
   constructor() {
     // Initialise IndexedDB first, then check data sources — both must complete before queries
@@ -140,6 +142,7 @@ class DataService {
       request.onsuccess = () => {
         const result = request.result;
         if (result && result.timestamp && Date.now() - result.timestamp < timeout) {
+          this._lastCacheHitTimestamp = result.timestamp;
           resolve(result.data);
         } else {
           resolve(null);
@@ -206,7 +209,10 @@ class DataService {
     
     // Try cache first
     const cached = await this.getCachedData<Match[]>('matches', cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      this.lastFetchedTimestamps.set('matches', this._lastCacheHitTimestamp);
+      return cached;
+    }
     
     // Get from API
     if (this.apiSource.available) {
@@ -225,6 +231,7 @@ class DataService {
         
         if (matches.length > 0) {
           await this.setCachedData('matches', cacheKey, matches);
+          this.lastFetchedTimestamps.set('matches', Date.now());
 
           // Auto-reconcile: resolve pending predictions against any completed matches
           const finished = matches.filter(m => m.result !== null);
@@ -257,7 +264,10 @@ class DataService {
     
     // Try cache first
     const cached = await this.getCachedData<Standing[]>('standings', cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      this.lastFetchedTimestamps.set('standings', this._lastCacheHitTimestamp);
+      return cached;
+    }
     
     // Get from API
     if (this.apiSource.available) {
@@ -265,6 +275,7 @@ class DataService {
         const standings = await this.getActiveApi().getStandings();
         if (standings && standings.length > 0) {
           await this.setCachedData('standings', cacheKey, standings);
+          this.lastFetchedTimestamps.set('standings', Date.now());
           return standings;
         }
       } catch (_error) {
@@ -281,7 +292,10 @@ class DataService {
 
     // Try cache first
     const cached = await this.getCachedData<FDScorer[]>('scorers', cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      this.lastFetchedTimestamps.set('scorers', this._lastCacheHitTimestamp);
+      return cached;
+    }
     
     // Get from API
     if (this.apiSource.available) {
@@ -289,6 +303,7 @@ class DataService {
         const scorers = await this.getActiveApi().getTopScorers(limit);
         if (scorers && scorers.length > 0) {
           await this.setCachedData('scorers', cacheKey, scorers);
+          this.lastFetchedTimestamps.set('scorers', Date.now());
           return scorers;
         }
       } catch (_error) {
@@ -468,7 +483,10 @@ class DataService {
 
     // Live data uses a short 60s cache
     const cached = await this.getCachedData<Match[]>('matches', cacheKey, LIVE_CACHE_TTL);
-    if (cached) return cached;
+    if (cached) {
+      this.lastFetchedTimestamps.set('live', this._lastCacheHitTimestamp);
+      return cached;
+    }
 
     if (this.apiSource.available) {
       try {
@@ -477,6 +495,7 @@ class DataService {
           // Store with standard setCachedData — caller controls refresh frequency
           await this.setCachedData('matches', cacheKey, matches);
         }
+        this.lastFetchedTimestamps.set('live', Date.now());
         return matches;
       } catch (_error) {
         // Error fetching live matches
@@ -569,7 +588,10 @@ class DataService {
     // Historical data rarely changes — 24h cache
     const HISTORICAL_TTL = 24 * 60 * 60 * 1000;
     const cached = await this.getCachedData<Match[]>('matches', cacheKey, HISTORICAL_TTL);
-    if (cached) return cached;
+    if (cached) {
+      this.lastFetchedTimestamps.set('matches', this._lastCacheHitTimestamp);
+      return cached;
+    }
 
     if (this.apiSource.available) {
       try {
@@ -578,6 +600,7 @@ class DataService {
         const matches = await api.getMatchesBySeason(season);
         if (matches.length > 0) {
           await this.setCachedData('matches', cacheKey, matches);
+          this.lastFetchedTimestamps.set('matches', Date.now());
         }
         return matches;
       } catch (_error) {
@@ -632,6 +655,11 @@ class DataService {
     sharedEloSystem.processCompletedMatches(completedMatches);
 
     return reconciled;
+  }
+
+  /** Get the timestamp (Unix ms) when a data type was last fetched — null if never fetched this session */
+  public getLastFetched(dataType: string): number | null {
+    return this.lastFetchedTimestamps.get(dataType) ?? null;
   }
 
   // Cache management utilities
