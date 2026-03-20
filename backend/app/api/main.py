@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Free-tier feature engineer — lightweight, no heavy deps
 try:
-    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer, _ALIASES
+    from app.features.free_tier_features import _ALIASES, CSV_TO_API, FreeTierFeatureEngineer
     FREE_TIER_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
@@ -44,7 +44,7 @@ except ImportError as e:
     FREE_TIER_AVAILABLE = False
 
 try:
-    from app.api.rag import build_rag_prompt, init_team_patterns
+    from app.api.rag import build_rag_prompt, init_player_data, init_team_patterns
     RAG_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"RAG module unavailable ({e})")
@@ -155,6 +155,31 @@ async def lifespan(app: FastAPI):
             logger.info("RAG team patterns initialised")
         except Exception as e:
             logger.warning("Could not initialise RAG team patterns: %s", e)
+
+    # Load player data for RAG enrichment (P7h)
+    if RAG_AVAILABLE:
+        try:
+            player_csv = BACKEND_ROOT / "spreadsheets" / "fact_player_stats.csv"
+            api_scorers = None
+
+            # Fetch current season top scorers from API if key is available
+            if FOOTBALL_API_KEY and DATA_COLLECTOR_AVAILABLE:
+                try:
+                    collector = FootballDataCollector(api_key=FOOTBALL_API_KEY)
+                    response = collector._make_request(
+                        f"competitions/{collector.PREMIER_LEAGUE_ID}/scorers",
+                        params={'limit': 30},
+                        cache_ttl=3600,
+                    )
+                    api_scorers = response.get('scorers', [])
+                    if api_scorers:
+                        logger.info("Fetched %d top scorers from API", len(api_scorers))
+                except Exception as api_err:
+                    logger.warning("Could not fetch API scorers: %s", api_err)
+
+            init_player_data(csv_path=player_csv, api_scorers=api_scorers)
+        except Exception as e:
+            logger.warning("Could not initialise player data: %s", e)
 
     logger.info("Oracle API startup complete")
 

@@ -121,7 +121,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Test Coverage
 - **Frontend:** 522 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
-- **Backend:** 131 pytest tests (4 files), all non-skip passing (8 skip without libomp)
+- **Backend:** 145 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 

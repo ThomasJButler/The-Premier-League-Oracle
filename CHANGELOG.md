@@ -2,6 +2,23 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7h: Player Data Enrichment for RAG
+
+### Added: Player-grounded Oracle Chat responses (P7h)
+- RAG module now loads player data from **two sources** at backend startup:
+  - `fact_player_stats.csv` — 3,638 PL player records with goals, assists, xG, per-90 metrics
+  - Football-Data.org `/competitions/PL/scorers` — top 30 current-season scorers (when API key available)
+- New `init_player_data()` function called from `main.py` lifespan handler
+- Player name extraction (`extract_players()`) with surname fallback — mirrors the existing team name extraction pattern (longest-first, word-boundary checks)
+- Intent parser detects player queries via keyword matching (`top scorer`, `golden boot`, `xg`, `squad`, etc.) and player name detection
+- Three new query functions:
+  - `_query_player_profile()` — individual player lookup with xG and per-90 data from CSV, falling back to API scorer data
+  - `_query_team_players()` — team-scoped top scorers table
+  - `_query_top_scorers()` — league-wide scorer leaderboard
+- System prompt now advertises player data availability and total record count
+- **14 new backend tests** covering player extraction, intent parsing, and query functions (58 RAG tests total, 145 backend tests total)
+- Ruff lint issues cleaned up in modified files (import sorting, `Optional` → `X | None`, f-string fixes)
+
 ## 20 March 2026 — P7b: Enhanced AI Match Insights
 
 ### Improved: Richer AI analysis prompts (P7b)

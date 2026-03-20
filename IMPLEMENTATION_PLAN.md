@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 23/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
+| P7 Beyond MVP | 24/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 522 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -134,7 +134,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 ### P7h. RAG Intelligence (Medium Priority)
 
-- [ ] **Player data enrichment** — Query Football-Data.org free API for player data (`/teams/{id}/`, `/competitions/PL/scorers`) at backend startup. Inject into RAG context so player-specific questions get grounded answers instead of generic AI knowledge
+- [x] **Player data enrichment** — Loads player data from two sources at startup: `fact_player_stats.csv` (3,638 records with xG, per-90 metrics) and Football-Data.org `/competitions/PL/scorers` API (top 30 current season scorers). RAG intent parser extended with player name extraction and scorer-specific keyword detection. New query functions: `_query_player_profile()` (individual player lookup with CSV xG data), `_query_team_players()` (team-scoped top scorers), `_query_top_scorers()` (league-wide leaderboard). Prompt builder advertises player data availability. 14 new tests (58 total RAG tests, 145 total backend tests)
 - [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
 - [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
 
@@ -446,4 +446,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**131 tests across 4 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (44). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
+**145 tests across 4 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
