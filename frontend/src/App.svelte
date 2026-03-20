@@ -17,13 +17,14 @@
   import TopScorers from './components/TopScorers.svelte';
   import LiveMatches from './components/LiveMatches.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
+  import SeasonTimeline from './components/SeasonTimeline.svelte';
   import ChatBot from './components/ChatBot.svelte';
   import { dataService } from './services/dataService';
   import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Season Timeline' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
 
   let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
@@ -134,6 +135,8 @@
           <BettingHistory />
         {:else if currentView === 'Season Stats'}
           <SeasonStats />
+        {:else if currentView === 'Season Timeline'}
+          <SeasonTimeline />
         {:else if currentView === 'Settings'}
           <Settings on:apiConfigured={() => {
             if (dashboardComponent && currentView === 'Dashboard') {

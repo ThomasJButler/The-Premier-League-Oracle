@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers, Calendar } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
   import { createEventDispatcher } from 'svelte';
 
@@ -17,6 +17,7 @@
     { name: 'Oracle Chat', icon: MessageCircle, view: 'Oracle Chat' },
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
+    { name: 'Season Timeline', icon: Calendar, view: 'Season Timeline' },
   ];
 
   const bettingItems = [
