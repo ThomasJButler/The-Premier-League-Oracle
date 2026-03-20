@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Calendar, Target, TrendingUp, Award, Users, Zap, Shield, AlertTriangle, Percent, Activity, Timer, Home } from 'lucide-svelte';
+  import { Calendar, Target, TrendingUp, Award, Users, Zap, Shield, AlertTriangle, Percent, Activity, Timer, Home, BarChart3, Trophy, Crosshair, ArrowDownUp, Flame, Swords } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
-  import type { Match } from '../types';
+  import type { Match, Standing } from '../types';
 
   // Svelte 4 component constructor typing is limited — any is required for icon components
    
@@ -21,16 +21,29 @@
   let matches: Match[] = [];
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
+  let bettingStats: SeasonStat[] = [];
 
   export async function loadSeasonStats() {
     try {
       loading = true;
       error = null;
+
+      // Fetch matches first (required), then standings and scorers (optional extras)
       matches = await dataService.getCurrentSeasonMatches();
+
+      // Standings and scorers are optional — don't fail the page if they error
+      const [standingsData, scorersData] = await Promise.allSettled([
+        dataService.getStandings(),
+        dataService.getTopScorers()
+      ]);
+
+      const standings = standingsData.status === 'fulfilled' ? standingsData.value : [];
+      const scorers = scorersData.status === 'fulfilled' ? scorersData.value : [];
 
       if (matches.length > 0) {
         stats = calculateInterestingStats(matches);
         additionalStats = calculateAdditionalStats(matches);
+        bettingStats = calculateBettingStats(matches, standings, scorers);
       }
     } catch (err) {
       console.warn('Failed to load season stats:', err);
@@ -395,6 +408,251 @@
     ];
   }
 
+  interface FDScorer {
+    player?: { id?: number; name?: string; position?: string; nationality?: string };
+    team?: { id?: number; name?: string; shortName?: string; crest?: string };
+    goals: number;
+    assists?: number | null;
+    penalties?: number | null;
+  }
+
+  function calculateBettingStats(matches: Match[], standings: Standing[], scorers: FDScorer[]): SeasonStat[] {
+    const completedMatches = matches.filter(m => m.result);
+    if (completedMatches.length === 0) return [];
+
+    // --- Per-team betting metrics ---
+    const teamBtts: { [team: string]: { total: number; btts: number } } = {};
+    const teamOver25: { [team: string]: { total: number; over: number } } = {};
+    const teamDraws: { [team: string]: { total: number; draws: number } } = {};
+
+    completedMatches.forEach(match => {
+      const teams = [match.home_team, match.away_team];
+      const homeGoals = match.home_goals || 0;
+      const awayGoals = match.away_goals || 0;
+      const isBtts = homeGoals > 0 && awayGoals > 0;
+      const isOver25 = homeGoals + awayGoals > 2.5;
+      const isDraw = match.result === 'D';
+
+      teams.forEach(team => {
+        if (!teamBtts[team]) teamBtts[team] = { total: 0, btts: 0 };
+        if (!teamOver25[team]) teamOver25[team] = { total: 0, over: 0 };
+        if (!teamDraws[team]) teamDraws[team] = { total: 0, draws: 0 };
+
+        teamBtts[team].total++;
+        if (isBtts) teamBtts[team].btts++;
+
+        teamOver25[team].total++;
+        if (isOver25) teamOver25[team].over++;
+
+        teamDraws[team].total++;
+        if (isDraw) teamDraws[team].draws++;
+      });
+    });
+
+    // Top BTTS teams (min 5 matches)
+    const bttsRanked = Object.entries(teamBtts)
+      .filter(([, v]) => v.total >= 5)
+      .map(([team, v]) => ({ team, rate: (v.btts / v.total) * 100 }))
+      .sort((a, b) => b.rate - a.rate);
+
+    const topBtts = bttsRanked.slice(0, 3).map(t => `${t.team} ${t.rate.toFixed(0)}%`).join(', ');
+
+    // Top Over 2.5 teams
+    const over25Ranked = Object.entries(teamOver25)
+      .filter(([, v]) => v.total >= 5)
+      .map(([team, v]) => ({ team, rate: (v.over / v.total) * 100 }))
+      .sort((a, b) => b.rate - a.rate);
+
+    const topOver25 = over25Ranked.slice(0, 3).map(t => `${t.team} ${t.rate.toFixed(0)}%`).join(', ');
+
+    // Most draws team
+    const drawsRanked = Object.entries(teamDraws)
+      .filter(([, v]) => v.total >= 5)
+      .map(([team, v]) => ({ team, count: v.draws, rate: (v.draws / v.total) * 100 }))
+      .sort((a, b) => b.count - a.count);
+
+    const drawKing = drawsRanked[0];
+
+    // Biggest win margin
+    let biggestWin = { margin: 0, home: '', away: '', homeGoals: 0, awayGoals: 0 };
+    completedMatches.forEach(m => {
+      const margin = Math.abs((m.home_goals || 0) - (m.away_goals || 0));
+      if (margin > biggestWin.margin) {
+        biggestWin = { margin, home: m.home_team, away: m.away_team, homeGoals: m.home_goals || 0, awayGoals: m.away_goals || 0 };
+      }
+    });
+
+    // Late equalisers (led at HT, drew at FT)
+    const lateEqualisers = completedMatches.filter(m => {
+      if (m.half_time_result === null || m.full_time_result === null) return false;
+      return m.half_time_result !== 'D' && m.full_time_result === 'D';
+    }).length;
+
+    // Home win percentage (league-wide)
+    const homeWins = completedMatches.filter(m => m.result === 'H').length;
+    const homeWinPct = ((homeWins / completedMatches.length) * 100).toFixed(1);
+
+    // Current form streaks (live — from end of results array)
+    let currentLongestWin = 0;
+    let currentWinTeam = '';
+    let currentLongestLosing = 0;
+    let currentLosingTeam = '';
+    const currentStreaks: { [team: string]: { wins: number; losses: number } } = {};
+
+    // Process in chronological order to get current streaks
+    completedMatches.forEach(match => {
+      [match.home_team, match.away_team].forEach(team => {
+        if (!currentStreaks[team]) currentStreaks[team] = { wins: 0, losses: 0 };
+      });
+
+      if (match.result === 'H') {
+        currentStreaks[match.home_team].wins++;
+        currentStreaks[match.home_team].losses = 0;
+        currentStreaks[match.away_team].wins = 0;
+        currentStreaks[match.away_team].losses++;
+      } else if (match.result === 'A') {
+        currentStreaks[match.away_team].wins++;
+        currentStreaks[match.away_team].losses = 0;
+        currentStreaks[match.home_team].wins = 0;
+        currentStreaks[match.home_team].losses++;
+      } else {
+        Object.keys(currentStreaks).forEach(team => {
+          if (team === match.home_team || team === match.away_team) {
+            currentStreaks[team].wins = 0;
+            currentStreaks[team].losses = 0;
+          }
+        });
+      }
+    });
+
+    Object.entries(currentStreaks).forEach(([team, s]) => {
+      if (s.wins > currentLongestWin) { currentLongestWin = s.wins; currentWinTeam = team; }
+      if (s.losses > currentLongestLosing) { currentLongestLosing = s.losses; currentLosingTeam = team; }
+    });
+
+    // --- Standings-derived stats ---
+    let titleRace = 'N/A';
+    let relegationBattle = 'N/A';
+    if (standings.length >= 3) {
+      const top = standings.slice(0, 3);
+      const gap1 = top[0].points - top[1].points;
+      const gap2 = top[0].points - top[2].points;
+      titleRace = `${top[0].team.shortName || top[0].team.name} (${top[0].points}pts)`;
+      if (gap1 > 0) titleRace += ` +${gap1}`;
+
+      if (standings.length >= 20) {
+        const safetyLine = standings[16]; // 17th place (0-indexed)
+        const bottom3 = standings.slice(-3);
+        const safetyGap = safetyLine.points - bottom3[0].points;
+        relegationBattle = bottom3.map(s => `${s.team.shortName || s.team.name} ${s.points}pts`).join(', ');
+        if (safetyGap > 0) relegationBattle += ` (${safetyGap}pts to safety)`;
+      }
+    }
+
+    // --- Golden Boot ---
+    let goldenBoot = 'N/A';
+    if (scorers.length >= 3) {
+      goldenBoot = scorers.slice(0, 3)
+        .map(s => `${s.player?.name || 'Unknown'} (${s.goals})`)
+        .join(', ');
+    } else if (scorers.length > 0) {
+      goldenBoot = `${scorers[0].player?.name || 'Unknown'} (${scorers[0].goals})`;
+    }
+
+    const results: SeasonStat[] = [
+      {
+        label: 'Home Win Rate',
+        value: `${homeWinPct}%`,
+        icon: Home,
+        color: 'from-blue-500 to-indigo-500',
+        description: 'League-wide home advantage this season'
+      },
+      {
+        label: 'Draw Magnets',
+        value: drawKing ? `${drawKing.team} (${drawKing.count})` : 'N/A',
+        icon: ArrowDownUp,
+        color: 'from-gray-500 to-zinc-500',
+        description: drawKing ? `${drawKing.rate.toFixed(0)}% of their matches end level` : 'Team with most draws'
+      },
+      {
+        label: 'BTTS Leaders',
+        value: bttsRanked[0] ? `${bttsRanked[0].team} (${bttsRanked[0].rate.toFixed(0)}%)` : 'N/A',
+        icon: Swords,
+        color: 'from-green-500 to-emerald-500',
+        description: topBtts ? `Top 3: ${topBtts}` : 'Both teams to score frequency'
+      },
+      {
+        label: 'Over 2.5 Leaders',
+        value: over25Ranked[0] ? `${over25Ranked[0].team} (${over25Ranked[0].rate.toFixed(0)}%)` : 'N/A',
+        icon: Flame,
+        color: 'from-orange-500 to-amber-500',
+        description: topOver25 ? `Top 3: ${topOver25}` : 'Matches with 3+ goals'
+      },
+      {
+        label: 'Biggest Win',
+        value: biggestWin.margin > 0 ? `${biggestWin.margin} goals` : 'N/A',
+        icon: Target,
+        color: 'from-purple-500 to-violet-500',
+        description: biggestWin.margin > 0 ? `${biggestWin.home} ${biggestWin.homeGoals}-${biggestWin.awayGoals} ${biggestWin.away}` : 'Largest victory margin'
+      },
+      {
+        label: 'Late Equalisers',
+        value: lateEqualisers,
+        icon: Timer,
+        color: 'from-rose-500 to-pink-500',
+        description: 'Teams that led at HT but only drew — live betting insight'
+      },
+      {
+        label: 'Hot Streak',
+        value: currentWinTeam ? `${currentWinTeam} (${currentLongestWin}W)` : 'None',
+        icon: Flame,
+        color: 'from-red-500 to-orange-500',
+        description: 'Current longest winning run right now'
+      },
+      {
+        label: 'Cold Streak',
+        value: currentLosingTeam && currentLongestLosing > 0 ? `${currentLosingTeam} (${currentLongestLosing}L)` : 'None',
+        icon: TrendingUp,
+        color: 'from-slate-600 to-gray-600',
+        description: 'Current longest losing run right now'
+      },
+    ];
+
+    // Standings-based stats (only if standings loaded)
+    if (standings.length >= 3) {
+      results.push({
+        label: 'Title Race',
+        value: titleRace,
+        icon: Trophy,
+        color: 'from-yellow-500 to-amber-500',
+        description: standings.length >= 2 ? `${standings[1].team.shortName || standings[1].team.name} (${standings[1].points}pts), ${standings[2].team.shortName || standings[2].team.name} (${standings[2].points}pts)` : 'Top of the table'
+      });
+    }
+
+    if (standings.length >= 20) {
+      results.push({
+        label: 'Relegation Zone',
+        value: relegationBattle,
+        icon: AlertTriangle,
+        color: 'from-red-600 to-red-500',
+        description: 'Bottom 3 teams and gap to safety'
+      });
+    }
+
+    // Golden Boot (only if scorers loaded)
+    if (scorers.length > 0) {
+      results.push({
+        label: 'Golden Boot',
+        value: `${scorers[0].player?.name || 'Unknown'} (${scorers[0].goals})`,
+        icon: Trophy,
+        color: 'from-amber-400 to-yellow-500',
+        description: scorers.length >= 3 ? `Top 3: ${goldenBoot}` : 'Leading scorer'
+      });
+    }
+
+    return results;
+  }
+
   onMount(() => {
     loadSeasonStats();
   });
@@ -455,11 +713,11 @@
 
     <!-- Additional Stats -->
     {#if additionalStats.length > 0}
-      <div class="mb-8">
+      <div class="mb-12">
         <h3 class="text-lg font-semibold font-display text-foreground mb-4">Extended Analytics</h3>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" aria-label="Extended season analytics">
           {#each additionalStats as stat, i}
-            <div 
+            <div
               class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 motion-safe:hover:scale-105 transition-colors duration-300 motion-safe:transition-all"
               style="animation-delay: {(stats.length + i) * 50}ms"
             >
@@ -471,11 +729,47 @@
                   {stat.label}
                 </h4>
               </div>
-              
+
               <p class="text-lg font-bold text-foreground mb-1">
                 {stat.value}
               </p>
-              
+
+              <p class="text-xs text-muted-foreground line-clamp-2">
+                {stat.description}
+              </p>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Betting Intelligence -->
+    {#if bettingStats.length > 0}
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <BarChart3 class="w-5 h-5 text-accent" />
+          <h3 class="text-lg font-semibold font-display text-foreground">Betting Intelligence</h3>
+        </div>
+        <p class="text-sm text-muted-foreground mb-4">Per-team trends for BTTS, Over 2.5, draws, form streaks, and market context</p>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" aria-label="Betting intelligence statistics">
+          {#each bettingStats as stat, i}
+            <div
+              class="stat-card-small rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 motion-safe:hover:scale-105 transition-colors duration-300 motion-safe:transition-all"
+              style="animation-delay: {(stats.length + additionalStats.length + i) * 50}ms"
+            >
+              <div class="flex items-center gap-3 mb-2">
+                <div class="p-2 rounded-lg bg-gradient-to-br {stat.color} bg-opacity-10">
+                  <svelte:component this={stat.icon} class="w-4 h-4 text-white drop-shadow-lg" />
+                </div>
+                <h4 class="text-xs font-semibold text-muted-foreground uppercase">
+                  {stat.label}
+                </h4>
+              </div>
+
+              <p class="text-lg font-bold text-foreground mb-1">
+                {stat.value}
+              </p>
+
               <p class="text-xs text-muted-foreground line-clamp-2">
                 {stat.description}
               </p>

@@ -473,7 +473,7 @@ Current data:\n`;
         >
           <Trash2 class="w-3.5 h-3.5 text-muted-foreground" />
         </button>
-        {#if hasApiKey && !useServerKey && !useBackendRAG}
+        {#if apiKey}
           <button
             on:click={clearApiKey}
             class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"

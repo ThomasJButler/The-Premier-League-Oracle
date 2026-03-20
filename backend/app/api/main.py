@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,6 +24,9 @@ from pydantic import BaseModel, Field
 # Anchor all file paths to the backend/ directory, not the CWD.
 # main.py lives at backend/app/api/main.py → 3 levels up = backend/
 BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# Load .env from the backend root directory
+load_dotenv(BACKEND_ROOT / ".env")
 
 # Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)

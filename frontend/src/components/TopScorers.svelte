@@ -162,7 +162,9 @@
               <td class="py-3 px-4">
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-foreground">{scorer.player.name}</span>
-                  <span class="text-xs px-2 py-0.5 bg-muted rounded-full hidden sm:inline">{scorer.player.position}</span>
+                  {#if scorer.player.position && scorer.player.position !== 'Unknown'}
+                    <span class="text-xs px-2 py-0.5 bg-muted rounded-full hidden sm:inline">{scorer.player.position}</span>
+                  {/if}
                 </div>
                 <!-- Team shown inline on mobile -->
                 <div class="flex items-center gap-1 text-sm text-muted-foreground sm:hidden mt-0.5">

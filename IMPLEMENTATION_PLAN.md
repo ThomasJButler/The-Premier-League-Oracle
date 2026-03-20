@@ -76,6 +76,18 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 - [ ] **Playwright E2E in CI** — Currently only Vitest runs in CI. Playwright would catch real browser regressions but needs `npx playwright install` and adds ~2min to CI
 - [ ] **Rate-limit persistence** — Backend rate limiter is in-memory only. On horizontal scale (Vercel), each instance has its own counter. Consider Redis-backed rate limiting if abuse becomes an issue
 
+### P7f. Season Timeline (New Feature)
+
+Interactive visual timeline showing key moments from the 2025/26 Premier League season:
+
+- [ ] **Timeline component** — `SeasonTimeline.svelte` with horizontal scrollable or vertical card layout
+- [ ] **Key results** — Shocks, upsets, record wins automatically detected from match results (e.g., largest margin, unexpected winners based on ELO)
+- [ ] **Title race progression** — Cumulative points line chart for top 3-4 teams using svelte-chartjs (already in project)
+- [ ] **Relegation battle** — Points gap to safety (17th place) over time, with visual tension indicators
+- [ ] **Automatic commentary** — Data-driven narrative for notable events (e.g., "Arsenal's 15-match unbeaten run ended here", "The day Ipswich Town beat Man City")
+- [ ] **Tone and personality** — Funny/sympathetic commentary, quotes, observations — the season story told with character
+- [ ] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier
+
 ---
 
 ## Git Branch Strategy

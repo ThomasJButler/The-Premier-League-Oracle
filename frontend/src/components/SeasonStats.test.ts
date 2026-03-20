@@ -8,6 +8,8 @@ import type { Match } from '../types';
 vi.mock('../services/dataService', () => ({
   dataService: {
     getCurrentSeasonMatches: vi.fn(),
+    getStandings: vi.fn().mockResolvedValue([]),
+    getTopScorers: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -33,6 +35,8 @@ vi.mock('lucide-svelte', () => {
     Calendar: stub, Target: stub, TrendingUp: stub, Award: stub,
     Users: stub, Zap: stub, Shield: stub, AlertTriangle: stub,
     Percent: stub, Activity: stub, Timer: stub, Home: stub,
+    BarChart3: stub, Trophy: stub, Crosshair: stub, ArrowDownUp: stub,
+    Flame: stub, Swords: stub,
   };
 });
 

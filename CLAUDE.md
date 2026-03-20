@@ -32,7 +32,8 @@ npm run test         # Run tests with Vitest
 npm run test:run     # Run tests once (no watch)
 npm run test:coverage # Run tests with coverage
 
-# Backend (run from backend/ directory)
+# Backend (run from backend/ directory — requires conda environment)
+conda activate anaconda-ml-ai
 cd backend
 pip install -r requirements.txt
 uvicorn app.api.main:app --reload --port 8000
