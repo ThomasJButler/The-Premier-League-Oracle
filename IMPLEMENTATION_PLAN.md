@@ -144,9 +144,9 @@ Priority features to implement with real data (free-tier data available for thes
 - [ ] `modern_oracle.py` calls `self.data_collector.get_team_stats(team_name)` — method doesn't exist. Will `AttributeError`
 - [ ] `modern_oracle.py` calls `self.data_collector.get_team_form(team_name, last_n=5)` — wrong kwarg name, should be `n_matches`. Will `TypeError`
 
-### P3c. Model Training Pipeline
+### P3c. Model Training Pipeline - ALL ON pro-tier-archive BRANCH.
 
-**New file:** `backend/train.py` needed to orchestrate data collection → feature engineering → training → evaluation with proper 2020-2023 train / 2024 val / 2025 test splits.
+**New file:** `backend/train.py` needed to orchestrate data collection → feature engineering → training → evaluation with proper 2020-2023 train / 2024 val / 2025-2026 test splits.  THIS FILE WAS DELETED IN PAST GIT HISTORY, IT IS ALL ON pro-tier-archive BRANCH.
 
 Critical issues in archived model files (all in `pro-tier-archive`): column rename mismatch (`FTHG` → `home_score` but engineer reads `home_goals`); hardcoded CSV directory; `scaler.fit_transform` at inference time; data leakage in ensemble optimisation; `val_accuracy` UnboundLocalError in transformer; `/admin/retrain` returns mock response; 0% pytest coverage on all Pro-tier models.
 
