@@ -70,9 +70,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
 
@@ -84,9 +85,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
   </div>
@@ -99,9 +101,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
   </div>

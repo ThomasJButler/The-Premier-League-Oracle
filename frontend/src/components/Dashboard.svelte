@@ -400,7 +400,7 @@
       <div class="flex items-center gap-3 mb-3">
         <div class="w-2.5 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full live-pulse"></div>
         <span class="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
-        <span class="text-slate-400 dark:text-white/50 text-xs ml-auto hidden sm:inline">
+        <span class="text-slate-400 dark:text-white/60 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
@@ -410,7 +410,7 @@
           <h1 class="text-2xl sm:text-3xl font-display font-extrabold mb-1 tracking-tight">
             Dashboard
           </h1>
-          <p class="text-slate-500 dark:text-white/60 text-sm max-w-xl">
+          <p class="text-slate-500 dark:text-white/70 text-sm max-w-xl">
             ELO, Poisson, Form, H2H, and Standings ensemble
           </p>
         </div>
@@ -418,45 +418,45 @@
         <!-- Featured match — next upcoming fixture -->
         {#if featuredMatch && !loading}
           <button
-            class="flex items-center gap-3 sm:gap-4 px-4 py-3 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-white/10 transition-all cursor-pointer group shrink-0"
+            class="flex items-center gap-4 sm:gap-5 px-5 py-4 rounded-xl bg-gradient-to-r from-white/70 via-white/50 to-white/70 dark:from-white/[0.07] dark:via-white/[0.04] dark:to-white/[0.07] border border-slate-200/60 dark:border-white/10 backdrop-blur-sm hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 transition-all duration-200 cursor-pointer group shrink-0"
             on:click={() => dispatch('navigate', { view: 'Predictions' })}
             data-testid="featured-match"
             aria-label="Next match: {featuredMatch.home_team} vs {featuredMatch.away_team}"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
               <img
-                src={getTeamLogo(featuredMatch.home_team, 28)}
+                src={getTeamLogo(featuredMatch.home_team, 48)}
                 alt={featuredMatch.home_team}
-                class="w-7 h-7 rounded-md"
+                class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg"
               />
-              <span class="text-xs font-bold text-slate-700 dark:text-white/90 hidden min-[480px]:inline">{featuredMatch.home_team}</span>
+              <span class="text-sm font-extrabold text-slate-800 dark:text-white hidden min-[480px]:inline">{featuredMatch.home_team}</span>
             </div>
             <div class="flex flex-col items-center">
-              <span class="text-[10px] font-semibold text-slate-400 dark:text-white/40 uppercase tracking-wider">vs</span>
+              <span class="text-[10px] font-bold text-slate-400 dark:text-white/55 uppercase tracking-wider">vs</span>
               <div class="flex items-center gap-1 mt-0.5">
-                <Clock class="w-3 h-3 text-slate-400 dark:text-white/40" />
-                <span class="text-[10px] text-slate-500 dark:text-white/50 font-medium">
+                <Clock class="w-3 h-3 text-slate-400 dark:text-white/55" />
+                <span class="text-[10px] text-slate-500 dark:text-white/60 font-semibold">
                   {format(new Date(featuredMatch.date), 'EEE HH:mm')}
                 </span>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-slate-700 dark:text-white/90 hidden min-[480px]:inline">{featuredMatch.away_team}</span>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-extrabold text-slate-800 dark:text-white hidden min-[480px]:inline">{featuredMatch.away_team}</span>
               <img
-                src={getTeamLogo(featuredMatch.away_team, 28)}
+                src={getTeamLogo(featuredMatch.away_team, 48)}
                 alt={featuredMatch.away_team}
-                class="w-7 h-7 rounded-md"
+                class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg"
               />
             </div>
-            <Zap class="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-colors ml-1" />
+            <Zap class="w-4 h-4 text-primary/60 group-hover:text-primary transition-colors ml-1" />
           </button>
         {:else if loading}
-          <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10">
-            <div class="skeleton w-7 h-7 rounded-md"></div>
-            <div class="skeleton h-3 w-12"></div>
+          <div class="flex items-center gap-4 px-5 py-4 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10">
+            <div class="skeleton w-10 h-10 sm:w-12 sm:h-12 rounded-lg"></div>
+            <div class="skeleton h-4 w-16"></div>
             <div class="skeleton h-3 w-6"></div>
-            <div class="skeleton h-3 w-12"></div>
-            <div class="skeleton w-7 h-7 rounded-md"></div>
+            <div class="skeleton h-4 w-16"></div>
+            <div class="skeleton w-10 h-10 sm:w-12 sm:h-12 rounded-lg"></div>
           </div>
         {/if}
       </div>

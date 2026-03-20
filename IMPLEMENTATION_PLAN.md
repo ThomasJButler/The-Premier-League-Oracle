@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P7l complete, P7m design review added)
+Last updated: 20 March 2026 (P7m design refinements: 7/10 complete)
 Active branch: `v3.0-MVP`
 
 ---
@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 47/49 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority |
+| P7 Beyond MVP | 54/59 | 2 deferred (retrain, rate-limit), 3 remaining P7m polish (skeletons, form dots, score pop) |
 
 **Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -166,20 +166,20 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 Design audit confirmed a **cohesive, intentional system** ("Stadium Nightfall" theme, HSL variable architecture, 20-team colour overrides, Figtree + Outfit font pairing, glassmorphism with proper blur/saturate). No "AI slop" patterns detected. Items below are refinements, not overhauls.
 
 **High impact:**
-- [ ] **Probability bar team colours** — Replace generic blue/amber/emerald segments with actual team primary colours from `getTeamColor()` in `teamLogos.ts`. Home team colour for H segment, away for A
-- [ ] **Featured match hero uplift** — Dashboard featured match button looks like a regular card. Increase visual weight: larger logos (28→48px), bolder names, subtle gradient background, scale-on-hover
-- [ ] **Hardcoded neon green → CSS vars** — Live pulse dot and neon button shadows use `rgba(0, 255, 135)` instead of `hsl(var(--accent))`. Breaks team theming. Quick find-and-replace in `app.css`
-- [ ] **Sidebar nav truncation** — Long labels wrap at narrow widths. Add `truncate` class with `title` tooltip to `SidebarNav.svelte`
+- [x] **Probability bar team colours** — Home/away segments now use actual team primary colours from `getTeamColor()` in `teamLogos.ts`. Draw segment stays neutral amber. Hex opacity suffixes (`4D`/`1A`) for predicted/non-predicted states
+- [x] **Featured match hero uplift** — Larger logos (28→48px, responsive 40→48), bolder names (`font-extrabold`), gradient background (`from-white/70 via-white/50`), `hover:scale-[1.02]` with shadow
+- [x] **Hardcoded neon green → CSS vars** — All `rgba(0, 255, 135)` in `btn-neon` shadows, `livePulse` keyframes, and `--gradient-accent` replaced with `hsl(var(--accent))`. Team theming now affects all glow effects
+- [x] **Sidebar nav truncation** — `truncate` class on label `<span>`, `title` tooltip on all nav buttons across main, betting, and bottom sections
 
 **Medium impact:**
 - [ ] **Content-aware skeleton loaders** — Replace generic shimmer rectangles with content-shaped placeholders (circular team logo, narrow text, wider score). Already have `.skeleton` class
 - [ ] **Form dots responsive fix** — At 320px mobile, 5 dots crowd. Reduce size from `w-3 h-3` to `w-2 h-2` below `sm:` or limit to 3 most recent
-- [ ] **Typography contrast audit** — `white/60` opacity in dark mode hero borderline WCAG AA. Bump to `white/70` minimum across muted-foreground small text
+- [x] **Typography contrast audit** — Bumped `white/60` to `white/70`, `white/50` to `white/60`, `white/40` to `white/55` in Dashboard hero. No remaining sub-WCAG opacity text in codebase
 
 **Low impact:**
-- [ ] **Button press feedback** — Add `active:scale-[0.97]` to primary action buttons for tactile press response
+- [x] **Button press feedback** — `active:scale-[0.97]` added to shadcn `Button.svelte` base class (all variants) and `.btn-neon`. Changed `transition-colors` to `transition-all` for smooth scale animation
 - [ ] **Score pop on prediction load** — `scorePop` keyframe exists but only triggers on live score changes. Also trigger when prediction score first appears
-- [ ] **Navigation active state** — Current left-border indicator subtle. Add filled background with slight gradient for unmistakable active page
+- [x] **Navigation active state** — Replaced flat `bg-accent/10` with gradient fill (`linear-gradient 90deg accent/15 → accent/06`), added `font-semibold` for text weight. Mobile nav also enhanced
 
 ---
 

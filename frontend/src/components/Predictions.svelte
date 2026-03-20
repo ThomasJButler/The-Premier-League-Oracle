@@ -8,7 +8,7 @@
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
-  import { getTeamLogo } from '../utils/teamLogos';
+  import { getTeamLogo, getTeamColor } from '../utils/teamLogos';
   import { PoissonPredictor } from '../lib/advancedPredictions';
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
@@ -898,15 +898,15 @@
                 <div class="mb-4">
                   <div class="flex rounded-lg overflow-hidden h-8 bg-muted" role="img" aria-label="Outcome probabilities: Home {prediction.detailedAnalysis?.poissonProbs.homeWin ? (prediction.detailedAnalysis.poissonProbs.homeWin * 100).toFixed(0) : '-'}%, Draw {prediction.detailedAnalysis?.poissonProbs.draw ? (prediction.detailedAnalysis.poissonProbs.draw * 100).toFixed(0) : '-'}%, Away {prediction.detailedAnalysis?.poissonProbs.awayWin ? (prediction.detailedAnalysis.poissonProbs.awayWin * 100).toFixed(0) : '-'}%">
                     {#each [
-                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, barColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-200' },
-                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, barColor: 'bg-amber-400', textColor: 'text-amber-700 dark:text-amber-200' },
-                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, barColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-200' }
+                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, color: getTeamColor(prediction.home_team) },
+                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, color: '#d97706' },
+                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, color: getTeamColor(prediction.away_team) }
                     ] as outcome}
                       <div
-                        class="flex items-center justify-center transition-all duration-500 {prediction.prediction.predicted_result === outcome.value ? outcome.barColor + '/30' : outcome.barColor + '/10'}"
-                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%"
+                        class="flex items-center justify-center transition-all duration-500"
+                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%; background-color: {outcome.color}{prediction.prediction.predicted_result === outcome.value ? '4D' : '1A'}"
                       >
-                        <span class="text-[11px] font-semibold {prediction.prediction.predicted_result === outcome.value ? outcome.textColor : 'text-muted-foreground'}">
+                        <span class="text-[11px] font-semibold" style="color: {prediction.prediction.predicted_result === outcome.value ? outcome.color : ''};" class:text-muted-foreground={prediction.prediction.predicted_result !== outcome.value}>
                           {outcome.label} {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
                         </span>
                       </div>

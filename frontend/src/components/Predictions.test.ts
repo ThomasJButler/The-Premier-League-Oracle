@@ -170,7 +170,8 @@ vi.mock('date-fns', () => ({
 
 // Mock team logos
 vi.mock('../utils/teamLogos', () => ({
-  getTeamLogo: vi.fn(() => 'mock-logo.png')
+  getTeamLogo: vi.fn(() => 'mock-logo.png'),
+  getTeamColor: vi.fn(() => '#666666')
 }));
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
