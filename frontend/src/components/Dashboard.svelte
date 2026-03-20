@@ -113,7 +113,7 @@
   $: stats = [
     {
       title: 'Prediction Accuracy',
-      value: `${$overallAccuracy.toFixed(1)}%`,
+      value: rawTotalPredictions > 0 ? `${$overallAccuracy.toFixed(1)}%` : '—',
       change: accuracyChange,
       icon: Target,
       color: 'text-primary',
@@ -121,7 +121,7 @@
     },
     {
       title: 'Total Profit',
-      value: `£${$profitMargin.toFixed(2)}`,
+      value: rawTotalBets > 0 ? `£${$profitMargin.toFixed(2)}` : '—',
       change: profitChange,
       icon: TrendingUp,
       color: 'text-emerald-600 dark:text-emerald-400',
@@ -129,7 +129,7 @@
     },
     {
       title: 'Total Predictions',
-      value: Math.round($totalPredictions).toLocaleString(),
+      value: rawTotalPredictions > 0 ? Math.round($totalPredictions).toLocaleString() : '—',
       change: predictionsChange,
       icon: Target,
       color: 'text-sky-600 dark:text-sky-400',
@@ -198,7 +198,7 @@
       const accuracyDelta = accuracyStats.accuracy - accuracyStats60.accuracy;
       accuracyChange = accuracyStats.totalPredictions > 0
         ? `${accuracyDelta >= 0 ? '+' : ''}${accuracyDelta.toFixed(1)}% vs last 60d`
-        : 'No predictions yet';
+        : 'Generate predictions to track';
 
       // Get real betting stats from BetHistoryService
       const roi = betHistoryService.getROI();
@@ -207,7 +207,7 @@
 
       profitChange = roi.totalBets > 0
         ? `${winRate.toFixed(0)}% win rate`
-        : 'No bets placed yet';
+        : 'Track bets to see profit/loss';
       predictionsChange = accuracyStats.totalPredictions > 0
         ? `${accuracyStats.correctPredictions} correct`
         : 'Generate predictions to start';

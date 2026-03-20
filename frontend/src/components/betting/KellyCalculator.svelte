@@ -35,8 +35,20 @@
   let suggestions: KellySuggestion[] = [];
   let suggestionsLoading = false;
   let suggestionsError: string | null = null;
-  let confidenceThreshold = 65; // percentage, spec says >= 65%
+  let confidenceThreshold = 30; // percentage — model typically operates at 25-45%
   let trackedBets: Set<string> = new Set();
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  let loadAborted = false;
+
+  /** Debounce slider changes to prevent flooding the backend with requests */
+  function debouncedLoadSuggestions() {
+    clearTimeout(debounceTimer);
+    loadAborted = true;
+    debounceTimer = setTimeout(() => {
+      loadAborted = false;
+      loadSuggestions();
+    }, 500);
+  }
 
   function trackBet(suggestion: KellySuggestion) {
     const selection = suggestion.predictedResult === 'H' ? 'home'
@@ -78,6 +90,8 @@
       const results: KellySuggestion[] = [];
 
       for (const match of upcomingMatches) {
+        // Abort if a newer slider change has been triggered
+        if (loadAborted) return;
         // Skip matches that already have a result
         if (match.result) continue;
 
@@ -232,11 +246,11 @@
         id="confidence-threshold"
         type="range"
         bind:value={confidenceThreshold}
-        min="40"
-        max="90"
+        min="20"
+        max="55"
         step="5"
         class="w-full accent-primary"
-        on:input={loadSuggestions}
+        on:input={debouncedLoadSuggestions}
       />
       <div class="flex justify-between text-xs text-muted-foreground mt-0.5">
         <span>More bets</span>

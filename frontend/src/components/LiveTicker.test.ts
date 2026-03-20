@@ -122,7 +122,7 @@ describe('LiveTicker', () => {
     render(LiveTicker);
     await flushStoreUpdates();
     const tickerDiv = document.querySelector('.ticker-content');
-    expect(tickerDiv?.textContent).toContain('Arsenal FC 2-1 Chelsea FC');
+    expect(tickerDiv?.textContent).toContain('Arsenal 2-1 Chelsea');
   });
 
   it('shows live dot indicator when live matches exist', async () => {
@@ -172,7 +172,7 @@ describe('LiveTicker', () => {
     render(LiveTicker);
     await flushStoreUpdates();
     const tickerDiv = document.querySelector('.ticker-content');
-    expect(tickerDiv?.textContent).toContain('Liverpool FC');
+    expect(tickerDiv?.textContent).toContain('Liverpool');
   });
 
   it('has a pause/resume button', () => {

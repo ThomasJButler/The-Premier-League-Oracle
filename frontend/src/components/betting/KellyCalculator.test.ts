@@ -163,7 +163,7 @@ describe('KellyCalculator Component', () => {
     render(KellyCalculatorComponent);
 
     expect(screen.getByLabelText(/Min. Confidence/)).toBeInTheDocument();
-    expect(screen.getByText('65%')).toBeInTheDocument(); // default threshold
+    expect(screen.getByText('30%')).toBeInTheDocument(); // default threshold
   });
 
   it('should show empty state when no upcoming matches', async () => {
@@ -212,7 +212,7 @@ describe('KellyCalculator Component', () => {
     vi.mocked(dataService.getMatches).mockResolvedValue([match]);
     vi.mocked(OptimizedPredictor.predictMatch).mockResolvedValue({
       predictedResult: 'D',
-      confidence: 0.40, // Below 65% threshold
+      confidence: 0.20, // Below 30% threshold
       predictedHomeGoals: 1,
       predictedAwayGoals: 1,
       homeForm: 'WLDWL',

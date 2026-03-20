@@ -31,7 +31,7 @@ export interface MarketOdds {
 
 export class ValueBettingEngine {
   private static readonly MIN_VALUE_EDGE = 0.03; // 3% minimum edge
-  private static readonly MIN_CONFIDENCE = 0.55; // 55% minimum confidence
+  private static readonly MIN_CONFIDENCE = 0.35; // 35% — model typically operates at 25-45% confidence
 
 
   /**

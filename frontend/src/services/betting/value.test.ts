@@ -79,15 +79,15 @@ describe('ValueBettingEngine', () => {
       expect(homeBet).toBeUndefined();
     });
 
-    it('should not identify bets where probability is below 55%', async () => {
+    it('should not identify bets where probability is below 35%', async () => {
       vi.mocked(AdvancedMatchPredictor.predictMatch).mockResolvedValue(
-        mockPrediction({ homeWinProb: 0.50, drawProb: 0.25, awayWinProb: 0.25 })
+        mockPrediction({ homeWinProb: 0.30, drawProb: 0.40, awayWinProb: 0.30 })
       );
 
       // Even with decent edge, probability below MIN_CONFIDENCE rejects
       const result = await ValueBettingEngine.identifyValueBets(
         'match-1', 'Arsenal', 'Chelsea', new Date('2026-03-15'),
-        standardOdds({ home: 2.50 }), // implied 40%, edge 10% but prob only 50%
+        standardOdds({ home: 5.00 }), // implied 20%, edge 10% but prob only 30%
         1000
       );
 
