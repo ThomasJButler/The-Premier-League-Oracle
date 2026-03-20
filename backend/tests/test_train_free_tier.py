@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from train_free_tier import (
     _extract_odds_from_row,
     _per_class_accuracy,
+    apply_calibrators,
     build_dataset,
     chronological_split,
     compute_recency_weights,
@@ -569,3 +570,53 @@ class TestExtractOddsFromRow:
         for idx in odds_indices:
             assert np.all(X[:, idx] == 0.0), \
                 f'{names[idx]} should be 0.0 without odds data in CSV'
+
+
+# ---------------------------------------------------------------------------
+# apply_calibrators
+# ---------------------------------------------------------------------------
+
+class TestApplyCalibrators:
+    """Verify calibrator dispatch works for both isotonic and Platt methods."""
+
+    def test_isotonic_uses_predict(self):
+        """Isotonic calibrators should be called via .predict()."""
+        raw_probs = np.array([[0.5, 0.3, 0.2], [0.4, 0.4, 0.2]])
+
+        class FakeIsotonic:
+            def predict(self, x):
+                return x * 0.9  # Simple transform
+
+        cals = [FakeIsotonic(), FakeIsotonic(), FakeIsotonic()]
+        result = apply_calibrators(raw_probs, cals, 'isotonic')
+        assert result.shape == (2, 3)
+        # Rows should sum to 1 after normalisation
+        np.testing.assert_allclose(result.sum(axis=1), 1.0, atol=1e-10)
+
+    def test_platt_uses_predict_proba(self):
+        """Platt calibrators should be called via .predict_proba()."""
+        raw_probs = np.array([[0.5, 0.3, 0.2], [0.4, 0.4, 0.2]])
+
+        class FakePlatt:
+            def predict_proba(self, x):
+                # Returns (n, 2) — column 1 is probability of positive class
+                return np.column_stack([1 - x.ravel(), x.ravel()])
+
+        cals = [FakePlatt(), FakePlatt(), FakePlatt()]
+        result = apply_calibrators(raw_probs, cals, 'platt')
+        assert result.shape == (2, 3)
+        np.testing.assert_allclose(result.sum(axis=1), 1.0, atol=1e-10)
+
+    def test_normalisation_handles_zero_row(self):
+        """If all calibrated values are zero, avoid division by zero."""
+        raw_probs = np.array([[0.0, 0.0, 0.0]])
+
+        class ZeroCal:
+            def predict(self, x):
+                return x * 0.0
+
+        cals = [ZeroCal(), ZeroCal(), ZeroCal()]
+        result = apply_calibrators(raw_probs, cals, 'isotonic')
+        assert result.shape == (1, 3)
+        # Should not contain NaN
+        assert not np.any(np.isnan(result))

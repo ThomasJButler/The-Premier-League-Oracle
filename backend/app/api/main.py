@@ -371,7 +371,8 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             [feature_vec], feature_names=feature_names,
         )
 
-        # Use stacked ensemble if available, otherwise fall back to single model
+        # Use stacked ensemble if available (only saved when it outperforms
+        # calibrated XGBoost), otherwise fall back to calibrated single model
         stacked = free_tier_metadata.get('stacked_ensemble')
         if stacked and stacked.get('classifiers') and stacked.get('meta_learner'):
             # Stacked ensemble: 3 OvR classifiers → meta-learner
@@ -381,14 +382,25 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            # Single XGBoost with calibration
+            # Single XGBoost with calibration (isotonic or Platt scaling)
             raw_probs = free_tier_model.predict(dmatrix)[0]
             calibrators = free_tier_metadata.get('calibrators')
+            cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
             if calibrators and len(calibrators) == 3:
-                cal_probs = np.array([
-                    float(cal.predict([raw_probs[i]])[0])
-                    for i, cal in enumerate(calibrators)
-                ])
+                if cal_method == 'platt':
+                    # Platt scaling: calibrators are LogisticRegression objects
+                    cal_probs = np.array([
+                        float(cal.predict_proba(
+                            np.array([[raw_probs[i]]])
+                        )[0, 1])
+                        for i, cal in enumerate(calibrators)
+                    ])
+                else:
+                    # Isotonic regression: calibrators are IsotonicRegression
+                    cal_probs = np.array([
+                        float(cal.predict([raw_probs[i]])[0])
+                        for i, cal in enumerate(calibrators)
+                    ])
                 total = cal_probs.sum()
                 probs = cal_probs / total if total > 0 else raw_probs
             else:
