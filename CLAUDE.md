@@ -67,7 +67,7 @@ uvicorn app.api.main:app --reload --port 8000
 ### Backend Structure (`backend/`)
 - `app/api/main.py` - FastAPI server with prediction + chat endpoints
 - `app/api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
-- `app/features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
+- `app/features/free_tier_features.py` - Free-tier feature engineering (109 features incl. 8 draw indicators + 5 Elo)
 - `app/data/football_data_collector.py` - Historical data collection
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
 
@@ -123,7 +123,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Test Coverage
 - **Frontend:** 540 Vitest tests (33 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
-- **Backend:** 145 pytest tests (4 files), all non-skip passing (8 skip without libomp)
+- **Backend:** 160 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 
@@ -143,7 +143,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Data Constraints
 - Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
-- Free-tier ML model: 51.0% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
+- Free-tier ML model: 51.9% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
 
 ### Architecture Notes
 - `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection

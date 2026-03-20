@@ -2,6 +2,24 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Odds-as-Features and Documentation Refresh
+
+### Added: Bookmaker odds as ML features (P7a — high impact)
+- Added 10 bookmaker odds features to `FreeTierFeatureEngineer` (109 total, up from 99): Pinnacle implied probabilities (home/draw/away), market average implied probabilities, overround, Asian handicap line, over/under 2.5 probability, Pinnacle-vs-average sharp divergence
+- Dual-mode architecture: CSV odds columns at training time, optional API parameter at inference time. XGBoost handles missing odds gracefully (0.0 features — no imputation required)
+- `build_dataset()` now extracts odds from CSV rows via `_extract_odds_from_row()`
+- `FreeTierPredictionRequest` accepts optional `odds_home`, `odds_draw`, `odds_away` fields
+- Retrained model: draw accuracy 6.7% → 23.1%, overall accuracy 51.0% → 51.9%, log loss 1.034 → 1.008
+- **15 new backend tests** (160 total): 10 odds feature tests, 5 training pipeline odds extraction tests
+
+### Fixed: Documentation refresh
+- Fixed stale test counts in `TESTING_GUIDE.md` (540 Vitest, 145 → 160 pytest)
+- Updated `backend/README.md`: removed pro-tier file references, 99 → 109 features, 145 → 160 tests
+- Added `ANTHROPIC_API_KEY` to `DEPLOYMENT.md` environment variables table
+- Added `backtest.ts` and `aiAnalysis.ts` to `CLAUDE.md` architecture section
+
+---
+
 ## 20 March 2026 — P7d/P7e: Weight Optimiser, Playwright CI, Real Odds Audit
 
 ### Added: Backtest weight optimiser (P7d)

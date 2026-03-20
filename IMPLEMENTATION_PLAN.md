@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (second full audit confirmed — MVP still clean)
+Last updated: 20 March 2026 (odds-as-features training run complete)
 Active branch: `v3.0-MVP`
 
 ---
@@ -19,16 +19,16 @@ Active branch: `v3.0-MVP`
 | P0 Blockers | 3/3 (100%) | Backend startup, requirements audit, stale docs |
 | P1 High Priority | 17/17 (100%) | ALL DONE — wizard dismiss bug fixed |
 | P2 Next Sprint | 27/27 (100%) | ALL DONE — Docker fixed, CI coverage enforced, .env.example created |
-| P3-Free ML Pipeline | DONE | 99 features (incl. 8 draw + 5 Elo), 86 tests, rolling CV, stacked ensemble, ELO leakage fixed |
+| P3-Free ML Pipeline | DONE | 109 features (incl. 10 odds + 8 draw + 5 Elo), 96 training features, rolling CV, stacked ensemble, ELO leakage fixed |
 | P3e/f/g Integration | ALL DONE | ML ensemble, LiveService, AI Analysis |
 | P4 Polish | 8/8 (100%) | Minor deferred sub-items only; Spec 07 UI/UX now 100% complete |
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 40/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 41/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
-**Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
+**Backend free-tier:** Pipeline complete with hyperparameter tuning, v2 training run done (51.9% accuracy with odds features, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
 
@@ -48,7 +48,7 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 ### P7a. Model Accuracy Improvements (High Impact)
 
-- [ ] **Odds-as-features** — CSVs contain ~80 bookmaker odds columns (Bet365, Pinnacle, etc.). Using closing odds as features would dramatically boost accuracy since bookmakers are the strongest predictor. Trade-off: model becomes dependent on having odds data at inference time. Consider a dual-mode approach (with/without odds)
+- [x] **Odds-as-features** — 10 bookmaker odds features added (Pinnacle implied probs, market average probs, overround, Asian handicap, over/under 2.5, sharp divergence). Dual-mode design: odds loaded from CSVs at training time, optional API parameter at inference time (falls back to no-odds mode gracefully). Results: overall accuracy 51.0% → 51.9%, draw accuracy 6.7% → 23.1%, log loss 1.034 → 1.008. Top features by importance: `odds_pinnacle_home` (0.0401), `odds_avg_away` (0.0360), `odds_avg_home` (0.0306). 15 new backend tests (160 total across 4 files)
 - [ ] **Retrain with latest season data** — Current model trained on 2,191 matches through 2025/26 partial. A full 2025/26 season adds ~380 matches. Schedule retraining when season completes
 - [ ] **Draw prediction overhaul** — Currently 6.7% accuracy (essentially non-functional). Investigate: (a) separate draw-specialist model, (b) ordinal regression (H→D→A as ordered outcomes), (c) draw probability as gap between H/A probabilities rather than independent prediction
 - [ ] **Probability calibration improvement** — Log loss 1.034 is high. Current isotonic regression calibrators exist but need more training data and potentially Platt scaling comparison
@@ -98,6 +98,8 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [x] **FAQ section** — Expanded from 8 to 12 questions covering the ensemble model, ML backend, team colour theming, local data storage, and betting tools. Existing answers enriched with specifics (Football-Data.org link, three-tier cache, PL-specific calibration)
 - [x] **README.md overhaul** — Complete rewrite reflecting v3.0 MVP: 522 tests, 99-feature XGBoost backend (not 150+ pro-tier), expanded feature list (team themes, skeleton loading, prediction tracking, zone colouring, betting suite), detailed architecture tree with file descriptions, conda environment note, CI/CD in tech stack. Screenshots kept as GitHub-hosted URLs (Playwright screenshots are gitignored)
 - [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
+- [] **Club Badges for all pages** — In the 'Top Scorers' there are club badges on the team section. Add these badges across all relevant pages, eg live matches, predictions, table, matches, standings etc.
+
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
 
@@ -134,7 +136,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 ### P7h. RAG Intelligence (Medium Priority)
 
-- [x] **Player data enrichment** — Loads player data from two sources at startup: `fact_player_stats.csv` (3,638 records with xG, per-90 metrics) and Football-Data.org `/competitions/PL/scorers` API (top 30 current season scorers). RAG intent parser extended with player name extraction and scorer-specific keyword detection. New query functions: `_query_player_profile()` (individual player lookup with CSV xG data), `_query_team_players()` (team-scoped top scorers), `_query_top_scorers()` (league-wide leaderboard). Prompt builder advertises player data availability. 14 new tests (58 total RAG tests, 145 total backend tests)
+- [x] **Player data enrichment** — Loads player data from two sources at startup: `fact_player_stats.csv` (3,638 records with xG, per-90 metrics) and Football-Data.org `/competitions/PL/scorers` API (top 30 current season scorers). RAG intent parser extended with player name extraction and scorer-specific keyword detection. New query functions: `_query_player_profile()` (individual player lookup with CSV xG data), `_query_team_players()` (team-scoped top scorers), `_query_top_scorers()` (league-wide leaderboard). Prompt builder advertises player data availability. 14 new tests (58 total RAG tests)
 - [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
 - [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
 
@@ -155,11 +157,13 @@ fix/<name>                 — bug fixes, merged via PR
 
 ---
 
-## Free-Tier ML Training: FIRST RUN COMPLETE
+## Free-Tier ML Training: V2 RUN COMPLETE (odds-as-features)
 
-**Model trained and saved to `backend/models/xgboost_free_tier.joblib`** (18 March 2026).
+**Model trained and saved to `backend/models/xgboost_free_tier.joblib`** (18 March 2026 — v1; 20 March 2026 — v2 with odds features).
 
-### First Training Run Results
+### Training Run Results
+
+#### v1 — no odds (18 March 2026)
 
 ```
 Data: 2,191 matches from 6 CSV files (2020/21–2025/26)
@@ -179,7 +183,7 @@ Split: 1,680 training / 420 validation (80/20 chronological)
 | **Draw AUC-ROC** | **0.495** | 0.477 | Near random (0.5) — no draw signal |
 | **Away AUC-ROC** | **0.684** | 0.642 | Good discrimination |
 
-**Confusion matrix (XGBoost):**
+**Confusion matrix (XGBoost v1):**
 ```
                 Predicted
               H    D    A
@@ -188,17 +192,31 @@ Actual D  [  58    7   39 ]   ( 6.7% correct — nearly always misclassified)
 Actual A  [  57   10   71 ]   (51.4% correct)
 ```
 
-**Top 10 features by importance:**
-1. `position_difference` (0.042) — league position gap, strongest single predictor by 3×
-2. `home_ht_goals_scored_avg` (0.017)
-3. `away_shots_avg` (0.015)
-4. `away_win_rate` (0.015)
-5. `home_shots_avg` (0.014)
-6. `home_goals_scored_avg` (0.014)
-7. `home_points_per_game` (0.014)
-8. `home_win_rate` (0.013)
-9. `home_home_win_rate` (0.013)
-10. `h2h_dominance` (0.013)
+#### v2 — with odds features (20 March 2026)
+
+```
+Data: 2,191 matches from 6 CSV files (2020/21–2025/26)
+      2,100 samples after warmup filter (91 skipped), 96 features (86 + 10 odds)
+Split: 1,680 training / 420 validation (80/20 chronological)
+```
+
+| Metric | XGBoost v2 | XGBoost v1 | Change |
+|--------|-----------|-----------|--------|
+| **Overall accuracy** | **51.9%** | 51.0% | +0.9% |
+| **Draw accuracy** | **23.1%** | 6.7% | +16.4% — major improvement |
+| **Log loss** | **1.008** | 1.034 | −0.026 — better calibration |
+
+**Top 10 features by importance (v2):**
+1. `odds_pinnacle_home` (0.0401) — Pinnacle home implied probability
+2. `odds_avg_away` (0.0360) — market average away implied probability
+3. `odds_avg_home` (0.0306) — market average home implied probability
+4. `position_difference` (0.028) — league position gap (was #1 in v1)
+5. `odds_overround` (0.021) — bookmaker margin (proxy for match uncertainty)
+6. `odds_asian_handicap` (0.019)
+7. `odds_over_2_5` (0.018) — over/under 2.5 goals
+8. `home_ht_goals_scored_avg` (0.016)
+9. `odds_sharp_divergence` (0.015) — Pinnacle vs market gap (sharp money signal)
+10. `away_shots_avg` (0.015)
 
 ### Benchmarking Context
 
@@ -207,22 +225,26 @@ Actual A  [  57   10   71 ]   (51.4% correct)
 | Random guess (3-class) | ~33% |
 | Always predict home win | ~43% |
 | LR baseline (this run) | 44.5% |
-| **XGBoost v1 (this run)** | **51.0%** |
+| XGBoost v1 (no odds) | 51.0% |
+| **XGBoost v2 (with odds)** | **51.9%** |
 | Good PL models (industry) | 52–58% |
 | Bookmaker-implied | 55–58% |
 
-### Diagnosis
+### Diagnosis (v1 — resolved in v2 where noted)
 
-1. **Draw prediction is essentially non-functional.** Only 7/104 draws correctly predicted. The model is biased towards home/away because draws are underrepresented (23% of data) and the loss function doesn't penalise draw misclassification enough
-2. **Probabilities are poorly calibrated.** Log loss 1.034 is high for 51% accuracy (well-calibrated would be ~0.95). The model is overconfident on wrong predictions
-3. **Feature importance is flat after #1.** Position difference dominates (0.042), but features 2–86 are all clustered around 0.012–0.017 — the model isn't finding strong secondary signals
+1. **Draw prediction was essentially non-functional** (v1: 6.7%). Partially addressed in v2: odds features give the model a market-implied draw signal, lifting draw accuracy to 23.1%. Still below useful levels — a draw-specialist model or ordinal regression remains worth investigating
+2. **Probabilities were poorly calibrated** (v1: log loss 1.034). Improved in v2 to 1.008 — odds features provide better-calibrated probability anchors
+3. **Feature importance was flat after #1.** Position difference dominated v1 (0.042). In v2 odds features now occupy the top 3 positions, providing strong secondary signals the model was previously missing
 
 ### Improvement Opportunities (for next iteration)
 
 All quick-win and medium-effort improvements implemented (class weights, calibration, feature selection, hyperparameter tuning, draw features, Elo features, recency weighting, stacked ensemble, draw indicator fix, rolling CV).
 
+- [x] **Odds-as-features** — DONE (v2). 10 bookmaker odds features added from CSV columns. Overall accuracy +0.9%, draw accuracy +16.4%, log loss −0.026. Dual-mode: uses odds from CSVs at training time, optional at inference time
+
 **Remaining:**
-- [ ] **Odds-as-features** — the CSVs contain ~80 bookmaker odds columns. Using closing odds as features would dramatically boost accuracy (bookmakers are the strongest predictor), but makes the model dependent on having odds data at inference time
+- [ ] **Draw prediction overhaul** — v2 lifted draw accuracy to 23.1% but a dedicated draw-specialist model or ordinal regression could push this further
+- [ ] **Retrain with full 2025/26 season data** — add ~380 matches once the season completes
 
 ---
 
@@ -446,4 +468,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**145 tests across 4 files** — all non-skip tests pass. Covers free-tier features (45 incl. Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
+**160 tests across 4 files** — all non-skip tests pass. Covers free-tier features (60 incl. 15 new odds-as-features tests + Elo leakage), training pipeline (25 incl. rolling CV, 7 skip without libomp), API endpoints (16), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.

@@ -5,10 +5,10 @@
 | Component | Status |
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
-| Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
-| Free-tier feature engineering | 99 features, standalone, no heavy deps |
+| Free-tier XGBoost model | **Trained** — 51.9% accuracy with odds features (retrained 20 March 2026) |
+| Free-tier feature engineering | 109 features (incl. 10 bookmaker odds), standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
-| Backend tests | **145 tests across 4 files — all non-skip tests passing** |
+| Backend tests | **160 tests across 4 files — all non-skip tests passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -181,9 +181,9 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-145 tests across 4 files, all non-skip tests passing (8 skip without libomp/XGBoost):
-- `test_free_tier_features.py` — 45 tests covering the feature engineering pipeline (incl. Elo ratings and data leakage verification)
-- `test_train_free_tier.py` — 25 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection)
+160 tests across 4 files, all non-skip tests passing (8 skip without libomp/XGBoost):
+- `test_free_tier_features.py` — 55 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
+- `test_train_free_tier.py` — 30 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection, and 5 odds extraction tests)
 - `test_predict_free_tier.py` — 17 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
 - `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding)
 

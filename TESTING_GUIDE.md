@@ -51,12 +51,12 @@ npx playwright show-report                   # View last report (localhost:9323)
 conda activate anaconda-ml-ai
 cd backend
 
-# All tests — 145 across 4 files
+# All tests — 160 across 4 files
 python -m pytest tests/ -v
 
 # Specific test files
-python -m pytest tests/test_free_tier_features.py -v     # 45 feature engineering tests
-python -m pytest tests/test_train_free_tier.py -v         # 25 training pipeline tests
+python -m pytest tests/test_free_tier_features.py -v     # 55 feature engineering tests (incl. 10 odds)
+python -m pytest tests/test_train_free_tier.py -v         # 30 training pipeline tests (incl. 5 odds extraction)
 python -m pytest tests/test_predict_free_tier.py -v       # 17 prediction endpoint tests
 python -m pytest tests/test_rag.py -v                     # 58 RAG engine tests
 
@@ -117,7 +117,7 @@ Run this when you haven't touched the project in a while:
 
 - [ ] `cd frontend && npm run check` → 0 errors, 0 warnings
 - [ ] `cd frontend && npm run test:run` → 540 tests pass
-- [ ] `conda activate anaconda-ml-ai && cd backend && python -m pytest tests/ -v` → 145 tests pass (8 skip OK)
+- [ ] `conda activate anaconda-ml-ai && cd backend && python -m pytest tests/ -v` → 160 tests pass (8 skip OK)
 - [ ] Backend starts: `uvicorn app.api.main:app --reload --port 8000`
 - [ ] `curl http://localhost:8000/health` → healthy, model loaded
 - [ ] Frontend starts: `cd frontend && npm run dev`
