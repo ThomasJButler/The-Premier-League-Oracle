@@ -583,8 +583,8 @@ export class OptimizedPredictor {
         confidence: 0.33,
         predictedHomeGoals: 1,
         predictedAwayGoals: 1,
-        homeForm: '?????',
-        awayForm: '?????',
+        homeForm: 'N/A',
+        awayForm: 'N/A',
         modelWeights: { ...getActiveModelWeights() },
         insights: ['Using simplified prediction due to data limitations'],
         valueOdds: { home: 3.0, draw: 3.3, away: 3.0 }
@@ -655,7 +655,7 @@ export class OptimizedPredictor {
     
     const formString = (form: TeamForm[]) => {
       if (!form || form.length === 0) {
-        return '?????'; // No form data available
+        return 'N/A'; // No form data available
       }
       return form.slice(0, 5).map(m => m.result || '?').join('');
     };

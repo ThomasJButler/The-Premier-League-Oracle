@@ -740,8 +740,8 @@
   {/if}
 
   {#if loading}
-    <!-- Skeleton grid matching the 3-col prediction card layout -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <!-- Skeleton grid matching the 2-col prediction card layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {#each Array(6) as _, i}
         <div class="rounded-xl border border-border bg-card shadow-sm p-5 space-y-4" style="animation-delay: {i * 80}ms">
           <!-- Date + badge row -->
@@ -780,7 +780,7 @@
       <Button class="mt-4" on:click={() => loadGameweekMatches(selectedGameweek)}>Retry</Button>
     </div>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {#each predictions as prediction, i (prediction.id)}
         <div class="flip-card relative" style="animation-delay: {i * 50}ms">
           <!-- Result Indicator — shows whether the prediction was correct after match finishes -->
@@ -844,9 +844,13 @@
                     <span class="text-sm font-medium text-foreground text-center">{prediction.home_team}</span>
                     {#if prediction.detailedAnalysis}
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.home_team} recent form">
-                        {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
-                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
-                        {/each}
+                        {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
+                          {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
+                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                          {/each}
+                        {:else}
+                          <span class="text-[10px] text-muted-foreground">No data</span>
+                        {/if}
                       </div>
                     {/if}
                   </div>
@@ -877,9 +881,13 @@
                     <span class="text-sm font-medium text-foreground text-center">{prediction.away_team}</span>
                     {#if prediction.detailedAnalysis}
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.away_team} recent form">
-                        {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
-                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
-                        {/each}
+                        {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
+                          {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
+                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                          {/each}
+                        {:else}
+                          <span class="text-[10px] text-muted-foreground">No data</span>
+                        {/if}
                       </div>
                     {/if}
                   </div>
@@ -984,13 +992,35 @@
                       <span class="font-semibold text-foreground">Recent Form</span>
                     </div>
                     <div class="space-y-2 text-sm">
-                      <div class="flex justify-between">
-                        <span class="text-muted-foreground">{prediction.home_team}:</span>
-                        <span class="font-mono">{prediction.detailedAnalysis.homeForm}</span>
+                      <div class="flex justify-between items-center">
+                        <span class="text-muted-foreground flex items-center gap-1.5">
+                          <img src={getTeamLogo(prediction.home_team, 18)} alt="" class="w-[18px] h-[18px] rounded-full object-contain">
+                          {prediction.home_team}:
+                        </span>
+                        {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
+                          <div class="flex gap-1">
+                            {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
+                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            {/each}
+                          </div>
+                        {:else}
+                          <span class="text-xs text-muted-foreground italic">Not available</span>
+                        {/if}
                       </div>
-                      <div class="flex justify-between">
-                        <span class="text-muted-foreground">{prediction.away_team}:</span>
-                        <span class="font-mono">{prediction.detailedAnalysis.awayForm}</span>
+                      <div class="flex justify-between items-center">
+                        <span class="text-muted-foreground flex items-center gap-1.5">
+                          <img src={getTeamLogo(prediction.away_team, 18)} alt="" class="w-[18px] h-[18px] rounded-full object-contain">
+                          {prediction.away_team}:
+                        </span>
+                        {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
+                          <div class="flex gap-1">
+                            {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
+                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            {/each}
+                          </div>
+                        {:else}
+                          <span class="text-xs text-muted-foreground italic">Not available</span>
+                        {/if}
                       </div>
                     </div>
                   </div>
