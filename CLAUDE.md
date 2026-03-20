@@ -125,7 +125,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | P7l | UI Polish & Betting Fixes — form display, crests, ticker, debounce | Done |
 | P7m | Design Refinements — team-coloured bars, hero uplift, accent theming, nav, skeletons | Done |
 
-**Active branches:** `v3.0-MVP` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
+**Active branches:** `v3.0-MVP-UX` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 

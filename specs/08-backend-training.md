@@ -122,7 +122,7 @@ python train_free_tier.py --test     # Also evaluate on held-out 2025/26 data
 ```python
 {
     'model': xgb.Booster,
-    'feature_names': ['home_goals_scored_avg', ...],  # The ~83 feature names
+    'feature_names': ['home_goals_scored_avg', ...],  # All 114 feature names
     'params': {...},                                   # XGBoost hyperparameters
     'feature_importance': {...},                       # Feature importance scores
     'version': '1.0.0-free',                           # Tier marker
