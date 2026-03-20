@@ -51,6 +51,13 @@ except ImportError as e:
     RAG_AVAILABLE = False
 
 try:
+    from app.api.web_search import inject_search_context, search_premier_league
+    WEB_SEARCH_AVAILABLE = True
+except ImportError as e:
+    logger.info(f"Web search fallback unavailable ({e})")
+    WEB_SEARCH_AVAILABLE = False
+
+try:
     from app.data.football_data_collector import FootballDataCollector
     DATA_COLLECTOR_AVAILABLE = True
 except ImportError as e:
@@ -580,6 +587,22 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
 
     # Build RAG-augmented system prompt
     system_prompt, has_data = build_rag_prompt(df, request_body.message)
+
+    # Web search fallback (P7h): when RAG can't ground on DataFrame data,
+    # search the web for current Premier League information instead of
+    # letting the LLM hallucinate from its training corpus.
+    if not has_data and WEB_SEARCH_AVAILABLE:
+        try:
+            import asyncio
+            search_results = await asyncio.to_thread(
+                search_premier_league, request_body.message,
+            )
+            if search_results:
+                system_prompt = inject_search_context(system_prompt, search_results)
+                has_data = True
+                logger.info("Web search fallback grounded response with %d results", len(search_results))
+        except Exception as e:
+            logger.warning("Web search fallback failed: %s", e)
 
     # Assemble conversation messages
     user_messages: list[dict[str, str]] = []
