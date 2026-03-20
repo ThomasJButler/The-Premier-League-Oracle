@@ -9,7 +9,7 @@
 #   ./loop.sh coach 5      # Coach mode: 5 build iterations with dashboard after each
 #   ./loop.sh view         # Interactive run picker — browse all past runs
 #   ./loop.sh view 10      # Follow mode — live-watch 10 iterations alongside coach
-#   ./loop.sh view path/to/file.jsonl  # View dashboard for specific JSONL
+#   ./loop.sh view .claude-run/coach-20260320-124912.jsonl  # Replay a specific run
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="$SCRIPT_DIR/.claude-run"
