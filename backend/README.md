@@ -7,8 +7,8 @@
 | FastAPI server | Running — graceful degradation if heavy deps missing |
 | Free-tier XGBoost model | **Trained** — 51.0% accuracy (trained 18 March 2026) |
 | Free-tier feature engineering | 99 features, standalone, no heavy deps |
-| Pro-tier models (LSTM, Transformer, Oracle ensemble) | Scaffolded — explicitly deferred, not trained |
-| Backend tests | **86 tests across 3 files — all non-skip tests passing** |
+| Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
+| Backend tests | **145 tests across 4 files — all non-skip tests passing** |
 | Redis | Optional — server starts without it |
 | LangChain / ChromaDB | Optional — server starts without them |
 
@@ -16,7 +16,7 @@
 
 ## What This Does
 
-The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with 94 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) are scaffolded but deferred.
+The backend provides a REST API for Premier League match predictions. The active prediction path uses a trained XGBoost model with a stacked OvR ensemble, built on 99 free-tier features derived from CSV historical data and the Football-Data.org API. Pro-tier models (LSTM, Transformer, full oracle ensemble) have been archived to the `pro-tier-archive` branch.
 
 The frontend connects exclusively to the `/predict/free` endpoint.
 
@@ -30,13 +30,9 @@ backend/
 │   ├── api/
 │   │   └── main.py                       # FastAPI server
 │   ├── features/
-│   │   ├── free_tier_features.py         # 99-feature pipeline (active)
-│   │   └── advanced_engineering.py       # 150+ feature pipeline (Pro-tier, deferred — 63 methods return 0.0)
+│   │   └── free_tier_features.py         # 99-feature pipeline (active)
 │   ├── models/
-│   │   ├── xgboost_model.py              # XGBoost (Pro-tier wrapper, unused at runtime)
-│   │   ├── lstm_predictor.py             # LSTM (scaffolded, untrained)
-│   │   ├── transformer_model.py          # Transformer (scaffolded, untrained)
-│   │   └── modern_oracle.py              # Ensemble orchestrator (scaffolded, untrained)
+│   │   └── xgboost_model.py              # XGBoost wrapper
 │   ├── data/
 │   │   └── football_data_collector.py    # Football-Data.org API v4 client
 │   └── security/
@@ -48,7 +44,8 @@ backend/
 ├── tests/
 │   ├── test_free_tier_features.py        # 45 feature engineering tests (incl. Elo leakage)
 │   ├── test_train_free_tier.py           # 25 training pipeline tests (incl. rolling CV, ensemble)
-│   └── test_predict_free_tier.py         # 16 API endpoint tests
+│   ├── test_predict_free_tier.py         # 17 API endpoint tests
+│   └── test_rag.py                       # 58 RAG engine tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
 ├── train_free_tier.py                    # Active training script
@@ -169,11 +166,9 @@ Current result: **51.0% accuracy** (3-class: home win / draw / away win).
 
 ---
 
-## Pro-Tier (Deferred)
+## Pro-Tier (Archived)
 
-`app/features/advanced_engineering.py` contains a 150+ feature pipeline. 63 of its methods currently return hardcoded `0.0` — they cover tactics, player-level data, betting market signals, weather, and advanced metrics that require a paid data source. The LSTM, Transformer, and oracle ensemble models in `app/models/` are scaffolded but untrained.
-
-Pro-tier work is explicitly out of scope for the current phase.
+The 150+ feature pipeline (`advanced_engineering.py`), LSTM predictor, Transformer model, and oracle ensemble orchestrator have been moved to the `pro-tier-archive` branch and are not present in the working tree. They are preserved there for future reference but are out of scope for the current phase.
 
 ---
 
@@ -186,10 +181,11 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-86 tests across 3 files, all non-skip tests passing (7 skip without libomp/XGBoost):
+145 tests across 4 files, all non-skip tests passing (8 skip without libomp/XGBoost):
 - `test_free_tier_features.py` — 45 tests covering the feature engineering pipeline (incl. Elo ratings and data leakage verification)
 - `test_train_free_tier.py` — 25 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection)
-- `test_predict_free_tier.py` — 16 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
+- `test_predict_free_tier.py` — 17 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
+- `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding)
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
@@ -197,11 +193,9 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
 ## Known Limitations
 
-- `torch` is in `environment.yml` but not `requirements.txt` — LSTM/Transformer models non-functional via `pip install` alone
 - `docker-compose.yml` stripped to just `oracle-api` service — Pro-tier services (Redis, MLflow, Postgres, Jupyter, Nginx) commented out
 - `app/security/` modules (`auth.py`, `secrets.py`, `validators.py`) are not imported by `main.py` — unused at runtime
 - CSV training data in `backend/spreadsheets/` is gitignored — cloning the repo does not include it (see [Training](#training-the-free-tier-model) for how to obtain it)
-- `advanced_engineering.py`: `_is_derby_match()` uses API-format team names but training CSVs use short names — derby detection always returns `0.0` during training
 
 ---
 

@@ -13,6 +13,7 @@ The Premier League Oracle has two independently deployable components:
 |----------|-----------|-----------|-------------|
 | `VITE_FOOTBALL_DATA_API_KEY` | Frontend | No | Football-Data.org API key. Users can also set this in the app's Settings UI (stored in localStorage) |
 | `OPENAI_API_KEY` | Frontend (Edge Function) + Backend | No | OpenAI API key for the Oracle Chat. Without it, users must provide their own key in the chat UI |
+| `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Claude model support (added in P7b). Without it, the chat falls back to OpenAI or requires a user-supplied key |
 | `FOOTBALL_DATA_API_KEY` | Backend | No | Football-Data.org API key for live match data. Server starts without it but match endpoints return empty data |
 
 ---
@@ -36,6 +37,7 @@ The frontend is a static Svelte SPA — no server-side rendering. Vercel deploys
    - Framework: Vite (auto-detected)
 4. **Add environment variables** (optional):
    - `OPENAI_API_KEY` — enables server-side ChatBot without exposing the key to browsers
+   - `ANTHROPIC_API_KEY` — enables Claude model support (P7b); falls back to OpenAI if not set
    - `VITE_FOOTBALL_DATA_API_KEY` — pre-configures the API key (users can override in Settings)
 5. **Deploy** — Vercel handles the rest. Preview deployments are created for every PR.
 
@@ -85,6 +87,7 @@ cd backend
 # Set environment variables (optional)
 export FOOTBALL_DATA_API_KEY=your_key_here
 export OPENAI_API_KEY=your_key_here
+export ANTHROPIC_API_KEY=your_key_here
 
 # Build and run
 docker-compose up --build
@@ -175,7 +178,7 @@ The Docker image can be deployed to any container hosting platform:
 
 All platforms need:
 1. Port 8000 exposed
-2. `FOOTBALL_DATA_API_KEY` and `OPENAI_API_KEY` set as environment variables
+2. `FOOTBALL_DATA_API_KEY`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` set as environment variables
 3. The trained model file baked into the Docker image (or mounted as a volume)
 
 ### Connecting Frontend to Backend

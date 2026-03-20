@@ -49,6 +49,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
   - `betBuilder.ts` - Multi-market prediction generator
   - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised)
+  - `backtest.ts` - Ensemble backtesting engine (BacktestRunner, WeightOptimiser)
   - `constants.ts` - Shared constants (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`)
   - `utils.ts` - Shared utilities (`cn()`, `focusTrap()`, `getSeasonYear()`, `getSeasonLabel()`)
 - `services/` - Data and business logic:
@@ -58,6 +59,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `betting/kelly.ts` - Kelly Criterion calculator
   - `betting/value.ts` - Value bet detection engine (imports PoissonPredictor from advancedPredictions)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
+  - `aiAnalysis.ts` - AI-powered match analysis with OpenAI/Anthropic support
 - `types/index.ts` - Shared TypeScript types
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
@@ -120,7 +122,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 540 Vitest tests (33 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
+- **Frontend:** 540 Vitest tests (33 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
 - **Backend:** 145 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
