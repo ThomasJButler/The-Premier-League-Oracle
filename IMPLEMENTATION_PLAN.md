@@ -96,6 +96,14 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
 
+> **Top 3 highest-impact items for converting free → paid users:**
+>
+> 1. **Empty state design** — this is what every new user sees first. Zeroes everywhere screams "unfinished". A welcoming onboarding flow with a clear CTA will dramatically improve first impressions.
+> 2. **Standings zone colouring + form dots** — every football fan expects this. It's table stakes. Without it, the app feels like a dev project rather than a product.
+> 3. **Richer prediction cards with team crests** — the crests are already available from the Football-Data.org API (`team.crest` URL). Adding them plus form indicators transforms the cards from "data display" to "match preview".
+>
+> These three alone would take the app from "technically impressive" to "I'd show this to my mates".
+
 **Dashboard first impression:**
 - [ ] **Empty state design** — Replace "0.0%", "£0.00", "0" stat cards with welcoming onboarding content when no predictions exist yet. Show a call-to-action ("Generate your first prediction") instead of zeroes. First impressions matter for conversion
 - [ ] **Dashboard hero section** — Add a featured upcoming match or "match of the day" at the top of the dashboard instead of jumping straight into empty stats. Pull from next fixture data
