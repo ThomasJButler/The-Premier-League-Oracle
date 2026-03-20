@@ -2,6 +2,25 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7d/P7e: Weight Optimiser, Playwright CI, Real Odds Audit
+
+### Added: Backtest weight optimiser (P7d)
+- New `WeightOptimiser` class in `backtest.ts` tests ~10,000 weight combinations (5% step grid search) against stored per-model probabilities from a backtest run
+- New `ModelOutputs` interface captures raw per-model probabilities (ELO, Poisson, Form, H2H, Standings) during `predictMatch()` — stored in `EnhancedPredictionModel.modelOutputs`
+- After a backtest completes, the optimiser re-combines stored outputs with different weights (no re-running predictions — instant)
+- Predictions page backtest section shows: optimal weight grid (current vs recommended), accuracy gain badge, log loss comparison
+- Tie-breaking: when two weight configurations have equal accuracy, lower log loss wins
+- **5 new tests** (540 total, 33 files)
+
+### Added: Playwright E2E tests in CI (P7e)
+- New `e2e` job in `.github/workflows/ci.yml` runs as parallel job alongside frontend and backend checks
+- Installs only Chromium (`--with-deps` for Ubuntu OS dependencies)
+- Runs all 43 E2E tests (6 specs × 3 viewports) against Vite dev server with mocked API routes
+- HTML test report uploaded as artifact on failure (14-day retention)
+
+### Audited: Real bookmaker odds input (P7d)
+- Confirmed `ValueBets.svelte` already fully implements user-entered odds (1X2, Over/Under 2.5, BTTS) — the engine was never using model-derived odds
+
 ## 20 March 2026 — P7b: Claude/Anthropic Integration
 
 ### Added: Multi-provider AI support — OpenAI and Anthropic (P7b — Claude integration complete)
