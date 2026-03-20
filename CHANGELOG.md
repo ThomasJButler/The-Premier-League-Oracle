@@ -2,6 +2,21 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Documentation Cleanup and Test Quality Improvements
+
+### Fixed: Documentation accuracy and redundant files
+- CLAUDE.md: added `web_search.py` to backend structure, documented `api/chat.ts` Vercel Edge Function
+- Removed `backend/docs/FOR_BEGINNERS.md`: purely educational content with no project-specific facts, referenced archived pro-tier code paths that no longer exist
+- IMPLEMENTATION_PLAN.md: fixed draw prediction inconsistency (marked done in P7a but unchecked in Improvement Opportunities), updated P7 count to 46/46, trimmed verbose completed item descriptions
+
+### Fixed: backtest.test.ts ELO snapshot/restore test quality (P4h)
+- Replaced no-op ELO mocks with a stateful fake that actually tracks ratings, team additions, and processed match IDs — the rollback contract is now genuinely tested
+- Added 2 new tests: (1) verifies ELO ratings, new teams, and processed IDs are restored after a backtest run; (2) verifies restoration even when all predictions throw
+- **Why:** The previous mock silently accepted any arguments, so a bug corrupting live ELO ratings after a backtest would have passed all tests. The stateful fake catches such regressions.
+- **551 Vitest tests** (34 files), all passing
+
+---
+
 ## 20 March 2026 — Data Freshness Indicator (P1f)
 
 ### Added: "Last updated" indicator on all data displays

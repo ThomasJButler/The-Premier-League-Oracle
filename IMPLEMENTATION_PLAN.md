@@ -27,7 +27,7 @@ Active branch: `v3.0-MVP`
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 | P7 Beyond MVP | 46/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
-**Frontend:** 549 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 551 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -297,7 +297,7 @@ Remaining (Svelte 4 framework limitations — cannot be resolved without `any`):
 These are low-priority items deferred from completed priority tiers:
 
 - [x] **P1f:** "Last updated" indicator on data displays — ✅ DataFreshness component with auto-refresh, integrated into 5 page components
-- [ ] **P4h:** `backtest.test.ts` — ELO snapshot/restore logic entirely mocked out — a real rollback bug would not be caught
+- [x] **P4h:** `backtest.test.ts` — ELO snapshot/restore now uses stateful fake (not no-op mocks). 2 rollback integrity tests added
 - [ ] **P4h:** Component tests bypass `onMount` via `(component as any).refresh()` — fragile if internal methods renamed
 
 ---
