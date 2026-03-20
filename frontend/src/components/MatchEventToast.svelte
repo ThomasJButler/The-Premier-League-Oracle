@@ -2,6 +2,7 @@
   import { fly } from 'svelte/transition';
   import type { MatchEvent } from '../types';
   import { matchEventsStore } from '../services/liveService';
+  import { getTeamLogo } from '../utils/teamLogos';
 
   // Subscribe to the shared events store
   $: events = $matchEventsStore;
@@ -45,8 +46,10 @@
           {event.message}
         </p>
         {#if event.score}
-          <p class="text-xs text-muted-foreground mt-1">
+          <p class="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1">
+            <img src={getTeamLogo(event.homeTeam, 16)} alt="" class="w-4 h-4 rounded-full" />
             {event.homeTeam} {event.score} {event.awayTeam}
+            <img src={getTeamLogo(event.awayTeam, 16)} alt="" class="w-4 h-4 rounded-full" />
           </p>
         {/if}
       </div>
