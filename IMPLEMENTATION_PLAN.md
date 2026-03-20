@@ -24,7 +24,7 @@ Active branch: `v3.0-Development`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 0/14 | Forward-looking improvements toward industry-standard accuracy |
+| P7 Beyond MVP | 0/20 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
 **Frontend:** 512 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -87,6 +87,18 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Automatic commentary** — Data-driven narrative for notable events (e.g., "Arsenal's 15-match unbeaten run ended here", "The day Ipswich Town beat Man City")
 - [ ] **Tone and personality** — Funny/sympathetic commentary, quotes, observations — the season story told with character
 - [ ] **Data source** — All derived from `getCurrentSeasonMatches()` and `getStandings()` already available on free tier
+
+### P7g. Frontend Polish (Medium Priority)
+
+- [ ] **Team theme toggle broken** — Settings page team colour toggle not applying. Dark/light mode works fine; issue is specifically with team-specific colour themes. Investigate `Settings.svelte` team colour handling and CSS variable application
+- [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
+- [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
+
+### P7h. RAG Intelligence (Medium Priority)
+
+- [ ] **Player data enrichment** — Query Football-Data.org free API for player data (`/teams/{id}/`, `/competitions/PL/scorers`) at backend startup. Inject into RAG context so player-specific questions get grounded answers instead of generic AI knowledge
+- [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
+- [ ] **AI model configurable** — `gpt-4o-mini` hardcoded in `ChatBot.svelte`, `main.py`, `vite.config.ts`. Extract to environment variable with Settings UI dropdown (existing P7b item)
 
 ---
 
