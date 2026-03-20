@@ -1,14 +1,14 @@
 0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
 0c. Study `frontend/src/lib/*` and `frontend/src/services/*` with up to 250 parallel Sonnet subagents to understand shared utilities, services & components.
-0d. Study `backend/app/*` with upto 500 parallel Sonnet subagents to understand the Python backend.
+0d. Study `backend/app/*` with upto 50 parallel Sonnet subagents to understand the Python backend.
 0e. For reference, the frontend source code is in `frontend/src/*` and backend in `backend/app/*`.
 0f. Ensure that the project has a single source of truth, and remove any documents or files that are no longer needed in the project, I have added this as an instruction as we will need to do this as we go along. this is also on the build task (`PROMPT_build.md`) so there may or may not be files to remove. DO NOT REMOVE FILES FOR THE SAKE OF REMOVING THEM. 
 0f. Keep `CLAUDE.md ` up to date on every plan. 
 0f. Keep  `CHANGELOG.md` up to date from the last changes. 
 0h. If made any changes, please commit them (unless private .env files or generally unfinished files). Always commit the updated planning files for the Ralph loop With detailed commit messages in UK english. 
 
-1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 50 Sonnet subagents to study existing source code in `frontend/src/*` and `backend/app/*` and compare it against `specs/*`. Use an Opus subagent to analyse findings, prioritise tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 50 Sonnet subagents to study existing source code in `frontend/src/*` and `backend/app/*` and compare it against `specs/*`. Use upto 50 Opus subagents to analyse findings, prioritise tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
 
 2. Hunt for known stubs and hardcoded values that must be replaced with real implementations:
    - `liveMatches = []` — should pull live data from Football-Data.org API

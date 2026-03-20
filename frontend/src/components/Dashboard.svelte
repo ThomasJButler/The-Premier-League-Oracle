@@ -12,6 +12,7 @@
     LinearScale,
     CategoryScale,
     PointElement,
+    Filler,
     type ChartData,
     type ChartItem
   } from 'chart.js';
@@ -22,7 +23,7 @@
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, Users, Target, BarChart2, Trophy } from 'lucide-svelte';
+  import { TrendingUp, Users, Target, BarChart2, Trophy, ChevronDown, Calendar } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
   import { Badge } from '$lib/components/ui/badge';
@@ -33,7 +34,8 @@
     LineElement,
     LinearScale,
     CategoryScale,
-    PointElement
+    PointElement,
+    Filler
   );
 
   let recentMatches: Match[] = [];
@@ -75,6 +77,9 @@
   let profitChange = '';
   let predictionsChange = '';
   let betsChange = '';
+  let activityTab: 'predictions' | 'upcoming' = 'predictions';
+  let hasAccuracyData = false;
+  let hasProfitData = false;
   
   // Current date and time
   let currentDateTime = new Date();
@@ -209,22 +214,20 @@
         const recentGameweeks = gameweekAccuracy.slice(-10);
         recentPerformance.labels = recentGameweeks.map(gw => `GW ${gw.matchday}`);
         recentPerformance.datasets[0].data = recentGameweeks.map(gw => gw.accuracy);
+        hasAccuracyData = true;
       } else {
         // Fallback: show recent predictions' confidence as a proxy until results settle
         const recentPreds = predictionTracker.getRecentPredictions(5);
         if (recentPreds.length > 0) {
           recentPerformance.labels = [...recentPreds]
             .reverse()
-            .map(p => format(new Date(p.timestamp), 'MMM d'));
+            .map(p => p.matchday ? `GW ${p.matchday}` : format(new Date(p.matchDate), 'MMM d'));
           recentPerformance.datasets[0].data = [...recentPreds].reverse().map(p => p.confidence * 100);
           // Label correctly — this is confidence, not measured accuracy
           recentPerformance.datasets[0].label = 'Model Confidence (awaiting results)';
+          hasAccuracyData = true;
         } else {
-          // No predictions at all — flat line at overall accuracy
-          recentPerformance.labels = recentMatches
-            .slice(0, 5)
-            .map(match => format(new Date(match.date), 'MMM d'));
-          recentPerformance.datasets[0].data = recentMatches.slice(0, 5).map(() => realAccuracy);
+          hasAccuracyData = false;
         }
       }
 
@@ -262,9 +265,11 @@
   }
 
   function initProfitChart() {
+    const monthlyPL = betHistoryService.getMonthlyPL();
+    hasProfitData = monthlyPL.length > 0;
+
     if (!profitChartCanvas) return;
 
-    const monthlyPL = betHistoryService.getMonthlyPL();
     const labels = monthlyPL.length > 0
       ? monthlyPL.map(m => m.month)
       : ['No data'];
@@ -344,54 +349,38 @@
   });
 </script>
 
-<div class="space-y-6">
-  <!-- Hero Section -->
-  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-white to-blue-50 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-6 sm:p-8 text-slate-900 dark:text-white animate-slide-in-up">
-    <!-- Decorative elements -->
+<div class="space-y-4">
+  <!-- Hero Section (streamlined — stats moved to Stats Grid below) -->
+  <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-white to-blue-50 dark:from-slate-950 dark:via-gray-950 dark:to-slate-900 p-5 sm:p-6 text-slate-900 dark:text-white animate-slide-in-up">
     <div class="absolute inset-0 dot-pattern opacity-[0.03] dark:opacity-[0.03]"></div>
     <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-400/5 dark:bg-emerald-400/10 rounded-full blur-3xl"></div>
     <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-blue-200/30 dark:bg-slate-800/40 rounded-full blur-3xl"></div>
 
     <div class="relative z-10">
-      <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center gap-3 mb-3">
         <div class="w-2.5 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full live-pulse"></div>
         <span class="text-emerald-600/80 dark:text-emerald-400/80 text-xs font-semibold tracking-wider uppercase">Match Predictions</span>
         <span class="text-slate-400 dark:text-white/50 text-xs ml-auto hidden sm:inline">
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
-      <h1 class="text-3xl sm:text-4xl font-display font-extrabold mb-2 tracking-tight">
+      <h1 class="text-2xl sm:text-3xl font-display font-extrabold mb-1 tracking-tight">
         Premier League Oracle
       </h1>
-      <p class="text-slate-500 dark:text-white/60 text-sm sm:text-base mb-6 max-w-xl">
-        Statistical predictions using a five-component ensemble: ELO, Poisson, Form, H2H, and Standings
+      <p class="text-slate-500 dark:text-white/60 text-sm max-w-xl">
+        Five-component ensemble: ELO, Poisson, Form, H2H, and Standings
       </p>
-
-      <!-- Quick stats -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {#each [
-          { value: `${$overallAccuracy.toFixed(1)}%`, label: 'Accuracy' },
-          { value: `£${$profitMargin.toFixed(0)}`, label: 'Profit' },
-          { value: upcomingPredictions, label: 'Upcoming' },
-          { value: recentMatches.length, label: 'Matches' },
-        ] as stat, i}
-          <div class="text-center p-3 bg-slate-900/[0.04] dark:bg-white/[0.07] rounded-lg border border-slate-200 dark:border-white/[0.08] backdrop-blur-sm animate-stagger" style="animation-delay: {200 + i * 80}ms">
-            <div class="text-xl sm:text-2xl font-display font-bold">{stat.value}</div>
-            <div class="text-xs text-slate-400 dark:text-white/40 mt-0.5">{stat.label}</div>
-          </div>
-        {/each}
-      </div>
     </div>
   </div>
 
   <!-- Stats Grid -->
   {#if loading}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {#each Array(4) as _, i}
-        <Card class="card-glass p-5 animate-stagger" style="animation-delay: {i * 100}ms">
-          <div class="skeleton w-10 h-10 rounded-lg mb-3"></div>
+        <Card class="card-glass p-4 animate-stagger" style="animation-delay: {i * 100}ms">
+          <div class="skeleton w-8 h-8 rounded-lg mb-2"></div>
           <div class="skeleton h-3 w-20 mb-2"></div>
-          <div class="skeleton h-7 w-28 mb-2"></div>
+          <div class="skeleton h-6 w-24 mb-1"></div>
           <div class="skeleton h-3 w-16"></div>
         </Card>
       {/each}
@@ -406,77 +395,133 @@
       <Button on:click={loadDashboardData}>Retry</Button>
     </Card>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="stat-cards">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="stat-cards">
       {#each stats as stat, i}
         <Card
-          class="card-glass p-5 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
-          style="animation-delay: {400 + i * 100}ms"
+          class="card-glass p-4 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
+          style="animation-delay: {200 + i * 80}ms"
           data-testid="stat-card"
         >
-          <div class="flex items-center gap-3 mb-3">
-            <div class="rounded-lg p-2 {stat.bgColor}">
-              <svelte:component this={stat.icon} class="w-5 h-5 {stat.color}" />
+          <div class="flex items-center gap-2 mb-2">
+            <div class="rounded-lg p-1.5 {stat.bgColor}">
+              <svelte:component this={stat.icon} class="w-4 h-4 {stat.color}" />
             </div>
             <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">{stat.title}</span>
           </div>
-          <div class="text-2xl font-display font-bold text-foreground">{stat.value}</div>
-          <div class="text-xs text-muted-foreground mt-1">{stat.change}</div>
+          <div class="text-xl font-display font-bold text-foreground">{stat.value}</div>
+          <div class="text-xs text-muted-foreground mt-0.5">{stat.change}</div>
         </Card>
       {/each}
     </div>
   {/if}
 
   <!-- Charts Row -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 800ms">
-      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Prediction Accuracy Trend</h3>
-      <div class="h-48 sm:h-56" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
-        <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: themeScaleOptions, plugins: { legend: { labels: { color: 'hsl(var(--muted-foreground))' } } } }} />
-      </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <Card class="card-glass p-4 animate-stagger" style="animation-delay: 400ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-3">Prediction Accuracy Trend</h3>
+      {#if !loading && !error && hasAccuracyData}
+        <div class="h-44 sm:h-52" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
+          <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: themeScaleOptions, plugins: { legend: { labels: { color: 'hsl(var(--muted-foreground))' } } } }} />
+        </div>
+      {:else if !loading && !error}
+        <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="accuracy-empty-state">
+          <Target class="w-8 h-8 text-muted-foreground/30 mb-2" />
+          <p class="text-sm font-medium text-foreground mb-1">No accuracy data yet</p>
+          <p class="text-xs text-muted-foreground">Generate predictions and wait for results to track accuracy over time.</p>
+        </div>
+      {:else}
+        <div class="h-44 sm:h-52 flex items-center justify-center">
+          <div class="skeleton h-full w-full rounded-lg"></div>
+        </div>
+      {/if}
     </Card>
-    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 900ms">
-      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Profit/Loss Over Time</h3>
-      <div class="h-48 sm:h-56" role="img" aria-label="Bar chart showing monthly profit and loss from tracked bets">
-        <canvas bind:this={profitChartCanvas}></canvas>
-      </div>
+    <Card class="card-glass p-4 animate-stagger" style="animation-delay: 500ms">
+      <h3 class="text-sm font-display font-semibold text-foreground mb-3">Profit/Loss Over Time</h3>
+      {#if !loading && !error && hasProfitData}
+        <div class="h-44 sm:h-52" role="img" aria-label="Line chart showing monthly profit and loss from tracked bets">
+          <canvas bind:this={profitChartCanvas}></canvas>
+        </div>
+      {:else if !loading && !error}
+        <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="profit-empty-state">
+          <TrendingUp class="w-8 h-8 text-muted-foreground/30 mb-2" />
+          <p class="text-sm font-medium text-foreground mb-1">Place your first bet to track P&L</p>
+          <p class="text-xs text-muted-foreground">Use the Kelly Calculator or Value Bets to place tracked bets.</p>
+        </div>
+      {:else}
+        <div class="h-44 sm:h-52 flex items-center justify-center">
+          <div class="skeleton h-full w-full rounded-lg"></div>
+        </div>
+      {/if}
     </Card>
   </div>
 
-  <!-- How We Predict -->
-  <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1000ms">
-    <h3 class="text-sm font-display font-semibold text-foreground mb-4 flex items-center gap-2">
-      <Target class="w-4 h-4 text-accent" />
-      How We Predict
-    </h3>
-    <div class="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-      {#each [
-        { icon: BarChart2, label: 'ELO Ratings', desc: '25% weight', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
-        { icon: TrendingUp, label: 'Poisson Model', desc: '30% weight', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-        { icon: Users, label: 'Form Analysis', desc: '20% weight', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
-        { icon: Target, label: 'Head-to-Head', desc: '10% weight', iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
-        { icon: Trophy, label: 'Standings', desc: '15% weight', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
-      ] as method, i}
-        <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50 animate-stagger" style="animation-delay: {1100 + i * 80}ms">
-          <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
-            <svelte:component this={method.icon} class="w-4 h-4 {method.iconColor}" />
-          </div>
-          <h4 class="font-semibold text-xs mb-0.5">{method.label}</h4>
-          <p class="text-xs text-muted-foreground">{method.desc}</p>
+  <!-- How We Predict (collapsible) -->
+  <Card class="card-glass p-4 animate-stagger" style="animation-delay: 600ms">
+    <details>
+      <summary class="cursor-pointer select-none list-none">
+        <div class="flex items-center gap-2">
+          <Target class="w-4 h-4 text-accent" />
+          <span class="text-sm font-display font-semibold text-foreground">How We Predict</span>
+          <ChevronDown class="w-4 h-4 text-muted-foreground ml-auto transition-transform details-chevron" />
         </div>
-      {/each}
-    </div>
-    <div class="mt-4 p-3 bg-accent/5 rounded-lg border border-accent/10">
-      <p class="text-xs text-muted-foreground">
-        <strong class="text-accent">Ensemble Model:</strong> Combining {recentMatches.length} recent matches,
-        current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
-      </p>
-    </div>
+      </summary>
+      <div class="mt-4">
+        <div class="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+          {#each [
+            { icon: BarChart2, label: 'ELO Ratings', desc: '25% weight', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
+            { icon: TrendingUp, label: 'Poisson Model', desc: '30% weight', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+            { icon: Users, label: 'Form Analysis', desc: '20% weight', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+            { icon: Target, label: 'Head-to-Head', desc: '10% weight', iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+            { icon: Trophy, label: 'Standings', desc: '15% weight', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+          ] as method}
+            <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50">
+              <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
+                <svelte:component this={method.icon} class="w-4 h-4 {method.iconColor}" />
+              </div>
+              <h4 class="font-semibold text-xs mb-0.5">{method.label}</h4>
+              <p class="text-xs text-muted-foreground">{method.desc}</p>
+            </div>
+          {/each}
+        </div>
+        <div class="mt-3 p-3 bg-accent/5 rounded-lg border border-accent/10">
+          <p class="text-xs text-muted-foreground">
+            <strong class="text-accent">Ensemble Model:</strong> Combining {recentMatches.length} recent matches,
+            current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
+          </p>
+        </div>
+      </div>
+    </details>
   </Card>
 
-  <!-- Recent Predictions + Upcoming Matches -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <Card class="lg:col-span-2 card-glass p-5 animate-stagger" style="animation-delay: 1400ms">
-      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Recent Predictions</h3>
+  <!-- Activity (tabbed: Predictions | Upcoming) -->
+  <Card class="card-glass p-4 animate-stagger" style="animation-delay: 700ms">
+    <div class="flex items-center gap-1 mb-4 border-b border-border/50">
+      <button
+        class="px-3 py-2 text-sm font-medium transition-colors relative {activityTab === 'predictions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+        on:click={() => activityTab = 'predictions'}
+        data-testid="tab-predictions"
+      >
+        Predictions
+        {#if activityTab === 'predictions'}
+          <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
+        {/if}
+      </button>
+      <button
+        class="px-3 py-2 text-sm font-medium transition-colors relative {activityTab === 'upcoming' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+        on:click={() => activityTab = 'upcoming'}
+        data-testid="tab-upcoming"
+      >
+        Upcoming
+        {#if realMatchData.length > 0}
+          <span class="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">{realMatchData.length}</span>
+        {/if}
+        {#if activityTab === 'upcoming'}
+          <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
+        {/if}
+      </button>
+    </div>
+
+    {#if activityTab === 'predictions'}
       {#if loading}
         <div class="space-y-3">
           {#each Array(3) as _}
@@ -487,8 +532,8 @@
           {/each}
         </div>
       {:else if topPredictions.length === 0}
-        <div class="text-center py-8">
-          <Target class="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+        <div class="text-center py-6">
+          <Target class="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">No predictions yet</p>
           <p class="text-xs text-muted-foreground mb-3">Generate your first predictions to see them here.</p>
           <button
@@ -517,23 +562,32 @@
           {/each}
         </ul>
       {/if}
-    </Card>
-    <Card class="card-glass p-5 animate-stagger" style="animation-delay: 1500ms">
-      <h3 class="text-sm font-display font-semibold text-foreground mb-4">Upcoming Matches</h3>
-      <ul class="space-y-3">
-        {#each realMatchData.slice(0, 5) as match}
-          <li class="text-sm">
-            <span class="text-foreground">{match.home_team} vs {match.away_team}</span>
-            <span class="block text-xs text-muted-foreground mt-0.5">
-              {format(new Date(match.date), 'EEE d MMM, HH:mm')}
-            </span>
-          </li>
-        {/each}
-        {#if realMatchData.length === 0}
-          <li class="text-sm text-muted-foreground">No upcoming matches</li>
-        {/if}
-      </ul>
-      <Button variant="secondary" size="sm" class="mt-4 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</Button>
-    </Card>
-  </div>
+    {:else}
+      {#if realMatchData.length === 0}
+        <div class="text-center py-6">
+          <Calendar class="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p class="text-sm font-medium text-foreground mb-1">No upcoming matches</p>
+          <p class="text-xs text-muted-foreground">Check back closer to the next matchday.</p>
+        </div>
+      {:else}
+        <ul class="space-y-2">
+          {#each realMatchData.slice(0, 5) as match}
+            <li class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <span class="text-sm text-foreground">{match.home_team} vs {match.away_team}</span>
+              <span class="text-xs text-muted-foreground">
+                {format(new Date(match.date), 'EEE d MMM, HH:mm')}
+              </span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <Button variant="secondary" size="sm" class="mt-3 w-full" data-testid="view-all-matches" on:click={() => dispatch('navigate', { view: 'Matches' })}>View All Matches</Button>
+    {/if}
+  </Card>
 </div>
+
+<style>
+  details[open] .details-chevron {
+    transform: rotate(180deg);
+  }
+</style>

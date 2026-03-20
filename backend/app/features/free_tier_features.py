@@ -250,12 +250,23 @@ class FreeTierFeatureEngineer:
             # Alias?
             if stripped in _ALIASES:
                 return _ALIASES[stripped]
-            # Strip common suffixes (FC, AFC, CF)
-            for suffix in (' FC', ' AFC', ' CF'):
+            # Strip common suffixes (FC, AFC, CF, F.C.)
+            for suffix in (' FC', ' AFC', ' CF', ' F.C.'):
                 if stripped.endswith(suffix):
                     return FreeTierFeatureEngineer.normalize_team_name(
                         stripped[:-len(suffix)], to='csv'
                     )
+            # Case-insensitive fallback: check all maps with lowered keys
+            lower = stripped.lower()
+            for csv_name in CSV_TO_API:
+                if csv_name.lower() == lower:
+                    return csv_name
+            for api_name, csv_name in API_TO_CSV.items():
+                if api_name.lower() == lower:
+                    return csv_name
+            for alias, csv_name in _ALIASES.items():
+                if alias.lower() == lower:
+                    return csv_name
             return stripped
 
         if to == 'api':

@@ -1,78 +1,54 @@
 """
-⚡ FastAPI Production Server - Premier League Oracle API
+FastAPI Production Server — Premier League Oracle API (Free Tier)
 
-This is the production-ready API server for our god mode prediction system.
-It provides REST endpoints, WebSocket support, and real-time predictions.
-
-Features:
-- RESTful API for predictions
-- WebSocket for live updates
-- Redis caching for performance
-- Async request handling
-- Swagger documentation
-- Rate limiting
-- Authentication support
+REST endpoints for match predictions using an XGBoost ensemble trained on
+historical Premier League data.  Pro-tier models (LSTM, Transformer, LangChain)
+are archived on the `pro-tier-archive` branch.
 """
 
-import asyncio
-import json
 import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 # Anchor all file paths to the backend/ directory, not the CWD.
 # main.py lives at backend/app/api/main.py → 3 levels up = backend/
 BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 
+# Load .env from the backend root directory
+load_dotenv(BACKEND_ROOT / ".env")
+
 # Setup logging — must be before any logger calls
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Redis — optional, server starts without it
-REDIS_AVAILABLE = False
-try:
-    import redis.asyncio as aioredis
-    REDIS_AVAILABLE = True
-except ImportError:
-    logger.warning("redis package not available — caching disabled")
-    aioredis = None  # type: ignore
-
-# Our modules — oracle import is optional so the server can start without all dependencies
-try:
-    from app.models.modern_oracle import ModernPremierLeagueOracle
-    ORACLE_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"ModernPremierLeagueOracle unavailable ({e}) — ML features disabled")
-    ModernPremierLeagueOracle = None  # type: ignore
-    ORACLE_AVAILABLE = False
-
-try:
-    from app.features.advanced_engineering import AdvancedFeatureEngineer
-    FEATURE_ENGINEER_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"AdvancedFeatureEngineer unavailable ({e})")
-    AdvancedFeatureEngineer = None  # type: ignore
-    FEATURE_ENGINEER_AVAILABLE = False
-
 # Free-tier feature engineer — lightweight, no heavy deps
 try:
-    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer
+    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer, _ALIASES
     FREE_TIER_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
     FreeTierFeatureEngineer = None  # type: ignore
+    CSV_TO_API = {}  # type: ignore
+    _ALIASES = {}  # type: ignore
     FREE_TIER_AVAILABLE = False
+
+try:
+    from app.api.rag import build_rag_prompt, init_team_patterns
+    RAG_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"RAG module unavailable ({e})")
+    RAG_AVAILABLE = False
 
 try:
     from app.data.football_data_collector import FootballDataCollector
@@ -85,13 +61,6 @@ except ImportError as e:
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-
-# Global instances
-oracle: Optional['ModernPremierLeagueOracle'] = None
-redis_client = None
-active_websockets: set[WebSocket] = set()
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
@@ -103,116 +72,12 @@ _rate_limit_store: dict[str, list[float]] = {}
 RATE_LIMIT_MAX = 60  # requests per minute per IP
 RATE_LIMIT_WINDOW = 60.0  # seconds
 
-# Security
-security = HTTPBearer()
-
-
-# Pydantic models for request/response
-class PredictionRequest(BaseModel):
-    """Request model for match prediction."""
-    home_team: str = Field(..., description="Home team name")
-    away_team: str = Field(..., description="Away team name")
-    include_details: bool = Field(default=True, description="Include detailed analysis")
-    use_cache: bool = Field(default=True, description="Use cached predictions if available")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "home_team": "Arsenal FC",
-                "away_team": "Chelsea FC",
-                "include_details": True,
-                "use_cache": True
-            }
-        }
-
-
-class NaturalLanguageRequest(BaseModel):
-    """Request model for natural language queries."""
-    query: str = Field(..., description="Natural language query about football")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "Who will win between Arsenal and Chelsea this weekend?"
-            }
-        }
-
-
-class PredictionResponse(BaseModel):
-    """Response model for predictions."""
-    match: str
-    prediction: dict[str, float]
-    confidence: float
-    recommendation: str
-    betting_value: dict[str, Any] | None = None
-    individual_models: dict[str, Any] | None = None
-    similar_matches: list[dict] | None = None
-    timestamp: str
-
-
-class TeamStatsRequest(BaseModel):
-    """Request model for team statistics."""
-    team_name: str
-    season: str | None = None
-    last_n_matches: int = Field(default=10, ge=1, le=38)
-
-
-class BatchPredictionRequest(BaseModel):
-    """Request model for batch predictions."""
-    matches: list[dict[str, str]] = Field(..., description="List of matches to predict")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "matches": [
-                    {"home_team": "Arsenal FC", "away_team": "Chelsea FC"},
-                    {"home_team": "Liverpool FC", "away_team": "Manchester City FC"}
-                ]
-            }
-        }
-
 
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
-    # Startup
-    global oracle, redis_client
-
-    logger.info("🚀 Starting Premier League Oracle API...")
-
-    # Initialize Redis — optional, server starts without it
-    if REDIS_AVAILABLE:
-        try:
-            redis_client = await aioredis.from_url(REDIS_URL)
-            await redis_client.ping()
-            logger.info("Redis connected")
-        except Exception as e:
-            logger.warning(f"Redis unavailable ({e}) — caching disabled")
-            redis_client = None
-    else:
-        logger.info("Redis package not installed — caching disabled")
-
-    # Initialize Oracle system — optional, endpoints degrade gracefully without it
-    if ORACLE_AVAILABLE and ModernPremierLeagueOracle is not None:
-        try:
-            oracle = ModernPremierLeagueOracle(
-                api_key=FOOTBALL_API_KEY,
-                openai_api_key=OPENAI_API_KEY if OPENAI_API_KEY else None,
-                mlflow_tracking_uri=MLFLOW_URI
-            )
-        except Exception as e:
-            logger.warning(f"Oracle system failed to initialise ({e}) — ML endpoints disabled")
-            oracle = None
-    else:
-        logger.warning("Oracle system not available — ML endpoints disabled")
-
-    # Oracle ensemble models (xgboost_model.pkl, lstm_model.pt, transformer_model.pt)
-    # are not loaded — the frontend uses /predict/free which serves the free-tier
-    # XGBoost model (xgboost_free_tier.joblib) loaded below. The /predict endpoint
-    # remains available but requires all 3 ensemble models to be trained first.
-    if oracle is not None:
-        logger.info("Oracle initialised but ensemble models not loaded — use /predict/free")
+    logger.info("Starting Premier League Oracle API...")
 
     # Load free-tier model if available
     global free_tier_model, free_tier_metadata, free_tier_engineer
@@ -243,7 +108,7 @@ async def lifespan(app: FastAPI):
             )
 
             # Create a feature engineer with empty data for live predictions.
-            # For real predictions, we'd populate with current-season data
+            # For real predictions, we populate with current-season data
             # from the API or CSVs.
             import pandas as pd
             empty_df = pd.DataFrame(columns=[
@@ -283,24 +148,26 @@ async def lifespan(app: FastAPI):
         if not FREE_TIER_AVAILABLE:
             logger.info("FreeTierFeatureEngineer not available")
 
+    # Initialise RAG team patterns for intent parsing
+    if RAG_AVAILABLE and FREE_TIER_AVAILABLE:
+        try:
+            init_team_patterns(CSV_TO_API, _ALIASES)
+            logger.info("RAG team patterns initialised")
+        except Exception as e:
+            logger.warning("Could not initialise RAG team patterns: %s", e)
+
     logger.info("Oracle API startup complete")
 
     yield
 
     # Shutdown
-    logger.info("🛑 Shutting down...")
-    if redis_client is not None:
-        await redis_client.close()
-
-    # Close WebSocket connections
-    for ws in active_websockets:
-        await ws.close()
+    logger.info("Shutting down...")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="⚽ Premier League Oracle API",
-    description="God-tier football prediction system with ML ensemble and LangChain",
+    title="Premier League Oracle API",
+    description="Free-tier football prediction API powered by XGBoost ensemble",
     version="3.0.0",
     lifespan=lifespan
 )
@@ -316,12 +183,6 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------------------------------
-# Auth policy: read-only prediction endpoints are public. Endpoints that
-# invoke external AI services (OpenAI via LangChain) or trigger admin
-# operations (model retraining) require a Bearer token via HTTPBearer.
-# --------------------------------------------------------------------------
-
 # Health check endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
@@ -329,370 +190,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "models_loaded": oracle is not None,
-        "redis_connected": redis_client is not None
-    }
-
-
-# Main prediction endpoint
-@app.post("/predict", response_model=PredictionResponse, tags=["Predictions"])
-async def predict_match(
-    request: PredictionRequest
-):
-    """
-    Predict match outcome using ensemble of ML models.
-    
-    This endpoint combines XGBoost, LSTM, and Transformer predictions
-    with 150+ engineered features for maximum accuracy.
-    """
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    # Check cache if enabled
-    if request.use_cache and redis_client:
-        cache_key = f"prediction:{request.home_team}:{request.away_team}:{datetime.now().date()}"
-        cached = await redis_client.get(cache_key)
-        if cached:
-            logger.info(f"Cache hit for {cache_key}")
-            return JSONResponse(content=json.loads(cached))
-
-    try:
-        # Make prediction
-        result = oracle.predict_match_ensemble(
-            request.home_team,
-            request.away_team,
-            use_mlflow=True
-        )
-
-        # Format response
-        response = PredictionResponse(
-            match=f"{request.home_team} vs {request.away_team}",
-            prediction=result['ensemble_prediction'],
-            confidence=result['ensemble_prediction']['confidence'],
-            recommendation=result['recommendation'],
-            betting_value=result.get('betting_value') if request.include_details else None,
-            individual_models=result.get('individual_predictions') if request.include_details else None,
-            similar_matches=result.get('similar_matches') if request.include_details else None,
-            timestamp=datetime.now().isoformat()
-        )
-
-        # Cache result
-        if redis_client:
-            cache_key = f"prediction:{request.home_team}:{request.away_team}:{datetime.now().date()}"
-            await redis_client.setex(
-                cache_key,
-                3600,  # 1 hour TTL
-                json.dumps(response.model_dump())
-            )
-
-        return response
-
-    except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        raise HTTPException(status_code=500, detail="Prediction failed — check server logs for details")
-
-
-# Natural language prediction endpoint
-@app.post("/predict/natural", tags=["Predictions"])
-async def predict_natural_language(
-    request: NaturalLanguageRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: invokes OpenAI API
-):
-    """
-    Make predictions using natural language queries powered by LangChain.
-    
-    Examples:
-    - "Who will win between Arsenal and Chelsea?"
-    - "What are the odds for Liverpool beating Man City?"
-    - "Show me Manchester United's recent form"
-    """
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    if not oracle.langchain_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Natural language features not available. OpenAI API key required."
-        )
-
-    try:
-        result = await oracle.predict_match_natural_language(request.query)
-        return result
-    except Exception as e:
-        logger.error(f"Natural language prediction error: {e}")
-        raise HTTPException(status_code=500, detail="Natural language prediction failed — check server logs for details")
-
-
-# Batch prediction endpoint
-@app.post("/predict/batch", tags=["Predictions"])
-async def predict_batch(
-    request: BatchPredictionRequest
-):
-    """
-    Predict multiple matches in a single request.
-    
-    Useful for predicting an entire gameweek at once.
-    """
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    predictions = []
-
-    for match in request.matches:
-        try:
-            result = oracle.predict_match_ensemble(
-                match['home_team'],
-                match['away_team'],
-                use_mlflow=False  # Don't track batch predictions
-            )
-
-            predictions.append({
-                'match': f"{match['home_team']} vs {match['away_team']}",
-                'prediction': result['ensemble_prediction'],
-                'confidence': result['ensemble_prediction']['confidence']
-            })
-        except Exception as e:
-            predictions.append({
-                'match': f"{match['home_team']} vs {match['away_team']}",
-                'error': str(e)
-            })
-
-    return {
-        'predictions': predictions,
-        'total': len(predictions),
-        'timestamp': datetime.now().isoformat()
-    }
-
-
-# Team statistics endpoint
-@app.get("/teams/{team_name}/stats", tags=["Teams"])
-async def get_team_stats(
-    team_name: str,
-    last_n_matches: int = 10
-):
-    """Get detailed statistics for a specific team."""
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    try:
-        form = oracle.data_collector.get_team_form(team_name, last_n_matches)
-
-        return {
-            'team': team_name,
-            'recent_form': form,
-            'timestamp': datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Team stats error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve team stats")
-
-
-# League standings endpoint
-@app.get("/standings", tags=["League"])
-async def get_standings():
-    """Get current Premier League standings."""
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    try:
-        standings = oracle.data_collector.get_standings()
-        # get_standings() returns a pd.DataFrame — convert to list of dicts
-        # so FastAPI can serialise it to JSON
-        standings_data = standings.to_dict(orient='records') if hasattr(standings, 'to_dict') else standings
-        return {
-            'standings': standings_data,
-            'timestamp': datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Standings error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve standings")
-
-
-# Model performance endpoint
-@app.get("/models/performance", tags=["Models"])
-async def get_model_performance():
-    """Get performance metrics for all models."""
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    models_info = {
-        'xgboost': {
-            'trained': oracle.xgboost_model.model is not None,
-            'features': len(oracle.xgboost_model.feature_names) if oracle.xgboost_model.feature_names else 0
-        }
-    }
-    if oracle.lstm_model is not None:
-        models_info['lstm'] = {
-            'trained': oracle.lstm_model.model is not None,
-            'sequence_length': oracle.lstm_model.sequence_length
-        }
-    if oracle.transformer_model is not None:
-        models_info['transformer'] = {
-            'trained': oracle.transformer_model.model is not None,
-            'sequence_length': oracle.transformer_model.sequence_length
-        }
-
-    return {
-        'ensemble_weights': oracle.ensemble_weights,
-        'models': models_info,
-        'timestamp': datetime.now().isoformat()
-    }
-
-
-# WebSocket endpoint for live updates
-@app.websocket("/ws/predictions")
-async def websocket_predictions(websocket: WebSocket):
-    """
-    WebSocket endpoint for real-time prediction updates.
-    
-    Clients can subscribe to live predictions as matches approach.
-    """
-    await websocket.accept()
-    active_websockets.add(websocket)
-
-    # Oracle must be available for predictions — reject early if not
-    if oracle is None:
-        await websocket.send_json({
-            'type': 'error',
-            'message': 'Oracle system not available — ML endpoints disabled',
-        })
-        await websocket.close(code=1008, reason="Oracle not available")
-        active_websockets.discard(websocket)
-        return
-
-    try:
-        while True:
-            # Wait for message from client
-            data = await websocket.receive_json()
-
-            if data.get('action') == 'subscribe':
-                match_str = data.get('match')
-                if not match_str or not isinstance(match_str, str):
-                    await websocket.send_json({
-                        'type': 'error',
-                        'message': 'Missing or invalid "match" field — expected "TeamA vs TeamB"',
-                    })
-                    continue
-
-                teams = match_str.split(' vs ')
-                if len(teams) != 2:
-                    await websocket.send_json({
-                        'type': 'error',
-                        'message': 'Invalid match format — expected "TeamA vs TeamB"',
-                    })
-                    continue
-
-                await websocket.send_json({
-                    'type': 'subscribed',
-                    'match': match_str,
-                    'message': f'Subscribed to updates for {match_str}'
-                })
-
-                # Send periodic updates until the client disconnects
-                while True:
-                    try:
-                        result = oracle.predict_match_ensemble(teams[0], teams[1])
-                        await websocket.send_json({
-                            'type': 'prediction_update',
-                            'match': match_str,
-                            'prediction': result['ensemble_prediction'],
-                            'timestamp': datetime.now().isoformat()
-                        })
-                    except Exception as pred_err:
-                        logger.warning("WS prediction failed for %s: %s", match_str, pred_err)
-                        await websocket.send_json({
-                            'type': 'error',
-                            'message': f'Prediction failed for {match_str}',
-                        })
-
-                    await asyncio.sleep(60)
-
-    except WebSocketDisconnect:
-        active_websockets.discard(websocket)
-        logger.info("WebSocket client disconnected")
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        active_websockets.discard(websocket)
-
-
-# Feature importance endpoint
-@app.get("/features/importance", tags=["Features"])
-async def get_feature_importance():
-    """Get feature importance from the models."""
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    importance = {}
-
-    # XGBoost feature importance
-    if oracle.xgboost_model.model:
-        importance['xgboost'] = oracle.xgboost_model.get_top_features(20)
-
-    # LSTM feature importance (gradient-based)
-    if oracle.lstm_model is not None and oracle.lstm_model.model:
-        importance['lstm'] = oracle.lstm_model.get_feature_importance()
-
-    # Transformer attention weights
-    if oracle.transformer_model is not None and oracle.transformer_model.model:
-        importance['transformer'] = "Use /predict with explain=true for attention weights"
-
-    return {
-        'feature_importance': importance,
-        'total_features': 150,
-        'timestamp': datetime.now().isoformat()
-    }
-
-
-# Betting value endpoint
-@app.post("/betting/value", tags=["Betting"])
-async def calculate_betting_value(
-    request: PredictionRequest
-):
-    """
-    Calculate betting value for a match.
-    
-    Returns expected value calculations and recommendations.
-    """
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    try:
-        result = oracle.predict_match_ensemble(
-            request.home_team,
-            request.away_team
-        )
-
-        return {
-            'match': f"{request.home_team} vs {request.away_team}",
-            'betting_value': result['betting_value'],
-            'recommendation': result['recommendation'],
-            'confidence': result['ensemble_prediction']['confidence'],
-            'timestamp': datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Betting value error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to calculate betting value")
-
-
-# Admin endpoint to retrain models
-@app.post("/admin/retrain", tags=["Admin"])
-async def retrain_models(
-    credentials: HTTPAuthorizationCredentials = Depends(security)  # Auth required: admin-only operation
-):
-    """
-    Retrain all models with latest data.
-    
-    This is an admin endpoint that should be protected in production.
-    """
-    if not oracle:
-        raise HTTPException(status_code=503, detail="Oracle system not initialized")
-
-    # This would fetch latest data and retrain
-    # For now, return mock response
-    return {
-        'status': 'retraining_started',
-        'message': 'Models are being retrained in the background',
-        'timestamp': datetime.now().isoformat()
+        "free_tier_model_loaded": free_tier_model is not None,
     }
 
 
@@ -740,12 +238,22 @@ def _check_rate_limit(client_ip: str) -> bool:
 
 
 def _resolve_team_name(name: str) -> str:
-    """Resolve a team name to CSV format, raising 422 if unrecognised."""
+    """Resolve a team name to CSV format, raising 422 if unrecognised.
+
+    Tries exact normalisation first, then case-insensitive fallback against
+    the valid team set so that minor casing differences from the frontend
+    (e.g. Football-Data.org API names) don't produce spurious 422s.
+    """
     if not FREE_TIER_AVAILABLE:
         return name
     csv_name = FreeTierFeatureEngineer.normalize_team_name(name, to='csv')
     if csv_name in VALID_FREE_TIER_TEAMS:
         return csv_name
+    # Case-insensitive fallback against valid team set
+    lower = csv_name.lower()
+    for valid in VALID_FREE_TIER_TEAMS:
+        if valid.lower() == lower:
+            return valid
     raise HTTPException(
         status_code=422,
         detail={
@@ -916,6 +424,111 @@ async def free_tier_model_info():
         ),
         "stacked_ensemble": ensemble_info,
     }
+
+
+# ---------------------------------------------------------------------------
+# Oracle Chat RAG endpoint (P6b)
+# ---------------------------------------------------------------------------
+
+class ChatRAGRequest(BaseModel):
+    """Request for Oracle Chat with RAG-grounded responses."""
+    message: str = Field(..., min_length=1, max_length=500, description="User message")
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Previous messages [{role, content}]",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "How has Arsenal been doing this season?",
+                "conversation_history": [
+                    {"role": "user", "content": "Hi"},
+                    {"role": "assistant", "content": "Hello! Ask me anything about the Premier League."},
+                ],
+            }
+        }
+
+
+class ChatRAGResponse(BaseModel):
+    """Response from Oracle Chat RAG."""
+    reply: str
+    grounded: bool = Field(description="Whether the response was grounded in match data")
+
+
+@app.post("/chat/rag", response_model=ChatRAGResponse, tags=["Oracle Chat"])
+async def chat_rag(request_body: ChatRAGRequest, request: Request):
+    """
+    Oracle Chat with DataFrame RAG — data-grounded responses.
+
+    Parses user intent, queries the in-memory historical match DataFrame
+    (2,191+ matches), builds an augmented prompt with relevant data, and
+    calls the OpenAI API server-side. No client-side API key needed when
+    OPENAI_API_KEY is set.
+    """
+    # Rate limiting
+    client_ip = _get_client_ip(request)
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded — maximum 60 requests per minute",
+        )
+
+    # Resolve API key: server env var takes priority, then request header
+    api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No OpenAI API key configured. "
+                "Set the OPENAI_API_KEY environment variable or pass via X-OpenAI-Key header."
+            ),
+        )
+
+    if not RAG_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG module not available",
+        )
+
+    # Get the historical match DataFrame
+    df = free_tier_engineer.data if free_tier_engineer is not None else None
+
+    # Build RAG-augmented system prompt
+    system_prompt, has_data = build_rag_prompt(df, request_body.message)
+
+    # Assemble messages for OpenAI
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+
+    # Add conversation history (last 10 non-system messages)
+    for msg in request_body.conversation_history[-10:]:
+        role = msg.get('role', '')
+        content = msg.get('content', '')
+        if role in ('user', 'assistant') and content:
+            messages.append({"role": role, "content": content})
+
+    # Add current user message
+    messages.append({"role": "user", "content": request_body.message})
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,  # type: ignore[arg-type]
+            max_tokens=800,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content or ""
+        return ChatRAGResponse(reply=reply, grounded=has_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Chat RAG OpenAI call failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to generate response — please try again",
+        )
 
 
 # Error handler

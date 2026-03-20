@@ -32,7 +32,8 @@ npm run test         # Run tests with Vitest
 npm run test:run     # Run tests once (no watch)
 npm run test:coverage # Run tests with coverage
 
-# Backend (run from backend/ directory)
+# Backend (run from backend/ directory — requires conda environment)
+conda activate anaconda-ml-ai
 cd backend
 pip install -r requirements.txt
 uvicorn app.api.main:app --reload --port 8000
@@ -62,13 +63,11 @@ uvicorn app.api.main:app --reload --port 8000
 - `app.css` - Global styles with glassmorphism theme
 
 ### Backend Structure (`backend/app/`)
-- `api/main.py` - FastAPI server with prediction endpoints
-- `models/` - ML models (xgboost_model.py, lstm_predictor.py, transformer_model.py, modern_oracle.py)
-- `features/advanced_engineering.py` - 150+ feature engineering pipeline (63 methods return hardcoded 0.0 — Pro tier)
+- `api/main.py` - FastAPI server with prediction + chat endpoints
+- `api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
 - `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
 - `data/football_data_collector.py` - Historical data collection
-- `security/` - Auth, secrets, validators (entirely unused at runtime — not imported by main.py)
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -98,30 +97,32 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Check types before committing: `cd frontend && npm run check`
 - Run tests before committing: `cd frontend && npm run test:run`
 
-## Current Focus — P6 Final Push (MVP Ship)
+## Current Focus — P7 Beyond MVP
 
-**Execution order:** P6c → P6e → P6a → P6b → P6d (see `IMPLEMENTATION_PLAN.md` for full details)
+**P0–P6:** ALL DONE — MVP shipped and verified by full codebase audit (19 March 2026).
 
-| Item | Description | Status |
-|------|-------------|--------|
-| P6c | Repo cleanup — delete dead security modules, archive Pro-tier models, clean main.py | Not started |
-| P6e | MVP quality pass — fix Chart.js warnings, 422 errors, standings form null, chart axes | Not started |
-| P6a | Dashboard redesign — reduce scrolling, merge sections, fix empty charts | Not started |
-| P6b | Oracle Chat RAG — data-grounded responses using CSV DataFrame | Not started |
-| P6d | Docker & deployment documentation | Not started |
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details):
 
-**Active branches:** `v3.0-BackendMLTraining` (current), `pro-tier-archive` (archived Pro code)
+| Item | Description | Priority |
+|------|-------------|----------|
+| P7a | Model accuracy — odds-as-features, draw overhaul, calibration, retraining | High |
+| P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
+| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
+| P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence | Low |
+
+**Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 507 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
-- **Backend:** 86 pytest tests (3 files), all non-skip passing (7 skip without libomp)
+- **Frontend:** 512 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
+- **Backend:** 131 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
-- **Untested components (3):** Header, SidebarNav, Sidebar — layout/navigation only
+- **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 
 ### Frontend Gotchas
-- `Prediction` type in `types/index.ts` is a dead legacy interface — `StoredPrediction` is the actual runtime type
+- `Prediction` type in `types/index.ts` is a view-model for Predictions.svelte card display — `StoredPrediction` is the persistence type used by `predictionTracker`
 - `KellyCalculator.svelte` edge display: `edgePercentage` from `kelly.ts` is already a percentage (e.g. 5.0 for 5%) — do NOT multiply by 100 again in the template
 - `betHistoryService.StoredBet.market` uses `'over_2_5'` format but `value.ts ValueBet.market` uses `'over2.5'` — mitigated by `ValueBets.svelte` `mapMarket()` conversion
 - `SEED_RATINGS` in `advancedPredictions.ts` contains only the 20 current PL teams — unknown teams fall back to `DEFAULT_RATING` (1500). Needs seasonal update on promotion/relegation
@@ -130,24 +131,18 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Svelte 4 `any` limitations: `SeasonStats.svelte` icon prop, `Sidebar/MobileNav` keydown handlers — cannot be resolved without `any`
 
 ### Backend Gotchas
-- Server starts with graceful degradation — heavy deps (shap, optuna, redis, sklearn, torch) are optional. ML endpoints disabled when deps missing but `/health` returns 200
-- 63 feature engineering methods return hardcoded `0.0` — Pro-tier only (tactics, player-level, betting, weather, advanced)
-- 2 `np.random` calls remain: `lstm_predictor.py:523` (fake feature importance), `modern_oracle.py:581` (fake ensemble optimisation) — both Pro-tier
-- Security modules (`auth.py`, `secrets.py`, `validators.py`) are entirely unused at runtime — targeted for deletion in P6c
-- `torch` missing from `requirements.txt` (only in `environment.yml`) — LSTM/Transformer non-functional via pip
+- Server starts cleanly — only free-tier dependencies required. Pro-tier code archived to `pro-tier-archive` branch
 - `backend/spreadsheets/` is gitignored — CSV training data (2,191 matches) not included in repo clone
-- `advanced_engineering.py` `_is_derby_match()` uses API names but CSV training data has short names — derby detection always returns `0.0` during training
 - CORS includes `allow_origin_regex=r"https://.*\.vercel\.app"` for Vercel production + preview deployments
 
 ### Data Constraints
 - Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
-- CSV training data in `backend/spreadsheets/KnowledgeFilesCSV/` has richer data (shots, corners, cards, odds) but this creates a training/inference mismatch — `FreeTierFeatureEngineer` handles gracefully
 - Free-tier ML model: 51.0% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
 
 ### Architecture Notes
 - `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection
 - `footballData.ts` `rateLimitedFetch()` uses promise-based request queue for serialised API access
-- `dataService.ts` progressively fetches seasons 2020-2024 in background on startup
+- `dataService.ts` progressively fetches seasons 2020-2024 in background on startup, then warm-starts ELO ratings from all cached historical matches (idempotent, runs once per 24h)
 - Single Poisson implementation in `advancedPredictions.ts` (`PoissonPredictor`) — shared by `value.ts` and `betBuilder.ts`
 - ELO home advantage is the single source of truth (form analysis no longer applies momentum adjustments)
 - `svelte-check` reports 0 errors, 0 warnings

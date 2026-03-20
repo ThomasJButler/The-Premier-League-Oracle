@@ -148,13 +148,15 @@ export function calculateKelly(
   ourProbability: number,
   bookmakerOdds: number,
   bankroll: number = 1000,
-  kellyFraction: number = 0.5
+  confidenceLevel: number = 0.6,
+  maxStakePercentage: number = 0.05
 ): KellyCalculation {
   return KellyCalculator.calculate({
     outcome: 'default',
     ourProbability,
     bookmakerOdds,
     bankroll,
-    maxStakePercentage: kellyFraction
+    confidenceLevel,
+    maxStakePercentage
   });
 }

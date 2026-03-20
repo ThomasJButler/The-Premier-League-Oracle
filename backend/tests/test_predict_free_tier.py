@@ -7,7 +7,6 @@ Validates:
 - /predict/free returns 503 when model not loaded
 - /models/free-tier/info returns training metadata
 - Rate limiting returns 429 after threshold
-- Existing /predict endpoint is unchanged
 """
 
 import os
@@ -197,6 +196,11 @@ class TestPredictFreeHappyPath:
 
     def test_returns_valid_prediction(self, client):
         """POST /predict/free with valid team names should return probabilities summing to ~1.0."""
+        try:
+            import xgboost  # noqa: F401
+        except Exception:
+            pytest.skip('xgboost not available (libomp missing)')
+
         import app.api.main as main_module
         from app.features.free_tier_features import FreeTierFeatureEngineer
 

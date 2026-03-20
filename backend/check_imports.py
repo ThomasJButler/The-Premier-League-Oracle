@@ -52,42 +52,11 @@ def check_imports():
     except ImportError:
         imports.append("MISSING: numpy (required)")
 
-    # --- Optional (Pro-tier) ---
-    try:
-        import torch
-        label = f"torch {torch.__version__} ({'CUDA' if torch.cuda.is_available() else 'CPU'})"
-        imports.append(label)
-    except ImportError:
-        imports.append("MISSING: torch (optional — Pro-tier LSTM/Transformer)")
-
-    try:
-        import shap
-        imports.append(f"shap {shap.__version__}")
-    except ImportError:
-        imports.append("MISSING: shap (optional — Pro-tier feature analysis)")
-
-    try:
-        import langchain
-        imports.append(f"langchain {langchain.__version__}")
-    except ImportError:
-        imports.append("MISSING: langchain (optional — Pro-tier NL queries)")
-
-    try:
-        import mlflow
-        imports.append(f"mlflow {mlflow.__version__}")
-    except ImportError:
-        imports.append("MISSING: mlflow (optional — Pro-tier experiment tracking)")
-
     print("Premier League Oracle — Environment Check")
     print("=" * 45)
     print("\nRequired (free-tier):")
-    for imp in imports[:7]:
+    for imp in imports:
         status = "✅" if "MISSING" not in imp else "❌"
-        print(f"  {status} {imp}")
-
-    print("\nOptional (Pro-tier):")
-    for imp in imports[7:]:
-        status = "✅" if "MISSING" not in imp else "⚠️"
         print(f"  {status} {imp}")
 
     # Custom modules
@@ -99,12 +68,6 @@ def check_imports():
         print(f"  ✅ FreeTierFeatureEngineer ({len(FreeTierFeatureEngineer.FEATURE_NAMES)} features)")
     except Exception as e:
         print(f"  ❌ FreeTierFeatureEngineer: {e}")
-
-    try:
-        from app.models.modern_oracle import ModernPremierLeagueOracle  # noqa: F401
-        print("  ✅ ModernPremierLeagueOracle (Pro-tier)")
-    except Exception as e:
-        print(f"  ⚠️ ModernPremierLeagueOracle (Pro-tier): {e}")
 
 
 if __name__ == "__main__":

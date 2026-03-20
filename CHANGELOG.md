@@ -2,6 +2,215 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 19 March 2026 — Full Codebase Audit & P7 Planning
+
+**Branch:** `v3.0-Development`
+
+### Verified: MVP codebase is clean
+- 6 parallel agents audited all 8 specs, every `frontend/src/lib/` and `services/` file, all backend modules, and every Svelte component
+- Confirmed 99/99 active acceptance criteria met across all 8 specs
+- 0 TODO/FIXME/HACK comments in production code
+- All documented stubs in IMPLEMENTATION_PLAN.md verified accurate — no undocumented issues
+- All empty arrays (`= []`) in Svelte components confirmed properly populated from API
+- No hardcoded accuracy values (user's concern about `accuracy: 0.65` — only found as UI colour thresholds)
+- No mock data in production code (only `/admin/retrain` endpoint, already documented as P3b)
+- No redundant documentation files to remove
+
+### Added: P7 Beyond MVP tier to IMPLEMENTATION_PLAN.md
+- P7a: Model accuracy improvements (odds-as-features, draw overhaul, calibration, retraining)
+- P7b: AI integration upgrade (configurable model, Claude support, tactical insights)
+- P7c: Seasonal maintenance checklist (SEED_RATINGS, teamColors, aliases, CSV_TO_API)
+- P7d: Frontend enhancements (backtest-derived weights, real odds input, backend confidence blending)
+- P7e: Infrastructure (Playwright in CI, rate-limit persistence)
+
+## March 2026 — Kelly Criterion bug fix and ELO Historical Warm-up
+
+**Branch:** `v3.0-Development`
+
+### Improved: Backtester now uses multi-season historical data
+- Previously limited to ~38 matches from `getMatches({ recent: true, days: 365 })`
+- Now calls `getAllHistoricalMatches()` which returns up to ~2,000+ matches across 5 cached seasons (2020–2024)
+- Falls back to current season if no historical data is cached yet
+- Dramatically improves statistical reliability of accuracy, log loss, and Brier score metrics
+
+### Removed: 300ms artificial delay from prediction batch
+- `predictGameweek` had a `setTimeout(300)` per match "to show animation" — wasting ~3 seconds per 10-match gameweek
+- The async `predictMatch` calls naturally yield to the UI between iterations, so the processing spinner renders correctly without the delay
+
+### Fixed: calculateKelly parameter mismatch (kelly.ts / Predictions.svelte)
+- `calculateKelly()` wrapper mapped its 4th argument to `maxStakePercentage` (a stake ceiling), but `Predictions.svelte` passed `prediction.confidence` (0.5–0.9) there — meaning confidence had no effect on stake sizing (the 25% `MAX_KELLY` hard cap always took priority)
+- The actual `confidenceLevel` (which scales the recommended stake) silently defaulted to 0.6 for all predictions regardless of model confidence
+- **Fix:** Renamed the 4th parameter from `kellyFraction` to `confidenceLevel` and added `maxStakePercentage` as a separate 5th parameter with a conservative 5% default
+- Now higher-confidence predictions correctly recommend larger stakes, and lower-confidence predictions recommend smaller ones
+
+## March 2026 — ELO Historical Warm-up: 5-season data now feeds ELO system
+
+**Branch:** `v3.0-Development`
+
+### Fixed: ELO ratings cold-start gap
+- `loadAllHistoricalSeasons()` was pre-fetching 5 seasons (~2,191 matches) into IndexedDB but never feeding them into the ELO system
+- `getAllHistoricalMatches()` existed but was never called — historical data sat idle in cache
+- New users started with stale `SEED_RATINGS` and only accumulated ELO from current-season matches
+- **Fix:** After historical season loading completes, all cached matches are now passed to `sharedEloSystem.processCompletedMatches()` — ELO ratings are warm-started from real historical data
+- The warm-up is idempotent (skips already-processed match IDs) and runs at most once per 24h (existing TTL guard)
+- This significantly improves prediction quality for new users by replacing hand-tuned seed ratings with data-derived ELO values
+
+## March 2026 — P6d: Docker & Deployment Documentation (MVP Complete)
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.20`
+
+### New: DEPLOYMENT.md — comprehensive deployment guide
+- Step-by-step instructions for both frontend (Vercel) and backend (Docker) deployments
+- Environment variables table with component mapping and required/optional status
+- Edge Function (`api/chat.ts`) documentation including Vercel root directory caveat
+- Production deployment options for backend: Railway, Fly.io, Render, Cloud Run, ECS
+- Frontend-to-backend connection guide using Vercel rewrites for `/api/oracle` proxy
+- Local development setup with Vite proxy details
+- Model training instructions for the free-tier XGBoost pipeline
+- Troubleshooting table: libomp, model loading, CORS, ARM Mac, API keys
+
+### Fixed: docker-compose.yml
+- Added `OPENAI_API_KEY` passthrough (was missing — RAG chat endpoint needs it)
+- Removed obsolete `version: '3.8'` field (Docker Compose V2 ignores it)
+
+### Fixed: backend test — test_returns_valid_prediction
+- Added XGBoost availability skip guard matching existing test pattern
+- Test now skips cleanly on macOS without libomp instead of failing with `XGBoostError`
+
+### Housekeeping
+- CLAUDE.md: corrected backend test count (130→131), skip count (7→8), untested components (3→4, added MobileNav)
+- IMPLEMENTATION_PLAN.md: fixed stale branch header (BackendMLTraining→Development), updated test counts (507→512, 86→131)
+- P6 Final Push now 5/5 (100%) — all MVP work complete
+
+## April 2026 — P6b: Oracle Chat RAG — data-grounded responses using CSV DataFrame
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.19`
+
+### New: DataFrame RAG query engine (backend/app/api/rag.py)
+- Intent parser extracts team names, query types (h2h, form, goals, draws, stats, season, prediction), date ranges, and stat types from natural language
+- Team name extraction with word-boundary checks, longest-first matching, alias support (Spurs → Tottenham, Gunners → Arsenal, Forest → Nott'm Forest, etc.)
+- DataFrame query functions: head-to-head records, recent form with W/D/L streaks, goal stats, draw trends, shots/corners/cards breakdowns, season standings table
+- RAG prompt builder produces grounded system prompts with relevant match data in markdown format
+- Initialised from `CSV_TO_API` mapping and `_ALIASES` dict in `free_tier_features.py`
+
+### New: /chat/rag endpoint (backend/app/api/main.py)
+- `POST /chat/rag` accepts message + conversation history, returns data-grounded GPT-4o-mini response
+- API key resolution: `OPENAI_API_KEY` env var (preferred) or `X-OpenAI-Key` request header (fallback)
+- Rate limiting (1 request per 3 seconds per IP), input validation (1–500 chars)
+- Response includes `grounded` flag indicating whether match data context was found
+- Fixes security issue: OpenAI API key no longer exposed in browser network tab
+
+### Updated: ChatBot.svelte — backend RAG with graceful fallback
+- Three-tier availability check: backend RAG → Vercel proxy → user-provided key
+- `sendViaBackendRAG()` posts to `/api/oracle/chat/rag` with conversation history
+- Falls back to `sendViaFallbackProxy()` if RAG endpoint returns an error
+- RAG indicator badge in header when backend is available
+- Security banner and API key form hidden when using backend RAG
+
+### Tests
+- **Backend:** 44 new tests in `test_rag.py` — team extraction (8), intent parsing (12), DataFrame queries (13), prompt builder (5), endpoint (6)
+- **Frontend:** 5 new tests in `ChatBot.test.ts` — RAG detection, RAG indicator, sending via RAG, fallback to proxy, security banner hidden
+- **Totals:** 512 Vitest tests (32 files), 130 pytest tests (4 files), all passing
+
+## April 2026 — P6a: Dashboard redesign — reduce scrolling, fix empty charts, merge sections
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.18`
+
+### Hero section streamlined (Dashboard.svelte)
+- Removed duplicate quick stats grid (Accuracy, Profit, Upcoming, Matches) that overlapped with the Stats Grid cards below
+- Reduced Hero padding and heading size for a more compact layout
+- Stats Grid is now the single source of truth for KPI display
+
+### Charts: meaningful empty states for new users (Dashboard.svelte)
+- Prediction Accuracy chart shows "No accuracy data yet" card with guidance text instead of a flat-line chart when no predictions exist
+- Profit/Loss chart shows "Place your first bet to track P&L" card instead of a zero-line "No data" chart
+- Added `hasAccuracyData` and `hasProfitData` flags to control chart vs empty state rendering
+
+### "How We Predict" collapsed (Dashboard.svelte)
+- Wrapped the 5 methodology tiles in a native `<details>/<summary>` element — collapsed by default
+- Added ChevronDown icon with CSS rotation on open
+- Accessible by default: keyboard navigation and screen reader support built into native HTML element
+
+### Activity section: tabbed Predictions + Upcoming (Dashboard.svelte)
+- Merged "Recent Predictions" and "Upcoming Matches" sections into a single "Activity" card with Predictions | Upcoming tabs
+- Upcoming tab shows a match count badge when fixtures are available
+- Both tabs have dedicated empty state cards with icons and guidance text
+- Removed the two-column grid layout in favour of a full-width tabbed card
+
+### Spacing and animation polish
+- Reduced `space-y-6` to `space-y-4` between sections
+- Lowered animation delay values for snappier load appearance
+- Overall height reduced from ~3.5 viewport heights to ~1.5 on desktop
+
+### Tests updated (Dashboard.test.ts)
+- Updated "Recent Predictions" test → "Activity section with predictions tab" (verifies tab test IDs)
+- Added `ChevronDown` and `Calendar` to lucide-svelte icon mocks
+- Simplified responsive grid layout assertion (`.grid` instead of `.grid.grid-cols-1`)
+- All 12 Dashboard tests passing
+
+## April 2026 — P6e: MVP quality pass — fix Chart.js, null form, chart labels, team name 422s
+
+**Branch:** `v3.0-Development` | **Tag:** `v0.1.17`
+
+### Chart.js Filler plugin (Dashboard.svelte)
+- Registered `Filler` plugin so `fill: true` on profit/loss chart no longer produces console warnings
+- Updated Dashboard test mock to include the new `Filler` export
+
+### Standings form null handling (StandingsTable.svelte, footballData.ts)
+- Added `{:else}` fallback in the form column template — shows "—" when form data is null (e.g. early season)
+- Fixed `FDStanding.form` type from `string` to `string | null` in both interface and `getTeamAnalysis` return type
+
+### Prediction Accuracy chart x-axis (Dashboard.svelte)
+- Fallback labels now use `matchday` (GW 1, GW 2) or `matchDate` instead of generation `timestamp`
+- Prevents repeated labels (e.g. "Feb 21" x4) when predictions are batch-generated in a single session
+
+### Backend team name normalisation (free_tier_features.py, main.py)
+- Added case-insensitive fallback in `normalize_team_name()` across all lookup maps
+- Added `F.C.` suffix stripping alongside existing `FC`, `AFC`, `CF`
+- Added case-insensitive fallback in `_resolve_team_name()` against the valid team set
+- Prevents 422 errors when the frontend sends Football-Data.org canonical names with minor casing differences
+
+## March 2026 — P6c: Repository cleanup — remove dead code and archive Pro-tier
+
+**Branch:** `v3.0-Development`
+
+### Deleted (dead code — zero runtime imports)
+- `backend/app/security/auth.py` (550 lines) — JWT/OAuth2/RBAC, never imported by main.py
+- `backend/app/security/secrets.py` (655 lines) — AWS/Vault/Azure secrets, never imported
+- `backend/app/security/validators.py` (599 lines) — SQL/XSS/injection validators, never imported
+- `backend/app/security/` directory — removed entirely
+- `backend/environment.yml` (78 lines) — Conda spec redundant with requirements.txt, unused by Docker/CI
+
+### Archived to `pro-tier-archive` branch (pushed to remote)
+- `backend/app/features/advanced_engineering.py` (1,089 lines) — 150-feature pipeline, 63 methods return 0.0
+- `backend/app/models/modern_oracle.py` (744 lines) — Pro-tier ensemble orchestrator
+- `backend/app/models/xgboost_model.py` (470 lines) — Pro-tier XGBoost wrapper
+- `backend/app/models/lstm_predictor.py` (565 lines) — Pro-tier LSTM predictor
+- `backend/app/models/transformer_model.py` (670 lines) — Pro-tier Transformer predictor
+
+### Cleaned `main.py` (~600 lines removed)
+- Removed 10 Pro-tier endpoints: `/predict`, `/predict/natural`, `/predict/batch`, `/teams/{team_name}/stats`, `/standings`, `/models/performance`, `/ws/predictions`, `/features/importance`, `/betting/value`, `/admin/retrain`
+- Removed Oracle/Redis/WebSocket initialisation and shutdown logic
+- Removed unused imports: asyncio, json, WebSocket, WebSocketDisconnect, Depends, HTTPBearer
+- Removed Pro-tier Pydantic models: PredictionRequest, PredictionResponse, NaturalLanguageRequest, etc.
+- Health endpoint now returns `free_tier_model_loaded` instead of `models_loaded`/`redis_connected`
+
+### Cleaned `requirements.txt`
+- Removed `websockets==13.1` (WebSocket handler removed)
+- Removed `redis==5.2.0` (not used by free-tier)
+- Removed commented Pro-tier section (30 lines)
+- Added `openai` (needed for Oracle Chat RAG in P6b)
+
+### Other cleanup
+- `check_imports.py` — removed Pro-tier optional dependency checks (torch, shap, langchain, mlflow, ModernPremierLeagueOracle)
+- `frontend/src/types/index.ts` — removed dead `MLBatchResponse` interface, updated `MLHealthResponse` to match new backend response, fixed JSDoc on `MLPrediction`
+- `frontend/src/services/backendService.test.ts` — updated health check mocks to use `free_tier_model_loaded`
+- `backend/tests/test_predict_free_tier.py` — removed stale comment referencing deleted `/predict` endpoint
+
+**Impact:** ~4,600 lines of dead code removed, cleaner startup (no torch/Redis/MLflow warnings), faster pip install
+
+---
+
 ## April 2026 — Documentation accuracy sweep: active scope marked 100% complete
 
 **Branch:** `v3.0-BackendMLTraining`

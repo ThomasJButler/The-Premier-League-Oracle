@@ -229,6 +229,8 @@
                       <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
                         {result}
                       </span>
+                    {:else}
+                      <span class="text-xs text-muted-foreground">—</span>
                     {/each}
                   </div>
                 </td>

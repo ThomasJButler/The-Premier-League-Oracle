@@ -11,7 +11,8 @@ vi.mock('../services/dataService', () => ({
   dataService: {
     getCurrentSeasonMatches: vi.fn(() => Promise.resolve([])),
     getCurrentSeason: vi.fn(() => Promise.resolve({ currentMatchday: 20 })),
-    getMatches: vi.fn(() => Promise.resolve([]))
+    getMatches: vi.fn(() => Promise.resolve([])),
+    getAllHistoricalMatches: vi.fn(() => Promise.resolve([]))
   }
 }));
 
@@ -389,7 +390,7 @@ describe('Predictions Component', () => {
       incorrectPredictions: 8
     } as any);
 
-    // Need completed matches for backtest
+    // Need completed matches for backtest — uses getAllHistoricalMatches for multi-season data
     const completedMatches = Array.from({ length: 10 }, (_, i) =>
       makeMatch({
         id: `m${i}`,
@@ -400,7 +401,7 @@ describe('Predictions Component', () => {
         date: new Date(Date.now() - 86400000 * (i + 1)).toISOString()
       })
     );
-    vi.mocked(dataService.getMatches).mockResolvedValue(completedMatches);
+    vi.mocked(dataService.getAllHistoricalMatches).mockResolvedValue(completedMatches);
 
     const match = makeMatch({ matchday: 20 });
     vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
@@ -426,7 +427,7 @@ describe('Predictions Component', () => {
     } as any);
 
     // Only 2 completed matches — below the threshold of 5
-    vi.mocked(dataService.getMatches).mockResolvedValue([
+    vi.mocked(dataService.getAllHistoricalMatches).mockResolvedValue([
       makeMatch({ id: 'm1', result: 'H' as const, home_goals: 1, away_goals: 0 }),
       makeMatch({ id: 'm2', result: 'A' as const, home_goals: 0, away_goals: 2 })
     ]);

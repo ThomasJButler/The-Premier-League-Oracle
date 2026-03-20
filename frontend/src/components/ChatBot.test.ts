@@ -328,6 +328,133 @@ describe('ChatBot Component', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
+  // --- Backend RAG tests ---
+  //
+  // checkBackendRAG() is called from onMount but runs as a floating promise.
+  // Svelte 4's onMount timing in the jsdom test environment makes the mock
+  // fetch unreachable via act() alone. Instead, we call the exported
+  // checkBackendRAG() explicitly and await it before asserting.
+
+  /** Helper: set up health mock, render, and call checkBackendRAG. */
+  async function renderWithBackendRAG(fetchImpl?: typeof globalThis.fetch) {
+    vi.mocked(globalThis.fetch).mockImplementation(fetchImpl ?? (async (url) => {
+      if (typeof url === 'string' && url === '/api/oracle/health') {
+        return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    }));
+    const result = render(ChatBot);
+    await act(async () => {
+      await (result.component as any).checkBackendRAG();
+    });
+    return result;
+  }
+
+  it('should detect backend RAG and enable chat without user key', async () => {
+    await renderWithBackendRAG();
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    // API key form should NOT be shown when backend RAG is available
+    expect(screen.queryByText('Connect OpenAI')).not.toBeInTheDocument();
+  });
+
+  it('should show RAG indicator when backend is available', async () => {
+    await renderWithBackendRAG();
+
+    await waitFor(() => {
+      expect(screen.getByText('RAG')).toBeInTheDocument();
+    });
+  });
+
+  it('should send via backend RAG when available', async () => {
+    const { component } = await renderWithBackendRAG(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/oracle/health') {
+        return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
+      }
+      if (typeof url === 'string' && url === '/api/oracle/chat/rag' && (opts as RequestInit)?.method === 'POST') {
+        return {
+          ok: true,
+          json: () => Promise.resolve({ reply: 'Arsenal are top of the league!', grounded: true }),
+        } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    await typeMessage('How is Arsenal doing?');
+    await act(async () => {
+      await (component as any).sendMessage();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('How is Arsenal doing?')).toBeInTheDocument();
+      expect(screen.getByText('Arsenal are top of the league!')).toBeInTheDocument();
+    });
+
+    // Verify the RAG endpoint was called, not /api/chat
+    const ragCalls = vi.mocked(globalThis.fetch).mock.calls.filter(
+      ([url]) => typeof url === 'string' && url === '/api/oracle/chat/rag'
+    );
+    expect(ragCalls.length).toBeGreaterThan(0);
+  });
+
+  it('should fall back to proxy when backend RAG fails', async () => {
+    const { component } = await renderWithBackendRAG(async (url, opts) => {
+      if (typeof url === 'string' && url === '/api/oracle/health') {
+        return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
+      }
+      // RAG endpoint returns 502
+      if (typeof url === 'string' && url === '/api/oracle/chat/rag') {
+        return { ok: false, status: 502, json: () => Promise.resolve({ detail: 'Failed' }) } as Response;
+      }
+      // Fallback proxy works
+      if (typeof url === 'string' && url === '/api/chat' && (opts as RequestInit)?.method === 'POST') {
+        return {
+          ok: true,
+          json: () => Promise.resolve({
+            choices: [{ message: { content: 'Fallback response from proxy.' } }],
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    await typeMessage('Hello');
+    await act(async () => {
+      await (component as any).sendMessage();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Fallback response from proxy.')).toBeInTheDocument();
+    });
+  });
+
+  it('should not show security banner when using backend RAG', async () => {
+    await renderWithBackendRAG();
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    // Security banner and "Change key" should not be shown
+    expect(screen.queryByText(/Your API key is routed/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Change key')).not.toBeInTheDocument();
+  });
+
   it('should persist messages to localStorage', async () => {
     vi.mocked(globalThis.fetch).mockImplementation(async (url, opts) => {
       if (typeof url === 'string' && url === '/api/chat' && (opts as RequestInit)?.method === 'POST') {
