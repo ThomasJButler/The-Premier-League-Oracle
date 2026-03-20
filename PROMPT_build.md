@@ -1,10 +1,10 @@
 0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
 0b. Study @IMPLEMENTATION_PLAN.md.
 0c. For reference, the frontend source code is in `frontend/src/*` and backend in `backend/app/*`.
-0d. Ensure that the project has a single source of truth, and remove any documents or files that are no longer needed in the project, I have added this as an instruction as we will need to do this as we go along, this is also on the plan task (`PROMPT_plan.md`) so there may or may not be files to remove. DO NOT REMOVE FILES FOR THE SAKE OF REMOVING THEM. 
-0e. Check `CLAUDE.md ` before or after building anything thank you. Ensure that this is accurate and up to date.  
-0f. Keep  `CHANGELOG.md` up to date from the last changes once commited files. 
-0g. Commit frequently, and often. In batches. With detailed commit messages in UK english. 
+0d. Ensure that the project has a single source of truth, and remove any documents or files that are no longer needed in the project, I have added this as an instruction as we will need to do this as we go along, this is also on the plan task (`PROMPT_plan.md`) so there may or may not be files to remove. DO NOT REMOVE FILES FOR THE SAKE OF REMOVING THEM.
+0e. Check `CLAUDE.md ` before or after building anything thank you. Ensure that this is accurate and up to date.
+0f. Keep  `CHANGELOG.md` up to date from the last changes once commited files.
+0g. Commit frequently, and often. In batches. With detailed commit messages in UK english.
 
 1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 50 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
 2. After implementing functionality or resolving problems, run the validation commands: `cd frontend && npm run check` and `cd frontend && npm run test:run`. If functionality is missing then it's your job to add it as per the application specifications. Ultrathink.

@@ -6,6 +6,7 @@
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
+  import { getSavedAiModel, getModelProvider } from '$lib/constants';
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -129,7 +130,7 @@
   export function saveApiKey() {
     const trimmed = apiKey.trim();
     if (!trimmed || trimmed.length < 10) {
-      error = 'Please enter a valid OpenAI API key.';
+      error = 'Please enter a valid API key.';
       return;
     }
     localStorage.setItem(STORAGE_KEY_API_KEY, trimmed);
@@ -288,7 +289,8 @@ Current data:\n`;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       // Pass user's API key as header if no server key is configured
       if (apiKey && !useServerKey) {
-        headers['X-OpenAI-Key'] = apiKey;
+        const provider = getModelProvider(getSavedAiModel());
+        headers[provider === 'anthropic' ? 'X-Anthropic-Key' : 'X-OpenAI-Key'] = apiKey;
       }
 
       const response = await fetch('/api/oracle/chat/rag', {
@@ -330,6 +332,7 @@ Current data:\n`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: apiMessages,
+        model: getSavedAiModel(),
         ...(!useServerKey && apiKey ? { apiKey } : {})
       })
     });
@@ -418,7 +421,7 @@ Current data:\n`;
           <Key class="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 class="text-lg font-bold font-display text-foreground">Connect OpenAI</h2>
+          <h2 class="text-lg font-bold font-display text-foreground">Connect AI Provider</h2>
           <p class="text-xs text-muted-foreground">Your key is stored in your browser only</p>
         </div>
       </div>
@@ -427,7 +430,7 @@ Current data:\n`;
         <input
           type="password"
           bind:value={apiKey}
-          placeholder="sk-..."
+          placeholder="sk-... or sk-ant-..."
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
           on:keydown={handleKeydown}
         />
@@ -447,8 +450,9 @@ Current data:\n`;
       {/if}
 
       <p class="text-xs text-muted-foreground mt-3">
-        Get an API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">platform.openai.com</a>.
-        You can also configure this in Settings.
+        Get a key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">OpenAI</a>
+        or <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic</a>.
+        Choose the model in Settings.
       </p>
     </Card>
   {/if}

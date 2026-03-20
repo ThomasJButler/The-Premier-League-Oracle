@@ -2,17 +2,9 @@
 target-version = "py311"
 line-length = 120
 
-# Lint the active codebase — exclude dead/deferred modules
+# Lint the active codebase
 src = ["app", "tests"]
 exclude = [
-    "app/models/lstm_predictor.py",      # Pro-tier, deferred (P3c)
-    "app/models/transformer_model.py",   # Pro-tier, deferred (P3c)
-    "app/models/modern_oracle.py",       # Pro-tier, deferred (P3c)
-    "app/models/xgboost_model.py",       # Pro-tier, deferred (P3c)
-    "app/security/auth.py",              # Dead code — not imported by main.py (P3d)
-    "app/security/secrets.py",           # Dead code — not imported by main.py (P3d)
-    "app/security/validators.py",        # Dead code — not imported by main.py (P3d)
-    "app/features/advanced_engineering.py",  # Pro-tier, 63 stub methods (P3a)
     "app/notebooks/",                    # Jupyter notebooks
 ]
 

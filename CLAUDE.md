@@ -11,7 +11,7 @@ The Premier League Oracle is a data-driven football prediction platform that use
 ## Tech Stack
 
 - **Frontend**: Svelte 4.2.19 + TypeScript + Vite (in `frontend/`)
-- **Backend**: Python + FastAPI + XGBoost/LSTM/Transformer (in `backend/`)
+- **Backend**: Python + FastAPI + XGBoost (in `backend/`)
 - **Styling**: Tailwind CSS with dark/light mode support
 - **Data Source**: Football-Data.org API v4 (no Supabase)
 - **Caching**: IndexedDB 3-tier cache (memory -> IndexedDB -> API)
@@ -46,10 +46,11 @@ uvicorn app.api.main:app --reload --port 8000
 - `components/betting/` - Betting UI (KellyCalculator, ValueBets, AccumulatorBuilder)
 - `lib/` - Core prediction libraries:
   - `advancedPredictions.ts` - Statistical models (ELO, Poisson, xG, Fatigue, Referee)
-  - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model)
+  - `optimizedPredictions.ts` - Weighted ensemble orchestrator (production model). `MODEL_WEIGHTS` defines default weights (ELO 25%, Poisson 30%, Form 20%, H2H 10%, Standings 15%) but active weights are dynamic — user-applicable via backtest results and persisted to localStorage. Key exports: `getActiveModelWeights`, `saveModelWeights`, `resetModelWeights`, `hasCustomWeights`
   - `betBuilder.ts` - Multi-market prediction generator
   - `renderMarkdown.ts` - Shared markdown→HTML renderer (DOMPurify sanitised)
-  - `constants.ts` - Shared constants (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`)
+  - `backtest.ts` - Ensemble backtesting engine (BacktestRunner, WeightOptimiser)
+  - `constants.ts` - Shared constants and prediction model configuration. League defaults (`DEFAULT_HOME_WIN_RATE`, `DEFAULT_DRAW_RATE`, `VALUE_ODDS_MARGIN`, `PREMIER_LEAGUE_GAMEWEEKS`), ELO draw formula params, Poisson bounds, form recency weights, confidence thresholds, standings step, ML/referee adjustment caps. All documented with derivations
   - `utils.ts` - Shared utilities (`cn()`, `focusTrap()`, `getSeasonYear()`, `getSeasonLabel()`)
 - `services/` - Data and business logic:
   - `api/footballData.ts` - Football-Data.org API client with rate limiting + request queue
@@ -58,16 +59,21 @@ uvicorn app.api.main:app --reload --port 8000
   - `betting/kelly.ts` - Kelly Criterion calculator
   - `betting/value.ts` - Value bet detection engine (imports PoissonPredictor from advancedPredictions)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
+  - `aiAnalysis.ts` - AI-powered match analysis with OpenAI/Anthropic support
 - `types/index.ts` - Shared TypeScript types
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
 
-### Backend Structure (`backend/app/`)
-- `api/main.py` - FastAPI server with prediction + chat endpoints
-- `api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
-- `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
-- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
-- `data/football_data_collector.py` - Historical data collection
+### Backend Structure (`backend/`)
+- `app/api/main.py` - FastAPI server with prediction + chat endpoints
+- `app/api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
+- `app/api/web_search.py` - DuckDuckGo web search fallback when RAG cannot ground a response (TTL cache, graceful degradation)
+- `app/features/free_tier_features.py` - Free-tier feature engineering (114 features incl. 13 draw indicators + 5 Elo + 10 odds)
+- `app/data/football_data_collector.py` - Historical data collection
+- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
+
+### Vercel Edge Functions (`api/`)
+- `api/chat.ts` - Vercel Edge Function for AI chat proxying (OpenAI + Anthropic). Resolves model from request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Server-side API keys take priority over user-provided keys
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -99,9 +105,9 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ## Current Focus — P7 Beyond MVP
 
-**P0–P6:** ALL DONE — MVP shipped and verified by full codebase audit (19 March 2026).
+**P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 47/49 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|
@@ -109,16 +115,20 @@ These specs are the single source of truth for requirements. **All 99 active acc
 | P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
 | P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
 | P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
-| P7e | Infrastructure — Playwright in CI, rate-limit persistence | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin `openai`/`ruff` versions | Low |
+| P7f | Season Timeline — interactive visual timeline of 2025/26 key moments | New feature |
+| P7g | Frontend Polish — team theme toggle fix, FAQ, README overhaul, Dashboard weights display | Medium |
+| P7h | RAG Intelligence — player data enrichment, web search fallback | Medium |
+| P7i | Frontend Design Uplift — empty states, richer prediction cards, standings zones, loading states | Medium |
 
-**Active branches:** `v3.0-Development` (current), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
+**Active branches:** `v3.0-MVP` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 512 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
-- **Backend:** 131 pytest tests (4 files), all non-skip passing (8 skip without libomp)
-- **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
+- **Frontend:** 561 Vitest tests (34 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
+- **Backend:** 190 pytest tests (5 files), all passing
+- **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 
 ### Frontend Gotchas
@@ -137,7 +147,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Data Constraints
 - Football-Data.org free tier: no xG, shots, possession, cards, corners — limits ~70 backend features permanently
-- Free-tier ML model: 51.0% accuracy (XGBoost + stacked OvR ensemble). Draw prediction essentially non-functional (6.7% accuracy). Model at `backend/models/xgboost_free_tier.joblib`
+- Free-tier ML model: 53.3% accuracy (XGBoost + isotonic calibration). Draw AUC-ROC 0.601 (model ranks draw-prone matches correctly but calibration suppresses the class). Model at `backend/models/xgboost_free_tier.joblib`
 
 ### Architecture Notes
 - `liveService.ts` is polling-only (WebSocket infrastructure removed) with adaptive intervals and polling-diff event detection

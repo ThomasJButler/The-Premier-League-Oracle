@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Free-tier feature engineer — lightweight, no heavy deps
 try:
-    from app.features.free_tier_features import CSV_TO_API, FreeTierFeatureEngineer, _ALIASES
+    from app.features.free_tier_features import _ALIASES, CSV_TO_API, FreeTierFeatureEngineer
     FREE_TIER_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"FreeTierFeatureEngineer unavailable ({e})")
@@ -44,11 +44,18 @@ except ImportError as e:
     FREE_TIER_AVAILABLE = False
 
 try:
-    from app.api.rag import build_rag_prompt, init_team_patterns
+    from app.api.rag import build_rag_prompt, init_player_data, init_team_patterns
     RAG_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"RAG module unavailable ({e})")
     RAG_AVAILABLE = False
+
+try:
+    from app.api.web_search import inject_search_context, search_premier_league
+    WEB_SEARCH_AVAILABLE = True
+except ImportError as e:
+    logger.info(f"Web search fallback unavailable ({e})")
+    WEB_SEARCH_AVAILABLE = False
 
 try:
     from app.data.football_data_collector import FootballDataCollector
@@ -61,6 +68,7 @@ except ImportError as e:
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
@@ -156,6 +164,31 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Could not initialise RAG team patterns: %s", e)
 
+    # Load player data for RAG enrichment (P7h)
+    if RAG_AVAILABLE:
+        try:
+            player_csv = BACKEND_ROOT / "spreadsheets" / "fact_player_stats.csv"
+            api_scorers = None
+
+            # Fetch current season top scorers from API if key is available
+            if FOOTBALL_API_KEY and DATA_COLLECTOR_AVAILABLE:
+                try:
+                    collector = FootballDataCollector(api_key=FOOTBALL_API_KEY)
+                    response = collector._make_request(
+                        f"competitions/{collector.PREMIER_LEAGUE_ID}/scorers",
+                        params={'limit': 30},
+                        cache_ttl=3600,
+                    )
+                    api_scorers = response.get('scorers', [])
+                    if api_scorers:
+                        logger.info("Fetched %d top scorers from API", len(api_scorers))
+                except Exception as api_err:
+                    logger.warning("Could not fetch API scorers: %s", api_err)
+
+            init_player_data(csv_path=player_csv, api_scorers=api_scorers)
+        except Exception as e:
+            logger.warning("Could not initialise player data: %s", e)
+
     logger.info("Oracle API startup complete")
 
     yield
@@ -206,12 +239,24 @@ class FreeTierPredictionRequest(BaseModel):
     """Request for free-tier match prediction."""
     home_team: str = Field(..., description="Home team name")
     away_team: str = Field(..., description="Away team name")
+    odds_home: float | None = Field(
+        None, description="Optional bookmaker decimal odds for home win (e.g. 2.10)",
+    )
+    odds_draw: float | None = Field(
+        None, description="Optional bookmaker decimal odds for draw (e.g. 3.50)",
+    )
+    odds_away: float | None = Field(
+        None, description="Optional bookmaker decimal odds for away win (e.g. 3.80)",
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "home_team": "Arsenal",
                 "away_team": "Chelsea",
+                "odds_home": 1.85,
+                "odds_draw": 3.60,
+                "odds_away": 4.50,
             }
         }
 
@@ -281,7 +326,9 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
     """
     Predict match outcome using the free-tier XGBoost model.
 
-    Uses ~94 features derived from match results, form, H2H, draw indicators, and contextual data.
+    Uses ~109 features derived from match results, form, H2H, draw indicators,
+    Elo ratings, and contextual data. Optionally accepts bookmaker odds for
+    significantly improved accuracy (~55% with odds vs ~51% without).
     No paid API data required.
     """
     # Rate limiting — extract real client IP from request
@@ -309,8 +356,20 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         )
 
     try:
+        # Build odds dict from optional request fields.
+        # When odds are provided, the model can use bookmaker-implied
+        # probabilities — the single strongest predictor of match outcomes.
+        odds: dict[str, float] | None = None
+        if prediction_request.odds_home is not None:
+            odds = {}
+            odds['AvgH'] = prediction_request.odds_home
+            if prediction_request.odds_draw is not None:
+                odds['AvgD'] = prediction_request.odds_draw
+            if prediction_request.odds_away is not None:
+                odds['AvgA'] = prediction_request.odds_away
+
         # Compute features
-        features = free_tier_engineer.create_features(home, away)
+        features = free_tier_engineer.create_features(home, away, odds=odds)
         feature_names = free_tier_metadata.get('feature_names', FreeTierFeatureEngineer.FEATURE_NAMES)
         feature_vec = [features[name] for name in feature_names]
 
@@ -319,8 +378,11 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             [feature_vec], feature_names=feature_names,
         )
 
-        # Use stacked ensemble if available, otherwise fall back to single model
+        # Use stacked ensemble if available (only saved when it outperforms
+        # calibrated XGBoost), otherwise fall back to calibrated single model
         stacked = free_tier_metadata.get('stacked_ensemble')
+        raw_probs = free_tier_model.predict(dmatrix)[0]
+
         if stacked and stacked.get('classifiers') and stacked.get('meta_learner'):
             # Stacked ensemble: 3 OvR classifiers → meta-learner
             ovr_probs = np.column_stack([
@@ -329,14 +391,22 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            # Single XGBoost with calibration
-            raw_probs = free_tier_model.predict(dmatrix)[0]
+            # Single XGBoost with calibration (isotonic or Platt scaling)
             calibrators = free_tier_metadata.get('calibrators')
+            cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
             if calibrators and len(calibrators) == 3:
-                cal_probs = np.array([
-                    float(cal.predict([raw_probs[i]])[0])
-                    for i, cal in enumerate(calibrators)
-                ])
+                if cal_method == 'platt':
+                    cal_probs = np.array([
+                        float(cal.predict_proba(
+                            np.array([[raw_probs[i]]])
+                        )[0, 1])
+                        for i, cal in enumerate(calibrators)
+                    ])
+                else:
+                    cal_probs = np.array([
+                        float(cal.predict([raw_probs[i]])[0])
+                        for i, cal in enumerate(calibrators)
+                    ])
                 total = cal_probs.sum()
                 probs = cal_probs / total if total > 0 else raw_probs
             else:
@@ -346,8 +416,15 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         draw_prob = float(probs[1])
         away_prob = float(probs[2])
 
-        # Determine predicted outcome
-        outcome_idx = int(np.argmax(probs))
+        # Classification: use raw probabilities for the predicted outcome.
+        # Calibration improves probability estimates (log loss) but can
+        # suppress the draw class — isotonic calibration maps draw probs
+        # to near-zero because the model's draw accuracy is low. However,
+        # the raw model has draw AUC-ROC 0.601, meaning it *can* identify
+        # draw-prone matches. Using raw probs for argmax recovers ~16%
+        # draw accuracy vs 0% after calibration, while the returned
+        # probabilities still use calibrated values for better estimates.
+        outcome_idx = int(np.argmax(raw_probs))
         outcomes = ['Home win', 'Draw', 'Away win']
         predicted = outcomes[outcome_idx]
 
@@ -474,14 +551,28 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
             detail="Rate limit exceeded — maximum 60 requests per minute",
         )
 
+    # Determine which AI provider to use
+    ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
+    use_anthropic = ai_model.startswith("claude")
+
     # Resolve API key: server env var takes priority, then request header
-    api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+    if use_anthropic:
+        api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
+        provider_name = "Anthropic"
+        env_var_name = "ANTHROPIC_API_KEY"
+        header_name = "X-Anthropic-Key"
+    else:
+        api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
+        provider_name = "OpenAI"
+        env_var_name = "OPENAI_API_KEY"
+        header_name = "X-OpenAI-Key"
+
     if not api_key:
         raise HTTPException(
             status_code=400,
             detail=(
-                "No OpenAI API key configured. "
-                "Set the OPENAI_API_KEY environment variable or pass via X-OpenAI-Key header."
+                f"No {provider_name} API key configured. "
+                f"Set the {env_var_name} environment variable or pass via {header_name} header."
             ),
         )
 
@@ -497,34 +588,62 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     # Build RAG-augmented system prompt
     system_prompt, has_data = build_rag_prompt(df, request_body.message)
 
-    # Assemble messages for OpenAI
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    # Web search fallback (P7h): when RAG can't ground on DataFrame data,
+    # search the web for current Premier League information instead of
+    # letting the LLM hallucinate from its training corpus.
+    if not has_data and WEB_SEARCH_AVAILABLE:
+        try:
+            import asyncio
+            search_results = await asyncio.to_thread(
+                search_premier_league, request_body.message,
+            )
+            if search_results:
+                system_prompt = inject_search_context(system_prompt, search_results)
+                has_data = True
+                logger.info("Web search fallback grounded response with %d results", len(search_results))
+        except Exception as e:
+            logger.warning("Web search fallback failed: %s", e)
 
-    # Add conversation history (last 10 non-system messages)
+    # Assemble conversation messages
+    user_messages: list[dict[str, str]] = []
     for msg in request_body.conversation_history[-10:]:
         role = msg.get('role', '')
         content = msg.get('content', '')
         if role in ('user', 'assistant') and content:
-            messages.append({"role": role, "content": content})
-
-    # Add current user message
-    messages.append({"role": "user", "content": request_body.message})
+            user_messages.append({"role": role, "content": content})
+    user_messages.append({"role": "user", "content": request_body.message})
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,  # type: ignore[arg-type]
-            max_tokens=800,
-            temperature=0.7,
-        )
-        reply = response.choices[0].message.content or ""
+        if use_anthropic:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=ai_model,
+                max_tokens=800,
+                system=system_prompt,
+                messages=user_messages,  # type: ignore[arg-type]
+            )
+            reply = response.content[0].text if response.content else ""
+        else:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            messages: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt},
+                *user_messages,
+            ]
+            response = client.chat.completions.create(
+                model=ai_model,
+                messages=messages,  # type: ignore[arg-type]
+                max_tokens=800,
+                temperature=0.7,
+            )
+            reply = response.choices[0].message.content or ""
+
         return ChatRAGResponse(reply=reply, grounded=has_data)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Chat RAG OpenAI call failed: %s", e)
+        logger.error("Chat RAG %s call failed: %s", provider_name, e)
         raise HTTPException(
             status_code=502,
             detail="Failed to generate response — please try again",

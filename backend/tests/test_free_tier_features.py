@@ -152,9 +152,9 @@ class TestFeatureCompleteness:
         assert set(features.keys()) == set(FreeTierFeatureEngineer.FEATURE_NAMES)
         assert len(features) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
 
-    def test_feature_count_is_99(self):
-        """FEATURE_NAMES should have exactly 99 entries (86 original + 8 draw + 5 Elo)."""
-        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 99
+    def test_feature_count_is_114(self):
+        """FEATURE_NAMES should have exactly 114 entries (86 original + 13 draw + 5 Elo + 10 odds)."""
+        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 114
 
     def test_no_duplicate_feature_names(self):
         """No duplicate entries in FEATURE_NAMES."""
@@ -498,6 +498,57 @@ class TestNonZeroFeatures:
 
 
 # ---------------------------------------------------------------------------
+# Tests: Draw indicator features
+# ---------------------------------------------------------------------------
+
+class TestDrawIndicators:
+    """Draw-specific feature signals."""
+
+    def test_draw_features_present(self, engineer, sample_data):
+        """All 13 draw indicator features should be present."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        draw_features = [
+            'form_closeness', 'standings_closeness',
+            'home_draw_rate', 'away_draw_rate',
+            'combined_defensive_strength', 'low_scoring_indicator',
+            'h2h_draw_tendency', 'draw_streak_proximity',
+            'goal_difference_symmetry', 'season_ppg_closeness',
+            'mid_table_indicator', 'elo_draw_band',
+            'goals_per_game_combined',
+        ]
+        for name in draw_features:
+            assert name in features, f'Missing draw feature: {name}'
+
+    def test_closeness_features_bounded(self, engineer, sample_data):
+        """Closeness features use 1/(1+diff) so should be in (0, 1]."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        for name in ['form_closeness', 'standings_closeness',
+                     'goal_difference_symmetry', 'season_ppg_closeness']:
+            assert 0.0 < features[name] <= 1.0, f'{name} out of bounds: {features[name]}'
+
+    def test_mid_table_indicator_binary(self, engineer, sample_data):
+        """mid_table_indicator should be 0 or 1 (product of two binary flags)."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        assert features['mid_table_indicator'] in (0.0, 1.0)
+
+    def test_elo_draw_band_product(self, engineer, sample_data):
+        """elo_draw_band should be the product of form_closeness and standings_closeness."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        expected = features['form_closeness'] * features['standings_closeness']
+        assert abs(features['elo_draw_band'] - expected) < 1e-10
+
+    def test_goals_per_game_combined_non_negative(self, engineer, sample_data):
+        """goals_per_game_combined should be non-negative."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        assert features['goals_per_game_combined'] >= 0.0
+
+
+# ---------------------------------------------------------------------------
 # Tests: Elo rating computation
 # ---------------------------------------------------------------------------
 
@@ -574,3 +625,133 @@ class TestEloFeatures:
         features = eng.create_features('FakeTeamFC', 'AlsoFake', datetime(2024, 10, 1))
         assert features['home_elo'] == pytest.approx(0.5, abs=0.01)
         assert features['away_elo'] == pytest.approx(0.5, abs=0.01)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Bookmaker odds features
+# ---------------------------------------------------------------------------
+
+class TestOddsFeatures:
+    """Odds features: strongest predictor, optional at inference time."""
+
+    def test_odds_features_zero_when_none(self, engineer, sample_data):
+        """Without odds, all 10 odds features should be 0.0."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=None)
+
+        odds_names = [n for n in FreeTierFeatureEngineer.FEATURE_NAMES if n.startswith('odds_')]
+        assert len(odds_names) == 10
+        for name in odds_names:
+            assert features[name] == 0.0, f'{name} should be 0.0 when no odds provided'
+
+    def test_odds_features_populated_with_data(self, engineer, sample_data):
+        """With full odds dict, odds features should be non-zero."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        odds = {
+            'PSCH': 2.10, 'PSCD': 3.50, 'PSCA': 3.80,
+            'AvgH': 2.05, 'AvgD': 3.45, 'AvgA': 3.75,
+            'AHCh': -0.5,
+            'Avg>2.5': 1.85, 'Avg<2.5': 2.10,
+        }
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Pinnacle implied probs should be normalised and non-zero
+        assert features['odds_pinnacle_home'] > 0.0
+        assert features['odds_pinnacle_draw'] > 0.0
+        assert features['odds_pinnacle_away'] > 0.0
+        # Should sum to approximately 1.0 (normalised)
+        ps_sum = features['odds_pinnacle_home'] + features['odds_pinnacle_draw'] + features['odds_pinnacle_away']
+        assert ps_sum == pytest.approx(1.0, abs=0.001)
+
+    def test_odds_implied_probabilities_correct(self, engineer, sample_data):
+        """Verify implied probability calculation from decimal odds."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Simple odds where home is heavy favourite
+        odds = {
+            'AvgH': 1.50, 'AvgD': 4.00, 'AvgA': 7.00,
+        }
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Home should have highest implied probability
+        assert features['odds_avg_home'] > features['odds_avg_draw']
+        assert features['odds_avg_home'] > features['odds_avg_away']
+        # Market average should also sum to 1.0
+        avg_sum = features['odds_avg_home'] + features['odds_avg_draw'] + features['odds_avg_away']
+        assert avg_sum == pytest.approx(1.0, abs=0.001)
+
+    def test_pinnacle_falls_back_to_avg(self, engineer, sample_data):
+        """When Pinnacle odds absent, Pinnacle features fall back to market average."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Only average odds, no Pinnacle
+        odds = {'AvgH': 2.00, 'AvgD': 3.50, 'AvgA': 4.00}
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Pinnacle should use avg as fallback
+        assert features['odds_pinnacle_home'] > 0.0
+        # And should match avg values (same source)
+        assert features['odds_pinnacle_home'] == pytest.approx(features['odds_avg_home'], abs=0.001)
+
+    def test_asian_handicap_feature(self, engineer, sample_data):
+        """Asian handicap line correctly extracted."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        odds = {'AvgH': 2.00, 'AvgD': 3.50, 'AvgA': 4.00, 'AHCh': -0.75}
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        assert features['odds_asian_handicap'] == -0.75
+
+    def test_over_under_probability(self, engineer, sample_data):
+        """Over/Under 2.5 implied probability correctly computed."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Over 2.5 favoured (lower odds = higher probability)
+        odds = {'AvgH': 2.00, 'AvgD': 3.50, 'AvgA': 4.00, 'Avg>2.5': 1.60, 'Avg<2.5': 2.50}
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Over should be favoured
+        assert features['odds_over_2_5_prob'] > 0.5
+
+    def test_sharp_divergence_computed(self, engineer, sample_data):
+        """Sharp divergence measures Pinnacle vs market average difference."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Pinnacle gives slightly higher home probability than average
+        odds = {
+            'PSCH': 1.90, 'PSCD': 3.60, 'PSCA': 4.20,  # Pinnacle: home favoured
+            'AvgH': 2.10, 'AvgD': 3.40, 'AvgA': 3.60,  # Market: less confident on home
+        }
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Pinnacle gives higher home prob → positive divergence
+        assert features['odds_sharp_divergence'] > 0.0
+
+    def test_overround_reflects_bookmaker_margin(self, engineer, sample_data):
+        """Overround should be small and positive for realistic odds."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Pinnacle-style low-margin odds (sum of 1/odds ≈ 1.025)
+        odds = {'PSCH': 2.10, 'PSCD': 3.50, 'PSCA': 3.80}
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Overround should be positive and small (2-6% typical)
+        assert 0.0 < features['odds_overround'] < 0.10
+
+    def test_odds_features_with_nan_values(self, engineer, sample_data):
+        """NaN values in odds dict should be handled gracefully."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        odds = {'PSCH': float('nan'), 'AvgH': 2.00, 'AvgD': 3.50, 'AvgA': 4.00}
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Should not crash and should fall back to Avg
+        assert features['odds_pinnacle_home'] > 0.0
+
+    def test_closing_odds_preferred_over_opening(self, engineer, sample_data):
+        """Closing odds (PSCH) should be used over opening (PSH) when both present."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        # Closing and opening odds differ
+        odds = {
+            'PSCH': 1.80, 'PSCD': 3.80, 'PSCA': 4.50,  # Closing
+            'PSH': 2.00, 'PSD': 3.50, 'PSA': 4.00,      # Opening
+            'AvgH': 2.00, 'AvgD': 3.50, 'AvgA': 4.00,
+        }
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date, odds=odds)
+
+        # Home probability from closing (1.80) should be higher than from opening (2.00)
+        # Since closing gives lower odds = higher probability for home
+        assert features['odds_pinnacle_home'] > 0.5  # 1/1.80 ÷ sum ≈ 0.55

@@ -20,13 +20,15 @@
   import { predictionTracker } from '../services/predictionTracker';
   import { betHistoryService } from '../services/betting/betHistoryService';
   import type { Match } from '../types';
+  import { getActiveModelWeights, hasCustomWeights } from '../lib/optimizedPredictions';
   import { format } from 'date-fns';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { TrendingUp, Users, Target, BarChart2, Trophy, ChevronDown, Calendar } from 'lucide-svelte';
+  import { TrendingUp, Users, Target, BarChart2, Trophy, ChevronDown, Calendar, Clock, Zap } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
   import { Badge } from '$lib/components/ui/badge';
+  import { getTeamLogo } from '../utils/teamLogos';
   ChartJS.register(
     Title,
     Tooltip,
@@ -78,8 +80,20 @@
   let predictionsChange = '';
   let betsChange = '';
   let activityTab: 'predictions' | 'upcoming' = 'predictions';
+
+  // Active model weights — reads user-applied custom weights or defaults
+  const activeWeights = getActiveModelWeights();
+  const usingCustomWeights = hasCustomWeights();
+
+  // Featured match — the next upcoming fixture (sorted by date)
+  $: featuredMatch = realMatchData.length > 0
+    ? realMatchData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+    : null;
   let hasAccuracyData = false;
   let hasProfitData = false;
+  let rawTotalPredictions = 0;
+  let rawTotalBets = 0;
+  $: hasActivity = rawTotalPredictions > 0 || rawTotalBets > 0;
   
   // Current date and time
   let currentDateTime = new Date();
@@ -200,6 +214,10 @@
       betsChange = allBets.length > 0
         ? `${betHistoryService.getPendingBets().length} pending`
         : 'Place bets to track';
+
+      // Track raw counts for empty state detection
+      rawTotalPredictions = accuracyStats.totalPredictions;
+      rawTotalBets = allBets.length;
 
       // Set real stats with smooth animations
       setTimeout(() => overallAccuracy.set(realAccuracy), 300);
@@ -364,12 +382,62 @@
           {formattedDate} &middot; {formattedTime}
         </span>
       </div>
-      <h1 class="text-2xl sm:text-3xl font-display font-extrabold mb-1 tracking-tight">
-        Premier League Oracle
-      </h1>
-      <p class="text-slate-500 dark:text-white/60 text-sm max-w-xl">
-        Five-component ensemble: ELO, Poisson, Form, H2H, and Standings
-      </p>
+
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-display font-extrabold mb-1 tracking-tight">
+            Premier League Oracle
+          </h1>
+          <p class="text-slate-500 dark:text-white/60 text-sm max-w-xl">
+            Five-component ensemble: ELO, Poisson, Form, H2H, and Standings
+          </p>
+        </div>
+
+        <!-- Featured match — next upcoming fixture -->
+        {#if featuredMatch && !loading}
+          <button
+            class="flex items-center gap-3 sm:gap-4 px-4 py-3 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-white/10 transition-all cursor-pointer group shrink-0"
+            on:click={() => dispatch('navigate', { view: 'Predictions' })}
+            data-testid="featured-match"
+            aria-label="Next match: {featuredMatch.home_team} vs {featuredMatch.away_team}"
+          >
+            <div class="flex items-center gap-2">
+              <img
+                src={getTeamLogo(featuredMatch.home_team, 28)}
+                alt={featuredMatch.home_team}
+                class="w-7 h-7 rounded-md"
+              />
+              <span class="text-xs font-bold text-slate-700 dark:text-white/90 hidden min-[480px]:inline">{featuredMatch.home_team}</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] font-semibold text-slate-400 dark:text-white/40 uppercase tracking-wider">vs</span>
+              <div class="flex items-center gap-1 mt-0.5">
+                <Clock class="w-3 h-3 text-slate-400 dark:text-white/40" />
+                <span class="text-[10px] text-slate-500 dark:text-white/50 font-medium">
+                  {format(new Date(featuredMatch.date), 'EEE HH:mm')}
+                </span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-700 dark:text-white/90 hidden min-[480px]:inline">{featuredMatch.away_team}</span>
+              <img
+                src={getTeamLogo(featuredMatch.away_team, 28)}
+                alt={featuredMatch.away_team}
+                class="w-7 h-7 rounded-md"
+              />
+            </div>
+            <Zap class="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-colors ml-1" />
+          </button>
+        {:else if loading}
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-white/10">
+            <div class="skeleton w-7 h-7 rounded-md"></div>
+            <div class="skeleton h-3 w-12"></div>
+            <div class="skeleton h-3 w-6"></div>
+            <div class="skeleton h-3 w-12"></div>
+            <div class="skeleton w-7 h-7 rounded-md"></div>
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -394,11 +462,32 @@
       <p class="text-sm text-muted-foreground mb-4">Check your API connection or try again</p>
       <Button on:click={loadDashboardData}>Retry</Button>
     </Card>
+  {:else if !hasActivity}
+    <!-- Onboarding state — shown when user has no predictions or bets yet -->
+    <Card class="card-glass p-6 sm:p-8 animate-stagger" style="animation-delay: 200ms" data-testid="onboarding-card">
+      <div class="max-w-lg mx-auto text-center">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center">
+          <Target class="w-7 h-7 text-primary" />
+        </div>
+        <h3 class="text-lg font-display font-bold text-foreground mb-2">Ready to predict?</h3>
+        <p class="text-sm text-muted-foreground mb-5 leading-relaxed">
+          Generate match predictions using the Oracle's five-model ensemble — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings. Track your accuracy over time.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button on:click={() => dispatch('navigate', { view: 'Predictions' })} data-testid="onboarding-cta">
+            Generate Your First Prediction
+          </Button>
+          <Button variant="secondary" on:click={() => dispatch('navigate', { view: 'Standings' })}>
+            View Standings
+          </Button>
+        </div>
+      </div>
+    </Card>
   {:else}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="stat-cards">
       {#each stats as stat, i}
         <Card
-          class="card-glass p-4 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
+          class="card-glass p-4 motion-safe:hover:-translate-y-1 hover:shadow-glow-primary-sm motion-safe:active:scale-[0.98] transition-all duration-200 animate-stagger"
           style="animation-delay: {200 + i * 80}ms"
           data-testid="stat-card"
         >
@@ -427,7 +516,8 @@
         <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="accuracy-empty-state">
           <Target class="w-8 h-8 text-muted-foreground/30 mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">No accuracy data yet</p>
-          <p class="text-xs text-muted-foreground">Generate predictions and wait for results to track accuracy over time.</p>
+          <p class="text-xs text-muted-foreground mb-3">Generate predictions and wait for results to track accuracy over time.</p>
+          <Button variant="secondary" size="sm" on:click={() => dispatch('navigate', { view: 'Predictions' })}>Go to Predictions</Button>
         </div>
       {:else}
         <div class="h-44 sm:h-52 flex items-center justify-center">
@@ -445,7 +535,8 @@
         <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="profit-empty-state">
           <TrendingUp class="w-8 h-8 text-muted-foreground/30 mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">Place your first bet to track P&L</p>
-          <p class="text-xs text-muted-foreground">Use the Kelly Calculator or Value Bets to place tracked bets.</p>
+          <p class="text-xs text-muted-foreground mb-3">Use the Kelly Calculator or Value Bets to place tracked bets.</p>
+          <Button variant="secondary" size="sm" on:click={() => dispatch('navigate', { view: 'Kelly Calculator' })}>Open Kelly Calculator</Button>
         </div>
       {:else}
         <div class="h-44 sm:h-52 flex items-center justify-center">
@@ -468,11 +559,11 @@
       <div class="mt-4">
         <div class="grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           {#each [
-            { icon: BarChart2, label: 'ELO Ratings', desc: '25% weight', iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
-            { icon: TrendingUp, label: 'Poisson Model', desc: '30% weight', iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-            { icon: Users, label: 'Form Analysis', desc: '20% weight', iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
-            { icon: Target, label: 'Head-to-Head', desc: '10% weight', iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
-            { icon: Trophy, label: 'Standings', desc: '15% weight', iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+            { icon: BarChart2, label: 'ELO Ratings', desc: `${Math.round(activeWeights.elo * 100)}% weight`, iconColor: 'text-teal-400 dark:text-teal-300', bgColor: 'bg-teal-500/10 dark:bg-teal-500/20' },
+            { icon: TrendingUp, label: 'Poisson Model', desc: `${Math.round(activeWeights.poisson * 100)}% weight`, iconColor: 'text-emerald-400 dark:text-emerald-300', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+            { icon: Users, label: 'Form Analysis', desc: `${Math.round(activeWeights.form * 100)}% weight`, iconColor: 'text-cyan-400 dark:text-cyan-300', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+            { icon: Target, label: 'Head-to-Head', desc: `${Math.round(activeWeights.h2h * 100)}% weight`, iconColor: 'text-purple-400 dark:text-purple-300', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+            { icon: Trophy, label: 'Standings', desc: `${Math.round(activeWeights.standings * 100)}% weight`, iconColor: 'text-amber-400 dark:text-amber-300', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
           ] as method}
             <div class="text-center p-3 rounded-lg bg-muted/30 border border-border/30 transition-all duration-200 hover:bg-muted/50">
               <div class="w-8 h-8 {method.bgColor} rounded-lg mx-auto mb-2 flex items-center justify-center">
@@ -487,6 +578,9 @@
           <p class="text-xs text-muted-foreground">
             <strong class="text-accent">Ensemble Model:</strong> Combining {recentMatches.length} recent matches,
             current standings, and {upcomingPredictions} upcoming fixtures across five weighted components.
+            {#if usingCustomWeights}
+              <span class="text-primary font-medium"> Using backtest-optimised weights.</span>
+            {/if}
           </p>
         </div>
       </div>
@@ -536,12 +630,9 @@
           <Target class="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">No predictions yet</p>
           <p class="text-xs text-muted-foreground mb-3">Generate your first predictions to see them here.</p>
-          <button
-            class="text-xs text-primary hover:text-primary/80 font-medium"
-            on:click={() => dispatch('navigate', { view: 'Predictions' })}
-          >
-            Go to Predictions &rarr;
-          </button>
+          <Button variant="secondary" size="sm" on:click={() => dispatch('navigate', { view: 'Predictions' })}>
+            Go to Predictions
+          </Button>
         </div>
       {:else}
         <ul class="space-y-2">
@@ -567,7 +658,10 @@
         <div class="text-center py-6">
           <Calendar class="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">No upcoming matches</p>
-          <p class="text-xs text-muted-foreground">Check back closer to the next matchday.</p>
+          <p class="text-xs text-muted-foreground mb-3">Check back closer to the next matchday.</p>
+          <Button variant="secondary" size="sm" on:click={() => dispatch('navigate', { view: 'Matches' })}>
+            View All Matches
+          </Button>
         </div>
       {:else}
         <ul class="space-y-2">

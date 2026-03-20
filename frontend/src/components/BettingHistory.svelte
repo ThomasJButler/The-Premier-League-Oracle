@@ -17,6 +17,7 @@
   import { formatDistanceToNow } from 'date-fns';
   import { betHistoryService, type StoredBet } from '../services/betting/betHistoryService';
   import { Button } from '$lib/components/ui/button';
+  import { getTeamLogo } from '../utils/teamLogos';
 
   ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
@@ -205,7 +206,7 @@
 </script>
 
 <div class="space-y-6 animate-fade-in">
-  <h2 class="text-2xl font-bold font-display text-foreground">Betting History</h2>
+  <h1 class="text-2xl font-bold font-display text-foreground">Betting History</h1>
 
   <!-- Summary Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -325,7 +326,13 @@
                 <td class="text-xs text-muted-foreground whitespace-nowrap">
                   {formatDistanceToNow(new Date(bet.createdAt), { addSuffix: true })}
                 </td>
-                <td class="whitespace-nowrap">{bet.homeTeam} vs {bet.awayTeam}</td>
+                <td class="whitespace-nowrap">
+                  <span class="inline-flex items-center gap-1">
+                    <img src={getTeamLogo(bet.homeTeam, 20)} alt="" class="w-5 h-5 rounded-full" />
+                    {bet.homeTeam} vs {bet.awayTeam}
+                    <img src={getTeamLogo(bet.awayTeam, 20)} alt="" class="w-5 h-5 rounded-full" />
+                  </span>
+                </td>
                 <td>
                   <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-foreground">
                     {formatMarket(bet.market)}

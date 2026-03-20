@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OptimizedPredictor } from './optimizedPredictions';
+import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights } from './optimizedPredictions';
 import { EloRatingSystem, sharedEloSystem } from './advancedPredictions';
 import { dataService } from '../services/dataService';
 import { backendService } from '../services/backendService';
@@ -79,6 +79,7 @@ describe('OptimizedPredictor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.removeItem('use_backend');
+    localStorage.removeItem('oracle_model_weights');
   });
 
   describe('predictMatch', () => {
@@ -529,6 +530,88 @@ describe('OptimizedPredictor', () => {
       await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC', historicalMatches);
 
       expect(backendService.predictMatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('dynamic model weights', () => {
+    // Use an in-memory store to simulate real localStorage for weight persistence tests.
+    // The global mock (setup.ts) uses vi.fn() which doesn't actually store values.
+    let store: Record<string, string>;
+
+    beforeEach(() => {
+      store = {};
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) => store[key] ?? null);
+      vi.mocked(localStorage.setItem).mockImplementation((key: string, value: string) => { store[key] = value; });
+      vi.mocked(localStorage.removeItem).mockImplementation((key: string) => { delete store[key]; });
+    });
+
+    it('should return default weights when no custom weights are saved', () => {
+      const weights = getActiveModelWeights();
+      expect(weights).toEqual({ elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 });
+    });
+
+    it('should return custom weights after saving', () => {
+      const custom = { elo: 0.30, poisson: 0.25, form: 0.15, h2h: 0.15, standings: 0.15 };
+      expect(saveModelWeights(custom)).toBe(true);
+      const weights = getActiveModelWeights();
+      expect(weights).toEqual(custom);
+    });
+
+    it('should reject weights that do not sum to 1.0', () => {
+      const bad = { elo: 0.50, poisson: 0.50, form: 0.20, h2h: 0.10, standings: 0.15 };
+      expect(saveModelWeights(bad)).toBe(false);
+      expect(getActiveModelWeights()).toEqual({ ...MODEL_WEIGHTS });
+    });
+
+    it('should reject negative weights', () => {
+      const bad = { elo: -0.10, poisson: 0.40, form: 0.30, h2h: 0.20, standings: 0.20 };
+      expect(saveModelWeights(bad)).toBe(false);
+    });
+
+    it('should reset to defaults after resetModelWeights()', () => {
+      const custom = { elo: 0.20, poisson: 0.20, form: 0.20, h2h: 0.20, standings: 0.20 };
+      saveModelWeights(custom);
+      expect(hasCustomWeights()).toBe(true);
+      resetModelWeights();
+      expect(hasCustomWeights()).toBe(false);
+      expect(getActiveModelWeights()).toEqual({ ...MODEL_WEIGHTS });
+    });
+
+    it('should report hasCustomWeights correctly', () => {
+      expect(hasCustomWeights()).toBe(false);
+      saveModelWeights({ elo: 0.20, poisson: 0.20, form: 0.20, h2h: 0.20, standings: 0.20 });
+      expect(hasCustomWeights()).toBe(true);
+    });
+
+    it('should fall back to defaults for corrupted localStorage data', () => {
+      store['oracle_model_weights'] = 'not-json';
+      expect(getActiveModelWeights()).toEqual({ ...MODEL_WEIGHTS });
+    });
+
+    it('should fall back to defaults when stored weights have missing keys', () => {
+      store['oracle_model_weights'] = JSON.stringify({ elo: 0.5, poisson: 0.5 });
+      expect(getActiveModelWeights()).toEqual({ ...MODEL_WEIGHTS });
+    });
+
+    it('should fall back to defaults when stored weights contain NaN', () => {
+      store['oracle_model_weights'] = JSON.stringify({
+        elo: NaN, poisson: 0.25, form: 0.25, h2h: 0.25, standings: 0.25
+      });
+      expect(getActiveModelWeights()).toEqual({ ...MODEL_WEIGHTS });
+    });
+
+    it('should use custom weights in predictions when saved', async () => {
+      vi.mocked(dataService.getStandings).mockResolvedValue([]);
+      vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+      vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+      // Save custom weights with more ELO emphasis
+      const custom = { elo: 0.40, poisson: 0.20, form: 0.15, h2h: 0.10, standings: 0.15 };
+      saveModelWeights(custom);
+
+      const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+      expect(prediction.modelWeights.elo).toBeCloseTo(0.40);
+      expect(prediction.modelWeights.poisson).toBeCloseTo(0.20);
     });
   });
 });

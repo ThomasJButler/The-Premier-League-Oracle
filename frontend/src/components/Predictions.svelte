@@ -3,7 +3,8 @@
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
-  import { OptimizedPredictor } from '../lib/optimizedPredictions';
+  import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
+  import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
@@ -12,15 +13,16 @@
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
-  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2 } from 'lucide-svelte';
+  import { TrendingUp, Target, Users, BarChart3, Calculator, Package, ChevronDown, ChevronUp, FlaskConical, Sparkles, Loader2, CheckCircle2, XCircle } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { BacktestRunner, type BacktestResult } from '../lib/backtest';
   import { aiAnalysisService } from '../services/aiAnalysis';
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
+  import DataFreshness from './DataFreshness.svelte';
 
-  let predictions: Array<Match & { 
+  let predictions: Array<Match & {
     prediction?: Prediction;
     detailedAnalysis?: {
       predictedScore: string;
@@ -34,9 +36,11 @@
     };
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
+    storedResult?: boolean; // true = correct, false = incorrect, undefined = pending/unsettled
   }> = [];
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
+  let dataTimestamp: number | null = null;
   let rollingLast10Accuracy = 0;
   let loading = true;
   let error: string | null = null;
@@ -49,7 +53,7 @@
   let batchPredictionMessage = '';
   let isBatchPredicting = false;
   let currentProcessingTeam = '';
-  const totalGameweeks = 38; // Premier League: 20 teams × 2 = 38 matchdays (always)
+  const totalGameweeks = PREMIER_LEAGUE_GAMEWEEKS;
 
   // Backtest state
   let backtestResult: BacktestResult | null = null;
@@ -57,6 +61,8 @@
   let backtestProgress = 0;
   let backtestTotal = 0;
   let backtestError: string | null = null;
+  let weightsApplied = false;
+  let usingCustomWeights = hasCustomWeights();
 
   // AI analysis state — keyed by matchId
   let aiAnalyses: Map<string, string> = new Map();
@@ -88,6 +94,9 @@
       homeForm: detail.homeForm,
       awayForm: detail.awayForm,
       insights: detail.keyFactors,
+      // P7b enrichment — pass H2H record and Poisson model to the AI prompt
+      h2hRecord: detail.h2hRecord,
+      poissonProbs: detail.poissonProbs,
     };
 
     try {
@@ -150,34 +159,66 @@
     aiAnalyses = new Map();
     aiAnalysisLoading = new Set();
     aiAnalysisErrors = new Map();
-    
+
     try {
       // Get all matches for the season
       const allMatches = await dataService.getCurrentSeasonMatches();
-      
+      dataTimestamp = dataService.getLastFetched('matches');
+
       // Filter for selected gameweek using the matchday field from the API
       const gameweekMatches = allMatches.filter(m => m.matchday === gameweek);
-      
-      // Filter to only show future matches (after current date/time)
-      const now = new Date();
-      const futureMatches = gameweekMatches.filter(match => {
-        const matchDate = new Date(match.date);
-        return matchDate > now || !match.result; // Show future matches or matches without results
-      });
-      
-      // If no future matches in this gameweek, show a message
-      if (futureMatches.length === 0 && gameweekMatches.length > 0) {
-        error = 'All matches in this gameweek have already been played. Please select a future gameweek.';
+
+      if (gameweekMatches.length === 0) {
+        error = 'No matches found for this gameweek.';
         loading = false;
         return;
       }
-      
-      // Initialize matches with pending status
-      predictions = futureMatches.map(match => ({
-        ...match,
-        predictionStatus: 'pending' as const
-      }));
-      
+
+      // Show ALL matches in the gameweek — both upcoming and completed
+      // For completed matches with stored predictions, reconstruct the prediction display
+      predictions = gameweekMatches.map(match => {
+        const storedPreds = predictionTracker.getMatchPredictions(match.id);
+        // Use the most recent stored prediction for this match (if any)
+        const stored = storedPreds.length > 0
+          ? storedPreds.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+          : null;
+
+        if (stored) {
+          // Reconstruct prediction card data from the stored prediction
+          return {
+            ...match,
+            prediction: {
+              predicted_result: stored.predictedResult,
+              confidence_score: stored.confidence,
+              predicted_home_goals: stored.predictedHomeGoals,
+              predicted_away_goals: stored.predictedAwayGoals,
+              prediction_date: stored.timestamp,
+              created_at: stored.timestamp,
+              id: stored.id,
+              match_id: match.id
+            },
+            detailedAnalysis: {
+              predictedScore: `${stored.predictedHomeGoals}-${stored.predictedAwayGoals}`,
+              keyFactors: [] as string[],
+              confidence: stored.confidence * 100,
+              homeForm: '-',
+              awayForm: '-',
+              h2hRecord: '-',
+              poissonProbs: { homeWin: 0, draw: 0, awayWin: 0 },
+              recommendedStake: 0
+            },
+            predictionStatus: 'complete' as const,
+            storedResult: stored.isCorrect
+          };
+        }
+
+        // No stored prediction — show as pending (ready for prediction generation)
+        return {
+          ...match,
+          predictionStatus: 'pending' as const
+        };
+      });
+
       // Load full accuracy breakdown from PredictionTracker
       const fullStats = predictionTracker.getAccuracyStats(90);
       if (fullStats.totalPredictions > 0) {
@@ -191,7 +232,7 @@
         const correct10 = recent10.filter(p => p.isCorrect).length;
         rollingLast10Accuracy = (correct10 / recent10.length) * 100;
       }
-      
+
     } catch (err) {
       error = 'Failed to load matches. Please try again.';
       // Error loading predictions
@@ -351,13 +392,33 @@
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
   }
+
+  /** Parse form string into individual results for dot rendering */
+  function parseFormString(form: string): string[] {
+    if (!form || form === '-') return [];
+    // Handle comma-separated ("W,W,D,L,W") and continuous ("WWDLW") formats
+    if (form.includes(',')) return form.split(',').slice(-5);
+    return form.split('').filter(c => ['W', 'D', 'L'].includes(c)).slice(-5);
+  }
+
+  function getFormDotClass(result: string): string {
+    switch (result) {
+      case 'W': return 'bg-green-500';
+      case 'D': return 'bg-slate-400';
+      case 'L': return 'bg-red-500';
+      default: return 'bg-muted';
+    }
+  }
 </script>
 
 <div class="space-y-6 animate-fade-in">
   <!-- Header with Gameweek Selector -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold font-display text-foreground">Match Predictions</h2>
-    
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold font-display text-foreground">Match Predictions</h1>
+      <DataFreshness timestamp={dataTimestamp} />
+    </div>
+
     <div class="flex flex-wrap items-center gap-3 sm:gap-4">
       <!-- Gameweek Selector -->
       <div class="flex items-center gap-2">
@@ -563,6 +624,83 @@
                 </div>
               {/each}
             </div>
+
+            <!-- Optimised Weights -->
+            {#if backtestResult.optimisedWeights}
+              {@const currentWeights = getActiveModelWeights()}
+              <div class="mt-4 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                <div class="flex items-center gap-2 mb-2">
+                  <FlaskConical class="w-4 h-4 text-primary" />
+                  <span class="text-sm font-medium text-foreground">Optimised Weights</span>
+                  {#if weightsApplied}
+                    <Badge variant="outline" class="text-emerald-500 border-emerald-500/30">
+                      Applied
+                    </Badge>
+                  {:else if backtestResult.optimisedWeights.improvement > 0}
+                    <Badge variant="outline" class="text-emerald-500 border-emerald-500/30">
+                      +{backtestResult.optimisedWeights.improvement.toFixed(1)}pp
+                    </Badge>
+                  {:else}
+                    <Badge variant="outline" class="text-muted-foreground">
+                      Current weights are optimal
+                    </Badge>
+                  {/if}
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                  {#each [
+                    { label: 'ELO', current: currentWeights.elo * 100, optimal: backtestResult.optimisedWeights.elo * 100 },
+                    { label: 'Poisson', current: currentWeights.poisson * 100, optimal: backtestResult.optimisedWeights.poisson * 100 },
+                    { label: 'Form', current: currentWeights.form * 100, optimal: backtestResult.optimisedWeights.form * 100 },
+                    { label: 'H2H', current: currentWeights.h2h * 100, optimal: backtestResult.optimisedWeights.h2h * 100 },
+                    { label: 'Pos.', current: currentWeights.standings * 100, optimal: backtestResult.optimisedWeights.standings * 100 }
+                  ] as w}
+                    <div class="p-1.5 rounded bg-muted/50">
+                      <div class="text-[10px] text-muted-foreground">{w.label}</div>
+                      <div class="text-xs font-bold text-primary">{w.optimal.toFixed(0)}%</div>
+                      <div class="text-[10px] text-muted-foreground">was {w.current.toFixed(0)}%</div>
+                    </div>
+                  {/each}
+                </div>
+                <p class="text-[10px] text-muted-foreground mt-2">
+                  Accuracy: {(backtestResult.optimisedWeights.accuracy * 100).toFixed(1)}% · Log Loss: {backtestResult.optimisedWeights.logLoss.toFixed(3)}
+                </p>
+                <!-- Apply / Reset buttons -->
+                <div class="flex gap-2 mt-3">
+                  {#if !weightsApplied && backtestResult.optimisedWeights.improvement > 0}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      class="text-xs"
+                      on:click={() => {
+                        const ow = backtestResult?.optimisedWeights;
+                        if (!ow) return;
+                        const weights = { elo: ow.elo, poisson: ow.poisson, form: ow.form, h2h: ow.h2h, standings: ow.standings };
+                        if (saveModelWeights(weights)) {
+                          weightsApplied = true;
+                          usingCustomWeights = true;
+                        }
+                      }}
+                    >
+                      Apply Optimal Weights
+                    </Button>
+                  {/if}
+                  {#if usingCustomWeights}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="text-xs"
+                      on:click={() => {
+                        resetModelWeights();
+                        weightsApplied = false;
+                        usingCustomWeights = false;
+                      }}
+                    >
+                      Reset to Defaults
+                    </Button>
+                  {/if}
+                </div>
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -602,8 +740,39 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton grid matching the 3-col prediction card layout -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {#each Array(6) as _, i}
+        <div class="rounded-xl border border-border bg-card shadow-sm p-5 space-y-4" style="animation-delay: {i * 80}ms">
+          <!-- Date + badge row -->
+          <div class="flex justify-between items-start">
+            <div class="skeleton h-4 w-24 rounded"></div>
+            <div class="skeleton h-5 w-16 rounded-full"></div>
+          </div>
+          <!-- Team matchup -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+              <div class="skeleton h-4 w-28 rounded"></div>
+            </div>
+            <div class="text-center text-xs text-muted-foreground/50">vs</div>
+            <div class="flex items-center gap-3">
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+              <div class="skeleton h-4 w-24 rounded"></div>
+            </div>
+          </div>
+          <!-- Form dots -->
+          <div class="flex justify-center gap-1.5">
+            {#each Array(5) as _}
+              <div class="skeleton h-2 w-2 rounded-full"></div>
+            {/each}
+          </div>
+          <!-- Probability bar -->
+          <div class="skeleton h-3 w-full rounded-full"></div>
+          <!-- Button -->
+          <div class="skeleton h-9 w-full rounded-lg"></div>
+        </div>
+      {/each}
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
@@ -614,15 +783,28 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {#each predictions as prediction, i (prediction.id)}
         <div class="flip-card relative" style="animation-delay: {i * 50}ms">
-          <!-- Status Indicator Overlay -->
-          {#if prediction.predictionStatus === 'processing'}
+          <!-- Result Indicator — shows whether the prediction was correct after match finishes -->
+          {#if prediction.result && prediction.storedResult === true}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none" data-testid="result-correct">
+              <div class="bg-green-500 text-white rounded-full p-1.5 animate-scale-in shadow-lg" title="Prediction correct">
+                <CheckCircle2 class="w-5 h-5" />
+              </div>
+            </div>
+          {:else if prediction.result && prediction.storedResult === false}
+            <div class="absolute top-2 right-2 z-10 pointer-events-none" data-testid="result-incorrect">
+              <div class="bg-red-500 text-white rounded-full p-1.5 animate-scale-in shadow-lg" title="Prediction incorrect">
+                <XCircle class="w-5 h-5" />
+              </div>
+            </div>
+          <!-- Status Indicator Overlay — shows prediction generation progress -->
+          {:else if prediction.predictionStatus === 'processing'}
             <div class="absolute inset-0 bg-blue-500/10 rounded-lg z-10 flex items-center justify-center pointer-events-none">
               <div class="bg-card rounded-lg p-3 shadow-lg flex items-center gap-2">
                 <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-sm font-medium">Analyzing...</span>
+                <span class="text-sm font-medium">Analysing...</span>
               </div>
             </div>
-          {:else if prediction.predictionStatus === 'complete'}
+          {:else if prediction.predictionStatus === 'complete' && !prediction.result}
             <div class="absolute top-2 right-2 z-10 pointer-events-none">
               <div class="bg-green-500 text-white rounded-full p-1 animate-scale-in">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,7 +824,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5" aria-hidden={flippedCards.has(prediction.id)}>
+            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -660,38 +842,84 @@
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.home_team, 40)} alt="{prediction.home_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
                     <span class="text-sm font-medium text-foreground text-center">{prediction.home_team}</span>
+                    {#if prediction.detailedAnalysis}
+                      <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.home_team} recent form">
+                        {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
+                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
                   <div class="text-center">
-                    <span class="text-xl font-bold text-muted-foreground">vs</span>
-                    {#if prediction.detailedAnalysis}
-                      <div class="text-2xl font-bold text-primary mt-1">
-                        {prediction.detailedAnalysis.predictedScore}
+                    {#if prediction.result && prediction.home_goals !== null && prediction.away_goals !== null}
+                      <!-- Completed match: show actual score prominently, predicted score smaller -->
+                      <div class="text-2xl font-bold text-foreground" data-testid="actual-score">
+                        {prediction.home_goals}-{prediction.away_goals}
                       </div>
+                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Full Time</div>
+                      {#if prediction.detailedAnalysis}
+                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                          Predicted: {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
+                    {:else}
+                      <!-- Upcoming match: show predicted score -->
+                      <span class="text-xl font-bold text-muted-foreground">vs</span>
+                      {#if prediction.detailedAnalysis}
+                        <div class="text-2xl font-bold text-primary mt-1">
+                          {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
                     {/if}
                   </div>
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.away_team, 40)} alt="{prediction.away_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
                     <span class="text-sm font-medium text-foreground text-center">{prediction.away_team}</span>
+                    {#if prediction.detailedAnalysis}
+                      <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.away_team} recent form">
+                        {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
+                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
                 </div>
               </div>
 
               {#if prediction.prediction}
                 <div class="mb-4">
-                  <div class="flex justify-around items-center bg-muted rounded-lg p-3">
+                  <div class="flex rounded-lg overflow-hidden h-8 bg-muted" role="img" aria-label="Outcome probabilities: Home {prediction.detailedAnalysis?.poissonProbs.homeWin ? (prediction.detailedAnalysis.poissonProbs.homeWin * 100).toFixed(0) : '-'}%, Draw {prediction.detailedAnalysis?.poissonProbs.draw ? (prediction.detailedAnalysis.poissonProbs.draw * 100).toFixed(0) : '-'}%, Away {prediction.detailedAnalysis?.poissonProbs.awayWin ? (prediction.detailedAnalysis.poissonProbs.awayWin * 100).toFixed(0) : '-'}%">
                     {#each [
-                      { label: 'Home', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin },
-                      { label: 'Draw', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw },
-                      { label: 'Away', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin }
+                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, barColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-200' },
+                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, barColor: 'bg-amber-400', textColor: 'text-amber-700 dark:text-amber-200' },
+                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, barColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-200' }
                     ] as outcome}
-                      <div class="text-center px-2">
-                        <span class="block text-xs font-medium text-muted-foreground">{outcome.label}</span>
-                        <span class="block text-lg font-bold {prediction.prediction.predicted_result === outcome.value ? 'text-primary' : 'text-muted-foreground'}">
-                          {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
+                      <div
+                        class="flex items-center justify-center transition-all duration-500 {prediction.prediction.predicted_result === outcome.value ? outcome.barColor + '/30' : outcome.barColor + '/10'}"
+                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%"
+                      >
+                        <span class="text-[11px] font-semibold {prediction.prediction.predicted_result === outcome.value ? outcome.textColor : 'text-muted-foreground'}">
+                          {outcome.label} {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
                         </span>
                       </div>
                     {/each}
                   </div>
+                </div>
+              {/if}
+
+              <!-- Result verdict banner for settled matches with predictions -->
+              {#if prediction.result && prediction.prediction}
+                <div
+                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
+                  data-testid="result-verdict"
+                >
+                  {#if prediction.storedResult === true}
+                    Correct prediction
+                  {:else if prediction.storedResult === false}
+                    Incorrect — actual result: {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
+                  {:else}
+                    Awaiting result
+                  {/if}
                 </div>
               {/if}
 
@@ -705,8 +933,13 @@
                   tabindex={flippedCards.has(prediction.id) ? -1 : 0}
                 >
                   <Calculator class="w-4 h-4" />
-                  Tap for Analysis
+                  {prediction.result ? 'View Analysis' : 'Tap for Analysis'}
                 </Button>
+              {:else if prediction.result}
+                <!-- Completed match with no prediction — show actual result only -->
+                <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
+                  {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'} — no prediction made
+                </div>
               {:else}
                 <div class="w-full text-center text-sm text-muted-foreground mt-3 py-2">
                   Click "Predict Gameweek" to generate analysis
@@ -924,6 +1157,19 @@
     perspective: 1000px;
     animation: slideInUp 0.6s ease-out forwards;
     opacity: 0;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .flip-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .flip-card:hover {
+      transform: translateY(-2px);
+    }
+    .flip-card:active {
+      transform: translateY(0px) scale(0.99);
+    }
   }
 
   @media (min-width: 640px) {

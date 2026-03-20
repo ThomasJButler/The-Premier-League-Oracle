@@ -9,6 +9,8 @@
  * Analyses are cached in localStorage for 24 hours per match.
  */
 
+import { getSavedAiModel } from '$lib/constants';
+
 // --- Types ---
 
 export interface AnalysisInput {
@@ -23,6 +25,9 @@ export interface AnalysisInput {
   homeForm: string;
   awayForm: string;
   insights: string[];
+  /** Optional enrichment fields (P7b — AI-powered match insights) */
+  h2hRecord?: string;
+  poissonProbs?: { homeWin: number; draw: number; awayWin: number };
 }
 
 interface CachedAnalysis {
@@ -205,27 +210,37 @@ class AIAnalysisService {
       input.predictedResult === 'H' ? `${input.homeTeam} win` :
       input.predictedResult === 'A' ? `${input.awayTeam} win` : 'Draw';
 
-    return `Analyse this upcoming Premier League match as a football expert. Be concise (150–200 words max), insightful, and data-driven. Use UK English.
+    // Build optional sections only when enrichment data is available
+    const sections: string[] = [];
 
-Match: ${input.homeTeam} vs ${input.awayTeam}
+    sections.push(`Analyse this upcoming Premier League match as a football expert. Be concise (150–200 words max), insightful, and data-driven. Use UK English.`);
+
+    sections.push(`Match: ${input.homeTeam} vs ${input.awayTeam}
 Date: ${input.matchDate}
 Model Prediction: ${resultLabel} (${(input.confidence * 100).toFixed(0)}% confidence)
-Predicted Score: ${input.predictedHomeGoals}–${input.predictedAwayGoals}
+Predicted Score: ${input.predictedHomeGoals}–${input.predictedAwayGoals}`);
 
-Statistical Factors:
-${input.insights.map(i => `- ${i}`).join('\n')}
+    if (input.poissonProbs) {
+      sections.push(`Poisson Model: Home ${(input.poissonProbs.homeWin * 100).toFixed(0)}% | Draw ${(input.poissonProbs.draw * 100).toFixed(0)}% | Away ${(input.poissonProbs.awayWin * 100).toFixed(0)}%`);
+    }
 
-Recent Form:
-- ${input.homeTeam}: ${input.homeForm}
-- ${input.awayTeam}: ${input.awayForm}
+    sections.push(`Statistical Factors:\n${input.insights.map(i => `- ${i}`).join('\n')}`);
 
-Provide:
+    sections.push(`Recent Form:\n- ${input.homeTeam}: ${input.homeForm}\n- ${input.awayTeam}: ${input.awayForm}`);
+
+    if (input.h2hRecord && input.h2hRecord !== '-' && input.h2hRecord !== 'No H2H data') {
+      sections.push(`Head-to-Head: ${input.h2hRecord}`);
+    }
+
+    sections.push(`Provide:
 1. A brief narrative explaining why this result is likely
 2. Key tactical or form factors the model has identified
 3. Any risks or uncertainties (fixture congestion, derby intensity, momentum shifts)
 4. A confidence qualifier — is the model's confidence justified given the data?
 
-Do NOT invent specific injury news, transfer rumours, or manager quotes. Only reference factors visible in the data above. Be honest about limitations.`;
+Do NOT invent specific injury news, transfer rumours, or manager quotes. Only reference factors visible in the data above. Be honest about limitations.`);
+
+    return sections.join('\n\n');
   }
 
   /** Call the /api/chat proxy with the analysis prompt */
@@ -243,6 +258,7 @@ Do NOT invent specific injury news, transfer rumours, or manager quotes. Only re
           content: this.buildPrompt(input),
         },
       ],
+      model: getSavedAiModel(),
     };
 
     // Only send user key if server doesn't have one

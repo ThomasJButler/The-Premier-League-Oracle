@@ -8,6 +8,7 @@ import type { Standing } from '../types';
 vi.mock('../services/dataService', () => ({
   dataService: {
     getStandings: vi.fn(),
+    getLastFetched: vi.fn(() => Date.now()),
   },
 }));
 
@@ -67,7 +68,7 @@ vi.mock('lucide-svelte', () => {
     $set() {}
   };
   return {
-    Trophy: stub, Minus: stub, ChevronUp: stub, ChevronDown: stub,
+    Trophy: stub, Minus: stub, ChevronUp: stub, ChevronDown: stub, Clock: stub,
   };
 });
 
@@ -139,11 +140,11 @@ describe('StandingsTable', () => {
     expect(screen.getByText('Premier League Table')).toBeInTheDocument();
   });
 
-  it('shows loading spinner initially', () => {
+  it('shows skeleton loading state initially', () => {
     // Return a never-resolving promise so loading stays true during the synchronous check
     vi.mocked(dataService.getStandings).mockReturnValue(new Promise(() => {}));
     render(StandingsTable);
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(document.querySelector('.skeleton')).toBeInTheDocument();
   });
 
   it('shows error when no API key is configured', async () => {
@@ -260,5 +261,33 @@ describe('StandingsTable', () => {
     await act();
     const table = document.querySelector('table[aria-label="Premier League standings"]');
     expect(table).toBeInTheDocument();
+  });
+
+  it('renders Conference League in the legend', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    expect(screen.getByText('Conference League')).toBeInTheDocument();
+  });
+
+  it('renders all four zone legend items', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    expect(screen.getByText('Champions League')).toBeInTheDocument();
+    expect(screen.getByText('Europa League')).toBeInTheDocument();
+    expect(screen.getByText('Conference League')).toBeInTheDocument();
+    expect(screen.getByText('Relegation')).toBeInTheDocument();
+  });
+
+  it('renders form dots with accessibility labels', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    const winDots = screen.queryAllByLabelText('Win');
+    const drawDots = screen.queryAllByLabelText('Draw');
+    const lossDots = screen.queryAllByLabelText('Loss');
+    // All teams have form data — at least some W/D/L dots should exist
+    expect(winDots.length + drawDots.length + lossDots.length).toBeGreaterThan(0);
   });
 });

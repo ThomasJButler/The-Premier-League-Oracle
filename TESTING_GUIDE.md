@@ -29,7 +29,7 @@ cd frontend
 # TypeScript + Svelte type check (must pass before committing)
 npm run check
 
-# Unit tests — 512 tests across 32 files
+# Unit tests — 561 tests across 34 files
 npm run test:run          # One-shot, no watch
 npm run test              # Watch mode (re-runs on file changes)
 npm run test:coverage     # With coverage report (thresholds: 60/65/65/60)
@@ -51,14 +51,15 @@ npx playwright show-report                   # View last report (localhost:9323)
 conda activate anaconda-ml-ai
 cd backend
 
-# All tests — 131 across 4 files
+# All tests — 190 across 5 files
 python -m pytest tests/ -v
 
 # Specific test files
-python -m pytest tests/test_free_tier_features.py -v     # 45 feature engineering tests
-python -m pytest tests/test_training_pipeline.py -v       # 25 training pipeline tests
-python -m pytest tests/test_api.py -v                     # 16 API endpoint tests
-python -m pytest tests/test_rag.py -v                     # 44 RAG engine tests
+python -m pytest tests/test_free_tier_features.py -v     # 60 feature engineering tests (incl. 10 odds + Elo leakage)
+python -m pytest tests/test_train_free_tier.py -v         # 33 training pipeline tests (incl. rolling CV, odds, calibration)
+python -m pytest tests/test_predict_free_tier.py -v       # 17 prediction endpoint tests
+python -m pytest tests/test_rag.py -v                     # 58 RAG engine tests (incl. 14 player data)
+python -m pytest tests/test_web_search.py -v              # 22 web search fallback tests
 
 # Note: 8 tests skip without libomp on macOS — this is expected
 ```
@@ -104,10 +105,10 @@ python train_free_tier.py
 # Calibration curve saved to backend/models/calibration_curve.png
 ```
 
-**Expected results (March 2026):**
-- XGBoost calibrated: ~52.6% accuracy
-- LR baseline: ~44.3%
-- Draw accuracy: ~1.9% (essentially non-functional — P7a improvement)
+**Expected results (v3, March 2026):**
+- XGBoost v3 (isotonic calibration): 53.3% accuracy, log loss 0.954
+- LR baseline: 47.9%
+- Draw AUC-ROC: 0.601 (model ranks draw-prone matches correctly)
 
 ---
 
@@ -116,8 +117,8 @@ python train_free_tier.py
 Run this when you haven't touched the project in a while:
 
 - [ ] `cd frontend && npm run check` → 0 errors, 0 warnings
-- [ ] `cd frontend && npm run test:run` → 512 tests pass
-- [ ] `conda activate anaconda-ml-ai && cd backend && python -m pytest tests/ -v` → 131 tests pass (8 skip OK)
+- [ ] `cd frontend && npm run test:run` → 561 tests pass
+- [ ] `conda activate anaconda-ml-ai && cd backend && python -m pytest tests/ -v` → 190 tests pass (8 skip OK)
 - [ ] Backend starts: `uvicorn app.api.main:app --reload --port 8000`
 - [ ] `curl http://localhost:8000/health` → healthy, model loaded
 - [ ] Frontend starts: `cd frontend && npm run dev`
@@ -141,11 +142,18 @@ Run this when you haven't touched the project in a while:
 
 ## CI Pipeline
 
-GitHub Actions runs on every push:
-1. TypeScript/Svelte check (`npm run check`)
-2. Unit tests with coverage (`npm run test:coverage`)
-3. ESLint
-4. Backend ruff linting
-5. Production build (`npm run build`)
+GitHub Actions runs on every push across three parallel jobs:
 
-Playwright E2E is not in CI (deferred — P7e).
+**Frontend checks**
+1. ESLint
+2. TypeScript/Svelte check (`npm run check`)
+3. Unit tests with coverage (`npm run test:coverage`)
+4. Production build (`npm run build`)
+
+**Playwright E2E tests** (separate job)
+- Runs 43 tests across 6 specs with Chromium at 3 viewports (123 executions total)
+- HTML report uploaded as an artifact on every run, retained for 14 days
+
+**Backend checks**
+1. ruff linting
+2. pytest (`python -m pytest tests/ -v`)

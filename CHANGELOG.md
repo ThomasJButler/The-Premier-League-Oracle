@@ -2,6 +2,373 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Documentation accuracy sweep and stale file cleanup
+
+### Fixed: Stale numbers, misleading targets, and missing configuration
+- **Spec 01 accuracy target**: Corrected from aspirational 72–75% to realistic 52–58% (industry-standard range for PL models). The free-tier XGBoost achieves 53.3% — within this range. The original target was unrealistic without paid data sources.
+- **Spec 08 test count**: Updated from stale "86 tests across 3 files" to actual "190 tests across 5 files" (60 features + 33 training + 17 API + 58 RAG + 22 web search).
+- **IMPLEMENTATION_PLAN.md**: Fixed P7 progress from 46/48 to 47/49; corrected 5 stale per-file test counts (backtest 15→22, optimizedPredictions 18→28, ChatBot 18→23, Settings 16→18, Dashboard 14→15); added missing DataFreshness.test.ts (9 tests).
+- **CLAUDE.md**: Fixed P7 count (44/46 → 47/49); removed archived LSTM/Transformer from tech stack line (only XGBoost is active).
+- **README.md**: Updated test badge (522 → 561), test command comment (522 → 561), tech stack table (540 → 561, 33 → 34 files).
+- **.env.example**: Added missing `ANTHROPIC_API_KEY` and `ORACLE_AI_MODEL` env vars (added in P7b but never documented in the example file). Aligned model slugs with DEPLOYMENT.md (use `-latest` aliases).
+
+### Removed: Stale Ralph loop prompt files
+- Deleted `PROMPT_plan.md` and `PROMPT_build.md` — these were Ralph loop infrastructure files that overlapped heavily with `CLAUDE.md` and contained stale stub references to issues resolved in P0–P5. The orchestration logic they served is now handled by `CLAUDE.md` and `AGENTS.md`.
+
+### Why
+Every documentation file should be a reliable source of truth. Stale test counts, an aspirational accuracy target presented as a current expectation, and missing env vars all erode trust in the docs. This sweep aligns all project documents with the actual codebase state.
+
+---
+
+## 20 March 2026 — Centralise Prediction Model Constants (P7k)
+
+### Changed: Extract magic numbers to named constants with documented derivations
+- New constants in `constants.ts`: ~30 prediction parameters extracted from `optimizedPredictions.ts`, grouped by domain:
+  - **ELO draw formula**: `ELO_DRAW_BASE_RATE` (0.265 = 2000-2024 PL average), `ELO_DRAW_SCALE` (600), bounds [0.10, 0.35]
+  - **Poisson bounds**: lambda clamp [0.3, 4.5], fallback averages (home 1.5, away 1.2, league 1.35)
+  - **Form analysis**: recency weights [0.35, 0.25, 0.20, 0.12, 0.08], draw weight 0.33, form-derived draw probability params
+  - **Confidence**: bounds [0.25, 0.95], boost/penalty thresholds, model disagreement penalty (0.08)
+  - **Standings**: position step 0.025
+  - **ML backend**: agreement boost/disagreement penalty caps and factors
+  - **Referee**: adjustment bounds (±3%) and noise threshold (0.5%)
+  - **Season**: `PREMIER_LEAGUE_GAMEWEEKS` (38)
+- `Predictions.svelte` and `SeasonTimeline.svelte`: replaced hardcoded `38` with `PREMIER_LEAGUE_GAMEWEEKS` import
+- **Why:** 15+ magic numbers scattered across `optimizedPredictions.ts` made tuning opaque. Now all parameters are in one file with comments explaining their derivation. Resolves 6 Active Stubs items.
+- **Pure refactor**: 0 behavioural changes, 561/561 tests pass without modifications
+
+---
+
+## 20 March 2026 — Apply Backtest-Derived Ensemble Weights (P7j)
+
+### Added: Dynamic ensemble weight persistence
+- New functions in `optimizedPredictions.ts`: `getActiveModelWeights()`, `saveModelWeights()`, `resetModelWeights()`, `hasCustomWeights()` — users can apply optimal weights found by the backtest `WeightOptimiser` grid search
+- Predictions backtest panel: "Apply Optimal Weights" button saves optimised weights to localStorage; "Reset to Defaults" reverts. Current weights now read dynamically instead of hardcoded values
+- Dashboard "How We Predict": reads active weights via `getActiveModelWeights()`, shows "Using backtest-optimised weights" note when custom weights are active
+- `combineModels()` and effective weight reporting now use `getActiveModelWeights()` instead of static `MODEL_WEIGHTS`
+- backtest.ts `WeightOptimiser.optimise()` compares against active weights (not just hardcoded defaults)
+- **Why:** The backtest infrastructure (10,626 weight combinations grid search) already existed but was display-only. Users could see "these weights would improve accuracy by X%" but couldn't apply them. Now the loop is closed.
+- **10 new Vitest tests** covering: save/load/reset/validate custom weights, corrupted data fallback, NaN rejection, missing keys fallback, sum validation, integration with `predictMatch()`
+- **561 Vitest tests** (34 files), all passing
+
+---
+
+## 20 March 2026 — Documentation Cleanup and Test Quality Improvements
+
+### Fixed: Documentation accuracy and redundant files
+- CLAUDE.md: added `web_search.py` to backend structure, documented `api/chat.ts` Vercel Edge Function
+- Removed `backend/docs/FOR_BEGINNERS.md`: purely educational content with no project-specific facts, referenced archived pro-tier code paths that no longer exist
+- IMPLEMENTATION_PLAN.md: fixed draw prediction inconsistency (marked done in P7a but unchecked in Improvement Opportunities), updated P7 count to 46/46, trimmed verbose completed item descriptions
+
+### Fixed: backtest.test.ts ELO snapshot/restore test quality (P4h)
+- Replaced no-op ELO mocks with a stateful fake that actually tracks ratings, team additions, and processed match IDs — the rollback contract is now genuinely tested
+- Added 2 new tests: (1) verifies ELO ratings, new teams, and processed IDs are restored after a backtest run; (2) verifies restoration even when all predictions throw
+- **Why:** The previous mock silently accepted any arguments, so a bug corrupting live ELO ratings after a backtest would have passed all tests. The stateful fake catches such regressions.
+- **551 Vitest tests** (34 files), all passing
+
+---
+
+## 20 March 2026 — Data Freshness Indicator (P1f)
+
+### Added: "Last updated" indicator on all data displays
+- New `DataFreshness.svelte` component: displays relative time since last data fetch ("just now", "30s ago", "5m ago", "2h ago", "3d ago") with 30-second auto-refresh interval
+- New `getLastFetched(dataType)` method on `DataService`: exposes per-data-type cache timestamps (standings, matches, scorers, live) without changing existing return types
+- Integrated DataFreshness into 5 page components: StandingsTable, MatchList, Predictions, TopScorers, LiveMatches
+- LiveMatches: replaced verbose `lastRefresh.toLocaleTimeString()` display with the new component for consistent UX
+- **9 new Vitest tests** (549 total across 34 files): null rendering, relative time formatting at all thresholds (seconds/minutes/hours/days), accessibility title, auto-update over time, prop change reactivity
+- Updated lucide-svelte mocks in 4 existing test files to include `Clock` icon stub
+
+---
+
+## 20 March 2026 — Web Search Fallback and Documentation Cleanup
+
+### Added: Web search fallback for RAG chat (P7h)
+- New module `backend/app/api/web_search.py`: when the RAG engine cannot ground a response on match/player data, searches DuckDuckGo for current Premier League information and injects results into the system prompt
+- `SearchResult` dataclass, `search_premier_league()` function with "Premier League" query scoping, `inject_search_context()` prompt formatter
+- In-memory TTL cache (15-minute expiry, 100-entry cap) following existing `_rate_limit_store` pattern
+- Orchestrated in `main.py` via `asyncio.to_thread()` — non-blocking in the async endpoint
+- Graceful degradation: if `duckduckgo-search` is not installed or search fails, falls back silently to existing ungrounded behaviour
+- Added `duckduckgo-search==7.5.5` to `requirements.txt`
+- **22 new backend tests** (190 total across 5 files): SearchResult creation, cache behaviour (hits/misses/expiry/eviction), search function (scoping, truncation, filtering, error handling), prompt injection formatting
+
+### Fixed: Documentation drift across project
+- Updated feature count from 99 to 114 in README.md, DEPLOYMENT.md, spec 08, backend README, and architecture descriptions
+- Updated model accuracy from 51% to 53.3% across all docs
+- Updated test counts: 540 frontend Vitest (33 files), 190 backend pytest (5 files)
+- Checked off P2n and P5c Playwright CI items (already completed via P7e)
+- Corrected P5f type safety references: removed stale Sidebar.svelte:57 (file is 43 lines), added actual shadcn dialog/sheet locations
+- Removed deleted app/security/ directory from backend README structure diagram
+- Updated P7 completion counter to 44/46
+
+---
+
+## 20 March 2026 — Odds-as-Features and Documentation Refresh
+
+### Added: Bookmaker odds as ML features (P7a — high impact)
+- Added 10 bookmaker odds features to `FreeTierFeatureEngineer` (109 total, up from 99): Pinnacle implied probabilities (home/draw/away), market average implied probabilities, overround, Asian handicap line, over/under 2.5 probability, Pinnacle-vs-average sharp divergence
+- Dual-mode architecture: CSV odds columns at training time, optional API parameter at inference time. XGBoost handles missing odds gracefully (0.0 features — no imputation required)
+- `build_dataset()` now extracts odds from CSV rows via `_extract_odds_from_row()`
+- `FreeTierPredictionRequest` accepts optional `odds_home`, `odds_draw`, `odds_away` fields
+- Retrained model: draw accuracy 6.7% → 23.1%, overall accuracy 51.0% → 51.9%, log loss 1.034 → 1.008
+- **15 new backend tests** (160 total): 10 odds feature tests, 5 training pipeline odds extraction tests
+
+### Fixed: Documentation refresh
+- Fixed stale test counts in `TESTING_GUIDE.md` (540 Vitest, 145 → 160 pytest)
+- Updated `backend/README.md`: removed pro-tier file references, 99 → 109 features, 145 → 160 tests
+- Added `ANTHROPIC_API_KEY` to `DEPLOYMENT.md` environment variables table
+- Added `backtest.ts` and `aiAnalysis.ts` to `CLAUDE.md` architecture section
+
+---
+
+## 20 March 2026 — P7d/P7e: Weight Optimiser, Playwright CI, Real Odds Audit
+
+### Added: Backtest weight optimiser (P7d)
+- New `WeightOptimiser` class in `backtest.ts` tests ~10,000 weight combinations (5% step grid search) against stored per-model probabilities from a backtest run
+- New `ModelOutputs` interface captures raw per-model probabilities (ELO, Poisson, Form, H2H, Standings) during `predictMatch()` — stored in `EnhancedPredictionModel.modelOutputs`
+- After a backtest completes, the optimiser re-combines stored outputs with different weights (no re-running predictions — instant)
+- Predictions page backtest section shows: optimal weight grid (current vs recommended), accuracy gain badge, log loss comparison
+- Tie-breaking: when two weight configurations have equal accuracy, lower log loss wins
+- **5 new tests** (540 total, 33 files)
+
+### Added: Playwright E2E tests in CI (P7e)
+- New `e2e` job in `.github/workflows/ci.yml` runs as parallel job alongside frontend and backend checks
+- Installs only Chromium (`--with-deps` for Ubuntu OS dependencies)
+- Runs all 43 E2E tests (6 specs × 3 viewports) against Vite dev server with mocked API routes
+- HTML test report uploaded as artifact on failure (14-day retention)
+
+### Audited: Real bookmaker odds input (P7d)
+- Confirmed `ValueBets.svelte` already fully implements user-entered odds (1X2, Over/Under 2.5, BTTS) — the engine was never using model-derived odds
+
+## 20 March 2026 — P7b: Claude/Anthropic Integration
+
+### Added: Multi-provider AI support — OpenAI and Anthropic (P7b — Claude integration complete)
+- **Frontend:** Added three Claude models to Settings dropdown: Claude 3.5 Haiku (fastest/cheapest), Claude 3.5 Sonnet (balanced), Claude 3 Opus (powerful). New `getModelProvider()` helper detects provider from model ID prefix
+- **ChatBot.svelte:** Dynamic provider-specific headers (`X-OpenAI-Key` / `X-Anthropic-Key`), updated UI to "Connect AI Provider" with links to both OpenAI and Anthropic key consoles, placeholder updated to `sk-... or sk-ant-...`
+- **Vercel Edge Function (`api/chat.ts`):** Complete rewrite with dual provider routing. Claude models route to Anthropic Messages API (system prompt as separate field, `x-api-key` header, `anthropic-version` header). Responses normalised to OpenAI shape (`choices[0].message.content`) so the frontend needs no provider awareness
+- **Dev proxy (`vite.config.ts`):** Mirrored dual-provider logic in `chatApiProxy()` middleware for local development without `vercel dev`
+- **Backend RAG (`main.py`):** Anthropic provider path using `anthropic` Python SDK `messages.create()`. Model detection via `startswith("claude")`. System prompt passed as separate parameter per Anthropic API spec
+- **Dependencies:** Added `anthropic==0.49.0` to `backend/requirements.txt`
+- **Tests:** Updated 12 ChatBot test assertions to match new UI copy (placeholder, header text, provider links). All 535 frontend tests passing
+
+## 20 March 2026 — P7c: Seasonal Maintenance
+
+### Improved: Team name maps and seasonal update process (P7c — all 4 items complete)
+- **Bug fix:** Brighton API name in `CSV_TO_API` was `"Brighton and Hove Albion FC"` (with "and") but Football-Data.org uses `"Brighton & Hove Albion FC"` (with "&") — could cause lookup failures during team normalisation
+- Added `"Brighton & Hove Albion"` reverse alias in backend `_ALIASES`
+- Expanded frontend ELO `ALIASES` from ~45 to 48 entries: added `"brighton and hove albion"`, `"nott'm forest"`, `"sheffield utd"` for broader name matching across data sources
+- Added comprehensive 6-step seasonal update checklist in `SEED_RATINGS` comment documenting the promotion/relegation process
+- Improved `teamColors` comment in Settings.svelte noting coupling with `[data-team]` CSS selectors in app.css
+
+## 20 March 2026 — P7f: Season Timeline
+
+### Added: Interactive Season Timeline page (P7f — all 7 items complete)
+- New `SeasonTimeline.svelte` component with four data-driven sections:
+  - **Title Race** — cumulative points line chart for the top 6 teams (toggle to show all 20), team-coloured lines, hover tooltips
+  - **Relegation Battle** — bottom 6 teams' points progression with dashed safety line (17th place benchmark)
+  - **Key Results** — automatic detection of thrillers (5+ goals), upsets (bottom-3 beating top-6), comebacks (losing at HT, winning at FT), each with type badges and narrative detail
+  - **The Story So Far** — matchday-by-matchday narrative entries with mood-coloured borders: dramatic (amber), shock (red), celebration (green), with special treatments for matchday 1, goals galore, upset weekends, title race tightening
+- Wired into routing: `ViewName` union extended, `App.svelte` conditional, `SidebarNav` (Calendar icon in Main section), `MobileNav` (More menu)
+- Data sourced entirely from existing `dataService.getCurrentSeasonMatches()` and `dataService.getStandings()` — no new API calls
+- Responsive loading skeletons, error states for missing/empty data, matchday progress badge
+- **13 new tests** covering all sections, data detection, edge cases, and error paths (535 frontend tests total, 33 test files)
+
+## 20 March 2026 — P7h: Player Data Enrichment for RAG
+
+### Added: Player-grounded Oracle Chat responses (P7h)
+- RAG module now loads player data from **two sources** at backend startup:
+  - `fact_player_stats.csv` — 3,638 PL player records with goals, assists, xG, per-90 metrics
+  - Football-Data.org `/competitions/PL/scorers` — top 30 current-season scorers (when API key available)
+- New `init_player_data()` function called from `main.py` lifespan handler
+- Player name extraction (`extract_players()`) with surname fallback — mirrors the existing team name extraction pattern (longest-first, word-boundary checks)
+- Intent parser detects player queries via keyword matching (`top scorer`, `golden boot`, `xg`, `squad`, etc.) and player name detection
+- Three new query functions:
+  - `_query_player_profile()` — individual player lookup with xG and per-90 data from CSV, falling back to API scorer data
+  - `_query_team_players()` — team-scoped top scorers table
+  - `_query_top_scorers()` — league-wide scorer leaderboard
+- System prompt now advertises player data availability and total record count
+- **14 new backend tests** covering player extraction, intent parsing, and query functions (58 RAG tests total, 145 backend tests total)
+- Ruff lint issues cleaned up in modified files (import sorting, `Optional` → `X | None`, f-string fixes)
+
+## 20 March 2026 — P7b: Enhanced AI Match Insights
+
+### Improved: Richer AI analysis prompts (P7b)
+- `AnalysisInput` extended with optional `h2hRecord` and `poissonProbs` fields
+- AI prompt now includes **Poisson model probabilities** (Home/Draw/Away percentages) and **H2H record** when available
+- Prompt refactored from monolithic template to **section-based builder** — conditional sections only appear when enrichment data exists
+- `Predictions.svelte` passes `detailedAnalysis.h2hRecord` and `detailedAnalysis.poissonProbs` to the AI analysis input
+
+## 20 March 2026 — P7b: Configurable AI Model
+
+### Added: AI model selector in Settings (P7b)
+- New **AI Model** section in Settings with dropdown for 4 OpenAI models: GPT-4o Mini, GPT-4o, GPT-4 Turbo, GPT-3.5 Turbo
+- Model preference saved to localStorage (`oracle_ai_model`) and included in `/api/chat` request bodies
+- Both `ChatBot.svelte` and `aiAnalysis.ts` now send the user's model selection to the server
+- Server-side resolution chain: request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default
+- **Security**: server-side allowlist (`ALLOWED_MODELS`) prevents arbitrary model injection — unknown models fall back to default
+- Constants exported from `lib/constants.ts`: `AI_MODELS`, `DEFAULT_AI_MODEL`, `AI_MODEL_STORAGE_KEY`, `getSavedAiModel()`
+
+### Changed: Remove hardcoded `gpt-4o-mini` (P7b)
+- `api/chat.ts` (Vercel Edge function): model now resolved from request body or env var
+- `frontend/vite.config.ts` (dev proxy): same resolution chain as production
+- `backend/app/api/main.py`: reads `ORACLE_AI_MODEL` env var, defaults to `gpt-4o-mini`
+
+## 20 March 2026 — P7i: Match Timeline & Score Animation
+
+### Added: Live match timeline progress bar (P7i)
+- In-play matches now show a **progress bar** (0–90' or 0–120' for extra time) beneath the scoreline
+- Colour transitions by phase: **green** (first half) → **amber** (60–70') → **red** (final 20' and extra time)
+- Half-time marker at the 50% point for visual reference
+- `getNumericMinute()` falls back to kickoff-time estimation when the API doesn't provide the `minute` field
+- ARIA `progressbar` role with value attributes for screen readers
+- Time labels show 0', 45', and 90' (or 120' for extra time/penalties)
+
+### Added: Score animation on goal events (P7i)
+- Score digits wrapped in Svelte `{#key}` blocks — each goal triggers a **scale-pop animation** (1.5× → 1×, 0.5s ease-out)
+- `scorePop` keyframe added to `app.css` with `prefers-reduced-motion: reduce` guard
+- Fires automatically when polling detects a score change — no additional state tracking needed
+
+### Housekeeping: Position change arrows already implemented (P7i)
+- `getMovementIcon()` using form-based proxy (3+ wins = up, 0–1 wins = down) was already present in `StandingsTable.svelte` — marked as complete in IMPLEMENTATION_PLAN
+
+## 20 March 2026 — P7e: Pin Dependencies, Clean Config
+
+### Fixed: Pin unpinned dependencies (P7e)
+- **openai** pinned to `==1.107.1` in `requirements.txt` — was the only unpinned dependency, risking breaking API changes on fresh install
+- **ruff** pinned to `==0.15.7` in `.github/workflows/ci.yml` — prevents new lint rules from unexpectedly failing CI
+
+### Cleaned: Stale ruff exclusions removed (P7e)
+- Removed 8 exclude entries from `pyproject.toml` for files archived to `pro-tier-archive` branch (`app/models/lstm_predictor.py`, `app/models/transformer_model.py`, `app/models/modern_oracle.py`, `app/models/xgboost_model.py`, `app/security/auth.py`, `app/security/secrets.py`, `app/security/validators.py`, `app/features/advanced_engineering.py`). All confirmed MISSING from working tree. Only `app/notebooks/` exclusion remains
+
+---
+
+## 20 March 2026 — P7g: README Overhaul
+
+### Rewritten: README.md reflects v3.0 MVP state (P7g)
+- Updated test count badge (507 → 522) and all references throughout
+- Expanded feature list: team colour themes, skeleton loading, prediction tracking with result indicators, zone-coloured standings, full betting suite (Kelly, value bets, accumulators, bet history)
+- Corrected backend description: 99-feature free-tier XGBoost (not "150+ features" which was pro-tier), conda environment requirement, `/predict/free` endpoint
+- Detailed architecture tree with file-level descriptions for both frontend and backend
+- Added CI/CD row (GitHub Actions), component library row (shadcn-svelte), and API rate limit note to tech stack
+- Updated responsible usage section with betting disclaimer
+
+---
+
+## 20 March 2026 — P7i/P7g: Micro-interactions, Typography, FAQ
+
+### Added: Micro-interactions and motion-safe accessibility (P7i)
+- **Prediction flip cards** — hover lift (translateY -2px), shadow elevation, and active press state (scale 0.99), all wrapped in `prefers-reduced-motion` media query
+- **Dashboard stat cards** — motion-safe guards on existing hover translate, added active press scale feedback
+- **MatchList/LiveMatches cards** — wrapped `hover:-translate-y-0.5` with `motion-safe:` Tailwind prefix
+- **Dead CSS removed** — `animate-float-subtle` class and `floatSubtle` keyframes were defined in `app.css` but never used anywhere
+
+### Fixed: Heading hierarchy and typography consistency (P7i)
+- **Semantic h1 promotion** — 5 page components (Predictions, StandingsTable, MatchList, SeasonStats, BettingHistory) incorrectly used `h2` for their page title. Promoted to `h1` for correct accessibility semantics — screen readers expect one `h1` per routed page
+- **Help.svelte inverted hierarchy** — section `h2` headings were `text-3xl`, visually larger than the `text-2xl` page `h1`. Downsized to `text-xl` to restore correct visual hierarchy
+
+### Improved: FAQ section expanded and enriched (P7g)
+- Grew from 8 to 12 questions covering: how the ensemble model works, what the ML backend adds, team colour theming, local data storage, and improved context on betting tools and rate limiting
+- Existing answers enriched with specifics: Football-Data.org link, three-tier cache architecture, PL-specific calibration, and JSON export capabilities
+
+---
+
+## 20 March 2026 — P7i/P7g: Skeleton Loading, Hero Match, Team Theme Fix
+
+### Added: Content-shaped skeleton loading screens (P7i)
+- **Predictions** — 3-column card grid skeleton with date/badge, team logos, form dots, probability bar, and button placeholders
+- **StandingsTable** — Full table skeleton with zone legend, 11-column header, and 10 shimmer rows (position badge, team logo, stat columns, form dots)
+- **LiveMatches** — Stacked match card skeletons with status badge, 7-column grid (home/score/away), and activity icon placeholder
+- **MatchList** — Match row skeletons with team names, logos, score, and status badge in responsive grid
+- **TopScorers** — 6-column table skeleton with rank badges, player names, team crests, and stat columns (8 rows)
+- All skeletons use the existing `.skeleton` shimmer animation from `app.css`
+- 4 tests updated from `.animate-spin` to `.skeleton` assertion — 522 Vitest tests total
+
+### Added: Featured match card in Dashboard hero section (P7i)
+- **Featured upcoming match** displayed alongside branding in the hero area — shows team badges via `getTeamLogo()`, team names (hidden below 480px for mobile), kick-off time, and Zap CTA icon
+- Skeleton placeholder while data loads, gracefully hidden when no upcoming matches exist
+- 1 new test verifying featured match rendering with mock upcoming data
+
+### Fixed: Team theme toggle not applying favourite team colours (P7g)
+- **Root cause**: Settings dropdown was populated from Football-Data.org API team names (e.g., "Liverpool FC", "Wolves") which don't match the CSS `[data-team="Liverpool"]` selectors in `app.css`
+- **Fix**: Dropdown now sources options from the canonical `teamColors` keys which are the single source of truth for team naming throughout the app
+- Moved `plTeams` initialisation to top of `onMount` for immediate availability
+- Restored `data-team` DOM attribute on mount so the theme persists across page navigations
+- 2 new tests (dropdown source verification, DOM attribute mechanism) — covers the fix without depending on `onMount` in jsdom
+
+---
+
+## 20 March 2026 — P7i/P7g: Prediction Result Indicators & Model Weights Fix
+
+### Added: Prediction result indicators on cards (P7i)
+- **Correct/incorrect visual indicators** — Green CheckCircle2 icon for correct predictions, red XCircle for incorrect, displayed at the top-right of each settled prediction card
+- **Actual score display** — Completed matches show the real score prominently with "Full Time" label, with the predicted score shown below in smaller text
+- **Result verdict banner** — Colour-coded banner at the bottom of each settled card: green "Correct prediction" or red "Incorrect — actual result: [outcome]"
+- **Coloured card borders** — Subtle green/red border tint on settled prediction cards for at-a-glance scanning
+- **All gameweek matches visible** — Predictions view now shows completed matches alongside upcoming ones (previously filtered out), reconstructing stored prediction data from `predictionTracker`
+- 3 new tests (completed match display, correct indicator, incorrect indicator) — 519 Vitest tests total
+
+### Fixed: Dashboard model weights single source of truth (P7g)
+- **"How We Predict" section** now reads weight percentages from `MODEL_WEIGHTS` constant exported from `optimizedPredictions.ts` instead of hardcoded display strings. Prevents silent drift if weights are tuned
+- Exported `MODEL_WEIGHTS` from `optimizedPredictions.ts` for Dashboard consumption
+
+### Fixed: CLAUDE.md backend structure accuracy
+- Corrected `train_free_tier.py` path — lives at `backend/` root, not inside `backend/app/`
+- Added `app/` prefix to all backend submodule paths for clarity
+
+---
+
+## 20 March 2026 — P7i: Prediction Cards, Dashboard Empty State & Standings Uplift
+
+### Added: Richer prediction cards (P7i item #3)
+- **Form dots on front face** — Coloured W/D/L dots under each team name showing the last 5 results. Makes each card tell a story at a glance, matching the StandingsTable dot pattern
+- **Proportional probability bars** — Replaced flat text percentages with coloured width segments (blue Home, amber Draw, green Away). The predicted outcome is highlighted and bar widths reflect actual probabilities
+- Form string parser handles both comma-separated and continuous formats
+
+---
+
+## 20 March 2026 — P7i: Dashboard Empty State & Standings Uplift
+
+### Added: Dashboard onboarding empty state (P7i item #1)
+- **Welcoming onboarding card** replaces zero stat cards (`0.0%`, `£0.00`, `0`) when no predictions or bets exist. Shows Oracle description with primary CTA ("Generate Your First Prediction") and secondary CTA ("View Standings")
+- **CTA buttons on all empty states** — accuracy chart links to Predictions, P&L chart links to Kelly Calculator, predictions tab and upcoming matches have proper Button components instead of plain text links
+- Tracks raw prediction/bet counts separately from tweened animation values for reliable empty state detection
+- 2 new tests (onboarding card visibility, stat cards visibility) — 517 Vitest tests total
+
+---
+
+## 20 March 2026 — P7i: Standings Table Zone Colouring & Form Dots
+
+**Branch:** `v3.0-MVP`
+
+### Added: Standings table visual uplift (P7i items #2)
+- **Zone row backgrounds** — Subtle tinted backgrounds for Champions League (blue), Europa League (orange), Conference League (emerald), and relegation (red) zones. Combined with existing border stripes and position badges for clear zone identification
+- **Conference League zone** — 6th position now has emerald styling across all three visual indicators (border, badge, background) and appears in the legend
+- **Form dots** — Changed form indicators from square letter badges to round coloured dots (W green, D grey, L red) matching standard football app conventions
+- **Accessibility** — Form dots now have `aria-label`, `title`, and `role="list"/"listitem"` attributes for screen reader support
+- 3 new tests (Conference League legend, all four zones, form dot accessibility) — 515 Vitest tests total
+
+---
+
+## 20 March 2026 — Second Full Codebase Audit
+
+**Branch:** `v3.0-MVP`
+
+### Confirmed: MVP codebase remains clean
+- 7 parallel agents re-audited all 8 specs, every frontend file (lib, services, components), all backend modules, CI/CD configuration, and project config files
+- All P0–P6 items confirmed complete — 99/99 active acceptance criteria still met
+- 0 TODO/FIXME/HACK in production code (reconfirmed)
+- All documented stubs in IMPLEMENTATION_PLAN.md verified accurate
+- No regressions since previous audit (19 March 2026)
+
+### Added: 4 new housekeeping items to P7
+- P7e: Pin `openai` version in `requirements.txt` (only unpinned dependency)
+- P7e: Pin `ruff` version in CI (unpinned `pip install ruff` could break CI)
+- P7e: Clean stale ruff exclusions in `pyproject.toml` (7 deleted/archived file paths)
+- P7g: Dashboard "How We Predict" weights are display strings, not read from `MODEL_WEIGHTS` constant
+
+### Fixed: P7 item count
+- Status table said "0/20" but 46 items exist after P7f–P7i additions — corrected to 0/46
+
+---
+
 ## 19 March 2026 — Full Codebase Audit & P7 Planning
 
 **Branch:** `v3.0-Development`

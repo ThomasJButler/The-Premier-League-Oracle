@@ -51,7 +51,7 @@ vi.mock('svelte/transition', () => ({
 
 /** Helper: type a valid API key into the password input and click Connect */
 async function connectApiKey() {
-  const keyInput = screen.getByPlaceholderText('sk-...');
+  const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
   await fireEvent.input(keyInput, { target: { value: 'sk-1234567890abcdef' } });
   const connectBtn = screen.getByText('Connect');
   await fireEvent.click(connectBtn);
@@ -110,16 +110,19 @@ describe('ChatBot Component', () => {
 
   it('should show API key setup form when no key stored', () => {
     render(ChatBot);
-    expect(screen.getByText('Connect OpenAI')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('sk-...')).toBeInTheDocument();
+    expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('sk-... or sk-ant-...')).toBeInTheDocument();
     expect(screen.getByText('Connect')).toBeInTheDocument();
   });
 
-  it('should show link to OpenAI platform', () => {
+  it('should show links to OpenAI and Anthropic platforms', () => {
     render(ChatBot);
-    const link = screen.getByText('platform.openai.com');
-    expect(link).toBeInTheDocument();
-    expect(link.closest('a')).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
+    const openaiLink = screen.getByText('OpenAI');
+    expect(openaiLink).toBeInTheDocument();
+    expect(openaiLink.closest('a')).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
+    const anthropicLink = screen.getByText('Anthropic');
+    expect(anthropicLink).toBeInTheDocument();
+    expect(anthropicLink.closest('a')).toHaveAttribute('href', 'https://console.anthropic.com/settings/keys');
   });
 
   it('should have chat input disabled without API key', () => {
@@ -137,13 +140,13 @@ describe('ChatBot Component', () => {
   it('should show validation error for short API key', async () => {
     render(ChatBot);
 
-    const keyInput = screen.getByPlaceholderText('sk-...');
+    const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
     await fireEvent.input(keyInput, { target: { value: 'short' } });
     const connectBtn = screen.getByText('Connect');
     await fireEvent.click(connectBtn);
     await act();
 
-    expect(screen.getByText('Please enter a valid OpenAI API key.')).toBeInTheDocument();
+    expect(screen.getByText('Please enter a valid API key.')).toBeInTheDocument();
   });
 
   it('should save valid API key and enable chat input', async () => {
@@ -190,7 +193,7 @@ describe('ChatBot Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Connect OpenAI')).toBeInTheDocument();
+      expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
     });
 
     expect(localStorage.removeItem).toHaveBeenCalledWith('openai_api_key');
@@ -359,7 +362,7 @@ describe('ChatBot Component', () => {
     });
 
     // API key form should NOT be shown when backend RAG is available
-    expect(screen.queryByText('Connect OpenAI')).not.toBeInTheDocument();
+    expect(screen.queryByText('Connect AI Provider')).not.toBeInTheDocument();
   });
 
   it('should show RAG indicator when backend is available', async () => {

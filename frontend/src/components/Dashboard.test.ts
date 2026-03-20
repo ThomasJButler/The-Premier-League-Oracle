@@ -151,9 +151,16 @@ vi.mock('lucide-svelte', () => {
     BarChart2: stub,
     Trophy: stub,
     ChevronDown: stub,
-    Calendar: stub
+    Calendar: stub,
+    Clock: stub,
+    Zap: stub
   };
 });
+
+// Mock team logos utility — returns a simple data URI for any team
+vi.mock('../utils/teamLogos', () => ({
+  getTeamLogo: vi.fn(() => 'data:image/svg+xml,mock')
+}));
 
 const mockMatches: Match[] = [
   {
@@ -328,5 +335,67 @@ describe('Dashboard Component', () => {
 
     const gridElements = document.querySelectorAll('.grid');
     expect(gridElements.length).toBeGreaterThan(0);
+  });
+
+  it('should show onboarding card when no predictions or bets exist', async () => {
+    vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
+      accuracy: 0,
+      totalPredictions: 0,
+      correctPredictions: 0,
+      incorrectPredictions: 0
+    } as any);
+
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-card')).toBeInTheDocument();
+      expect(screen.queryByText('Ready to predict?')).toBeInTheDocument();
+      expect(screen.queryByText(/Generate Your First Prediction/)).toBeInTheDocument();
+      // Stat cards should NOT be visible in onboarding state
+      expect(screen.queryByTestId('stat-cards')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show stat cards instead of onboarding when predictions exist', async () => {
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('stat-cards')).toBeInTheDocument();
+      expect(screen.queryByTestId('onboarding-card')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show featured match in hero section when upcoming matches exist', async () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString(); // Tomorrow
+    const upcomingMatch: Match = {
+      id: 'upcoming-1', season_id: 'season-1', date: futureDate,
+      home_team: 'Chelsea', away_team: 'Tottenham',
+      home_goals: null, away_goals: null, result: null,
+      home_odds: null, draw_odds: null, away_odds: null,
+      first_half_home_goals: null, first_half_away_goals: null,
+      full_time_result: null, half_time_result: null, referee: null,
+      home_shots: null, away_shots: null, home_shots_target: null,
+      away_shots_target: null, home_fouls: null, away_fouls: null,
+      home_corners: null, away_corners: null, home_yellows: null,
+      away_yellows: null, home_reds: null, away_reds: null,
+      created_at: new Date().toISOString(), status: 'TIMED', matchday: 30
+    };
+
+    // First call: recent matches. Second call: upcoming matches.
+    vi.mocked(dataService.getMatches)
+      .mockResolvedValueOnce(mockMatches)
+      .mockResolvedValueOnce([upcomingMatch]);
+
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('featured-match')).toBeInTheDocument();
+    });
   });
 });

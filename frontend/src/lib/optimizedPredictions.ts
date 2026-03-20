@@ -4,7 +4,29 @@ import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
-import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE } from './constants';
+import {
+  VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE,
+  POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX, POISSON_FALLBACK_HOME_GOALS,
+  POISSON_FALLBACK_AWAY_GOALS, POISSON_FALLBACK_AVG_GOALS,
+  ELO_DRAW_BASE_RATE, ELO_DRAW_SCALE, ELO_DRAW_MIN, ELO_DRAW_MAX,
+  FORM_RECENCY_WEIGHTS, FORM_DRAW_WEIGHT, FORM_SCORE_MIN, FORM_SCORE_MAX,
+  FORM_EXCELLENT_THRESHOLD, FORM_POOR_THRESHOLD,
+  FORM_DRAW_BASE, FORM_DRAW_SENSITIVITY, FORM_DRAW_MIN, FORM_DRAW_MAX,
+  STANDINGS_POSITION_STEP,
+  CONFIDENCE_MIN, CONFIDENCE_MAX, CONFIDENCE_BOOST_THRESHOLD, CONFIDENCE_BOOST_AMOUNT,
+  CONFIDENCE_PENALTY_THRESHOLD, CONFIDENCE_PENALTY_AMOUNT, MODEL_DISAGREEMENT_PENALTY,
+  ML_AGREEMENT_BOOST_MAX, ML_AGREEMENT_BOOST_FACTOR,
+  ML_DISAGREEMENT_PENALTY_MAX, ML_DISAGREEMENT_PENALTY_FACTOR,
+  REFEREE_ADJUSTMENT_MAX, REFEREE_ADJUSTMENT_THRESHOLD,
+} from './constants';
+
+export interface ModelOutputs {
+  elo: { home: number; draw: number; away: number };
+  poisson: { home: number; draw: number; away: number };
+  form: { home: number; draw: number; away: number };
+  h2h: { home: number; draw: number; away: number };
+  standings: { home: number; draw: number; away: number };
+}
 
 export interface EnhancedPredictionModel {
   predictedResult: 'H' | 'D' | 'A';
@@ -27,6 +49,8 @@ export interface EnhancedPredictionModel {
     draw: number;
     away: number;
   };
+  /** Raw per-model probabilities before ensemble combination (for weight optimisation) */
+  modelOutputs?: ModelOutputs;
 }
 
 // Home/away attack & defence strengths for the Poisson model
@@ -68,17 +92,75 @@ interface H2HAnalysis {
 }
 
 /**
- * Single source of truth for ensemble model weights.
- * Used by combineModels() for computation and returned in predictions for transparency.
- * If you change these, the actual model behaviour AND reported weights stay in sync.
+ * Default ensemble model weights — used as the baseline when no custom weights are saved.
+ * Users can apply backtest-derived optimal weights via the Predictions backtest panel,
+ * which are persisted to localStorage and read by getActiveModelWeights().
  */
-const MODEL_WEIGHTS = {
+export const MODEL_WEIGHTS = {
   elo: 0.25,
   poisson: 0.30,
   form: 0.20,
   h2h: 0.10,
   standings: 0.15
 } as const;
+
+/** Mutable weight shape for user-applied weights (same keys as MODEL_WEIGHTS). */
+export type ModelWeightValues = { elo: number; poisson: number; form: number; h2h: number; standings: number };
+
+const WEIGHTS_STORAGE_KEY = 'oracle_model_weights';
+
+/**
+ * Read the active ensemble weights — user-applied custom weights from localStorage,
+ * falling back to the built-in defaults. Validates that weights sum to ~1.0.
+ */
+export function getActiveModelWeights(): ModelWeightValues {
+  try {
+    const stored = localStorage.getItem(WEIGHTS_STORAGE_KEY);
+    if (!stored) return { ...MODEL_WEIGHTS };
+
+    const parsed = JSON.parse(stored) as ModelWeightValues;
+
+    // Validate shape: must have all five keys as numbers
+    const keys: (keyof ModelWeightValues)[] = ['elo', 'poisson', 'form', 'h2h', 'standings'];
+    for (const key of keys) {
+      if (typeof parsed[key] !== 'number' || isNaN(parsed[key]) || parsed[key] < 0) {
+        return { ...MODEL_WEIGHTS };
+      }
+    }
+
+    // Validate sum is approximately 1.0 (allow ±0.02 for floating-point rounding)
+    const sum = keys.reduce((s, k) => s + parsed[k], 0);
+    if (Math.abs(sum - 1.0) > 0.02) {
+      return { ...MODEL_WEIGHTS };
+    }
+
+    return parsed;
+  } catch {
+    return { ...MODEL_WEIGHTS };
+  }
+}
+
+/** Persist user-applied weights to localStorage. Weights must sum to 1.0 (±0.02). */
+export function saveModelWeights(weights: ModelWeightValues): boolean {
+  const keys: (keyof ModelWeightValues)[] = ['elo', 'poisson', 'form', 'h2h', 'standings'];
+  const sum = keys.reduce((s, k) => s + weights[k], 0);
+  if (Math.abs(sum - 1.0) > 0.02) return false;
+  for (const key of keys) {
+    if (typeof weights[key] !== 'number' || isNaN(weights[key]) || weights[key] < 0) return false;
+  }
+  localStorage.setItem(WEIGHTS_STORAGE_KEY, JSON.stringify(weights));
+  return true;
+}
+
+/** Remove custom weights, reverting to defaults. */
+export function resetModelWeights(): void {
+  localStorage.removeItem(WEIGHTS_STORAGE_KEY);
+}
+
+/** Check whether the user has applied custom weights. */
+export function hasCustomWeights(): boolean {
+  return localStorage.getItem(WEIGHTS_STORAGE_KEY) !== null;
+}
 
 /**
  * When the ML backend contributes to the ensemble, it gets this weight and
@@ -99,7 +181,7 @@ export class OptimizedPredictor {
     const completed = matches.filter(m => m.result && m.home_goals !== null && m.away_goals !== null);
 
     if (completed.length === 0) {
-      return { avgHomeGoals: 1.5, avgAwayGoals: 1.2, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
+      return { avgHomeGoals: POISSON_FALLBACK_HOME_GOALS, avgAwayGoals: POISSON_FALLBACK_AWAY_GOALS, homeWinRate: DEFAULT_HOME_WIN_RATE, teamStrengths: new Map() };
     }
 
     // League totals
@@ -185,21 +267,20 @@ export class OptimizedPredictor {
       const lambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
       const lambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
 
-      // Clamp to sensible range (0.3 – 4.5 goals)
       return {
-        lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
-        lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+        lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
+        lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
       };
     }
 
     // Fallback: derive from overall stats (no home/away split available)
-    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || 1.35;
+    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
     const lambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
     const lambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
 
     return {
-      lambdaHome: Math.max(0.3, Math.min(4.5, lambdaHome)),
-      lambdaAway: Math.max(0.3, Math.min(4.5, lambdaAway)),
+      lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
+      lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
     };
   }
 
@@ -291,8 +372,8 @@ export class OptimizedPredictor {
       // Apply fatigue: tired teams score less (lambda × fatigue) and concede
       // more (opponent lambda ÷ fatigue). Multipliers are in [0.85, 1.0] so
       // the adjustment is modest but data-driven per spec 01.
-      const homeGoalsExpected = Math.max(0.3, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
-      const awayGoalsExpected = Math.max(0.3, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
+      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
+      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
@@ -323,22 +404,21 @@ export class OptimizedPredictor {
       // 9. Combine all models with weighted approach
       // Dynamic draw probability: closer ratings → more likely draw (~26.5% PL average)
       const ratingDiffAbs = Math.abs(homeElo - awayElo);
-      const eloDrawProb = 0.265 * Math.exp(-ratingDiffAbs / 600);
-      const eloDrawClamped = Math.max(0.10, Math.min(0.35, eloDrawProb));
+      const eloDrawProb = ELO_DRAW_BASE_RATE * Math.exp(-ratingDiffAbs / ELO_DRAW_SCALE);
+      const eloDrawClamped = Math.max(ELO_DRAW_MIN, Math.min(ELO_DRAW_MAX, eloDrawProb));
       const eloHomeProb = eloWinProbability * (1 - eloDrawClamped);
       const eloAwayProb = (1 - eloWinProbability) * (1 - eloDrawClamped);
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
-      const combinedProbabilities = this.combineModels(
-        {
-          elo: eloProbs,
-          poisson: poissonProbs,
-          form: formAnalysis.probabilities,
-          h2h: h2hAnalysis.probabilities,
-          standings: this.getStandingsProbabilities(homePosition, awayPosition)
-        },
-        mlPrediction
-      );
+      const standingsProbs = this.getStandingsProbabilities(homePosition, awayPosition);
+      const modelInputs = {
+        elo: eloProbs,
+        poisson: poissonProbs,
+        form: formAnalysis.probabilities,
+        h2h: h2hAnalysis.probabilities,
+        standings: standingsProbs
+      };
+      const combinedProbabilities = this.combineModels(modelInputs, mlPrediction);
 
       // 8b. Apply referee adjustment (±3% max on home/away probabilities)
       // Home win rate derived from actual completed matches (fallback 0.46 if no data)
@@ -349,10 +429,9 @@ export class OptimizedPredictor {
         try {
           const refereeStats = await RefereeAnalyzer.getRefereeStats(referee);
           const homeWinBias = refereeStats.homeWinRate - leagueHomeWinRate;
-          // Clamp adjustment to ±3%
-          const adjustment = Math.max(-0.03, Math.min(0.03, homeWinBias));
+          const adjustment = Math.max(-REFEREE_ADJUSTMENT_MAX, Math.min(REFEREE_ADJUSTMENT_MAX, homeWinBias));
 
-          if (Math.abs(adjustment) > 0.005) {
+          if (Math.abs(adjustment) > REFEREE_ADJUSTMENT_THRESHOLD) {
             adjustedProbabilities.homeWin += adjustment;
             adjustedProbabilities.awayWin -= adjustment;
 
@@ -386,14 +465,35 @@ export class OptimizedPredictor {
         modelsDisagree
       );
 
+      // 10b. ML backend confidence adjustment — when the backend's calibrated
+      // probabilities are available, use agreement/disagreement to adjust confidence.
+      // Backend agreement boosts confidence by up to 8%, disagreement penalises by up to 10%.
+      let mlAdjustedConfidence = rawConfidence;
+      if (mlPrediction) {
+        const mlTopOutcome = this.getTopOutcome(mlPrediction.prediction.home, mlPrediction.prediction.draw, mlPrediction.prediction.away);
+        const mlAgreesWithEnsemble = mlTopOutcome === prediction.result;
+
+        if (mlAgreesWithEnsemble) {
+          // Boost confidence — both the TS ensemble and Python ML agree
+          const boost = Math.min(ML_AGREEMENT_BOOST_MAX, mlPrediction.confidence * ML_AGREEMENT_BOOST_FACTOR);
+          mlAdjustedConfidence += boost;
+          insights.push(`ML backend confirms ${prediction.result === 'H' ? 'home win' : prediction.result === 'A' ? 'away win' : 'draw'} (${(mlPrediction.confidence * 100).toFixed(0)}% confidence) — boosted`);
+        } else {
+          // Penalise confidence — models disagree
+          const penalty = Math.min(ML_DISAGREEMENT_PENALTY_MAX, (1 - mlPrediction.confidence) * ML_DISAGREEMENT_PENALTY_FACTOR);
+          mlAdjustedConfidence -= penalty;
+          insights.push(`ML backend predicts ${mlTopOutcome === 'H' ? 'home win' : mlTopOutcome === 'A' ? 'away win' : 'draw'} instead — lower confidence`);
+        }
+      }
+
       // Apply historical calibration — adjust confidence based on past accuracy
       // per confidence band (Spec 01 Req 5). If the model has been overconfident
       // in a given band, the factor < 1 brings future confidence down.
       const calibration = predictionTracker.getCalibrationFactors();
-      const bandFactor = rawConfidence > 0.7 ? calibration.highBand
-        : rawConfidence >= 0.5 ? calibration.mediumBand
+      const bandFactor = mlAdjustedConfidence > 0.7 ? calibration.highBand
+        : mlAdjustedConfidence >= 0.5 ? calibration.mediumBand
         : calibration.lowBand;
-      const confidence = Math.max(0.25, Math.min(0.95, rawConfidence * bandFactor));
+      const confidence = Math.max(CONFIDENCE_MIN, Math.min(CONFIDENCE_MAX, mlAdjustedConfidence * bandFactor));
 
       if (modelsDisagree) {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
@@ -409,15 +509,15 @@ export class OptimizedPredictor {
       );
 
       // Add form insights
-      if (formAnalysis.homeFormScore > 0.7) {
+      if (formAnalysis.homeFormScore > FORM_EXCELLENT_THRESHOLD) {
         insights.push(`${homeTeam} in excellent form (last 5: ${formAnalysis.homeFormString})`);
-      } else if (formAnalysis.homeFormScore < 0.3) {
+      } else if (formAnalysis.homeFormScore < FORM_POOR_THRESHOLD) {
         insights.push(`${homeTeam} struggling with form (last 5: ${formAnalysis.homeFormString})`);
       }
 
-      if (formAnalysis.awayFormScore > 0.7) {
+      if (formAnalysis.awayFormScore > FORM_EXCELLENT_THRESHOLD) {
         insights.push(`${awayTeam} in excellent form (last 5: ${formAnalysis.awayFormString})`);
-      } else if (formAnalysis.awayFormScore < 0.3) {
+      } else if (formAnalysis.awayFormScore < FORM_POOR_THRESHOLD) {
         insights.push(`${awayTeam} struggling with form (last 5: ${formAnalysis.awayFormString})`);
       }
 
@@ -442,14 +542,24 @@ export class OptimizedPredictor {
       const valueOdds = this.calculateValueOdds(adjustedProbabilities);
 
       // Report the effective weights used in this prediction
+      const activeWeights = getActiveModelWeights();
       const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
       const effectiveWeights: EnhancedPredictionModel['modelWeights'] = {
-        elo: MODEL_WEIGHTS.elo * tsScale,
-        poisson: MODEL_WEIGHTS.poisson * tsScale,
-        form: MODEL_WEIGHTS.form * tsScale,
-        h2h: MODEL_WEIGHTS.h2h * tsScale,
-        standings: MODEL_WEIGHTS.standings * tsScale,
+        elo: activeWeights.elo * tsScale,
+        poisson: activeWeights.poisson * tsScale,
+        form: activeWeights.form * tsScale,
+        h2h: activeWeights.h2h * tsScale,
+        standings: activeWeights.standings * tsScale,
         ...(mlPrediction ? { ml: ML_BACKEND_WEIGHT } : {}),
+      };
+
+      // Store raw model outputs for weight optimisation
+      const modelOutputs: ModelOutputs = {
+        elo: eloProbs,
+        poisson: { home: poissonProbs.homeWin, draw: poissonProbs.draw, away: poissonProbs.awayWin },
+        form: { home: formAnalysis.probabilities.homeWin, draw: formAnalysis.probabilities.draw, away: formAnalysis.probabilities.awayWin },
+        h2h: { home: h2hAnalysis.probabilities.homeWin, draw: h2hAnalysis.probabilities.draw, away: h2hAnalysis.probabilities.awayWin },
+        standings: { home: standingsProbs.homeWin, draw: standingsProbs.draw, away: standingsProbs.awayWin }
       };
 
       return {
@@ -461,7 +571,8 @@ export class OptimizedPredictor {
         awayForm: formAnalysis.awayFormString,
         modelWeights: effectiveWeights,
         insights,
-        valueOdds
+        valueOdds,
+        modelOutputs
       };
 
     } catch (error) {
@@ -474,7 +585,7 @@ export class OptimizedPredictor {
         predictedAwayGoals: 1,
         homeForm: '?????',
         awayForm: '?????',
-        modelWeights: { ...MODEL_WEIGHTS },
+        modelWeights: { ...getActiveModelWeights() },
         insights: ['Using simplified prediction due to data limitations'],
         valueOdds: { home: 3.0, draw: 3.3, away: 3.0 }
       };
@@ -530,14 +641,13 @@ export class OptimizedPredictor {
       }
       
       let score = 0;
-      const weights = [0.35, 0.25, 0.20, 0.12, 0.08]; // Recent matches weighted more
-      
+
       form.slice(0, 5).forEach((match, idx) => {
-        if (match.result === 'W') score += 1 * weights[idx];
-        else if (match.result === 'D') score += 0.33 * weights[idx];
+        if (match.result === 'W') score += 1 * FORM_RECENCY_WEIGHTS[idx];
+        else if (match.result === 'D') score += FORM_DRAW_WEIGHT * FORM_RECENCY_WEIGHTS[idx];
       });
-      
-      return Math.max(0.1, Math.min(0.9, score)); // Ensure reasonable bounds
+
+      return Math.max(FORM_SCORE_MIN, Math.min(FORM_SCORE_MAX, score));
     };
 
     const homeFormScore = calculateFormScore(homeForm);
@@ -557,7 +667,7 @@ export class OptimizedPredictor {
     
     // Add variance based on form difference
     const formDiff = Math.abs(homeMomentum - awayMomentum);
-    const drawProb = Math.max(0.15, Math.min(0.35, 0.25 - formDiff * 0.3));
+    const drawProb = Math.max(FORM_DRAW_MIN, Math.min(FORM_DRAW_MAX, FORM_DRAW_BASE - formDiff * FORM_DRAW_SENSITIVITY));
     
     // Calculate win probabilities
     const totalMomentum = homeMomentum + awayMomentum;
@@ -679,10 +789,10 @@ export class OptimizedPredictor {
     const positionDiff = awayPosition - homePosition;
     
     // Convert position difference to probability
-    let homeWinProb = 0.5 + (positionDiff * 0.025); // Better position = higher probability
+    let homeWinProb = 0.5 + (positionDiff * STANDINGS_POSITION_STEP);
     homeWinProb = Math.max(0.15, Math.min(0.85, homeWinProb));
     
-    let awayWinProb = 0.5 - (positionDiff * 0.025);
+    let awayWinProb = 0.5 - (positionDiff * STANDINGS_POSITION_STEP);
     awayWinProb = Math.max(0.10, Math.min(0.70, awayWinProb));
     
     const remaining = 1 - homeWinProb - awayWinProb;
@@ -715,31 +825,33 @@ export class OptimizedPredictor {
     },
     mlPrediction?: MLPrediction | null
   ) {
+    // Read user-applied or default weights
+    const weights = getActiveModelWeights();
     // When the ML backend is contributing, scale TS weights down proportionally
     const tsScale = mlPrediction ? (1 - ML_BACKEND_WEIGHT) : 1;
 
     const homeWin =
-      models.elo.home * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.homeWin * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.homeWin * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.homeWin * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.homeWin * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.home * weights.elo * tsScale +
+      models.poisson.homeWin * weights.poisson * tsScale +
+      models.form.homeWin * weights.form * tsScale +
+      models.h2h.homeWin * weights.h2h * tsScale +
+      models.standings.homeWin * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.home * ML_BACKEND_WEIGHT : 0);
 
     const draw =
-      models.elo.draw * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.draw * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.draw * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.draw * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.draw * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.draw * weights.elo * tsScale +
+      models.poisson.draw * weights.poisson * tsScale +
+      models.form.draw * weights.form * tsScale +
+      models.h2h.draw * weights.h2h * tsScale +
+      models.standings.draw * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.draw * ML_BACKEND_WEIGHT : 0);
 
     const awayWin =
-      models.elo.away * MODEL_WEIGHTS.elo * tsScale +
-      models.poisson.awayWin * MODEL_WEIGHTS.poisson * tsScale +
-      models.form.awayWin * MODEL_WEIGHTS.form * tsScale +
-      models.h2h.awayWin * MODEL_WEIGHTS.h2h * tsScale +
-      models.standings.awayWin * MODEL_WEIGHTS.standings * tsScale +
+      models.elo.away * weights.elo * tsScale +
+      models.poisson.awayWin * weights.poisson * tsScale +
+      models.form.awayWin * weights.form * tsScale +
+      models.h2h.awayWin * weights.h2h * tsScale +
+      models.standings.awayWin * weights.standings * tsScale +
       (mlPrediction ? mlPrediction.prediction.away * ML_BACKEND_WEIGHT : 0);
 
     // Normalise to ensure sum equals 1 — guard against all-zero edge case
@@ -795,23 +907,22 @@ export class OptimizedPredictor {
     let confidence = maxProb;
 
     // Boost confidence if there's a clear favourite
-    if (probDifference > 0.2) {
-      confidence += 0.1;
-    } else if (probDifference < 0.1) {
-      confidence -= 0.1;
+    if (probDifference > CONFIDENCE_BOOST_THRESHOLD) {
+      confidence += CONFIDENCE_BOOST_AMOUNT;
+    } else if (probDifference < CONFIDENCE_PENALTY_THRESHOLD) {
+      confidence -= CONFIDENCE_PENALTY_AMOUNT;
     }
 
     // Penalise when key models (ELO & Poisson) disagree on the outcome
     if (modelsDisagree) {
-      confidence -= 0.08;
+      confidence -= MODEL_DISAGREEMENT_PENALTY;
     }
 
     // Apply fatigue adjustment — uncertain when teams are tired
     const avgFatigue = (fatigueFactor.homeFatigue + fatigueFactor.awayFatigue) / 2;
     confidence *= avgFatigue;
 
-    // Ensure confidence is within bounds
-    return Math.max(0.25, Math.min(0.95, confidence));
+    return Math.max(CONFIDENCE_MIN, Math.min(CONFIDENCE_MAX, confidence));
   }
 
   private static predictGoals(

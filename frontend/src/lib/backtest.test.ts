@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BacktestRunner } from './backtest';
+import { BacktestRunner, WeightOptimiser, type BacktestPrediction } from './backtest';
 import { OptimizedPredictor } from './optimizedPredictions';
 import type { Match } from '../types';
 import type { EnhancedPredictionModel } from './optimizedPredictions';
@@ -8,16 +8,34 @@ import type { EnhancedPredictionModel } from './optimizedPredictions';
 vi.mock('./optimizedPredictions', () => ({
   OptimizedPredictor: {
     predictMatch: vi.fn()
-  }
+  },
+  MODEL_WEIGHTS: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+  getActiveModelWeights: () => ({ elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 })
 }));
 
-// Mock the shared ELO system so backtest snapshot/restore doesn't hit localStorage
+// Stateful fake for the shared ELO system — tracks real state so snapshot/restore
+// logic is actually exercised (not just called). A no-op mock would hide bugs
+// where backtest corrupts live ELO ratings.
+const fakeEloState = {
+  ratings: {} as Record<string, number>,
+  processedIds: new Set<string>()
+};
+
+function resetFakeElo(initial: Record<string, number> = { 'Arsenal': 1800, 'Liverpool': 1780 }) {
+  fakeEloState.ratings = { ...initial };
+  fakeEloState.processedIds = new Set<string>();
+}
+
 vi.mock('./advancedPredictions', () => ({
   sharedEloSystem: {
-    getAllRatings: vi.fn(() => ({ 'Arsenal': 1800, 'Liverpool': 1780 })),
-    setTeamRating: vi.fn(),
-    getProcessedMatchIds: vi.fn(() => new Set<string>()),
-    setProcessedMatchIds: vi.fn()
+    getAllRatings: vi.fn(() => ({ ...fakeEloState.ratings })),
+    setTeamRating: vi.fn((team: string, rating: number) => {
+      fakeEloState.ratings[team] = rating;
+    }),
+    getProcessedMatchIds: vi.fn(() => new Set(fakeEloState.processedIds)),
+    setProcessedMatchIds: vi.fn((ids: Set<string>) => {
+      fakeEloState.processedIds = new Set(ids);
+    })
   },
   EloRatingSystem: { DEFAULT_RATING: 1500 }
 }));
@@ -61,6 +79,7 @@ function makePrediction(overrides: Partial<EnhancedPredictionModel> = {}): Enhan
 describe('BacktestRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetFakeElo();
   });
 
   it('should filter out matches without a result', async () => {
@@ -392,5 +411,148 @@ describe('BacktestRunner', () => {
 
     // Brier for uniform on 3-class: (1/3-1)² + (1/3-0)² + (1/3-0)² = 4/9 + 1/9 + 1/9 = 6/9 = 2/3
     expect(result.brierScore).toBeCloseTo(2 / 3, 3);
+  });
+
+  it('should restore ELO ratings to their pre-backtest state after a run', async () => {
+    // Seed with known initial ratings
+    resetFakeElo({ 'Arsenal': 1800, 'Liverpool': 1780, 'Chelsea': 1750 });
+
+    const matches = [
+      makeMatch({ id: '1', home_team: 'Arsenal', away_team: 'Liverpool', result: 'H' }),
+      makeMatch({ id: '2', home_team: 'Chelsea', away_team: 'Arsenal', result: 'D', date: '2025-01-08T15:00:00Z' })
+    ];
+
+    // The predictor internally calls sharedEloSystem.setTeamRating during prediction,
+    // which mutates our fake state. Simulate this by mutating ratings in the mock.
+    mockPredictMatch.mockImplementation(async () => {
+      // Simulate ELO updates that would happen during prediction
+      fakeEloState.ratings['Arsenal'] = 1820;
+      fakeEloState.ratings['Liverpool'] = 1760;
+      fakeEloState.ratings['NewTeam'] = 1500; // Simulate a new team appearing
+      fakeEloState.processedIds.add('extra-match');
+      return makePrediction();
+    });
+
+    const runner = new BacktestRunner(matches);
+    await runner.run();
+
+    // After the run, ELO state should be restored to the original snapshot
+    expect(fakeEloState.ratings['Arsenal']).toBe(1800);
+    expect(fakeEloState.ratings['Liverpool']).toBe(1780);
+    expect(fakeEloState.ratings['Chelsea']).toBe(1750);
+    // New teams created during backtest should be reset to DEFAULT_RATING (1500)
+    expect(fakeEloState.ratings['NewTeam']).toBe(1500);
+    // Processed match IDs should be restored to the original empty set
+    expect(fakeEloState.processedIds.size).toBe(0);
+  });
+
+  it('should restore ELO ratings even when all predictions throw', async () => {
+    resetFakeElo({ 'Arsenal': 1800, 'Liverpool': 1780 });
+
+    const matches = [
+      makeMatch({ id: '1', result: 'H' }),
+      makeMatch({ id: '2', result: 'D', date: '2025-01-08T15:00:00Z' })
+    ];
+
+    mockPredictMatch.mockImplementation(async () => {
+      // Corrupt the state before throwing
+      fakeEloState.ratings['Arsenal'] = 9999;
+      throw new Error('Prediction failed');
+    });
+
+    const runner = new BacktestRunner(matches);
+    await runner.run();
+
+    // Despite all predictions failing, ratings should still be restored
+    expect(fakeEloState.ratings['Arsenal']).toBe(1800);
+    expect(fakeEloState.ratings['Liverpool']).toBe(1780);
+  });
+});
+
+describe('WeightOptimiser', () => {
+  function makeBtPrediction(actual: 'H' | 'D' | 'A', outputs: { elo: number; poisson: number; form: number; h2h: number; standings: number }): BacktestPrediction {
+    return {
+      matchId: '1',
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      actualResult: actual,
+      correct: actual === 'H',
+      confidence: 0.6,
+      probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
+      modelOutputs: {
+        elo: { home: outputs.elo, draw: 0.25, away: 1 - outputs.elo - 0.25 },
+        poisson: { home: outputs.poisson, draw: 0.25, away: 1 - outputs.poisson - 0.25 },
+        form: { home: outputs.form, draw: 0.25, away: 1 - outputs.form - 0.25 },
+        h2h: { home: outputs.h2h, draw: 0.25, away: 1 - outputs.h2h - 0.25 },
+        standings: { home: outputs.standings, draw: 0.25, away: 1 - outputs.standings - 0.25 }
+      }
+    };
+  }
+
+  it('should return undefined with fewer than 10 predictions', () => {
+    const predictions = Array(5).fill(null).map(() =>
+      makeBtPrediction('H', { elo: 0.6, poisson: 0.5, form: 0.5, h2h: 0.5, standings: 0.5 })
+    );
+    const result = WeightOptimiser.optimise(predictions);
+    expect(result).toBeUndefined();
+  });
+
+  it('should return undefined when predictions lack model outputs', () => {
+    const predictions: BacktestPrediction[] = Array(15).fill(null).map(() => ({
+      matchId: '1', homeTeam: 'A', awayTeam: 'B',
+      predictedResult: 'H' as const, actualResult: 'H' as const,
+      correct: true, confidence: 0.6,
+      probabilities: { home: 0.5, draw: 0.25, away: 0.25 }
+      // no modelOutputs
+    }));
+    const result = WeightOptimiser.optimise(predictions);
+    expect(result).toBeUndefined();
+  });
+
+  it('should find optimal weights with sufficient data', () => {
+    // Create 20 predictions where ELO is the best predictor (high home prob when actual is H)
+    const predictions: BacktestPrediction[] = [];
+    for (let i = 0; i < 20; i++) {
+      predictions.push(makeBtPrediction('H', { elo: 0.7, poisson: 0.4, form: 0.3, h2h: 0.3, standings: 0.3 }));
+    }
+    const result = WeightOptimiser.optimise(predictions);
+    expect(result).toBeDefined();
+    expect(result!.accuracy).toBeGreaterThanOrEqual(0);
+    expect(result!.elo + result!.poisson + result!.form + result!.h2h + result!.standings).toBeCloseTo(1.0, 1);
+  });
+
+  it('should favour the model that predicts correctly most often', () => {
+    // ELO always predicts home strongly, Poisson always predicts away
+    // Actual is always home — optimizer should weight ELO heavily
+    const predictions: BacktestPrediction[] = [];
+    for (let i = 0; i < 20; i++) {
+      predictions.push({
+        matchId: String(i), homeTeam: 'A', awayTeam: 'B',
+        predictedResult: 'H', actualResult: 'H', correct: true,
+        confidence: 0.6, probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
+        modelOutputs: {
+          elo: { home: 0.8, draw: 0.1, away: 0.1 },
+          poisson: { home: 0.1, draw: 0.1, away: 0.8 },
+          form: { home: 0.33, draw: 0.34, away: 0.33 },
+          h2h: { home: 0.33, draw: 0.34, away: 0.33 },
+          standings: { home: 0.33, draw: 0.34, away: 0.33 }
+        }
+      });
+    }
+    const result = WeightOptimiser.optimise(predictions);
+    expect(result).toBeDefined();
+    // ELO should get more weight than Poisson (which always predicts wrong)
+    expect(result!.elo).toBeGreaterThan(result!.poisson);
+  });
+
+  it('should report improvement over current weights', () => {
+    const predictions: BacktestPrediction[] = [];
+    for (let i = 0; i < 20; i++) {
+      predictions.push(makeBtPrediction('H', { elo: 0.7, poisson: 0.5, form: 0.5, h2h: 0.5, standings: 0.5 }));
+    }
+    const result = WeightOptimiser.optimise(predictions);
+    expect(result).toBeDefined();
+    expect(typeof result!.improvement).toBe('number');
   });
 });

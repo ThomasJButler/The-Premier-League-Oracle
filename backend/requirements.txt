@@ -16,8 +16,12 @@ pydantic==2.9.2
 requests==2.32.3
 python-dotenv==1.0.1
 
-# AI (Oracle Chat RAG — P6b)
-openai
+# AI (Oracle Chat RAG — P6b, Claude integration — P7b)
+openai==1.107.1
+anthropic==0.49.0
+
+# Web search fallback for RAG (P7h) — no API key required
+duckduckgo-search==7.5.5
 
 # Testing
 pytest==8.3.3

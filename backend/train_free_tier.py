@@ -87,6 +87,44 @@ def load_data(csv_dir: str) -> pd.DataFrame:
     return df
 
 
+def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
+    """
+    Extract bookmaker odds columns from a CSV row.
+
+    Returns a dict of raw odds values keyed by CSV column name,
+    or None if no odds columns are available (e.g. non-CSV data).
+    The keys match what FreeTierFeatureEngineer._odds_features() expects:
+    PSCH/PSCD/PSCA (Pinnacle closing), PSH/PSD/PSA (Pinnacle opening),
+    AvgCH/AvgCD/AvgCA and AvgH/AvgD/AvgA (market average),
+    AHCh/AHh (Asian handicap), Avg>2.5/Avg<2.5 (over/under).
+    """
+    # Odds columns that might exist in the CSV row.
+    # We check for the presence of at least AvgH (always available in CSVs).
+    odds_cols = [
+        'PSCH', 'PSCD', 'PSCA', 'PSH', 'PSD', 'PSA',
+        'AvgCH', 'AvgCD', 'AvgCA', 'AvgH', 'AvgD', 'AvgA',
+        'AHCh', 'AHh',
+        'Avg>2.5', 'Avg<2.5',
+    ]
+
+    # Quick check: if the key columns aren't in the row, no odds data
+    if 'AvgH' not in row.index and 'B365H' not in row.index:
+        return None
+
+    odds: dict[str, float] = {}
+    for col in odds_cols:
+        if col in row.index:
+            val = row[col]
+            if pd.notna(val):
+                try:
+                    odds[col] = float(val)
+                except (ValueError, TypeError):
+                    pass
+
+    # Return None if we didn't find any meaningful odds data
+    return odds if odds else None
+
+
 def build_dataset(
     df: pd.DataFrame,
     engineer: FreeTierFeatureEngineer | None = None,
@@ -96,6 +134,7 @@ def build_dataset(
 
     Iterates chronologically. For each match, uses only prior data
     (no leakage). Skips matches where either team has < MIN_PRIOR_MATCHES.
+    Extracts bookmaker odds from CSV rows to populate odds features.
 
     Returns:
         X: Feature matrix (n_samples, n_features)
@@ -111,6 +150,7 @@ def build_dataset(
     y_rows: list[int] = []
     season_rows: list[str] = []
     skipped = 0
+    odds_present_count = 0
 
     # Track how many matches each team has played (for warmup filter)
     team_match_counts: dict[str, int] = {}
@@ -141,8 +181,14 @@ def build_dataset(
         if isinstance(match_date, pd.Timestamp):
             match_date = match_date.to_pydatetime()
 
+        # Extract odds from the CSV row (these are known pre-match data,
+        # not leaked — bookmaker odds are published before kick-off)
+        odds = _extract_odds_from_row(row)
+        if odds is not None:
+            odds_present_count += 1
+
         try:
-            features = engineer.create_features(ht, at, match_date)
+            features = engineer.create_features(ht, at, match_date, odds=odds)
             feature_vec = np.array([features[name] for name in feature_names])
             X_rows.append(feature_vec)
             y_rows.append(LABEL_MAP[result])
@@ -156,8 +202,11 @@ def build_dataset(
             logger.info('Processed %d matches (%d skipped)...', len(X_rows), skipped)
 
     logger.info(
-        'Dataset built: %d samples, %d skipped (warmup/invalid), %d features',
+        'Dataset built: %d samples, %d skipped (warmup/invalid), %d features, '
+        '%d with odds data (%.1f%%)',
         len(X_rows), skipped, len(feature_names),
+        odds_present_count,
+        (odds_present_count / len(X_rows) * 100) if X_rows else 0.0,
     )
 
     X = np.array(X_rows)
@@ -365,54 +414,139 @@ def select_features(
     return X_train_sel, X_val_sel, keep_names
 
 
+def _calibrate_with_method(
+    raw_probs: np.ndarray, y_val: np.ndarray, method: str,
+) -> tuple[list, np.ndarray]:
+    """
+    Fit per-class calibrators using the specified method.
+
+    Args:
+        raw_probs: Raw model probabilities (n_samples, 3).
+        y_val: True labels (n_samples,).
+        method: 'isotonic' or 'platt'.
+
+    Returns:
+        (calibrators, calibrated_probs) — calibrators are sklearn objects,
+        calibrated_probs are re-normalised to sum to 1.
+    """
+    from sklearn.isotonic import IsotonicRegression
+    from sklearn.linear_model import LogisticRegression as LR
+
+    calibrators = []
+    for class_idx in range(3):
+        binary_target = (y_val == class_idx).astype(float)
+        if method == 'platt':
+            # Platt scaling: fit a logistic sigmoid P(y=1|f) = 1/(1+exp(Af+B))
+            # Only 2 parameters per class — much less prone to overfitting
+            # than isotonic regression on small validation sets (~420 samples).
+            cal = LR(max_iter=1000, solver='lbfgs')
+            cal.fit(raw_probs[:, class_idx].reshape(-1, 1), binary_target)
+            calibrators.append(cal)
+        else:
+            cal = IsotonicRegression(out_of_bounds='clip')
+            cal.fit(raw_probs[:, class_idx], binary_target)
+            calibrators.append(cal)
+
+    # Apply calibrators
+    if method == 'platt':
+        cal_probs = np.column_stack([
+            cal.predict_proba(raw_probs[:, i].reshape(-1, 1))[:, 1]
+            for i, cal in enumerate(calibrators)
+        ])
+    else:
+        cal_probs = np.column_stack([
+            cal.predict(raw_probs[:, i]) for i, cal in enumerate(calibrators)
+        ])
+
+    # Re-normalise rows to sum to 1
+    row_sums = cal_probs.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0
+    cal_probs = cal_probs / row_sums
+    return calibrators, cal_probs
+
+
+def apply_calibrators(
+    raw_probs: np.ndarray,
+    calibrators: list,
+    method: str,
+) -> np.ndarray:
+    """
+    Apply fitted calibrators to raw probabilities, dispatching on method.
+
+    Isotonic calibrators use .predict() on 1D input.
+    Platt calibrators (LogisticRegression) use .predict_proba() on 2D input.
+
+    Returns re-normalised probabilities (n_samples, 3).
+    """
+    if method == 'platt':
+        cal_probs = np.column_stack([
+            cal.predict_proba(raw_probs[:, i].reshape(-1, 1))[:, 1]
+            for i, cal in enumerate(calibrators)
+        ])
+    else:
+        cal_probs = np.column_stack([
+            cal.predict(raw_probs[:, i])
+            for i, cal in enumerate(calibrators)
+        ])
+    row_sums = cal_probs.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0
+    return cal_probs / row_sums
+
+
 def calibrate_probabilities(
     model, X_val: np.ndarray, y_val: np.ndarray,
     feature_names: list[str],
 ) -> dict:
     """
-    Calibrate XGBoost probabilities using isotonic regression.
+    Calibrate XGBoost probabilities using the best of isotonic and Platt scaling.
 
-    Raw XGBoost probabilities are often overconfident — log loss was 1.034
-    for 51% accuracy (well-calibrated would be ~0.95). Calibration maps
+    Raw XGBoost probabilities are often overconfident. Calibration maps
     predicted probabilities to observed frequencies using a held-out set.
 
-    Uses a simple wrapper that calibrates each class independently with
-    isotonic regression, then re-normalises to sum to 1.
+    Both methods are tried and the one with lower log loss is selected:
+    - Isotonic regression: flexible piecewise-constant mapping, but needs
+      many samples per class to avoid overfitting.
+    - Platt scaling: logistic sigmoid with only 2 parameters per class,
+      better suited for small validation sets (e.g. 420 samples).
     """
     import xgboost as xgb
-    from sklearn.isotonic import IsotonicRegression
+    from sklearn.metrics import log_loss
 
     dval = xgb.DMatrix(X_val, feature_names=feature_names)
     raw_probs = model.predict(dval)
-
-    calibrators = []
-    for class_idx in range(3):
-        binary_target = (y_val == class_idx).astype(float)
-        ir = IsotonicRegression(out_of_bounds='clip')
-        ir.fit(raw_probs[:, class_idx], binary_target)
-        calibrators.append(ir)
-
-    # Verify calibration improves on val set
-    cal_probs = np.column_stack([
-        cal.predict(raw_probs[:, i]) for i, cal in enumerate(calibrators)
-    ])
-    # Re-normalise rows to sum to 1
-    row_sums = cal_probs.sum(axis=1, keepdims=True)
-    row_sums[row_sums == 0] = 1.0  # prevent division by zero
-    cal_probs = cal_probs / row_sums
-
-    from sklearn.metrics import log_loss
     raw_ll = log_loss(y_val, raw_probs, labels=[0, 1, 2])
-    cal_ll = log_loss(y_val, cal_probs, labels=[0, 1, 2])
+
+    # Try both calibration methods, keep the one with lower log loss
+    iso_calibrators, iso_probs = _calibrate_with_method(raw_probs, y_val, 'isotonic')
+    iso_ll = log_loss(y_val, iso_probs, labels=[0, 1, 2])
+
+    platt_calibrators, platt_probs = _calibrate_with_method(raw_probs, y_val, 'platt')
+    platt_ll = log_loss(y_val, platt_probs, labels=[0, 1, 2])
+
     logger.info(
-        'Calibration: log loss %.4f → %.4f (%+.4f)',
-        raw_ll, cal_ll, cal_ll - raw_ll,
+        'Calibration comparison — raw: %.4f, isotonic: %.4f, Platt: %.4f',
+        raw_ll, iso_ll, platt_ll,
+    )
+
+    if platt_ll <= iso_ll:
+        best_method = 'platt'
+        best_calibrators = platt_calibrators
+        best_ll = platt_ll
+    else:
+        best_method = 'isotonic'
+        best_calibrators = iso_calibrators
+        best_ll = iso_ll
+
+    logger.info(
+        'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling',
+        raw_ll, best_ll, best_ll - raw_ll, best_method,
     )
 
     return {
-        'calibrators': calibrators,
+        'calibrators': best_calibrators,
+        'calibration_method': best_method,
         'raw_log_loss': raw_ll,
-        'calibrated_log_loss': cal_ll,
+        'calibrated_log_loss': best_ll,
     }
 
 
@@ -1061,6 +1195,7 @@ def save_model(xgb_result: dict, feature_names: list[str],
     payload = {
         'model': xgb_result['model'],
         'calibrators': xgb_result.get('calibrators'),
+        'calibration_method': xgb_result.get('calibration_method', 'isotonic'),
         'feature_names': feature_names,
         'params': xgb_result['params'],
         'feature_importance': xgb_result['importance'],
@@ -1074,16 +1209,29 @@ def save_model(xgb_result: dict, feature_names: list[str],
         'metrics': metrics,
     }
 
-    # Include stacked ensemble if trained
-    if ensemble_result is not None:
-        payload['stacked_ensemble'] = {
-            'classifiers': ensemble_result['classifiers'],
-            'meta_learner': ensemble_result['meta_learner'],
-            'meta_scaler': ensemble_result['meta_scaler'],
-        }
-        if ensemble_metrics is not None:
+    # Only include stacked ensemble if it outperforms calibrated XGBoost.
+    # The inference path prefers the stacked ensemble when present, so saving
+    # a worse-performing ensemble would hurt production accuracy.
+    if ensemble_result is not None and ensemble_metrics is not None:
+        ens_acc = ensemble_metrics.get('accuracy', 0.0)
+        xgb_acc = metrics.get('accuracy', 0.0)
+        if ens_acc > xgb_acc:
+            payload['stacked_ensemble'] = {
+                'classifiers': ensemble_result['classifiers'],
+                'meta_learner': ensemble_result['meta_learner'],
+                'meta_scaler': ensemble_result['meta_scaler'],
+            }
             payload['ensemble_metrics'] = ensemble_metrics
-        logger.info('Stacked ensemble included in model file')
+            logger.info(
+                'Stacked ensemble included in model file (%.1f%% > %.1f%% XGBoost)',
+                ens_acc * 100, xgb_acc * 100,
+            )
+        else:
+            logger.info(
+                'Stacked ensemble EXCLUDED — underperforms calibrated XGBoost '
+                '(%.1f%% vs %.1f%%)',
+                ens_acc * 100, xgb_acc * 100,
+            )
 
     joblib.dump(payload, MODEL_PATH)
     logger.info('Model saved to %s', MODEL_PATH)
@@ -1201,13 +1349,10 @@ def main():
     )
 
     # Use calibrated probabilities for final evaluation
-    cal_probs = np.column_stack([
-        cal.predict(xgb_probs_raw[:, i])
-        for i, cal in enumerate(cal_result['calibrators'])
-    ])
-    row_sums = cal_probs.sum(axis=1, keepdims=True)
-    row_sums[row_sums == 0] = 1.0
-    cal_probs = cal_probs / row_sums
+    cal_probs = apply_calibrators(
+        xgb_probs_raw, cal_result['calibrators'],
+        cal_result['calibration_method'],
+    )
 
     xgb_metrics = evaluate(y_val, cal_probs, label='XGBoost (calibrated)')
     xgb_probs = cal_probs
@@ -1262,6 +1407,7 @@ def main():
         'seasons': seasons,
     }
     xgb_result['calibrators'] = cal_result['calibrators']
+    xgb_result['calibration_method'] = cal_result['calibration_method']
     save_model(
         xgb_result, active_feature_names, xgb_metrics, training_info,
         ensemble_result=ensemble_result,
@@ -1309,13 +1455,10 @@ def main():
                 dtest = xgb.DMatrix(X_test_sel, feature_names=active_feature_names)
                 test_probs_raw = xgb_result['model'].predict(dtest)
                 # Apply calibration
-                test_probs = np.column_stack([
-                    cal.predict(test_probs_raw[:, i])
-                    for i, cal in enumerate(cal_result['calibrators'])
-                ])
-                row_sums = test_probs.sum(axis=1, keepdims=True)
-                row_sums[row_sums == 0] = 1.0
-                test_probs = test_probs / row_sums
+                test_probs = apply_calibrators(
+                    test_probs_raw, cal_result['calibrators'],
+                    cal_result['calibration_method'],
+                )
                 evaluate(y_test, test_probs, label='Held-out 2025/26')
             else:
                 logger.warning('No test samples from 2025/26 season')

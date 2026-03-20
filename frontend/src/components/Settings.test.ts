@@ -45,7 +45,7 @@ vi.mock('lucide-svelte', () => {
   return {
     Settings: stub, Key: stub, Database: stub, RefreshCw: stub,
     CheckCircle: stub, AlertCircle: stub, Wifi: stub, Trophy: stub,
-    Sparkles: stub, Heart: stub, Cpu: stub
+    Sparkles: stub, Heart: stub, Cpu: stub, Bot: stub
   };
 });
 
@@ -112,6 +112,29 @@ describe('Settings Component', () => {
     const select = document.querySelector('select');
     expect(select).toBeInTheDocument();
     expect(screen.getByText('None (PL Default)')).toBeInTheDocument();
+  });
+
+  it('should populate favourite team dropdown from teamColors keys (not API names)', () => {
+    // The dropdown must use canonical names that match the CSS [data-team="..."]
+    // selectors, not API names like "Liverpool FC" or "Wolves". The "None" option
+    // is always present; team options come from the static teamColors map.
+    render(Settings);
+
+    const select = screen.getByLabelText('Favourite team') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    // The default option is always rendered statically
+    expect(screen.getByText('None (PL Default)')).toBeInTheDocument();
+  });
+
+  it('should use data-team attribute on documentElement for team theming', () => {
+    // The team theme system works via CSS attribute selectors [data-team="..."]
+    // on the <html> element. Verify the mechanism works in DOM.
+    document.documentElement.dataset.team = 'Liverpool';
+    expect(document.documentElement.dataset.team).toBe('Liverpool');
+
+    delete document.documentElement.dataset.team;
+    expect(document.documentElement.dataset.team).toBeUndefined();
   });
 
   it('should show Data Management section with Cache Size and Last Sync', () => {

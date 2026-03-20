@@ -12,10 +12,8 @@ Validates:
 
 import os
 import sys
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -24,12 +22,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from app.api.rag import (
     QueryIntent,
     build_rag_prompt,
+    extract_players,
     extract_teams,
+    init_player_data,
     init_team_patterns,
     parse_intent,
     query_dataframe,
 )
-from app.features.free_tier_features import CSV_TO_API, _ALIASES
+from app.features.free_tier_features import _ALIASES, CSV_TO_API
 
 # Import FastAPI test client
 try:
@@ -331,7 +331,7 @@ class TestRAGPromptBuilder:
 
     def test_prompt_with_empty_df(self):
         empty_df = pd.DataFrame()
-        prompt, grounded = build_rag_prompt(empty_df, 'Arsenal form')
+        _prompt, grounded = build_rag_prompt(empty_df, 'Arsenal form')
         assert grounded is False
 
     def test_prompt_includes_match_count(self, sample_df):
@@ -472,3 +472,131 @@ class TestChatRAGEndpoint:
                 assert 'assistant' in roles
         finally:
             main_module.OPENAI_API_KEY = original_key
+
+
+# ---------------------------------------------------------------------------
+# Tests: Player data enrichment (P7h)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=False)
+def player_data():
+    """Load player data from CSV and mock API scorers for testing."""
+    from pathlib import Path
+
+    csv_path = Path(__file__).resolve().parent.parent / 'spreadsheets' / 'fact_player_stats.csv'
+
+    mock_api_scorers = [
+        {
+            'player': {'name': 'Mohamed Salah'},
+            'team': {'name': 'Liverpool FC'},
+            'goals': 19,
+            'assists': 13,
+            'penalties': 5,
+            'playedMatches': 25,
+        },
+        {
+            'player': {'name': 'Erling Haaland'},
+            'team': {'name': 'Manchester City FC'},
+            'goals': 16,
+            'assists': 4,
+            'penalties': 2,
+            'playedMatches': 24,
+        },
+        {
+            'player': {'name': 'Bryan Mbeumo'},
+            'team': {'name': 'Brentford FC'},
+            'goals': 13,
+            'assists': 3,
+            'penalties': 1,
+            'playedMatches': 25,
+        },
+    ]
+
+    init_player_data(csv_path=csv_path, api_scorers=mock_api_scorers)
+    yield
+    # Clean up — reset to empty
+    init_player_data(csv_path=None, api_scorers=None)
+
+
+class TestPlayerExtraction:
+    """Tests for extracting player names from text."""
+
+    def test_extract_player_full_name(self, player_data):
+        players = extract_players('How is Mohamed Salah doing?')
+        assert 'Mohamed Salah' in players
+
+    def test_extract_player_surname(self, player_data):
+        players = extract_players("Tell me about Haaland's goals")
+        assert any('Haaland' in p for p in players)
+
+    def test_no_player_found(self, player_data):
+        players = extract_players('What is the league table?')
+        assert players == []
+
+
+class TestPlayerIntentParsing:
+    """Tests for player-related intent detection."""
+
+    def test_top_scorers_intent(self, player_data):
+        intent = parse_intent('Who are the top scorers?')
+        assert intent.query_type == 'player'
+
+    def test_player_name_triggers_intent(self, player_data):
+        intent = parse_intent('How many goals has Salah scored?')
+        assert intent.query_type == 'player'
+        assert len(intent.players) > 0
+
+    def test_golden_boot_intent(self, player_data):
+        intent = parse_intent('Who will win the golden boot?')
+        assert intent.query_type == 'player'
+
+    def test_squad_intent(self, player_data):
+        intent = parse_intent("Show me Arsenal's squad")
+        assert intent.query_type == 'player'
+        assert 'Arsenal' in intent.teams
+
+    def test_xg_intent(self, player_data):
+        intent = parse_intent('Which players are overperforming their xG?')
+        assert intent.query_type == 'player'
+
+    def test_most_assists_intent(self, player_data):
+        intent = parse_intent('Who has the most assists this season?')
+        assert intent.query_type == 'player'
+
+
+class TestPlayerQueries:
+    """Tests for player data query functions."""
+
+    def test_top_scorers_query(self, player_data, sample_df):
+        intent = parse_intent('Who are the top scorers?')
+        result = query_dataframe(sample_df, intent)
+        assert 'Top Scorers' in result
+        assert 'Mohamed Salah' in result
+        assert 'Erling Haaland' in result
+
+    def test_specific_player_query(self, player_data, sample_df):
+        intent = parse_intent('Tell me about Mohamed Salah')
+        result = query_dataframe(sample_df, intent)
+        assert 'Mohamed Salah' in result
+        assert 'Goals' in result
+
+    def test_team_players_query(self, player_data, sample_df):
+        """Querying 'Liverpool players' should show top scorers for that team."""
+        intent = parse_intent("Liverpool's top players")
+        result = query_dataframe(sample_df, intent)
+        assert 'Liverpool' in result or 'Salah' in result
+
+    def test_player_query_with_no_data(self, sample_df):
+        """Player queries without loaded data should degrade gracefully."""
+        # Reset player data
+        init_player_data(csv_path=None, api_scorers=None)
+        intent = parse_intent('Who are the top scorers?')
+        result = query_dataframe(sample_df, intent)
+        # Should still return something (even if "No player data available")
+        assert isinstance(result, str)
+
+    def test_prompt_mentions_player_data(self, player_data, sample_df):
+        """build_rag_prompt should mention player data availability."""
+        prompt, grounded = build_rag_prompt(sample_df, 'Who is the top scorer?')
+        assert 'player' in prompt.lower()
+        assert grounded is True

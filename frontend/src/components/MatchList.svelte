@@ -8,10 +8,12 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { getSeasonYear } from '../lib/utils';
+  import DataFreshness from './DataFreshness.svelte';
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
   let seasons: Season[] = [];
+  let dataTimestamp: number | null = null;
   // Compute current season from date (July onwards = new season). Overwritten by API if available.
   const year = getSeasonYear();
   let selectedSeason = `${year}-${year + 1}`;
@@ -44,7 +46,8 @@
     error = null;
     try {
       matches = await dataService.getMatchesBySeason(selectedSeason);
-      
+      dataTimestamp = dataService.getLastFetched('matches');
+
       // Extract unique teams
       const teamSet = new Set<string>();
       matches.forEach(match => {
@@ -127,7 +130,10 @@
 
 <div class="space-y-6 animate-fade-in">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <h2 class="text-2xl font-bold font-display text-foreground">Match Schedule</h2>
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold font-display text-foreground">Match Schedule</h1>
+      <DataFreshness timestamp={dataTimestamp} />
+    </div>
 
     <div class="flex items-center gap-4">
       <!-- Season selector -->
@@ -258,8 +264,30 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton rows matching the match list layout -->
+    <div class="space-y-4">
+      {#each Array(5) as _, i}
+        <div class="rounded-xl border border-border bg-card shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4" style="animation-delay: {i * 60}ms">
+          <!-- Home team -->
+          <div class="flex items-center justify-end space-x-3">
+            <div class="skeleton h-4 w-24 rounded"></div>
+            <div class="skeleton h-7 w-7 rounded-full"></div>
+          </div>
+          <!-- Score -->
+          <div class="text-center">
+            <div class="skeleton h-6 w-14 rounded mx-auto"></div>
+          </div>
+          <!-- Away team -->
+          <div class="flex items-center justify-start space-x-3">
+            <div class="skeleton h-7 w-7 rounded-full"></div>
+            <div class="skeleton h-4 w-20 rounded"></div>
+          </div>
+          <!-- Status badge -->
+          <div class="flex justify-center sm:justify-end col-span-full sm:col-span-1">
+            <div class="skeleton h-5 w-16 rounded-full"></div>
+          </div>
+        </div>
+      {/each}
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">
@@ -280,7 +308,7 @@
   {:else}
     <div class="space-y-4">
       {#each filteredMatches as match, i (match.id)}
-        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
           <!-- Team 1 -->
           <div class="flex items-center justify-end space-x-3">
             <span class="font-semibold text-foreground text-right">{match.home_team}</span>

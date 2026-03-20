@@ -7,11 +7,13 @@
   import { getTeamLogo } from '../utils/teamLogos';
   import { getSeasonLabel } from '../lib/utils';
   import { Button } from '$lib/components/ui/button';
+  import DataFreshness from './DataFreshness.svelte';
 
   let standings: Standing[] = [];
   let loading = true;
   let error = '';
   let showFullTable = false;
+  let dataTimestamp: number | null = null;
   
   onMount(async () => {
     await loadStandings();
@@ -30,7 +32,8 @@
       }
       
       standings = await dataService.getStandings();
-      
+      dataTimestamp = dataService.getLastFetched('standings');
+
       if (!standings || standings.length === 0) {
         error = 'No standings data available. The season may not have started yet.';
       }
@@ -51,15 +54,25 @@
   function getPositionClass(position: number): string {
     if (position <= 4) return 'border-l-4 border-l-blue-500'; // Champions League
     if (position === 5) return 'border-l-4 border-l-orange-500'; // Europa League
+    if (position === 6) return 'border-l-4 border-l-emerald-500'; // Conference League
     if (position >= 18) return 'border-l-4 border-l-red-500'; // Relegation
     return '';
   }
-  
+
   function getPositionBadge(position: number): string {
     if (position <= 4) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
     if (position === 5) return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300';
+    if (position === 6) return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300';
     if (position >= 18) return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
     return 'bg-muted text-foreground';
+  }
+
+  function getRowBackground(position: number): string {
+    if (position <= 4) return 'bg-blue-50/40 dark:bg-blue-950/15';
+    if (position === 5) return 'bg-orange-50/40 dark:bg-orange-950/15';
+    if (position === 6) return 'bg-emerald-50/40 dark:bg-emerald-950/15';
+    if (position >= 18) return 'bg-red-50/40 dark:bg-red-950/15';
+    return '';
   }
   
   function getFormClass(result: string): string {
@@ -106,20 +119,82 @@
           <Trophy class="w-8 h-8 text-white" />
         </div>
         <div>
-          <h2 class="text-2xl font-bold font-display text-foreground">Premier League Table</h2>
+          <h1 class="text-2xl font-bold font-display text-foreground">Premier League Table</h1>
           <p class="text-sm text-muted-foreground">{getSeasonLabel()} Season Standings</p>
         </div>
       </div>
       
-      <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
-        {loading ? 'Refreshing...' : 'Refresh'}
-      </Button>
+      <div class="flex items-center gap-3">
+        <DataFreshness timestamp={dataTimestamp} />
+        <Button variant="ghost" size="sm" on:click={loadStandings} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
     </div>
   </div>
   
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton table matching the standings layout -->
+    <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <!-- Legend skeleton -->
+      <div class="px-6 py-3 bg-muted border-b border-border">
+        <div class="flex gap-4">
+          {#each Array(4) as _}
+            <div class="flex items-center gap-2">
+              <div class="skeleton w-3 h-3 rounded-full"></div>
+              <div class="skeleton h-3 w-20 rounded"></div>
+            </div>
+          {/each}
+        </div>
+      </div>
+      <!-- Header -->
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-muted border-b border-border">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Pos</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">P</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">W</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">D</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">L</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GF</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GA</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">GD</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Pts</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Form</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {#each Array(10) as _, i}
+              <tr style="animation-delay: {i * 40}ms">
+                <td class="px-4 py-3"><div class="skeleton h-6 w-8 rounded"></div></td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="skeleton w-6 h-6 rounded-lg"></div>
+                    <div class="skeleton h-4 w-24 rounded"></div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-8 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-8 rounded mx-auto font-bold"></div></td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                  <div class="flex gap-1">
+                    {#each Array(5) as _}
+                      <div class="skeleton w-5 h-5 rounded-full"></div>
+                    {/each}
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
@@ -138,6 +213,10 @@
           <div class="flex items-center gap-2">
             <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
             <span class="text-muted-foreground">Europa League</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+            <span class="text-muted-foreground">Conference League</span>
           </div>
           <div class="flex items-center gap-2">
             <div class="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -166,8 +245,8 @@
           </thead>
           <tbody class="divide-y divide-border">
             {#each displayedStandings as team, i (team.team.id)}
-              <tr 
-                class="hover:bg-muted/50 transition-colors {getPositionClass(team.position)}"
+              <tr
+                class="hover:bg-muted/50 transition-colors {getPositionClass(team.position)} {getRowBackground(team.position)}"
                 in:fly={{ y: 20, delay: i * 30 }}
               >
                 <td class="px-4 py-3 whitespace-nowrap">
@@ -224,9 +303,14 @@
                   {team.points}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
-                  <div class="flex gap-1">
+                  <div class="flex gap-1" role="list" aria-label="Last 5 results">
                     {#each formatForm(team.form) as result}
-                      <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
+                      <span
+                        class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center {getFormClass(result)}"
+                        role="listitem"
+                        title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"
+                        aria-label="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"
+                      >
                         {result}
                       </span>
                     {:else}

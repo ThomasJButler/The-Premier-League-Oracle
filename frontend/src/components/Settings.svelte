@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Database, RefreshCw, CheckCircle, AlertCircle, Wifi, Trophy, Heart, Cpu, Sparkles, Bot } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { footballDataAPI } from '../services/api/footballData';
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
   import { aiAnalysisService } from '../services/aiAnalysis';
+  import { AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY } from '$lib/constants';
   import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
@@ -30,8 +31,9 @@
   let favouriteTeam = '';
   let plTeams: string[] = [];
 
-  // Team brand colours for the favourite-team picker — update each season
-  // when promotion/relegation changes the PL squad.
+  // Team brand colours for the favourite-team picker.
+  // Keys MUST match [data-team="..."] selectors in app.css.
+  // SEASONAL UPDATE: add promoted teams, remove relegated, update app.css too.
   const teamColors: Record<string, string> = {
     'Arsenal': '#EF0107', 'Aston Villa': '#670E36', 'Bournemouth': '#DA020E',
     'Brentford': '#FF0000', 'Brighton': '#0057B8', 'Chelsea': '#034694',
@@ -57,6 +59,12 @@
   // AI Analysis
   let aiAnalysisEnabled = false;
   let aiKeyAvailable: boolean | null = null;
+  let selectedAiModel = DEFAULT_AI_MODEL;
+
+  function saveAiModel(model: string) {
+    selectedAiModel = model;
+    localStorage.setItem(AI_MODEL_STORAGE_KEY, model);
+  }
 
   function toggleAiAnalysis() {
     aiAnalysisEnabled = !aiAnalysisEnabled;
@@ -196,6 +204,10 @@
   }
   
   onMount(async () => {
+    // Populate team list immediately — these names match the CSS
+    // [data-team="..."] selectors in app.css. Update on promotion/relegation.
+    plTeams = Object.keys(teamColors).sort();
+
     // Load saved settings
     const savedFootballDataKey = localStorage.getItem('football_data_api_key');
     
@@ -219,11 +231,15 @@
       lastSync = savedLastSync;
     }
     
-    // Load favourite team
+    // Load favourite team — restore both local state and DOM attribute
     const savedTeam = localStorage.getItem('favourite_team');
     if (savedTeam) {
       favouriteTeam = savedTeam;
+      document.documentElement.dataset.team = savedTeam;
     }
+
+    // Load AI model preference
+    selectedAiModel = localStorage.getItem(AI_MODEL_STORAGE_KEY) || DEFAULT_AI_MODEL;
 
     // Load AI analysis settings
     aiAnalysisEnabled = aiAnalysisService.isEnabled();
@@ -265,16 +281,6 @@
       cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
     }
 
-    // Load team list from current standings (no hardcoded season list)
-    try {
-      const standings = await dataService.getStandings();
-      if (standings.length > 0) {
-        plTeams = standings.map(s => s.team.name).sort();
-      }
-    } catch {
-      // API unavailable — fall back to the static team list from the colour map
-      plTeams = Object.keys(teamColors).sort();
-    }
   });
 </script>
 
@@ -572,9 +578,9 @@
             {#if aiKeyAvailable === null}
               Checking…
             {:else if aiKeyAvailable}
-              Ready — using {localStorage.getItem('openai_api_key') ? 'your OpenAI key' : 'server-side key'}
+              Ready — using {localStorage.getItem('openai_api_key') ? 'your API key' : 'server-side key'}
             {:else}
-              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY
+              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
             {/if}
           </p>
         </div>
@@ -604,6 +610,37 @@
         </Button>
       </div>
     {/if}
+  </div>
+
+  <!-- AI Model Selection -->
+  <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-bold font-display text-foreground flex items-center space-x-2 mb-4">
+      <Bot class="w-5 h-5 text-primary" />
+      <span>AI Model</span>
+    </h2>
+    <p class="text-sm text-muted-foreground mb-4">
+      Choose which model powers Oracle Chat and AI Match Analysis.
+      Supports OpenAI (GPT) and Anthropic (Claude). Larger models
+      produce richer analysis but cost more per request.
+    </p>
+
+    <div class="flex items-center gap-3">
+      <select
+        id="ai-model"
+        aria-label="AI model"
+        bind:value={selectedAiModel}
+        on:change={() => saveAiModel(selectedAiModel)}
+        class="flex-1 max-w-md px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
+      >
+        {#each AI_MODELS as model}
+          <option value={model.id}>{model.label}</option>
+        {/each}
+      </select>
+    </div>
+
+    <p class="text-xs text-muted-foreground mt-3">
+      The server can override this via the <code class="text-xs bg-muted px-1 py-0.5 rounded">ORACLE_AI_MODEL</code> environment variable.
+    </p>
   </div>
 
   <!-- Cache Management -->

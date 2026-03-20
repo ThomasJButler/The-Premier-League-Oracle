@@ -10,16 +10,16 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 | Component | Status | Notes |
 | --------- | ------ | ----- |
-| `free_tier_features.py` | **Complete** | 99 features (incl. 8 draw + 5 Elo), standalone class |
+| `free_tier_features.py` | **Complete** | 114 features (incl. 13 draw + 5 Elo + 10 odds), standalone class |
 | `train_free_tier.py` | **Complete** | XGBoost + stacked OvR ensemble + LR baseline, rolling CV via `--cv` |
-| `xgboost_free_tier.joblib` | **Trained** | 51.0% accuracy, saved with metadata |
+| `xgboost_free_tier.joblib` | **Trained** | 53.3% accuracy (v3), saved with metadata |
 | `main.py` — `/predict/free` | **Complete** | Auto-uses ensemble when present, input validation, rate limiting |
 | `xgboost_model.py` | Architecture complete | Pro-tier — deferred |
 | `lstm_predictor.py` | Architecture complete | Pro-tier — `get_feature_importance()` returns `np.random.random()` (stub) |
 | `transformer_model.py` | Architecture complete | Pro-tier — save/load only stores 2 of 8 params |
 | `modern_oracle.py` | Orchestrator exists | Pro-tier — `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
 | `advanced_engineering.py` | 150 features declared | Pro-tier — 63 methods return hardcoded `0.0` (no data from free API) |
-| Backend tests | **86 tests** | 45 features, 25 training pipeline, 16 API endpoints |
+| Backend tests | **190 tests** | 60 features (incl. odds + Elo leakage), 33 training pipeline (incl. rolling CV), 17 API endpoints, 58 RAG engine, 22 web search |
 
 **Training data:** 2,191 matches across ~5.75 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
 
@@ -31,7 +31,7 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 
 ```
 Tier 1: Free (active development)
-  Features:     99 (results, form, standings, H2H, contextual, time series, draw indicators, Elo)
+  Features:     114 (results, form, standings, H2H, contextual, time series, draw indicators, Elo, odds)
   Model:        XGBoost
   Training:     train_free_tier.py → xgboost_free_tier.joblib
   Endpoint:     POST /predict/free
@@ -57,7 +57,7 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone cla
 
 `FreeTierFeatureEngineer` class that:
 - Is a standalone class (does not wrap `AdvancedFeatureEngineer`)
-- `create_features(home_team, away_team, match_date)` returns a dict of 99 features
+- `create_features(home_team, away_team, match_date)` returns a dict of 114 features
 - Class-level `FEATURE_NAMES` list for validation and documentation
 - Team name normalisation dict mapping CSV short names (e.g. "Man United") to API canonical names (e.g. "Manchester United FC")
 - Never calls any of the 63 stub methods that require Pro API data
@@ -85,7 +85,7 @@ The two tiers are fully decoupled. `FreeTierFeatureEngineer` is a standalone cla
 - [x] Team name normalisation handles both CSV and API formats
 - [x] Class is importable and usable independently of `AdvancedFeatureEngineer` internals
 
-Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 99 features are computed from scratch using only CSV/free-API data.
+Note: `FreeTierFeatureEngineer` is a standalone class (not wrapping `AdvancedFeatureEngineer` via composition as originally specified — the parent class has 63 stub methods that would pollute feature vectors). All 114 features are computed from scratch using only CSV/free-API data.
 
 ---
 
@@ -264,7 +264,7 @@ When loading the model file at startup, validate that it contains the expected m
 
 ### 5. Testing (Priority: High)
 
-The backend has 86 tests across 3 files covering free-tier features, training pipeline, and API endpoints.
+The backend has 190 tests across 5 files covering free-tier features (60 incl. odds + Elo leakage), training pipeline (33 incl. rolling CV), API endpoints (17), RAG engine (58 incl. player data), and web search fallback (22 incl. cache + prompt injection).
 
 #### `backend/tests/test_free_tier_features.py`
 
