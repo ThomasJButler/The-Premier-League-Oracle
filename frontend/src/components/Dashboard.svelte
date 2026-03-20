@@ -54,24 +54,43 @@
     datasets: [{
       label: 'Prediction Accuracy',
       data: [] as number[],
-      borderColor: 'hsl(var(--primary))',
+      borderColor: '#3b82f6', // resolved at mount via updateChartColours()
       tension: 0.4,
       fill: false
     }]
   };
 
-  /** Chart scale options — uses CSS variables so they adapt to light/dark theme */
-  const themeScaleOptions = {
-    y: {
-      beginAtZero: true,
-      grid: { color: 'hsla(var(--muted-foreground) / 0.1)' },
-      ticks: { color: 'hsl(var(--muted-foreground))' }
-    },
-    x: {
-      grid: { display: false },
-      ticks: { color: 'hsl(var(--muted-foreground))' }
-    }
-  };
+  /** Update chart dataset colours from resolved CSS variables (must run after mount) */
+  function updateChartColours() {
+    recentPerformance.datasets[0].borderColor = cssVar('--primary', '#3b82f6');
+  }
+
+  /**
+   * Resolve a CSS custom property to a concrete colour value that canvas can render.
+   * Canvas 2D context cannot parse `var(--foo)` — it needs a concrete rgb/hsl string.
+   */
+  function cssVar(name: string, fallback = '#888'): string {
+    if (typeof document === 'undefined') return fallback;
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return raw ? `hsl(${raw})` : fallback;
+  }
+
+  /** Build chart scale options with resolved theme colours */
+  function getThemeScaleOptions() {
+    const tickColor = cssVar('--muted-foreground', '#999');
+    const gridColor = cssVar('--muted-foreground', '#999').replace('hsl(', 'hsla(').replace(')', ' / 0.15)');
+    return {
+      y: {
+        beginAtZero: true,
+        grid: { color: gridColor },
+        ticks: { color: tickColor }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: tickColor }
+      }
+    };
+  }
 
   let upcomingPredictions = 0;
   let realMatchData: Match[] = [];
@@ -225,6 +244,9 @@
       setTimeout(() => totalPredictions.set(accuracyStats.totalPredictions), 900);
       setTimeout(() => betsPlaced.set(allBets.length), 1200);
 
+      // Resolve CSS variables for chart colours now that the DOM is available
+      updateChartColours();
+
       // Build accuracy trend from per-gameweek accuracy (real settled predictions)
       const gameweekAccuracy = predictionTracker.getAccuracyByGameweek();
       if (gameweekAccuracy.length > 0) {
@@ -308,8 +330,8 @@
           datasets: [{
             label: 'Monthly Profit (£)',
             data,
-            borderColor: 'hsl(var(--accent))',
-            backgroundColor: 'hsla(var(--accent) / 0.1)',
+            borderColor: cssVar('--accent', '#10b981'),
+            backgroundColor: cssVar('--accent', '#10b981').replace('hsl(', 'hsla(').replace(')', ' / 0.1)'),
             tension: 0.4,
             fill: true,
           }]
@@ -317,7 +339,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: themeScaleOptions,
+          scales: getThemeScaleOptions(),
           plugins: {
             legend: { display: false }
           }
@@ -510,7 +532,7 @@
       <h3 class="text-sm font-display font-semibold text-foreground mb-3">Prediction Accuracy Trend</h3>
       {#if !loading && !error && hasAccuracyData}
         <div class="h-44 sm:h-52" role="img" aria-label="Line chart showing prediction accuracy trend over recent matchdays">
-          <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: themeScaleOptions, plugins: { legend: { labels: { color: 'hsl(var(--muted-foreground))' } } } }} />
+          <Line data={recentPerformance} options={{ responsive: true, maintainAspectRatio: false, scales: getThemeScaleOptions(), plugins: { legend: { labels: { color: cssVar('--muted-foreground', '#999') } } } }} />
         </div>
       {:else if !loading && !error}
         <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="accuracy-empty-state">
