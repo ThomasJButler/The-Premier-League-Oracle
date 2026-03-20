@@ -1,7 +1,23 @@
 /**
- * Team logo generator utility
- * Creates SVG data URIs for team badges
+ * Team logo utility
+ *
+ * Returns real club crests from the Football-Data.org API when available,
+ * falling back to coloured SVG initials when a crest hasn't been cached yet.
+ * Crests are populated automatically when standings data loads.
  */
+
+// Cache of real API crest URLs: team name → crest URL
+const crestCache: Map<string, string> = new Map();
+
+/** Store a real crest URL for a team (called by dataService after standings load) */
+export function setCrestUrl(teamName: string, url: string): void {
+  if (teamName && url) crestCache.set(teamName, url);
+}
+
+/** Check if real crests have been cached */
+export function hasCachedCrests(): boolean {
+  return crestCache.size > 0;
+}
 
 // Premier League team colors (2025/26 season)
 const teamColors: Record<string, string> = {
@@ -56,6 +72,10 @@ const teamColors: Record<string, string> = {
  * @returns SVG data URI string
  */
 export function getTeamLogo(teamName: string, size: number = 40): string {
+  // Prefer real API crest if cached
+  const cached = crestCache.get(teamName);
+  if (cached) return cached;
+
   const initials = getTeamInitials(teamName);
   const color = teamColors[teamName] || '#666666';
   const textColor = isLightColor(color) ? '#000000' : '#FFFFFF';

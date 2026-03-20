@@ -226,7 +226,8 @@ Predicted Score: ${input.predictedHomeGoals}–${input.predictedAwayGoals}`);
 
     sections.push(`Statistical Factors:\n${input.insights.map(i => `- ${i}`).join('\n')}`);
 
-    sections.push(`Recent Form:\n- ${input.homeTeam}: ${input.homeForm}\n- ${input.awayTeam}: ${input.awayForm}`);
+    const fmtForm = (f: string) => (!f || f === 'N/A' || f === '?????') ? 'Not available' : f;
+    sections.push(`Recent Form:\n- ${input.homeTeam}: ${fmtForm(input.homeForm)}\n- ${input.awayTeam}: ${fmtForm(input.awayForm)}`);
 
     if (input.h2hRecord && input.h2hRecord !== '-' && input.h2hRecord !== 'No H2H data') {
       sections.push(`Head-to-Head: ${input.h2hRecord}`);

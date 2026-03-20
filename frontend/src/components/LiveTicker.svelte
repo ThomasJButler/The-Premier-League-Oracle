@@ -37,6 +37,13 @@
     liveService.stop();
   });
 
+  /** Shorten team names for ticker display */
+  function short(name: string): string {
+    return name
+      .replace(/ FC$/, '').replace(/^AFC /, '').replace(/ & Hove Albion$/, '')
+      .replace(/ Hotspur$/, '').replace(/ Wanderers$/, '').trim();
+  }
+
   function buildTicker(
     live: typeof $liveMatchesStore,
     recent: typeof $recentMatchesStore,
@@ -60,7 +67,7 @@
         const minute = match.minute != null ? `${match.minute}'` :
                        match.status === 'PAUSED' ? 'HT' : '';
         items.push({
-          text: `${match.home_team} ${match.home_goals ?? 0}-${match.away_goals ?? 0} ${match.away_team} (${minute})`,
+          text: `${short(match.home_team)} ${match.home_goals ?? 0}-${match.away_goals ?? 0} ${short(match.away_team)} ${minute}`,
           type: 'live',
           priority: 0,
         });
@@ -71,10 +78,8 @@
       const recentToday = recent.filter((m) => new Date(m.date).getTime() > oneDayAgo);
 
       recentToday.slice(0, 4).forEach((match) => {
-        const winner = match.result === 'H' ? match.home_team :
-                       match.result === 'A' ? match.away_team : 'Draw';
         items.push({
-          text: `Result: ${match.home_team} ${match.home_goals}-${match.away_goals} ${match.away_team} (${winner}${match.result === 'D' ? '' : ' win'})`,
+          text: `FT: ${short(match.home_team)} ${match.home_goals}-${match.away_goals} ${short(match.away_team)}`,
           type: 'result',
           priority: 1,
         });
@@ -85,9 +90,9 @@
       const soonUpcoming = upcoming.filter((m) => new Date(m.date).getTime() < twoDaysFromNow);
 
       soonUpcoming.slice(0, 4).forEach((match) => {
-        const dateStr = format(new Date(match.date), 'EEEE h:mmaaa');
+        const dateStr = format(new Date(match.date), 'EEE HH:mm');
         items.push({
-          text: `Upcoming: ${match.home_team} vs ${match.away_team} - ${dateStr}`,
+          text: `${short(match.home_team)} vs ${short(match.away_team)} · ${dateStr}`,
           type: 'fixture',
           priority: 2,
         });
@@ -100,15 +105,7 @@
         return 'Premier League Oracle — No matches scheduled in the next 48 hours';
       }
 
-      // Build ticker with type-appropriate icons
-      const iconMap: Record<string, string> = {
-        live: '\u26BD',     // football
-        result: '\u2705',   // check
-        fixture: '\uD83D\uDCC5', // calendar
-        update: '\uD83D\uDCCA',  // chart
-      };
-
-      const tickerTexts = items.map((item) => `${iconMap[item.type] || ''} ${item.text}`);
+      const tickerTexts = items.map((item) => item.text);
       // Duplicate for seamless CSS scroll loop
       return tickerTexts.join(' \u2022 ') + ' \u2022 ' + tickerTexts.join(' \u2022 ');
     } catch {
@@ -145,7 +142,7 @@
     padding-left: 100%;
     white-space: nowrap;
     display: inline-block;
-    animation: ticker-scroll 60s linear infinite;
+    animation: ticker-scroll 35s linear infinite;
   }
 
   .ticker-content.paused {

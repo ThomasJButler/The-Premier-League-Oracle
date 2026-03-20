@@ -224,7 +224,7 @@ describe('Dashboard Component', () => {
   it('should display the main title', () => {
     render(Dashboard);
 
-    const title = screen.getByText('Premier League Oracle');
+    const title = screen.getByRole('heading', { name: 'Dashboard' });
     expect(title).toBeInTheDocument();
   });
 

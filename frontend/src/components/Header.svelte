@@ -17,7 +17,7 @@
       <Menu class="w-5 h-5 text-muted-foreground" />
     </button>
     <span class="text-lg font-display font-bold text-foreground hidden sm:inline">
-      Premier League Oracle
+      The Oracle
     </span>
   </div>
 
