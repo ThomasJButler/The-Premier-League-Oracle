@@ -250,7 +250,7 @@
     <div id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="grid gap-4">
       {#each liveMatches as match, index}
         <div
-          class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-l-4 border-red-500"
+          class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-l-4 border-red-500"
           in:scale={{ delay: index * 100, duration: 300 }}
         >
           <!-- Live Badge -->
@@ -322,7 +322,7 @@
       <div class="grid gap-4">
         {#each recentMatches as match, index}
           <div
-            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             in:scale={{ delay: index * 50, duration: 300 }}
           >
             <div class="flex items-center justify-between mb-3">
@@ -377,7 +377,7 @@
       <div class="grid gap-4">
         {#each upcomingMatches as match, index}
           <div
-            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+            class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             in:scale={{ delay: index * 50, duration: 300 }}
           >
             <div class="flex items-center justify-between mb-3">

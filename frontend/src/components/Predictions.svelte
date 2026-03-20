@@ -735,7 +735,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
+            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -1068,6 +1068,19 @@
     perspective: 1000px;
     animation: slideInUp 0.6s ease-out forwards;
     opacity: 0;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .flip-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .flip-card:hover {
+      transform: translateY(-2px);
+    }
+    .flip-card:active {
+      transform: translateY(0px) scale(0.99);
+    }
   }
 
   @media (min-width: 640px) {

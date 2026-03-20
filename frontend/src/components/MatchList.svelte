@@ -302,7 +302,7 @@
   {:else}
     <div class="space-y-4">
       {#each filteredMatches as match, i (match.id)}
-        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
           <!-- Team 1 -->
           <div class="flex items-center justify-end space-x-3">
             <span class="font-semibold text-foreground text-right">{match.home_team}</span>

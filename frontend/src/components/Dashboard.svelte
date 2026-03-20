@@ -483,7 +483,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="stat-cards">
       {#each stats as stat, i}
         <Card
-          class="card-glass p-4 hover:-translate-y-1 hover:shadow-glow-primary-sm animate-stagger"
+          class="card-glass p-4 motion-safe:hover:-translate-y-1 hover:shadow-glow-primary-sm motion-safe:active:scale-[0.98] transition-all duration-200 animate-stagger"
           style="animation-delay: {200 + i * 80}ms"
           data-testid="stat-card"
         >

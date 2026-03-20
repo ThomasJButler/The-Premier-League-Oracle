@@ -351,16 +351,6 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Floating animation (subtle) */
-  .animate-float-subtle {
-    animation: floatSubtle 4s ease-in-out infinite;
-  }
-
-  @keyframes floatSubtle {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-3px); }
-  }
-
   /* Fade in */
   .animate-fadeIn {
     animation: fadeIn 0.2s ease-out;
