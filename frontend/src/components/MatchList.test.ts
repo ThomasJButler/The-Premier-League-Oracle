@@ -168,11 +168,11 @@ describe('MatchList', () => {
     expect(screen.getByText('Match Schedule')).toBeInTheDocument();
   });
 
-  it('shows loading spinner initially', () => {
-    // Keep onMount pending so the spinner stays visible
+  it('shows skeleton loading state initially', () => {
+    // Keep onMount pending so the skeleton stays visible
     vi.mocked(dataService.getAllSeasons).mockReturnValue(new Promise(() => {}));
     render(MatchList);
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(document.querySelector('.skeleton')).toBeInTheDocument();
   });
 
   it('shows error when season load fails', async () => {

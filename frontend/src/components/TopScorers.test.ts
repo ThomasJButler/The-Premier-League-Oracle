@@ -120,11 +120,11 @@ describe('TopScorers', () => {
     expect(screen.getByText('Top Scorers')).toBeInTheDocument();
   });
 
-  it('shows loading spinner initially', () => {
+  it('shows skeleton loading state initially', () => {
     // Use a promise that never resolves so loading stays true during the synchronous check
     vi.mocked(dataService.getTopScorers).mockReturnValue(new Promise(() => {}));
     render(TopScorers);
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(document.querySelector('.skeleton')).toBeInTheDocument();
   });
 
   it('shows error when no API key is configured', async () => {

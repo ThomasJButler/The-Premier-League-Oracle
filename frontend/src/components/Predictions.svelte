@@ -651,8 +651,39 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton grid matching the 3-col prediction card layout -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {#each Array(6) as _, i}
+        <div class="rounded-xl border border-border bg-card shadow-sm p-5 space-y-4" style="animation-delay: {i * 80}ms">
+          <!-- Date + badge row -->
+          <div class="flex justify-between items-start">
+            <div class="skeleton h-4 w-24 rounded"></div>
+            <div class="skeleton h-5 w-16 rounded-full"></div>
+          </div>
+          <!-- Team matchup -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+              <div class="skeleton h-4 w-28 rounded"></div>
+            </div>
+            <div class="text-center text-xs text-muted-foreground/50">vs</div>
+            <div class="flex items-center gap-3">
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+              <div class="skeleton h-4 w-24 rounded"></div>
+            </div>
+          </div>
+          <!-- Form dots -->
+          <div class="flex justify-center gap-1.5">
+            {#each Array(5) as _}
+              <div class="skeleton h-2 w-2 rounded-full"></div>
+            {/each}
+          </div>
+          <!-- Probability bar -->
+          <div class="skeleton h-3 w-full rounded-full"></div>
+          <!-- Button -->
+          <div class="skeleton h-9 w-full rounded-lg"></div>
+        </div>
+      {/each}
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">

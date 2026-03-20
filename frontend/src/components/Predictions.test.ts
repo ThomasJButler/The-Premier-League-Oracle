@@ -218,11 +218,11 @@ describe('Predictions Component', () => {
     expect(options).toHaveLength(38);
   });
 
-  it('should show loading spinner initially', () => {
+  it('should show skeleton loading state initially', () => {
     render(Predictions);
-    // Loading spinner is visible before loadGameweekMatches completes
-    const spinner = document.querySelector('.animate-spin');
-    expect(spinner).toBeInTheDocument();
+    // Skeleton placeholders are visible before loadGameweekMatches completes
+    const skeleton = document.querySelector('.skeleton');
+    expect(skeleton).toBeInTheDocument();
   });
 
   it('should load matches for selected gameweek', async () => {

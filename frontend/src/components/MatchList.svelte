@@ -258,8 +258,30 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton rows matching the match list layout -->
+    <div class="space-y-4">
+      {#each Array(5) as _, i}
+        <div class="rounded-xl border border-border bg-card shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4" style="animation-delay: {i * 60}ms">
+          <!-- Home team -->
+          <div class="flex items-center justify-end space-x-3">
+            <div class="skeleton h-4 w-24 rounded"></div>
+            <div class="skeleton h-7 w-7 rounded-full"></div>
+          </div>
+          <!-- Score -->
+          <div class="text-center">
+            <div class="skeleton h-6 w-14 rounded mx-auto"></div>
+          </div>
+          <!-- Away team -->
+          <div class="flex items-center justify-start space-x-3">
+            <div class="skeleton h-7 w-7 rounded-full"></div>
+            <div class="skeleton h-4 w-20 rounded"></div>
+          </div>
+          <!-- Status badge -->
+          <div class="flex justify-center sm:justify-end col-span-full sm:col-span-1">
+            <div class="skeleton h-5 w-16 rounded-full"></div>
+          </div>
+        </div>
+      {/each}
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive shadow-sm p-6 text-center">

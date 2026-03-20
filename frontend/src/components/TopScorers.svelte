@@ -125,8 +125,40 @@
   </div>
   
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton table matching the top scorers layout -->
+    <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-border bg-muted/50">
+            <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-12">#</th>
+            <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Player</th>
+            <th class="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Team</th>
+            <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Goals</th>
+            <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Assists</th>
+            <th class="py-3 px-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Pens</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each Array(8) as _, i}
+            <tr class="border-b border-border last:border-0" style="animation-delay: {i * 50}ms">
+              <td class="py-3 px-4"><div class="skeleton h-8 w-8 rounded-full"></div></td>
+              <td class="py-3 px-4">
+                <div class="skeleton h-4 w-32 rounded mb-1"></div>
+                <div class="skeleton h-3 w-20 rounded sm:hidden"></div>
+              </td>
+              <td class="py-3 px-4 hidden sm:table-cell">
+                <div class="flex items-center gap-2">
+                  <div class="skeleton h-5 w-5 rounded-full"></div>
+                  <div class="skeleton h-4 w-20 rounded"></div>
+                </div>
+              </td>
+              <td class="py-3 px-4 text-right"><div class="skeleton h-5 w-8 rounded ml-auto"></div></td>
+              <td class="py-3 px-4 text-right hidden sm:table-cell"><div class="skeleton h-4 w-6 rounded ml-auto"></div></td>
+              <td class="py-3 px-4 text-right hidden md:table-cell"><div class="skeleton h-4 w-6 rounded ml-auto"></div></td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">

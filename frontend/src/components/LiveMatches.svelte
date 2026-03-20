@@ -202,8 +202,38 @@
   {/if}
 
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton cards matching the live match card layout -->
+    <div class="grid gap-4">
+      {#each Array(3) as _, i}
+        <div class="rounded-xl border border-border bg-card shadow-sm p-6" style="animation-delay: {i * 100}ms">
+          <!-- Status badge + activity icon -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <div class="skeleton h-5 w-16 rounded-full"></div>
+              <div class="skeleton h-4 w-10 rounded"></div>
+            </div>
+            <div class="skeleton h-5 w-5 rounded-full"></div>
+          </div>
+          <!-- Match info: 7-col grid (home / score / away) -->
+          <div class="grid grid-cols-7 gap-4 items-center">
+            <div class="col-span-3 flex items-center justify-end gap-2">
+              <div class="skeleton h-5 w-24 rounded"></div>
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+            </div>
+            <div class="text-center">
+              <div class="flex items-center justify-center gap-2">
+                <div class="skeleton h-8 w-6 rounded"></div>
+                <span class="text-muted-foreground/30">-</span>
+                <div class="skeleton h-8 w-6 rounded"></div>
+              </div>
+            </div>
+            <div class="col-span-3 flex items-center gap-2">
+              <div class="skeleton h-8 w-8 rounded-lg"></div>
+              <div class="skeleton h-5 w-24 rounded"></div>
+            </div>
+          </div>
+        </div>
+      {/each}
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 shadow-sm p-6 text-center">

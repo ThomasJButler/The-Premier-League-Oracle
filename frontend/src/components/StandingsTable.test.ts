@@ -139,11 +139,11 @@ describe('StandingsTable', () => {
     expect(screen.getByText('Premier League Table')).toBeInTheDocument();
   });
 
-  it('shows loading spinner initially', () => {
+  it('shows skeleton loading state initially', () => {
     // Return a never-resolving promise so loading stays true during the synchronous check
     vi.mocked(dataService.getStandings).mockReturnValue(new Promise(() => {}));
     render(StandingsTable);
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(document.querySelector('.skeleton')).toBeInTheDocument();
   });
 
   it('shows error when no API key is configured', async () => {

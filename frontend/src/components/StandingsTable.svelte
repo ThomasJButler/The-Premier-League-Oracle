@@ -128,8 +128,67 @@
   </div>
   
   {#if loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    <!-- Skeleton table matching the standings layout -->
+    <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <!-- Legend skeleton -->
+      <div class="px-6 py-3 bg-muted border-b border-border">
+        <div class="flex gap-4">
+          {#each Array(4) as _}
+            <div class="flex items-center gap-2">
+              <div class="skeleton w-3 h-3 rounded-full"></div>
+              <div class="skeleton h-3 w-20 rounded"></div>
+            </div>
+          {/each}
+        </div>
+      </div>
+      <!-- Header -->
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-muted border-b border-border">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Pos</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">P</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">W</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">D</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">L</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GF</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">GA</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">GD</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Pts</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Form</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {#each Array(10) as _, i}
+              <tr style="animation-delay: {i * 40}ms">
+                <td class="px-4 py-3"><div class="skeleton h-6 w-8 rounded"></div></td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="skeleton w-6 h-6 rounded-lg"></div>
+                    <div class="skeleton h-4 w-24 rounded"></div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell"><div class="skeleton h-4 w-6 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-8 rounded mx-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-4 w-8 rounded mx-auto font-bold"></div></td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                  <div class="flex gap-1">
+                    {#each Array(5) as _}
+                      <div class="skeleton w-5 h-5 rounded-full"></div>
+                    {/each}
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     </div>
   {:else if error}
     <div class="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive p-6 text-center">
