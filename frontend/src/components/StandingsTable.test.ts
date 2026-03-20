@@ -261,4 +261,32 @@ describe('StandingsTable', () => {
     const table = document.querySelector('table[aria-label="Premier League standings"]');
     expect(table).toBeInTheDocument();
   });
+
+  it('renders Conference League in the legend', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    expect(screen.getByText('Conference League')).toBeInTheDocument();
+  });
+
+  it('renders all four zone legend items', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    expect(screen.getByText('Champions League')).toBeInTheDocument();
+    expect(screen.getByText('Europa League')).toBeInTheDocument();
+    expect(screen.getByText('Conference League')).toBeInTheDocument();
+    expect(screen.getByText('Relegation')).toBeInTheDocument();
+  });
+
+  it('renders form dots with accessibility labels', async () => {
+    const { component } = render(StandingsTable);
+    await (component as any).loadStandings();
+    await act();
+    const winDots = screen.queryAllByLabelText('Win');
+    const drawDots = screen.queryAllByLabelText('Draw');
+    const lossDots = screen.queryAllByLabelText('Loss');
+    // All teams have form data — at least some W/D/L dots should exist
+    expect(winDots.length + drawDots.length + lossDots.length).toBeGreaterThan(0);
+  });
 });

@@ -51,15 +51,25 @@
   function getPositionClass(position: number): string {
     if (position <= 4) return 'border-l-4 border-l-blue-500'; // Champions League
     if (position === 5) return 'border-l-4 border-l-orange-500'; // Europa League
+    if (position === 6) return 'border-l-4 border-l-emerald-500'; // Conference League
     if (position >= 18) return 'border-l-4 border-l-red-500'; // Relegation
     return '';
   }
-  
+
   function getPositionBadge(position: number): string {
     if (position <= 4) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
     if (position === 5) return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300';
+    if (position === 6) return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300';
     if (position >= 18) return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
     return 'bg-muted text-foreground';
+  }
+
+  function getRowBackground(position: number): string {
+    if (position <= 4) return 'bg-blue-50/40 dark:bg-blue-950/15';
+    if (position === 5) return 'bg-orange-50/40 dark:bg-orange-950/15';
+    if (position === 6) return 'bg-emerald-50/40 dark:bg-emerald-950/15';
+    if (position >= 18) return 'bg-red-50/40 dark:bg-red-950/15';
+    return '';
   }
   
   function getFormClass(result: string): string {
@@ -140,6 +150,10 @@
             <span class="text-muted-foreground">Europa League</span>
           </div>
           <div class="flex items-center gap-2">
+            <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+            <span class="text-muted-foreground">Conference League</span>
+          </div>
+          <div class="flex items-center gap-2">
             <div class="w-3 h-3 bg-red-500 rounded-full"></div>
             <span class="text-muted-foreground">Relegation</span>
           </div>
@@ -166,8 +180,8 @@
           </thead>
           <tbody class="divide-y divide-border">
             {#each displayedStandings as team, i (team.team.id)}
-              <tr 
-                class="hover:bg-muted/50 transition-colors {getPositionClass(team.position)}"
+              <tr
+                class="hover:bg-muted/50 transition-colors {getPositionClass(team.position)} {getRowBackground(team.position)}"
                 in:fly={{ y: 20, delay: i * 30 }}
               >
                 <td class="px-4 py-3 whitespace-nowrap">
@@ -224,9 +238,14 @@
                   {team.points}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
-                  <div class="flex gap-1">
+                  <div class="flex gap-1" role="list" aria-label="Last 5 results">
                     {#each formatForm(team.form) as result}
-                      <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center {getFormClass(result)}">
+                      <span
+                        class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center {getFormClass(result)}"
+                        role="listitem"
+                        title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"
+                        aria-label="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"
+                      >
                         {result}
                       </span>
                     {:else}
