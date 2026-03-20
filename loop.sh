@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: ./loop.sh [plan|coach|view] [max_iterations|N|jsonl_path]
+# Usage: ./loop.sh [plan|coach|view] [max_iterations|subcommand|jsonl_path]
 # Examples:
 #   ./loop.sh              # Build mode, unlimited iterations
 #   ./loop.sh 20           # Build mode, max 20 iterations
@@ -7,29 +7,39 @@
 #   ./loop.sh plan 5       # Plan mode, max 5 iterations
 #   ./loop.sh coach        # Coach mode: 1 build iteration + dashboard summary
 #   ./loop.sh coach 5      # Coach mode: 5 build iterations with dashboard after each
-#   ./loop.sh view         # Interactive run picker — browse all past runs
-#   ./loop.sh view 10      # Follow mode — live-watch 10 iterations alongside coach
+#   ./loop.sh view past    # Browse completed runs — interactive grid picker
+#   ./loop.sh view future  # Follow the current loop live (plan, build, or coach)
 #   ./loop.sh view .claude-run/coach-20260320-124912.jsonl  # Replay a specific run
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="$SCRIPT_DIR/.claude-run"
 
-# ── View mode (replay a JSONL run) ───────────────────────────
+# ── View mode ────────────────────────────────────────────────
 if [ "$1" = "view" ]; then
     if [ ! -d "$RUN_DIR" ]; then
         echo "No .claude-run/ directory found — run a build or plan first."
         exit 1
     fi
-    # Explicit file path — view it directly
+    # Explicit file path — replay it directly
     if [ -n "$2" ] && [ -f "$2" ]; then
         exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" "$2"
     fi
-    # Numeric arg — follow mode (live watch for N iterations)
-    if [[ "$2" =~ ^[0-9]+$ ]]; then
-        exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --follow "$2" --dir "$RUN_DIR"
+    # past — browse completed runs
+    if [ "$2" = "past" ]; then
+        exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --pick --dir "$RUN_DIR"
     fi
-    # No arg — show interactive run picker
-    exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --pick --dir "$RUN_DIR"
+    # future — follow the current loop live until it stops
+    if [ "$2" = "future" ]; then
+        exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --future --dir "$RUN_DIR"
+    fi
+    # No arg or unrecognised — show help
+    echo ""
+    echo "  Usage:"
+    echo "    ./loop.sh view past                                    Browse completed runs"
+    echo "    ./loop.sh view future                                  Follow the current loop live"
+    echo "    ./loop.sh view .claude-run/coach-20260320-124912.jsonl Replay a specific run"
+    echo ""
+    exit 0
 fi
 
 # ── Coach mode (build iterations + dashboard after each) ─────
