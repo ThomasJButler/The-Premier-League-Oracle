@@ -165,11 +165,14 @@ class FreeTierFeatureEngineer:
         'home_shots_on_target_avg', 'away_shots_on_target_avg',
         'home_corners_avg', 'away_corners_avg',
         'home_yellows_avg', 'away_yellows_avg',
-        # Draw indicators (8) — target the model's weakest class
+        # Draw indicators (13) — target the model's weakest class
         'form_closeness', 'standings_closeness',
         'home_draw_rate', 'away_draw_rate',
         'combined_defensive_strength', 'low_scoring_indicator',
         'h2h_draw_tendency', 'draw_streak_proximity',
+        'goal_difference_symmetry', 'season_ppg_closeness',
+        'mid_table_indicator', 'elo_draw_band',
+        'goals_per_game_combined',
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
@@ -1032,11 +1035,12 @@ class FreeTierFeatureEngineer:
                          match_date: datetime | None = None,
                          ) -> dict[str, float]:
         """
-        8 features: explicit draw-prediction signals.
+        13 features: explicit draw-prediction signals.
 
         Draws are ~23% of PL outcomes but are the hardest to predict.
         These features capture patterns that correlate with drawn matches:
-        evenly-matched teams, defensive setups, and historical draw tendencies.
+        evenly-matched teams, defensive setups, historical draw tendencies,
+        goal difference symmetry, mid-table matchups, and combined scoring rate.
         """
         f: dict[str, float] = {}
         hm = self._get_team_matches(home_team, data)
@@ -1113,6 +1117,40 @@ class FreeTierFeatureEngineer:
         h_recent = _recent_draw_count(hm)
         a_recent = _recent_draw_count(am)
         f['draw_streak_proximity'] = (h_recent + a_recent) / 10.0  # normalise to 0-1 range
+
+        # 9. Goal difference symmetry: similar GD/GP → evenly matched → draw-prone
+        h_stats = standings.get(home_team, {})
+        a_stats = standings.get(away_team, {})
+        h_played = max(h_stats.get('played', 1), 1)
+        a_played = max(a_stats.get('played', 1), 1)
+        h_gd_pg = h_stats.get('gd', 0) / h_played
+        a_gd_pg = a_stats.get('gd', 0) / a_played
+        f['goal_difference_symmetry'] = 1.0 / (1.0 + abs(h_gd_pg - a_gd_pg))
+
+        # 10. Season PPG closeness: overall season PPG similarity (not just recent form)
+        h_ppg_season = h_stats.get('points', 0) / h_played
+        a_ppg_season = a_stats.get('points', 0) / a_played
+        f['season_ppg_closeness'] = 1.0 / (1.0 + abs(h_ppg_season - a_ppg_season))
+
+        # 11. Mid-table indicator: both teams in positions 8-14 → higher draw rate
+        h_pos_val = h_stats.get('position', 10)
+        a_pos_val = a_stats.get('position', 10)
+        h_mid = 1.0 if 8 <= h_pos_val <= 14 else 0.0
+        a_mid = 1.0 if 8 <= a_pos_val <= 14 else 0.0
+        f['mid_table_indicator'] = h_mid * a_mid  # 1.0 only when both are mid-table
+
+        # 12. Elo draw band: small Elo difference → draw zone
+        # Uses the already-computed elo_difference from _elo_features (but that's
+        # normalised by /400). Recompute from raw standings closeness as proxy:
+        # When form + standings are both close, draws are most likely.
+        f['elo_draw_band'] = f['form_closeness'] * f['standings_closeness']
+
+        # 13. Goals per game combined: low combined goals → draw-prone
+        h_gpg = h_stats.get('gf', 0) / h_played
+        a_gpg = a_stats.get('gf', 0) / a_played
+        combined_gpg = (h_gpg + a_gpg) / 2.0
+        # Invert: lower goals → higher draw probability (capped at 2.0)
+        f['goals_per_game_combined'] = max(0.0, 2.0 - combined_gpg)
 
         return f
 

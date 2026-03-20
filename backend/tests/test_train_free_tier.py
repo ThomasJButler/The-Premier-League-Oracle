@@ -552,10 +552,10 @@ class TestExtractOddsFromRow:
         assert 'PSCH' not in odds  # NaN skipped
 
     def test_build_dataset_includes_odds_features(self):
-        """build_dataset should produce 109-column feature matrix."""
+        """build_dataset should produce 114-column feature matrix."""
         df = _build_mini_dataset(40)
         X, y, names, _ = build_dataset(df)
-        assert X.shape[1] == 109
+        assert X.shape[1] == 114
         assert 'odds_pinnacle_home' in names
         assert 'odds_avg_home' in names
 
