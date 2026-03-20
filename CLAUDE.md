@@ -62,12 +62,12 @@ uvicorn app.api.main:app --reload --port 8000
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
 
-### Backend Structure (`backend/app/`)
-- `api/main.py` - FastAPI server with prediction + chat endpoints
-- `api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
-- `features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
-- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline)
-- `data/football_data_collector.py` - Historical data collection
+### Backend Structure (`backend/`)
+- `app/api/main.py` - FastAPI server with prediction + chat endpoints
+- `app/api/rag.py` - DataFrame RAG engine (team extraction, intent parsing, query builder, prompt grounding)
+- `app/features/free_tier_features.py` - Free-tier feature engineering (99 features incl. 8 draw indicators + 5 Elo)
+- `app/data/football_data_collector.py` - Historical data collection
+- `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -120,7 +120,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 517 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
+- **Frontend:** 519 Vitest tests (32 files), 43 Playwright E2E tests (6 specs × 3 viewports = 123 executions), all passing
 - **Backend:** 131 pytest tests (4 files), all non-skip passing (8 skip without libomp)
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only

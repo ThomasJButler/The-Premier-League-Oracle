@@ -2,6 +2,26 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7i/P7g: Prediction Result Indicators & Model Weights Fix
+
+### Added: Prediction result indicators on cards (P7i)
+- **Correct/incorrect visual indicators** — Green CheckCircle2 icon for correct predictions, red XCircle for incorrect, displayed at the top-right of each settled prediction card
+- **Actual score display** — Completed matches show the real score prominently with "Full Time" label, with the predicted score shown below in smaller text
+- **Result verdict banner** — Colour-coded banner at the bottom of each settled card: green "Correct prediction" or red "Incorrect — actual result: [outcome]"
+- **Coloured card borders** — Subtle green/red border tint on settled prediction cards for at-a-glance scanning
+- **All gameweek matches visible** — Predictions view now shows completed matches alongside upcoming ones (previously filtered out), reconstructing stored prediction data from `predictionTracker`
+- 3 new tests (completed match display, correct indicator, incorrect indicator) — 519 Vitest tests total
+
+### Fixed: Dashboard model weights single source of truth (P7g)
+- **"How We Predict" section** now reads weight percentages from `MODEL_WEIGHTS` constant exported from `optimizedPredictions.ts` instead of hardcoded display strings. Prevents silent drift if weights are tuned
+- Exported `MODEL_WEIGHTS` from `optimizedPredictions.ts` for Dashboard consumption
+
+### Fixed: CLAUDE.md backend structure accuracy
+- Corrected `train_free_tier.py` path — lives at `backend/` root, not inside `backend/app/`
+- Added `app/` prefix to all backend submodule paths for clarity
+
+---
+
 ## 20 March 2026 — P7i: Prediction Cards, Dashboard Empty State & Standings Uplift
 
 ### Added: Richer prediction cards (P7i item #3)

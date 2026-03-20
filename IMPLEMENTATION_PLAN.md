@@ -27,7 +27,7 @@ Active branch: `v3.0-MVP`
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 | P7 Beyond MVP | 5/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence |
 
-**Frontend:** 517 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 519 Vitest tests (32 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -97,7 +97,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 - [ ] **Team theme toggle broken** — Settings page team colour toggle not applying. Dark/light mode works fine; issue is specifically with team-specific colour themes. Investigate `Settings.svelte` team colour handling and CSS variable application
 - [ ] **FAQ section** — Improve the FAQ with current project capabilities, data sources, and common questions
 - [ ] **README.md overhaul** — Update with current project state, features, screenshots (use `frontend/playwright-screenshots/dashboard.png` and `frontend/playwright-screenshots/predictions.png`), tech stack, and setup instructions
-- [ ] **Dashboard model weights display** — "How We Predict" section in `Dashboard.svelte` hardcodes weight percentages as display strings (ELO 25%, Poisson 30%, etc.) rather than reading from `optimizedPredictions.ts` `MODEL_WEIGHTS`. Could drift silently if weights are tuned
+- [x] **Dashboard model weights display** — "How We Predict" section now reads from exported `MODEL_WEIGHTS` constant in `optimizedPredictions.ts` instead of hardcoded strings. Single source of truth ensures display stays in sync if weights are tuned
 
 ### P7i. Frontend Design Uplift (Medium Priority — use `/frontend-design` skill)
 
@@ -116,7 +116,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 
 **Prediction cards:**
 - [x] **Richer match cards** — Added form dots (W/D/L) under team names + proportional probability bars (blue H, amber D, green A) replacing flat text percentages. Team crests already present via `getTeamLogo()`. League position badges deferred (needs standings data cross-reference)
-- [ ] **Prediction result indicators** — After a match finishes, show whether the prediction was correct/wrong with a visual indicator (green tick / red cross) directly on the card
+- [x] **Prediction result indicators** — Completed matches now show: green CheckCircle2 icon for correct predictions, red XCircle for incorrect, actual score with "Full Time" label, result verdict banner, and coloured card borders. Predictions view shows all gameweek matches (not just future ones), reconstructing stored prediction data from `predictionTracker`. 3 new tests (519 total)
 
 **Standings table:**
 - [x] **Zone colouring** — Champions League (blue), Europa League (orange), Conference League (emerald), relegation (red) zone row backgrounds + border stripes + position badges. All four zones in legend
@@ -403,7 +403,7 @@ All feature specifications in `specs/`:
 | `types.test.ts` | 4 | Passing |
 | `predictionTracker.test.ts` | 22 | Passing |
 | `ChatBot.test.ts` | 18 | Passing |
-| `Predictions.test.ts` | 17 | Passing |
+| `Predictions.test.ts` | 19 | Passing |
 | `BettingHistory.test.ts` | 15 | Passing |
 | `KellyCalculator.test.ts` | 15 | Passing |
 | `backtest.test.ts` | 15 | Passing |
@@ -426,7 +426,7 @@ All feature specifications in `specs/`:
 | `MatchList.test.ts` | 12 | Passing |
 | `LiveTicker.test.ts` | 12 | Passing |
 | `MatchEventToast.test.ts` | 12 | Passing |
-| **Total** | **517** | **All passing (32 files)** |
+| **Total** | **519** | **All passing (32 files)** |
 
 **Known test quality issues:** P5e test quality items all resolved. Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed.
 
