@@ -2,6 +2,23 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Code quality: ESLint violations and doc accuracy
+
+### Fixed
+- **Unused import** — removed `MODEL_WEIGHTS` from `backtest.ts` (imported but never referenced)
+- **`let` → `const`** — `totalMatchdays` in `SeasonTimeline.svelte` is assigned from a constant and never reassigned
+- **`console.info` → `console.warn`** — ELO warm-up log in `dataService.ts` now complies with ESLint `no-console` rule (only `warn`/`error` allowed)
+- **Svelte 4 reactive dependency** — added `eslint-disable-line` for comma-operator pattern in `DataFreshness.svelte`, consistent with existing pattern in `LiveMatches.svelte`
+- **Stale Spec 08 count** — updated from "~95% (23/24)" to "100% (29/29 active)" in both CLAUDE.md and IMPLEMENTATION_PLAN.md. All 29 active checkboxes in Reqs 1–5 are checked; Req 6 (Pro-tier) has no acceptance criteria
+
+### Removed
+- **`PROMPT_plan.md` and `PROMPT_build.md`** — Ralph loop orchestration files superseded by CLAUDE.md and AGENTS.md
+
+### Test impact
+- All 561 tests passing, 0 type errors, 0 svelte-check warnings
+
+---
+
 ## 20 March 2026 — P7m Design Refinements: Final 3 (10/10 complete)
 
 ### Changed: Skeleton consistency, responsive form dots, score animation
