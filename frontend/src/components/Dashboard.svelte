@@ -408,10 +408,10 @@
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl sm:text-3xl font-display font-extrabold mb-1 tracking-tight">
-            Premier League Oracle
+            Dashboard
           </h1>
           <p class="text-slate-500 dark:text-white/60 text-sm max-w-xl">
-            Five-component ensemble: ELO, Poisson, Form, H2H, and Standings
+            ELO, Poisson, Form, H2H, and Standings ensemble
           </p>
         </div>
 

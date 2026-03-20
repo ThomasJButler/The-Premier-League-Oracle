@@ -4,6 +4,7 @@ import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
 import { sharedEloSystem } from '../lib/advancedPredictions';
 import { getSeasonYear } from '../lib/utils';
+import { setCrestUrl } from '../utils/teamLogos';
 
 interface DataSource {
   type: 'api';
@@ -266,6 +267,7 @@ class DataService {
     const cached = await this.getCachedData<Standing[]>('standings', cacheKey);
     if (cached) {
       this.lastFetchedTimestamps.set('standings', this._lastCacheHitTimestamp);
+      this.cacheCrests(cached);
       return cached;
     }
     
@@ -276,6 +278,7 @@ class DataService {
         if (standings && standings.length > 0) {
           await this.setCachedData('standings', cacheKey, standings);
           this.lastFetchedTimestamps.set('standings', Date.now());
+          this.cacheCrests(standings);
           return standings;
         }
       } catch (_error) {
@@ -285,7 +288,16 @@ class DataService {
     
     throw new Error('No data source available for standings');
   }
-  
+
+  /** Populate the team crest cache from standings data so all components get real badges */
+  private cacheCrests(standings: Standing[]): void {
+    for (const s of standings) {
+      if (s.team?.crest && s.team?.name) {
+        setCrestUrl(s.team.name, s.team.crest);
+      }
+    }
+  }
+
   public async getTopScorers(limit: number = 20): Promise<FDScorer[]> {
     await this.ensureReady();
     const cacheKey = `top_scorers_${limit}`;
