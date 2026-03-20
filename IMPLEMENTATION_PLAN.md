@@ -132,6 +132,33 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 - [x] **Centralise magic numbers** — Extracted ~30 prediction model parameters from `optimizedPredictions.ts` to named, documented constants in `constants.ts`. Covers ELO draw formula (base rate, scale, bounds), Poisson lambda bounds and fallbacks, form recency weights and draw parameters, confidence thresholds, standings position step, ML adjustment caps, and referee adjustment bounds. All derivations documented (e.g. 0.265 = 2000-2024 PL average draw rate)
 - [x] **PREMIER_LEAGUE_GAMEWEEKS constant** — Replaces hardcoded `38` in `Predictions.svelte` and `SeasonTimeline.svelte`. Single source of truth for the matchday count
 
+### P7l. UI Polish & Betting Fixes (Final 5%)
+
+**Form display:**
+- [x] **Fix "?????" form string** — Changed fallback from `'?????'` to `'N/A'` in `optimizedPredictions.ts`. AI prompt sanitises form as "Not available". Prediction cards show "No data" text when form dots are empty
+- [x] **Analysis modal form badges** — Team logo badges and coloured form dots replace raw text strings in the back-of-card Recent Form section
+
+**Prediction grid:**
+- [x] **2-column layout on desktop** — `lg:grid-cols-3` → `lg:grid-cols-2` in Predictions.svelte for wider flip cards with more room for analysis detail
+
+**Team badges:**
+- [x] **Real club crests everywhere** — Crest URLs from Football-Data.org API standings cached in `teamLogos.ts` via `setCrestUrl()`. `getTeamLogo()` returns real crest if cached, SVG initials as fallback. All components automatically upgraded
+
+**Dashboard:**
+- [x] **Zero-state improvements** — Show "—" instead of misleading "0.0%", "£0.00", "0" when no predictions/bets exist. Actionable subtitle text
+- [x] **Chart dark mode fix** — Canvas cannot resolve CSS custom properties. Added `cssVar()` helper to read computed styles and pass concrete colour values to Chart.js
+- [x] **Deduplicate title** — "Premier League Oracle" appeared 3 times. Header shortened to "The Oracle", hero changed to "Dashboard"
+
+**Live ticker:**
+- [x] **Remove emojis** — Deleted iconMap emoji prefixes from ticker items
+- [x] **Shorten text** — Added `short()` helper to trim "FC", "AFC", "Hotspur" etc. from team names. Simplified format: "FT: Liverpool 3-0 Man City" instead of "Result: Liverpool FC 3-0 Manchester City FC (Liverpool FC win)"
+- [x] **Speed up scroll** — Animation duration from 60s → 35s
+
+**Betting:**
+- [x] **Suggested Bets debounce** — Added 500ms debounce + abort guard on confidence slider to prevent 100+ concurrent `/predict/free` requests when dragging. `loadAborted` flag stops in-flight prediction loops
+- [x] **Slider range fix** — min 40→20, max 90→55, default 65→30 to match model's realistic 25–45% confidence range
+- [x] **Value bets threshold** — `MIN_CONFIDENCE` lowered from 55% to 35% in `value.ts` so bets actually appear when scanning
+
 ---
 
 ## Git Branch Strategy
