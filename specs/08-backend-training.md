@@ -19,7 +19,7 @@ The backend in `backend/` has model architectures (XGBoost, LSTM, Transformer) a
 | `transformer_model.py` | Architecture complete | Pro-tier — save/load only stores 2 of 8 params |
 | `modern_oracle.py` | Orchestrator exists | Pro-tier — `optimize_ensemble_weights()` uses `np.random.random()` (stub) |
 | `advanced_engineering.py` | 150 features declared | Pro-tier — 63 methods return hardcoded `0.0` (no data from free API) |
-| Backend tests | **163 tests** | 55 features (incl. odds + Elo leakage), 33 training pipeline (incl. rolling CV), 17 API endpoints, 58 RAG engine |
+| Backend tests | **190 tests** | 60 features (incl. odds + Elo leakage), 33 training pipeline (incl. rolling CV), 17 API endpoints, 58 RAG engine, 22 web search |
 
 **Training data:** 2,191 matches across ~5.75 seasons (2020/21–2025/26) in `backend/spreadsheets/KnowledgeFilesCSV/`. CSVs include scores, half-time results, shots, corners, cards, fouls, referee, and betting odds from 10+ bookmakers.
 

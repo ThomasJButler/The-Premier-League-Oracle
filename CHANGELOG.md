@@ -2,6 +2,28 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Web Search Fallback and Documentation Cleanup
+
+### Added: Web search fallback for RAG chat (P7h)
+- New module `backend/app/api/web_search.py`: when the RAG engine cannot ground a response on match/player data, searches DuckDuckGo for current Premier League information and injects results into the system prompt
+- `SearchResult` dataclass, `search_premier_league()` function with "Premier League" query scoping, `inject_search_context()` prompt formatter
+- In-memory TTL cache (15-minute expiry, 100-entry cap) following existing `_rate_limit_store` pattern
+- Orchestrated in `main.py` via `asyncio.to_thread()` — non-blocking in the async endpoint
+- Graceful degradation: if `duckduckgo-search` is not installed or search fails, falls back silently to existing ungrounded behaviour
+- Added `duckduckgo-search==7.5.5` to `requirements.txt`
+- **22 new backend tests** (190 total across 5 files): SearchResult creation, cache behaviour (hits/misses/expiry/eviction), search function (scoping, truncation, filtering, error handling), prompt injection formatting
+
+### Fixed: Documentation drift across project
+- Updated feature count from 99 to 114 in README.md, DEPLOYMENT.md, spec 08, backend README, and architecture descriptions
+- Updated model accuracy from 51% to 53.3% across all docs
+- Updated test counts: 540 frontend Vitest (33 files), 190 backend pytest (5 files)
+- Checked off P2n and P5c Playwright CI items (already completed via P7e)
+- Corrected P5f type safety references: removed stale Sidebar.svelte:57 (file is 43 lines), added actual shadcn dialog/sheet locations
+- Removed deleted app/security/ directory from backend README structure diagram
+- Updated P7 completion counter to 44/46
+
+---
+
 ## 20 March 2026 — Odds-as-Features and Documentation Refresh
 
 ### Added: Bookmaker odds as ML features (P7a — high impact)

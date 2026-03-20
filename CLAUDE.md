@@ -103,7 +103,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 **P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 43/46 items done):
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 44/46 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|
@@ -123,7 +123,7 @@ These specs are the single source of truth for requirements. **All 99 active acc
 
 ### Test Coverage
 - **Frontend:** 540 Vitest tests (33 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
-- **Backend:** 163 pytest tests (4 files), all non-skip passing (8 skip without libomp)
+- **Backend:** 190 pytest tests (5 files), all passing
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
 - **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
 

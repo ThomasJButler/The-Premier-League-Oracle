@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 43/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 44/46 | Forward-looking improvements — accuracy (odds-as-features done), frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 540 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -137,7 +137,7 @@ Interactive visual timeline showing key moments from the 2025/26 Premier League 
 ### P7h. RAG Intelligence (Medium Priority)
 
 - [x] **Player data enrichment** — Loads player data from two sources at startup: `fact_player_stats.csv` (3,638 records with xG, per-90 metrics) and Football-Data.org `/competitions/PL/scorers` API (top 30 current season scorers). RAG intent parser extended with player name extraction and scorer-specific keyword detection. New query functions: `_query_player_profile()` (individual player lookup with CSV xG data), `_query_team_players()` (team-scoped top scorers), `_query_top_scorers()` (league-wide leaderboard). Prompt builder advertises player data availability. 14 new tests (58 total RAG tests)
-- [ ] **Web search fallback** — When RAG returns `grounded: false`, fall back to a web search for current information rather than relying on GPT's training data. Prevents hallucinated/outdated player stats
+- [x] **Web search fallback** — When RAG returns `grounded: false`, DuckDuckGo web search fetches current Premier League information and injects it into the system prompt. New module `app/api/web_search.py` with `SearchResult` dataclass, `search_premier_league()` function (scoped queries, 15-min TTL cache, 100-entry cap), and `inject_search_context()` prompt formatter. `main.py` orchestrates via `asyncio.to_thread()`. Degrades gracefully — if duckduckgo-search isn't installed or search fails, falls back silently to existing ungrounded behaviour. 22 new tests (190 total across 5 files)
 - [x] **AI model configurable** — Completed as P7b item above. Settings dropdown + `ORACLE_AI_MODEL` env var + server-side allowlist
 
 ---
@@ -498,4 +498,4 @@ All feature specifications in `specs/`:
 
 ### Backend (pytest)
 
-**163 tests across 4 files** — all non-skip tests pass. Covers free-tier features (55 incl. 10 odds-as-features tests + Elo leakage), training pipeline (33 incl. rolling CV, odds extraction, calibrator dispatch, 8 skip without libomp), API endpoints (17), and RAG engine (58 incl. 14 player data tests). 8 skip without libomp. Pro-tier models and data collector have 0% test coverage.
+**190 tests across 5 files** — all pass. Covers free-tier features (60 incl. 10 odds-as-features tests + Elo leakage), training pipeline (33 incl. rolling CV, odds extraction, calibrator dispatch), API endpoints (17), RAG engine (58 incl. 14 player data tests), and web search fallback (22 incl. cache, prompt injection, graceful degradation). Pro-tier models and data collector have 0% test coverage.
