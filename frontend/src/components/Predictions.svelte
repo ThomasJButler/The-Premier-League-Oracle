@@ -846,7 +846,7 @@
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.home_team} recent form">
                         {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
                           {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
-                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                           {/each}
                         {:else}
                           <span class="text-[10px] text-muted-foreground">No data</span>
@@ -870,7 +870,7 @@
                       <!-- Upcoming match: show predicted score -->
                       <span class="text-xl font-bold text-muted-foreground">vs</span>
                       {#if prediction.detailedAnalysis}
-                        <div class="text-2xl font-bold text-primary mt-1">
+                        <div class="text-2xl font-bold text-primary mt-1 animate-score-pop">
                           {prediction.detailedAnalysis.predictedScore}
                         </div>
                       {/if}
@@ -883,7 +883,7 @@
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.away_team} recent form">
                         {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
                           {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
-                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                           {/each}
                         {:else}
                           <span class="text-[10px] text-muted-foreground">No data</span>
@@ -994,7 +994,7 @@
                         {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
                           <div class="flex gap-1">
                             {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
-                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                              <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                             {/each}
                           </div>
                         {:else}
@@ -1009,7 +1009,7 @@
                         {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
                           <div class="flex gap-1">
                             {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
-                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                              <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                             {/each}
                           </div>
                         {:else}

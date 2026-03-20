@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (P7m design refinements: 7/10 complete)
+Last updated: 20 March 2026 (P7m design refinements: ALL 10/10 complete)
 Active branch: `v3.0-MVP`
 
 ---
@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 54/59 | 2 deferred (retrain, rate-limit), 3 remaining P7m polish (skeletons, form dots, score pop) |
+| P7 Beyond MVP | 57/59 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority. P7m 10/10 complete |
 
 **Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -172,13 +172,13 @@ Design audit confirmed a **cohesive, intentional system** ("Stadium Nightfall" t
 - [x] **Sidebar nav truncation** — `truncate` class on label `<span>`, `title` tooltip on all nav buttons across main, betting, and bottom sections
 
 **Medium impact:**
-- [ ] **Content-aware skeleton loaders** — Replace generic shimmer rectangles with content-shaped placeholders (circular team logo, narrow text, wider score). Already have `.skeleton` class
-- [ ] **Form dots responsive fix** — At 320px mobile, 5 dots crowd. Reduce size from `w-3 h-3` to `w-2 h-2` below `sm:` or limit to 3 most recent
+- [x] **Content-aware skeleton loaders** — SeasonTimeline migrated from raw `bg-muted animate-pulse` to shared `.skeleton` class with content-shaped placeholders (circular event icons, staggered card delays). Other components already used content-shaped skeletons
+- [x] **Form dots responsive fix** — Prediction card form dots now `w-2 h-2 sm:w-3 sm:h-3` — smaller on mobile to prevent crowding at 320px. StandingsTable dots unaffected (hidden on mobile via `hidden md:table-cell`)
 - [x] **Typography contrast audit** — Bumped `white/60` to `white/70`, `white/50` to `white/60`, `white/40` to `white/55` in Dashboard hero. No remaining sub-WCAG opacity text in codebase
 
 **Low impact:**
 - [x] **Button press feedback** — `active:scale-[0.97]` added to shadcn `Button.svelte` base class (all variants) and `.btn-neon`. Changed `transition-colors` to `transition-all` for smooth scale animation
-- [ ] **Score pop on prediction load** — `scorePop` keyframe exists but only triggers on live score changes. Also trigger when prediction score first appears
+- [x] **Score pop on prediction load** — `animate-score-pop` class added to predicted score `<div>` in Predictions.svelte. Fires when Svelte first renders the element. `prefers-reduced-motion` guard already in app.css
 - [x] **Navigation active state** — Replaced flat `bg-accent/10` with gradient fill (`linear-gradient 90deg accent/15 → accent/06`), added `font-semibold` for text weight. Mobile nav also enhanced
 
 ---

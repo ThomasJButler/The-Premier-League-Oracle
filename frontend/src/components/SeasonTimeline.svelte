@@ -507,17 +507,20 @@
   </div>
 
   {#if loading}
-    <!-- Loading skeleton -->
+    <!-- Loading skeleton — content-shaped for chart + event cards -->
     <div class="space-y-6">
       <Card class="p-6">
-        <div class="h-6 w-40 bg-muted rounded animate-pulse mb-4"></div>
-        <div class="h-64 bg-muted rounded animate-pulse"></div>
+        <div class="skeleton h-6 w-40 rounded mb-4"></div>
+        <div class="skeleton h-64 w-full rounded-lg"></div>
       </Card>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {#each [1, 2, 3, 4] as _}
-          <Card class="p-4">
-            <div class="h-4 w-32 bg-muted rounded animate-pulse mb-2"></div>
-            <div class="h-4 w-48 bg-muted rounded animate-pulse"></div>
+        {#each [1, 2, 3, 4] as _, i}
+          <Card class="p-4 space-y-2" style="animation-delay: {i * 60}ms">
+            <div class="flex items-center gap-2">
+              <div class="skeleton h-5 w-5 rounded-full"></div>
+              <div class="skeleton h-4 w-32 rounded"></div>
+            </div>
+            <div class="skeleton h-4 w-48 rounded"></div>
           </Card>
         {/each}
       </div>

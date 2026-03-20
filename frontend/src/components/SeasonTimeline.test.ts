@@ -191,8 +191,8 @@ describe('SeasonTimeline', () => {
 
     render(SeasonTimeline);
 
-    // Should show skeleton cards while loading
-    const skeletons = document.querySelectorAll('.animate-pulse');
+    // Should show skeleton cards while loading (using shared .skeleton class)
+    const skeletons = document.querySelectorAll('.skeleton');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 

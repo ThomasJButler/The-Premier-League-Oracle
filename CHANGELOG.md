@@ -2,6 +2,18 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — P7m Design Refinements: Final 3 (10/10 complete)
+
+### Changed: Skeleton consistency, responsive form dots, score animation
+- **Content-aware skeleton loaders** — SeasonTimeline migrated from raw `bg-muted animate-pulse` to shared `.skeleton` shimmer class with content-shaped placeholders (circular event icons, staggered card delays)
+- **Form dots responsive fix** — Prediction card form dots now `w-2 h-2 sm:w-3 sm:h-3` — 8px on mobile prevents crowding at 320px viewport
+- **Score pop on prediction load** — `animate-score-pop` class (scale 1.5→1.05→1 over 0.5s) triggers when predicted score first renders, not just on live score changes. `prefers-reduced-motion` guard active
+
+### Test impact
+- `SeasonTimeline.test.ts` updated to query `.skeleton` instead of `.animate-pulse` — all 561 tests passing
+
+---
+
 ## 20 March 2026 — P7m Design Refinements (7/10 complete)
 
 ### Changed: Team-aware colour system and UI polish
