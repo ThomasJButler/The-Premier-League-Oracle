@@ -465,43 +465,63 @@
               
               <div class="space-y-6">
                 <div class="p-6 bg-muted rounded-xl">
-                  <h3 class="font-semibold text-lg mb-2">How accurate are the predictions?</h3>
-                  <p>Accuracy varies by confidence level — high-confidence predictions (75%+) where all five models agree tend to be the most reliable. You can track your own accuracy over time in the Predictions view, which records how each prediction performed once the match completes.</p>
+                  <h3 class="font-semibold text-lg mb-2">How do the predictions work?</h3>
+                  <p>The Oracle uses a five-component ensemble model that combines ELO ratings (25%), Poisson distribution (30%), recent form (20%), head-to-head records (10%), and league standings (15%). Each model independently predicts match probabilities, and the ensemble weights them to produce a final forecast. When the optional ML backend is connected, a trained XGBoost model blends in for additional accuracy.</p>
                 </div>
-                
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">How accurate are the predictions?</h3>
+                  <p>Accuracy varies by confidence level — high-confidence predictions (75%+) where all five models agree tend to be the most reliable. The frontend ensemble is calibrated against historical Premier League data going back to 2020. You can track your own accuracy over time in the Predictions view, which records how each prediction performed once the match completes.</p>
+                </div>
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Is this app free to use?</h3>
-                  <p>Yes! The app is completely free. You just need an API key from Football-Data.org, which provides 10 requests per minute on the free tier.</p>
+                  <p>Yes! The app is completely free. You just need an API key from <a href="https://www.football-data.org/" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Football-Data.org</a>, which provides 10 requests per minute on the free tier. Register for an account and copy your API key into Settings.</p>
                 </div>
-                
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Why am I seeing "Rate Limit Exceeded" errors?</h3>
-                  <p>The free API tier allows 10 requests per minute. Wait 60 seconds and try again, or consider upgrading your API plan for more requests.</p>
+                  <p>The free API tier allows 10 requests per minute. The app queues requests to stay within this limit, but if you navigate rapidly between pages it can occasionally exceed the threshold. Wait 60 seconds and the queue will clear automatically.</p>
                 </div>
-                
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Can I use this for betting?</h3>
-                  <p>The app provides statistical analysis for research and entertainment. Any betting decisions are your responsibility. Always gamble responsibly.</p>
+                  <p>The app includes a Kelly Criterion calculator and value bet detection engine for research purposes. The betting tools identify mathematically favourable situations based on the model's probabilities. However, any betting decisions are your own responsibility. Always gamble responsibly and within your means.</p>
                 </div>
-                
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">How often is data updated?</h3>
-                  <p>Match data uses adaptive polling: every 30 seconds during live matches, every 5 minutes on matchdays, and every 30 minutes otherwise. Data is cached locally to minimise API calls.</p>
+                  <p>Match data uses adaptive polling: every 30 seconds during live matches, every 5 minutes on matchdays, and every 30 minutes otherwise. Data is cached locally in a three-tier system (memory, IndexedDB, then API) to minimise API calls and ensure fast loading.</p>
                 </div>
-                
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">What is the ML backend?</h3>
+                  <p>The optional Python backend runs a trained XGBoost model with 99 features including ELO differentials, draw indicators, and rolling form metrics. Enable it in Settings to blend machine learning predictions with the frontend ensemble. The backend also powers the Oracle Chat for natural language match queries.</p>
+                </div>
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">Can I customise the look and feel?</h3>
+                  <p>Yes — Settings lets you toggle dark/light mode and pick a favourite team. Choosing a team applies that club's colours throughout the interface. There are themes for all 20 current Premier League sides.</p>
+                </div>
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Does it work offline?</h3>
-                  <p>The app caches recent data in your browser (IndexedDB) to reduce API calls and improve loading speed, but requires an internet connection for live updates and new predictions. There is no full offline mode.</p>
+                  <p>The app caches recent data in your browser (IndexedDB) to reduce API calls and improve loading speed, but requires an internet connection for live updates and new predictions. Previously viewed data remains available even when offline.</p>
                 </div>
-                
+
                 <div class="p-6 bg-muted rounded-xl">
-                  <h3 class="font-semibold text-lg mb-2">Can I export the data?</h3>
-                  <p>Yes — the Betting History page has a JSON export button for your tracked bets.</p>
+                  <h3 class="font-semibold text-lg mb-2">Where is my data stored?</h3>
+                  <p>Everything is stored locally in your browser — predictions, bets, ELO ratings, settings, and cached match data all live in localStorage and IndexedDB. Nothing is sent to external servers. Clearing your browser data will reset everything.</p>
                 </div>
-                
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">Can I export my data?</h3>
+                  <p>Yes — the Betting History page has a JSON export button for your tracked bets. Prediction history is also stored locally and could be exported via browser developer tools if needed.</p>
+                </div>
+
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Will you add other leagues?</h3>
-                  <p>The app is focused exclusively on the Premier League. There are no current plans to add other leagues.</p>
+                  <p>The app is focused exclusively on the English Premier League. The prediction models are specifically calibrated for PL characteristics (home advantage rates, draw frequencies, scoring patterns). There are no current plans to add other leagues.</p>
                 </div>
               </div>
             </div>
