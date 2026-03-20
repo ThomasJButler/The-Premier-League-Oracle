@@ -7,6 +7,7 @@
 #   ./loop.sh plan 5       # Plan mode, max 5 iterations
 #   ./loop.sh coach        # Coach mode: 1 build iteration + dashboard summary
 #   ./loop.sh coach 5      # Coach mode: 5 build iterations with dashboard after each
+#   ./loop.sh view         # View helper commands.
 #   ./loop.sh view past    # Browse completed runs — interactive grid picker
 #   ./loop.sh view future  # Follow the current loop live (plan, build, or coach)
 #   ./loop.sh view .claude-run/coach-20260320-124912.jsonl  # Replay a specific run
