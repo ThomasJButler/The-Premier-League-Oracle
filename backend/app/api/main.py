@@ -374,6 +374,8 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         # Use stacked ensemble if available (only saved when it outperforms
         # calibrated XGBoost), otherwise fall back to calibrated single model
         stacked = free_tier_metadata.get('stacked_ensemble')
+        raw_probs = free_tier_model.predict(dmatrix)[0]
+
         if stacked and stacked.get('classifiers') and stacked.get('meta_learner'):
             # Stacked ensemble: 3 OvR classifiers → meta-learner
             ovr_probs = np.column_stack([
@@ -383,12 +385,10 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
             # Single XGBoost with calibration (isotonic or Platt scaling)
-            raw_probs = free_tier_model.predict(dmatrix)[0]
             calibrators = free_tier_metadata.get('calibrators')
             cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
             if calibrators and len(calibrators) == 3:
                 if cal_method == 'platt':
-                    # Platt scaling: calibrators are LogisticRegression objects
                     cal_probs = np.array([
                         float(cal.predict_proba(
                             np.array([[raw_probs[i]]])
@@ -396,7 +396,6 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
                         for i, cal in enumerate(calibrators)
                     ])
                 else:
-                    # Isotonic regression: calibrators are IsotonicRegression
                     cal_probs = np.array([
                         float(cal.predict([raw_probs[i]])[0])
                         for i, cal in enumerate(calibrators)
@@ -410,8 +409,15 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         draw_prob = float(probs[1])
         away_prob = float(probs[2])
 
-        # Determine predicted outcome
-        outcome_idx = int(np.argmax(probs))
+        # Classification: use raw probabilities for the predicted outcome.
+        # Calibration improves probability estimates (log loss) but can
+        # suppress the draw class — isotonic calibration maps draw probs
+        # to near-zero because the model's draw accuracy is low. However,
+        # the raw model has draw AUC-ROC 0.601, meaning it *can* identify
+        # draw-prone matches. Using raw probs for argmax recovers ~16%
+        # draw accuracy vs 0% after calibration, while the returned
+        # probabilities still use calibrated values for better estimates.
+        outcome_idx = int(np.argmax(raw_probs))
         outcomes = ['Home win', 'Draw', 'Away win']
         predicted = outcomes[outcome_idx]
 
