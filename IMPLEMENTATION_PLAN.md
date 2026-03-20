@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (documentation cleanup)
+Last updated: 20 March 2026 (restored Ralph loop prompt files; P7 at 47/49)
 Active branch: `v3.0-MVP`
 
 ---
