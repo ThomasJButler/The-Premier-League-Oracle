@@ -25,7 +25,7 @@ Active branch: `v3.0-MVP`
 | P5 Hardening | 56/56 (100%) | ALL DONE — P5g nineteenth audit items resolved |
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
-| P7 Beyond MVP | 39/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
+| P7 Beyond MVP | 40/46 | Forward-looking improvements — accuracy, frontend polish, RAG intelligence, Season Timeline, seasonal maps |
 
 **Frontend:** 535 Vitest tests (33 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, first training run done (51.0% accuracy, model saved)
@@ -70,7 +70,7 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 
 - [x] **Backtest-derived ensemble weights** — `WeightOptimiser` class in `backtest.ts` tests ~10,000 weight combinations (5% step grid) against stored per-model outputs from a backtest run. `ModelOutputs` interface added to `optimizedPredictions.ts`, populated during `predictMatch()`. Results shown in Predictions page backtest section: optimal weights grid with current vs recommended, accuracy gain badge, and log loss. 5 new tests (540 total, 33 files)
 - [x] **Real bookmaker odds input** — Already fully implemented in `ValueBets.svelte`. Users enter real bookmaker odds (1X2, Over/Under 2.5, BTTS) which are compared against model probabilities to find edges. The engine was never using model-derived odds — it always required user input via `MarketOdds` interface
-- [ ] **Prediction confidence from backend model** — When backend is available, use its calibrated probabilities to adjust frontend ensemble confidence rather than simple weight blending
+- [x] **Prediction confidence from backend model** — When the ML backend is available, its predicted outcome is compared against the frontend ensemble's prediction. Agreement boosts confidence by up to 8% (scaled by ML confidence), disagreement penalises by up to 10%. Insight messages added for both cases. Applied before historical calibration band factors
 
 ### P7e. Infrastructure (Low Priority)
 

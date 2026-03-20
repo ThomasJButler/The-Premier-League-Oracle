@@ -395,14 +395,35 @@ export class OptimizedPredictor {
         modelsDisagree
       );
 
+      // 10b. ML backend confidence adjustment — when the backend's calibrated
+      // probabilities are available, use agreement/disagreement to adjust confidence.
+      // Backend agreement boosts confidence by up to 8%, disagreement penalises by up to 10%.
+      let mlAdjustedConfidence = rawConfidence;
+      if (mlPrediction) {
+        const mlTopOutcome = this.getTopOutcome(mlPrediction.prediction.home, mlPrediction.prediction.draw, mlPrediction.prediction.away);
+        const mlAgreesWithEnsemble = mlTopOutcome === prediction.result;
+
+        if (mlAgreesWithEnsemble) {
+          // Boost confidence — both the TS ensemble and Python ML agree
+          const boost = Math.min(0.08, mlPrediction.confidence * 0.1);
+          mlAdjustedConfidence += boost;
+          insights.push(`ML backend confirms ${prediction.result === 'H' ? 'home win' : prediction.result === 'A' ? 'away win' : 'draw'} (${(mlPrediction.confidence * 100).toFixed(0)}% confidence) — boosted`);
+        } else {
+          // Penalise confidence — models disagree
+          const penalty = Math.min(0.10, (1 - mlPrediction.confidence) * 0.12);
+          mlAdjustedConfidence -= penalty;
+          insights.push(`ML backend predicts ${mlTopOutcome === 'H' ? 'home win' : mlTopOutcome === 'A' ? 'away win' : 'draw'} instead — lower confidence`);
+        }
+      }
+
       // Apply historical calibration — adjust confidence based on past accuracy
       // per confidence band (Spec 01 Req 5). If the model has been overconfident
       // in a given band, the factor < 1 brings future confidence down.
       const calibration = predictionTracker.getCalibrationFactors();
-      const bandFactor = rawConfidence > 0.7 ? calibration.highBand
-        : rawConfidence >= 0.5 ? calibration.mediumBand
+      const bandFactor = mlAdjustedConfidence > 0.7 ? calibration.highBand
+        : mlAdjustedConfidence >= 0.5 ? calibration.mediumBand
         : calibration.lowBand;
-      const confidence = Math.max(0.25, Math.min(0.95, rawConfidence * bandFactor));
+      const confidence = Math.max(0.25, Math.min(0.95, mlAdjustedConfidence * bandFactor));
 
       if (modelsDisagree) {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
