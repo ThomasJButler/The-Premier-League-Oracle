@@ -44,7 +44,7 @@
   let keyResults: KeyResult[] = [];
   let narrativeEntries: NarrativeEntry[] = [];
   let currentMatchday = 0;
-  let totalMatchdays = PREMIER_LEAGUE_GAMEWEEKS;
+  const totalMatchdays = PREMIER_LEAGUE_GAMEWEEKS;
 
   // View controls
   let showAllTitleTeams = false;

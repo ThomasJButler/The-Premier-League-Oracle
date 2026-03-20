@@ -559,7 +559,7 @@ class DataService {
       if (finished.length > 0) {
         const processed = sharedEloSystem.processCompletedMatches(finished);
         if (processed > 0) {
-          console.info(`ELO warm-up: processed ${processed} historical matches across ${DataService.HISTORICAL_SEASONS.length} seasons`);
+          console.warn(`ELO warm-up: processed ${processed} historical matches across ${DataService.HISTORICAL_SEASONS.length} seasons`);
         }
       }
 

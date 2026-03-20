@@ -34,7 +34,7 @@
   });
 
   // Re-compute when timestamp prop changes (e.g. after a refresh)
-  $: timestamp, updateDisplay();
+  $: timestamp, updateDisplay(); // eslint-disable-line @typescript-eslint/no-unused-expressions -- Svelte 4 reactive dependency
 </script>
 
 {#if displayText}
