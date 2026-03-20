@@ -25,7 +25,7 @@ backend/models/*.pkl
 backend/models/*.joblib
 backend/models/*.png
 
-# Legacy planning docs (superseded by CLAUDE.md/AGENTS.md)
+# Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
 oldestplan.md
 oldplan.md
 plan.md
