@@ -2,6 +2,14 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Housekeeping: remove stale orchestration files
+
+### Removed
+- **Deleted `PROMPT_plan.md` and `PROMPT_build.md`** — Ralph loop orchestration files superseded by CLAUDE.md and AGENTS.md. These were documented as deleted in the previous changelog entry but the deletion was never committed
+- **Updated `.gitignore` comment** — clarified "Stale docs (pending removal)" → "Legacy planning docs (superseded by CLAUDE.md/AGENTS.md)" since Phase 0 completed long ago
+
+---
+
 ## 20 March 2026 — P7m Design Refinements: Final 3 (10/10 complete)
 
 ### Changed: Skeleton consistency, responsive form dots, score animation
