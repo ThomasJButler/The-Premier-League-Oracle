@@ -329,4 +329,36 @@ describe('Dashboard Component', () => {
     const gridElements = document.querySelectorAll('.grid');
     expect(gridElements.length).toBeGreaterThan(0);
   });
+
+  it('should show onboarding card when no predictions or bets exist', async () => {
+    vi.mocked(predictionTracker.getAccuracyStats).mockReturnValue({
+      accuracy: 0,
+      totalPredictions: 0,
+      correctPredictions: 0,
+      incorrectPredictions: 0
+    } as any);
+
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('onboarding-card')).toBeInTheDocument();
+      expect(screen.queryByText('Ready to predict?')).toBeInTheDocument();
+      expect(screen.queryByText(/Generate Your First Prediction/)).toBeInTheDocument();
+      // Stat cards should NOT be visible in onboarding state
+      expect(screen.queryByTestId('stat-cards')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show stat cards instead of onboarding when predictions exist', async () => {
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('stat-cards')).toBeInTheDocument();
+      expect(screen.queryByTestId('onboarding-card')).not.toBeInTheDocument();
+    });
+  });
 });
