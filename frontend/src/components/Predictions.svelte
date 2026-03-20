@@ -351,6 +351,23 @@
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
   }
+
+  /** Parse form string into individual results for dot rendering */
+  function parseFormString(form: string): string[] {
+    if (!form || form === '-') return [];
+    // Handle comma-separated ("W,W,D,L,W") and continuous ("WWDLW") formats
+    if (form.includes(',')) return form.split(',').slice(-5);
+    return form.split('').filter(c => ['W', 'D', 'L'].includes(c)).slice(-5);
+  }
+
+  function getFormDotClass(result: string): string {
+    switch (result) {
+      case 'W': return 'bg-green-500';
+      case 'D': return 'bg-slate-400';
+      case 'L': return 'bg-red-500';
+      default: return 'bg-muted';
+    }
+  }
 </script>
 
 <div class="space-y-6 animate-fade-in">
@@ -660,6 +677,13 @@
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.home_team, 40)} alt="{prediction.home_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
                     <span class="text-sm font-medium text-foreground text-center">{prediction.home_team}</span>
+                    {#if prediction.detailedAnalysis}
+                      <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.home_team} recent form">
+                        {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
+                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
                   <div class="text-center">
                     <span class="text-xl font-bold text-muted-foreground">vs</span>
@@ -672,22 +696,31 @@
                   <div class="flex flex-col items-center w-1/3">
                     <img src={getTeamLogo(prediction.away_team, 40)} alt="{prediction.away_team} logo" class="w-10 h-10 mb-2 object-contain rounded-full">
                     <span class="text-sm font-medium text-foreground text-center">{prediction.away_team}</span>
+                    {#if prediction.detailedAnalysis}
+                      <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.away_team} recent form">
+                        {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
+                          <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
                 </div>
               </div>
 
               {#if prediction.prediction}
                 <div class="mb-4">
-                  <div class="flex justify-around items-center bg-muted rounded-lg p-3">
+                  <div class="flex rounded-lg overflow-hidden h-8 bg-muted" role="img" aria-label="Outcome probabilities: Home {prediction.detailedAnalysis?.poissonProbs.homeWin ? (prediction.detailedAnalysis.poissonProbs.homeWin * 100).toFixed(0) : '-'}%, Draw {prediction.detailedAnalysis?.poissonProbs.draw ? (prediction.detailedAnalysis.poissonProbs.draw * 100).toFixed(0) : '-'}%, Away {prediction.detailedAnalysis?.poissonProbs.awayWin ? (prediction.detailedAnalysis.poissonProbs.awayWin * 100).toFixed(0) : '-'}%">
                     {#each [
-                      { label: 'Home', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin },
-                      { label: 'Draw', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw },
-                      { label: 'Away', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin }
+                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, barColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-200' },
+                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, barColor: 'bg-amber-400', textColor: 'text-amber-700 dark:text-amber-200' },
+                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, barColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-200' }
                     ] as outcome}
-                      <div class="text-center px-2">
-                        <span class="block text-xs font-medium text-muted-foreground">{outcome.label}</span>
-                        <span class="block text-lg font-bold {prediction.prediction.predicted_result === outcome.value ? 'text-primary' : 'text-muted-foreground'}">
-                          {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
+                      <div
+                        class="flex items-center justify-center transition-all duration-500 {prediction.prediction.predicted_result === outcome.value ? outcome.barColor + '/30' : outcome.barColor + '/10'}"
+                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%"
+                      >
+                        <span class="text-[11px] font-semibold {prediction.prediction.predicted_result === outcome.value ? outcome.textColor : 'text-muted-foreground'}">
+                          {outcome.label} {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
                         </span>
                       </div>
                     {/each}
