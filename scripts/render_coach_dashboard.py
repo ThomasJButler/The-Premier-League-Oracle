@@ -1179,14 +1179,204 @@ class MultiRunViewer:
 
 
 # ---------------------------------------------------------------------------
+# Follow viewer — live session monitor
+# ---------------------------------------------------------------------------
+
+class FollowViewer:
+    """Watches .claude-run/ for new JSONL files and shows live dashboards.
+
+    Designed to run alongside ./loop.sh coach N in a second terminal.
+    Processes each iteration as it happens, accumulates stats, and shows
+    a running grid between iterations.
+    """
+
+    POLL_SECONDS = 2.0
+
+    def __init__(self, run_dir: str, count: int) -> None:
+        self.run_dir = run_dir
+        self.count = count
+        self.renderer = TermRenderer()
+        self.completed: list[dict[str, Any]] = []
+        self._interrupted = False
+
+    def run(self) -> int:
+        signal.signal(signal.SIGINT, self._handle_sigint)
+        self._banner()
+
+        seen_files: set[str] = set()
+        # Mark all existing files as "before this session" so we only follow new ones
+        initial_files = self._list_jsonl_files()
+        # Keep the most recent file if it's still incomplete — we'll tail it
+        if initial_files:
+            latest = initial_files[0]
+            if not self._is_complete(latest):
+                # Latest file is still running — don't mark it as seen
+                seen_files = set(initial_files[1:])
+            else:
+                seen_files = set(initial_files)
+
+        while len(self.completed) < self.count and not self._interrupted:
+            # Find newest JSONL we haven't processed
+            latest = self._find_latest_new(seen_files)
+
+            if latest is None:
+                self._wait_for_new_file(seen_files)
+                continue
+
+            seen_files.add(latest)
+            iteration = len(self.completed) + 1
+
+            self.renderer.writeln(
+                f"\n  {BOLD}{CYAN}\u2501\u2501\u2501 Iteration "
+                f"{iteration}/{self.count} \u2501\u2501\u2501\u2501\u2501\u2501"
+                f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+                f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501{RESET}"
+            )
+
+            # Show live dashboard — blocks until the JSONL gets a result event
+            dashboard = CoachDashboard(latest)
+            dashboard.run()
+
+            # Quick-parse for grid stats
+            stats = quick_parse_jsonl(latest)
+            self.completed.append(stats)
+
+            # Show running grid between iterations
+            if len(self.completed) < self.count:
+                self._render_running_grid()
+
+        # Final summary
+        if self.completed:
+            self._render_final()
+        return 0
+
+    def _list_jsonl_files(self) -> list[str]:
+        """Return all JSONL files in run_dir, newest first."""
+        try:
+            files = [
+                os.path.join(self.run_dir, f)
+                for f in os.listdir(self.run_dir)
+                if f.endswith(".jsonl")
+            ]
+            return sorted(files, key=lambda p: os.path.getmtime(p), reverse=True)
+        except OSError:
+            return []
+
+    def _is_complete(self, path: str) -> bool:
+        """Check if a JSONL file has a result event (i.e., the run finished)."""
+        try:
+            with open(path, "r") as f:
+                for line in reversed(f.readlines()[-20:]):
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        ev = json.loads(stripped)
+                        if ev.get("type") == "result":
+                            return True
+                    except json.JSONDecodeError:
+                        continue
+        except OSError:
+            pass
+        return False
+
+    def _find_latest_new(self, seen: set[str]) -> str | None:
+        """Find the newest JSONL file not in the seen set."""
+        for path in self._list_jsonl_files():
+            if path not in seen:
+                return path
+        return None
+
+    def _wait_for_new_file(self, seen: set[str]) -> None:
+        """Poll for a new JSONL file with a spinner."""
+        iteration = len(self.completed) + 1
+        spinner = Spinner()
+        while not self._interrupted:
+            new = self._find_latest_new(seen)
+            if new is not None:
+                self.renderer.clear_status()
+                return
+            spin = spinner.frame()
+            self.renderer.write(
+                f"\r\033[K  {CYAN}{spin}{RESET} "
+                f"Waiting for iteration {iteration}/{self.count}..."
+            )
+            time.sleep(self.POLL_SECONDS)
+        self.renderer.clear_status()
+
+    def _banner(self) -> None:
+        inner = 56
+        self.renderer.writeln()
+        self.renderer.writeln(f"  {GREEN}\u250f{'\u2501' * inner}\u2513{RESET}")
+        self.renderer.writeln(
+            f"  {GREEN}\u2503{RESET}  {BOLD}Ralph Live Monitor{RESET}"
+            f"{' ' * (inner - 20)}{GREEN}\u2503{RESET}"
+        )
+        self.renderer.writeln(
+            f"  {GREEN}\u2503{RESET}  Watching for "
+            f"{BOLD}{self.count}{RESET} iteration(s) in {DIM}.claude-run/{RESET}"
+            f"{' ' * max(0, inner - 38 - len(str(self.count)))}{GREEN}\u2503{RESET}"
+        )
+        self.renderer.writeln(
+            f"  {GREEN}\u2503{RESET}  {DIM}Run ./loop.sh coach {self.count} "
+            f"in another terminal{RESET}"
+            f"{' ' * max(0, inner - 42 - len(str(self.count)))}{GREEN}\u2503{RESET}"
+        )
+        self.renderer.writeln(f"  {GREEN}\u2517{'\u2501' * inner}\u251b{RESET}")
+        self.renderer.writeln()
+
+    def _render_running_grid(self) -> None:
+        """Show accumulated stats so far."""
+        if not self.completed:
+            return
+
+        viewer = MultiRunViewer.__new__(MultiRunViewer)
+        viewer.run_dir = self.run_dir
+        viewer.last_n = len(self.completed)
+        viewer.renderer = self.renderer
+
+        viewer._render_grid(self.completed)
+        viewer._render_totals(self.completed)
+
+    def _render_final(self) -> None:
+        """Full final summary with grid + heatmap + totals."""
+        viewer = MultiRunViewer.__new__(MultiRunViewer)
+        viewer.run_dir = self.run_dir
+        viewer.last_n = len(self.completed)
+        viewer.renderer = self.renderer
+
+        self.renderer.writeln(
+            f"\n  {GREEN}{BOLD}\u2501\u2501\u2501 Session Complete "
+            f"({len(self.completed)} iterations) "
+            f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+            f"\u2501\u2501\u2501\u2501{RESET}"
+        )
+
+        viewer._render_grid(self.completed)
+        viewer._render_file_heatmap(self.completed)
+        viewer._render_totals(self.completed)
+
+    def _handle_sigint(self, sig: int, frame: Any) -> None:
+        self._interrupted = True
+        self.renderer.clear_status()
+        self.renderer.writeln(
+            f"\n  {YELLOW}Interrupted \u2014 showing partial summary.{RESET}"
+        )
+        if self.completed:
+            self._render_final()
+        sys.exit(0)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 def main() -> int:
     args = sys.argv[1:]
 
-    # Parse --last N, --pick, --dir <path>
+    # Parse --last N, --follow N, --pick, --dir <path>
     last_n = 0
+    follow_n = 0
     run_dir = ".claude-run"
     pick_mode = False
     jsonl_path = None
@@ -1196,6 +1386,12 @@ def main() -> int:
         if args[i] == "--last" and i + 1 < len(args):
             try:
                 last_n = int(args[i + 1])
+            except ValueError:
+                pass
+            i += 2
+        elif args[i] == "--follow" and i + 1 < len(args):
+            try:
+                follow_n = int(args[i + 1])
             except ValueError:
                 pass
             i += 2
@@ -1211,6 +1407,11 @@ def main() -> int:
         else:
             i += 1
 
+    # Follow mode (live session monitor)
+    if follow_n > 0:
+        viewer = FollowViewer(run_dir, count=follow_n)
+        return viewer.run()
+
     # Multi-run mode (--last N or --pick)
     if last_n > 0 or pick_mode:
         viewer = MultiRunViewer(run_dir, last_n=last_n)
@@ -1219,6 +1420,7 @@ def main() -> int:
     # Single-run mode
     if not jsonl_path:
         print("Usage: render_coach_dashboard.py <jsonl_path>", file=sys.stderr)
+        print("       render_coach_dashboard.py --follow N --dir <run_dir>", file=sys.stderr)
         print("       render_coach_dashboard.py --last N --dir <run_dir>", file=sys.stderr)
         print("       render_coach_dashboard.py --pick --dir <run_dir>", file=sys.stderr)
         return 1

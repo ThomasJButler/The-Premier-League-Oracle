@@ -8,7 +8,7 @@
 #   ./loop.sh coach        # Coach mode: 1 build iteration + dashboard summary
 #   ./loop.sh coach 5      # Coach mode: 5 build iterations with dashboard after each
 #   ./loop.sh view         # Interactive run picker — browse all past runs
-#   ./loop.sh view 5.      # Multi-run grid of last 5 runs with stats + cost
+#   ./loop.sh view 10      # Follow mode — live-watch 10 iterations alongside coach
 #   ./loop.sh view path/to/file.jsonl  # View dashboard for specific JSONL
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,9 +24,9 @@ if [ "$1" = "view" ]; then
     if [ -n "$2" ] && [ -f "$2" ]; then
         exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" "$2"
     fi
-    # Numeric arg — show last N runs in multi-run grid
+    # Numeric arg — follow mode (live watch for N iterations)
     if [[ "$2" =~ ^[0-9]+$ ]]; then
-        exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --last "$2" --dir "$RUN_DIR"
+        exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --follow "$2" --dir "$RUN_DIR"
     fi
     # No arg — show interactive run picker
     exec python3 "$SCRIPT_DIR/scripts/render_coach_dashboard.py" --pick --dir "$RUN_DIR"
