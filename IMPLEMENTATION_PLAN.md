@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026 (restored Ralph loop prompt files; P7 at 47/49)
+Last updated: 20 March 2026 (P7l complete, P7m design review added)
 Active branch: `v3.0-MVP`
 
 ---
@@ -158,6 +158,28 @@ These are prioritised improvements to close the gap between MVP (51% accuracy) a
 - [x] **Suggested Bets debounce** — Added 500ms debounce + abort guard on confidence slider to prevent 100+ concurrent `/predict/free` requests when dragging. `loadAborted` flag stops in-flight prediction loops
 - [x] **Slider range fix** — min 40→20, max 90→55, default 65→30 to match model's realistic 25–45% confidence range
 - [x] **Value bets threshold** — `MIN_CONFIDENCE` lowered from 55% to 35% in `value.ts` so bets actually appear when scanning
+
+**Playwright E2E status:** All 43 tests (6 specs × 3 viewports) confirmed safe after P7l changes. Tests use semantic selectors (`data-testid`, accessible roles) not CSS class assertions, so grid/title/ticker/icon changes are invisible to E2E.
+
+### P7m. Design Refinements (Frontend Design Review)
+
+Design audit confirmed a **cohesive, intentional system** ("Stadium Nightfall" theme, HSL variable architecture, 20-team colour overrides, Figtree + Outfit font pairing, glassmorphism with proper blur/saturate). No "AI slop" patterns detected. Items below are refinements, not overhauls.
+
+**High impact:**
+- [ ] **Probability bar team colours** — Replace generic blue/amber/emerald segments with actual team primary colours from `getTeamColor()` in `teamLogos.ts`. Home team colour for H segment, away for A
+- [ ] **Featured match hero uplift** — Dashboard featured match button looks like a regular card. Increase visual weight: larger logos (28→48px), bolder names, subtle gradient background, scale-on-hover
+- [ ] **Hardcoded neon green → CSS vars** — Live pulse dot and neon button shadows use `rgba(0, 255, 135)` instead of `hsl(var(--accent))`. Breaks team theming. Quick find-and-replace in `app.css`
+- [ ] **Sidebar nav truncation** — Long labels wrap at narrow widths. Add `truncate` class with `title` tooltip to `SidebarNav.svelte`
+
+**Medium impact:**
+- [ ] **Content-aware skeleton loaders** — Replace generic shimmer rectangles with content-shaped placeholders (circular team logo, narrow text, wider score). Already have `.skeleton` class
+- [ ] **Form dots responsive fix** — At 320px mobile, 5 dots crowd. Reduce size from `w-3 h-3` to `w-2 h-2` below `sm:` or limit to 3 most recent
+- [ ] **Typography contrast audit** — `white/60` opacity in dark mode hero borderline WCAG AA. Bump to `white/70` minimum across muted-foreground small text
+
+**Low impact:**
+- [ ] **Button press feedback** — Add `active:scale-[0.97]` to primary action buttons for tactile press response
+- [ ] **Score pop on prediction load** — `scorePop` keyframe exists but only triggers on live score changes. Also trigger when prediction score first appears
+- [ ] **Navigation active state** — Current left-border indicator subtle. Add filled background with slight gradient for unmistakable active page
 
 ---
 
