@@ -316,9 +316,9 @@ describe('Advanced Predictions Module', () => {
         vi.mocked(dataService.getMatches).mockResolvedValue([]);
 
         const stats = await RefereeAnalyzer.getRefereeStats('New Referee');
-        
-        expect(stats.avgYellowCards).toBe(4);
-        expect(stats.avgRedCards).toBe(0.1);
+
+        expect(stats.avgYellowCards).toBe(3.6);
+        expect(stats.avgRedCards).toBe(0.12);
         expect(stats.avgPenalties).toBe(0.2);
         expect(stats.homeWinRate).toBe(0.46);
       });

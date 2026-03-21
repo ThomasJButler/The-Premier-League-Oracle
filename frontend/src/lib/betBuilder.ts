@@ -1,6 +1,7 @@
 import { PoissonPredictor } from './advancedPredictions';
 import { OptimizedPredictor } from './optimizedPredictions';
 import { dataService } from '../services/dataService';
+import { HT_FT_CORRELATION, HT_PRIOR_HOME, HT_PRIOR_DRAW, HT_PRIOR_AWAY } from './constants';
 import type { Match, TeamStats } from '../types';
 
 export interface BetBuilderPrediction {
@@ -339,20 +340,15 @@ export class BetBuilderPredictor {
   /**
    * Estimate half-time result probabilities from full-time probabilities.
    *
-   * Half-time draws are historically ~40 % in the Premier League, so we
+   * Half-time draws are historically ~39 % in the Premier League, so we
    * blend each full-time probability towards a draw-heavy prior and then
    * normalise to guarantee the three values sum to exactly 1.0.
+   * Parameters derived from 2,191 PL matches — see constants.ts.
    */
   private static calculateHalfTimeResult(fullTimeResult: BetBuilderPrediction['matchResult']) {
-    const ftBias = 0.4; // 40 % correlation with full-time
-    // Prior: draws much more common at half-time (real PL HT distribution)
-    const priorHome = 0.26;
-    const priorDraw = 0.46;
-    const priorAway = 0.28;
-
-    let homeWinProb = fullTimeResult.homeWinProb * ftBias + priorHome * (1 - ftBias);
-    let drawProb    = fullTimeResult.drawProb    * ftBias + priorDraw * (1 - ftBias);
-    let awayWinProb = fullTimeResult.awayWinProb * ftBias + priorAway * (1 - ftBias);
+    let homeWinProb = fullTimeResult.homeWinProb * HT_FT_CORRELATION + HT_PRIOR_HOME * (1 - HT_FT_CORRELATION);
+    let drawProb    = fullTimeResult.drawProb    * HT_FT_CORRELATION + HT_PRIOR_DRAW * (1 - HT_FT_CORRELATION);
+    let awayWinProb = fullTimeResult.awayWinProb * HT_FT_CORRELATION + HT_PRIOR_AWAY * (1 - HT_FT_CORRELATION);
 
     // Normalise so probabilities sum to exactly 1.0
     const total = homeWinProb + drawProb + awayWinProb;

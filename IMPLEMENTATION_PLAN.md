@@ -27,7 +27,7 @@ Active branch: `v3.0-MVP-UX`
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 | P7 Beyond MVP | 57/59 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority. P7m 10/10 complete |
 
-**Frontend:** 561 Vitest tests (34 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
+**Frontend:** 597 Vitest tests (38 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
 **Backend pro-tier (P3a–d):** Archived to `pro-tier-archive` branch (pushed to remote) — future work
 **All 8 specs:** 100% of active acceptance criteria met (99/99)
@@ -89,15 +89,15 @@ fix/<name>                 — bug fixes, merged via PR
 |----------|---------|----------|
 | `advancedPredictions.ts` | `avgPenalties: 0.2` — no penalty data from free API tier | Low |
 | `advancedPredictions.ts` | `SEED_RATINGS` — 20 teams with manually assigned ELO, not backcalculated. Mitigated: historical warm-up processes 5 seasons of matches on first load, so seeds are only used briefly before being overwritten by real data | Low |
-| `advancedPredictions.ts` | `ratingReliability = 0.8` — constant, should reflect actual model accuracy | Low |
-| `advancedPredictions.ts` | `HOME_ADVANTAGE = 65` ELO points — static, should vary by team | Low |
-| `advancedPredictions.ts` | Default referee stats (`avgYellowCards: 4, avgRedCards: 0.1, homeWinRate: 0.46`) | Low |
+| `advancedPredictions.ts` | `ratingReliability = 0.8` — removed during P7k constants extraction | Resolved |
+| `advancedPredictions.ts` | `HOME_ADVANTAGE` — now `ELO_HOME_ADVANTAGE = 33` from `constants.ts`, derived from 2,191 PL matches (2020–2025) | Resolved |
+| `advancedPredictions.ts` | Default referee stats — now `DEFAULT_REFEREE_AVG_YELLOWS = 3.6`, `DEFAULT_REFEREE_AVG_REDS = 0.12` from `constants.ts` | Resolved |
 | `optimizedPredictions.ts` | `MODEL_WEIGHTS` — users can apply backtest-derived weights via Predictions panel (persisted to localStorage) | Resolved |
 | `optimizedPredictions.ts` | ELO draw, form weights, confidence, standings step — extracted to named constants in `constants.ts` with documented derivations | Resolved |
 | `optimizedPredictions.ts` | Fallback prediction returns static `{result: 'D', confidence: 0.33, goals: 1-1, odds: 3.0/3.3/3.0}` | Low |
 | `betBuilder.ts` | `avgCorners: 9.5` — no corner data from free tier | Low |
 | `betBuilder.ts` | `expectedCards: 3.2` — no card data from free tier | Low |
-| `betBuilder.ts` | `ftBias = 0.4` — HT-FT correlation arbitrarily set at 40% | Low |
+| `betBuilder.ts` | `ftBias` / HT priors — now `HT_FT_CORRELATION = 0.37`, `HT_PRIOR_HOME/DRAW/AWAY` from `constants.ts`, derived from 2,191 PL matches | Resolved |
 | `betBuilder.ts` | `homeCleanSheet` prediction threshold 0.3 — no empirical basis | Low |
 | `Predictions.svelte` | `estimatedBookmakerOdds = (1 / topProb) * 1.05` — fabricated margin | Low |
 | `Predictions.svelte` | `totalGameweeks` — now uses `PREMIER_LEAGUE_GAMEWEEKS` from `constants.ts` | Resolved |
@@ -228,9 +228,13 @@ All feature specifications in `specs/`:
 | `MatchEventToast.test.ts` | 12 | Passing |
 | `SeasonTimeline.test.ts` | 13 | Passing |
 | `DataFreshness.test.ts` | 9 | Passing |
-| **Total** | **561** | **All passing (34 files)** |
+| `Header.test.ts` | 8 | Passing |
+| `SidebarNav.test.ts` | 10 | Passing |
+| `MobileNav.test.ts` | 10 | Passing |
+| `Sidebar.test.ts` | 8 | Passing |
+| **Total** | **597** | **All passing (38 files)** |
 
-**Known test quality issues:** Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed. Untested components (4): Header, MobileNav, SidebarNav, Sidebar — layout/navigation only.
+**Known test quality issues:** Component tests using `(component as any).refresh()` bypass `onMount` — fragile if internal methods renamed. Untested components (1): App.svelte — integration root, covered by Playwright E2E.
 
 ### Frontend (Playwright E2E)
 

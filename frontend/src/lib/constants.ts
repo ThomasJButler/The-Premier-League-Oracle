@@ -191,6 +191,51 @@ export const ML_DISAGREEMENT_PENALTY_FACTOR = 0.12;
 export const REFEREE_ADJUSTMENT_MAX = 0.03;
 export const REFEREE_ADJUSTMENT_THRESHOLD = 0.005;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Data-derived constants
+//
+// Computed from 2,191 Premier League matches (2020/21–2025/26 partial) by
+// backend/scripts/compute_constants.py. Re-run the script after adding new
+// season data to get updated values.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ELO_HOME_ADVANTAGE — ELO points added to the home team's rating.
+ *
+ * Derived from observed home performance: 43.1% home wins, 23.2% draws,
+ * 33.7% away wins → home expected score 0.547 → 33 ELO points.
+ * Formula: -400 × log₁₀(1 / expectedScore - 1).
+ *
+ * Lower than historical estimates (~65) because the 2020-2025 dataset
+ * includes pandemic-era matches with reduced/no crowds.
+ */
+export const ELO_HOME_ADVANTAGE = 33;
+
+/**
+ * Default referee card averages — fallback when no referee-specific data exists.
+ *
+ * Derived from 2,191 matches: mean(HY + AY) = 3.6, mean(HR + AR) = 0.12.
+ */
+export const DEFAULT_REFEREE_AVG_YELLOWS = 3.6;
+export const DEFAULT_REFEREE_AVG_REDS = 0.12;
+
+/**
+ * Half-time / full-time correlation parameters.
+ *
+ * HT_FT_CORRELATION (0.37) — weight given to full-time probabilities when
+ * predicting the half-time result. Derived from the normalised match rate
+ * between HT and FT outcomes (58.4% match rate vs 34.1% baseline).
+ *
+ * HT_PRIOR_* — observed half-time result distribution:
+ *   Home leading 35%, Draw 39%, Away leading 26%.
+ * Note: draws are the most common HT result because many matches are still
+ * goalless or level at half-time.
+ */
+export const HT_FT_CORRELATION = 0.37;
+export const HT_PRIOR_HOME = 0.35;
+export const HT_PRIOR_DRAW = 0.39;
+export const HT_PRIOR_AWAY = 0.26;
+
 export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
 export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';
 

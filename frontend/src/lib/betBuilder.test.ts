@@ -494,18 +494,19 @@ describe('BetBuilderPredictor', () => {
       expect(sum).toBeCloseTo(1.0, 6);
     });
 
-    it('should apply 40% correlation bias to full-time probabilities with normalisation', async () => {
+    it('should apply HT-FT correlation bias to full-time probabilities with normalisation', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.60, '0-0': 0.20, '0-1': 0.20 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // Priors: home=0.26, draw=0.46, away=0.28 (sum=1.0)
-      // FT homeWin=0.60: raw = 0.60*0.4 + 0.26*0.6 = 0.396
-      // FT draw=0.20:    raw = 0.20*0.4 + 0.46*0.6 = 0.356
-      // FT away=0.20:    raw = 0.20*0.4 + 0.28*0.6 = 0.248
-      // total = 1.0, homeWinProb = 0.396/1.0 = 0.396
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.396, 2);
+      // Constants from constants.ts (derived from 2,191 PL matches):
+      //   HT_FT_CORRELATION=0.37, HT_PRIOR_HOME=0.35, HT_PRIOR_DRAW=0.39, HT_PRIOR_AWAY=0.26
+      // FT homeWin=0.60: raw = 0.60*0.37 + 0.35*0.63 = 0.4425
+      // FT draw=0.20:    raw = 0.20*0.37 + 0.39*0.63 = 0.3197
+      // FT away=0.20:    raw = 0.20*0.37 + 0.26*0.63 = 0.2378
+      // total = 1.0, homeWinProb = 0.4425/1.0 = 0.4425
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4425, 2);
       // And sum to 1
       const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
       expect(sum).toBeCloseTo(1.0, 6);

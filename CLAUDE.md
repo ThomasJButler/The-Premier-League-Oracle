@@ -130,10 +130,10 @@ These specs are the single source of truth for requirements. **All 99 active acc
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 561 Vitest tests (34 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
+- **Frontend:** 597 Vitest tests (38 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
 - **Backend:** 190 pytest tests (5 files), all passing
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
-- **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
+- **Untested components (1):** App.svelte — integration root only, covered by Playwright E2E
 
 ### Frontend Gotchas
 - `Prediction` type in `types/index.ts` is a view-model for Predictions.svelte card display — `StoredPrediction` is the persistence type used by `predictionTracker`

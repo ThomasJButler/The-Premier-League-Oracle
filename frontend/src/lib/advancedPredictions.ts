@@ -1,6 +1,9 @@
 import { dataService } from '../services/dataService';
 import type { Match } from '../types';
-import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
+import {
+  VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE,
+  ELO_HOME_ADVANTAGE, DEFAULT_REFEREE_AVG_YELLOWS, DEFAULT_REFEREE_AVG_REDS,
+} from './constants';
 
 // Poisson distribution for goal prediction
 export class PoissonPredictor {
@@ -55,7 +58,7 @@ export class PoissonPredictor {
 // Ratings persist to localStorage and update dynamically from completed match results.
 export class EloRatingSystem {
   static readonly K_FACTOR = 32; // Sensitivity of rating changes
-  static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
+  static readonly HOME_ADVANTAGE = ELO_HOME_ADVANTAGE;
   static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
   private static readonly STORAGE_KEY = 'elo_ratings';
   private static readonly PROCESSED_KEY = 'elo_processed_match_ids';
@@ -486,7 +489,7 @@ export class RefereeAnalyzer {
       const refereeMatches = matches.filter(match => match.referee === refereeName);
 
       if (refereeMatches.length === 0) {
-        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
+        return { avgYellowCards: DEFAULT_REFEREE_AVG_YELLOWS, avgRedCards: DEFAULT_REFEREE_AVG_REDS, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
       }
 
       const totalMatches = refereeMatches.length;
@@ -497,12 +500,12 @@ export class RefereeAnalyzer {
       return {
         avgYellowCards: totalYellows / totalMatches,
         avgRedCards: totalReds / totalMatches,
-        avgPenalties: 0.2, // Placeholder - would need penalty data
+        avgPenalties: 0.2, // Placeholder — no penalty data from free API tier
         homeWinRate: homeWins / totalMatches
       };
     } catch (_error) {
       // Error getting referee stats
-      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
+      return { avgYellowCards: DEFAULT_REFEREE_AVG_YELLOWS, avgRedCards: DEFAULT_REFEREE_AVG_REDS, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }
   }
 }
