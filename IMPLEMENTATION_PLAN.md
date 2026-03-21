@@ -43,6 +43,28 @@ P7a–P7m complete except the two items below.
 
 ---
 
+## P8: Prediction Engine Maximisation + Betting UI
+
+See `backend/PREDICTION_ENGINE_STRATEGY.md` for full strategy and `backend/P8_PHASE2_PLAN.md` for Phase 2 details.
+
+### Phase 1 — Backend Quick Wins (DONE)
+
+- [x] **P8a — Draw calibration fix** — Post-calibration draw recovery restores draw predictions suppressed by isotonic calibration. New `recover_draws()` function + `--draw-threshold` CLI arg (default 0.22).
+- [x] **P8b — Optuna hyperparameter tuning** — Replaced random search with Bayesian optimisation (TPE). Default 100 trials (was 25). Falls back to random search if Optuna not installed. Added `optuna==4.3.0` to requirements.
+- [x] **P8c — --no-odds training flag** — `skip_odds` parameter flows through `build_dataset` → `create_features` → `_odds_features`. Produces honest inference baseline model.
+- [x] **P8d — Feature interactions** — 5 new interaction features (119 total): `elo_x_form`, `derby_x_closeness`, `elo_x_rest`, `trend_x_form`, `h2h_draw_x_closeness`.
+
+### Phase 2 — Planned
+
+- [ ] **P8e — Dedicated draw model** — Binary XGBoost classifier (draw vs not-draw) cascading with main 3-class model. Est. +0.5–1.5%.
+- [ ] **P8f — Form orthogonalisation** — Replace raw form with form-vs-ELO residual (both backend features + frontend ensemble). Est. +0.3–0.5%.
+- [ ] **P8g — Value Scanner rename** — Rename "Value Bets" → "Value Scanner" throughout frontend (nav, routing, components).
+- [ ] **P8h — Suggested Bets page** — Extract Suggested Bets from KellyCalculator into standalone page with shared bankroll.
+- [ ] **P8i — Add 10 extra seasons** — Download EPL 2010/11–2019/20 CSVs, retrain with expanded dataset. Est. +0.5–1.0%.
+- [ ] **P8j — Retrain V4** — Full retrain with all Phase 1+2 improvements + expanded data.
+
+---
+
 ## Free-Tier ML Model: V3 Final Results
 
 **Model:** `backend/models/xgboost_free_tier.joblib` — trained 20 March 2026

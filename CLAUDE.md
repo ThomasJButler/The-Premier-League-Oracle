@@ -103,9 +103,12 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Check types before committing: `cd frontend && npm run check`
 - Run tests before committing: `cd frontend && npm run test:run`
 
-## Current Focus — P7 Beyond MVP
+## Current Focus — P8 Prediction Engine + Betting UI
 
-**P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
+**P0–P7:** MVP shipped + polished. See `IMPLEMENTATION_PLAN.md`.
+
+**P8 Phase 1 (done):** Draw calibration fix, Optuna tuning, --no-odds flag, feature interactions (119 features).
+**P8 Phase 2 (planned):** Dedicated draw model, form orthogonalisation, Value Scanner rename, Suggested Bets page. See `backend/P8_PHASE2_PLAN.md`.
 
 **P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 57/59 items done):
 
