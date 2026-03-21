@@ -176,6 +176,9 @@ class FreeTierFeatureEngineer:
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
+        # Interaction features (5) — non-linear relationships between base features
+        'elo_x_form', 'derby_x_closeness', 'elo_x_rest',
+        'trend_x_form', 'h2h_draw_x_closeness',
         # Bookmaker odds (10) — strongest predictor; 0.0 when unavailable
         # Pinnacle closing implied probabilities (sharpest market)
         'odds_pinnacle_home', 'odds_pinnacle_draw', 'odds_pinnacle_away',
@@ -252,6 +255,7 @@ class FreeTierFeatureEngineer:
         features.update(self._match_stats(home_team, away_team, pre_match))
         features.update(self._draw_indicators(home_team, away_team, pre_match, match_date))
         features.update(self._elo_features(home_team, away_team, match_date))
+        features.update(self._interaction_features(features))
         features.update(self._odds_features(None if skip_odds else odds))
 
         # Ensure every feature present; replace NaN with 0.0
@@ -1257,6 +1261,30 @@ class FreeTierFeatureEngineer:
         f['elo_home_advantage'] = exp_home - exp_neutral
 
         return f
+
+    @staticmethod
+    def _interaction_features(features: dict[str, float]) -> dict[str, float]:
+        """
+        Interaction features that capture non-linear relationships between
+        base features. XGBoost can learn interactions, but explicit features
+        make them easier to find — especially with limited training data.
+        """
+        def _get(name: str) -> float:
+            val = features.get(name, 0.0)
+            return 0.0 if val is None or np.isnan(val) else float(val)
+
+        return {
+            # Strong teams with close form are more predictable
+            'elo_x_form': _get('elo_difference') * _get('form_closeness'),
+            # Derby matches between closely-ranked teams → draw-prone
+            'derby_x_closeness': _get('is_derby') * _get('standings_closeness'),
+            # Fatigued favourites underperform more than fatigued underdogs
+            'elo_x_rest': _get('elo_difference') * _get('rest_day_advantage'),
+            # Accelerating form (positive trend × high recent form)
+            'trend_x_form': _get('home_trend_short') * _get('home_form_last_5'),
+            # H2H draw history amplified by current form similarity
+            'h2h_draw_x_closeness': _get('h2h_draw_tendency') * _get('form_closeness'),
+        }
 
     @staticmethod
     def _odds_features(
