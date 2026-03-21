@@ -470,17 +470,23 @@ class FootballDataAPI {
 
   // Get team form from recent matches
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[] | null> {
-    const team = await this.getTeamByName(teamName);
-    if (!team) return null;
+    // When matches are provided, filter directly by team name — no need for
+    // the standings lookup (team ID is only required for the API fallback).
+    // This avoids rate-limited API calls when match data is already available.
+    let teamMatches: Match[];
 
-    // Use provided matches or fetch recent team matches.
-    // Filter for completed matches only (result is truthy) and take the
-    // last 5 (most recent) since arrays are sorted chronologically.
-    const teamMatches = matches?.filter(m =>
-      (m.home_team.toLowerCase() === teamName.toLowerCase() ||
-       m.away_team.toLowerCase() === teamName.toLowerCase()) &&
-      m.result
-    ).slice(-5) || await this.getTeamMatches(team.id, 5);
+    if (matches && matches.length > 0) {
+      teamMatches = matches.filter(m =>
+        (m.home_team.toLowerCase() === teamName.toLowerCase() ||
+         m.away_team.toLowerCase() === teamName.toLowerCase()) &&
+        m.result
+      ).slice(-5);
+      if (teamMatches.length === 0) return null;
+    } else {
+      const team = await this.getTeamByName(teamName);
+      if (!team) return null;
+      teamMatches = await this.getTeamMatches(team.id, 5);
+    }
 
     return teamMatches.map(match => {
       const isHome = match.home_team.toLowerCase() === teamName.toLowerCase();

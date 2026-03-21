@@ -381,11 +381,12 @@ export class OptimizedPredictor {
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
-      // 6. Analyze recent form (pass historical matches to avoid dataService calls in backtest)
-      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, historicalMatches);
+      // 6. Analyze recent form — always pass allMatches so form is computed from
+      // already-fetched data instead of making per-team rate-limited API calls
+      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, allMatches);
 
       // 7. Head-to-head analysis
-      const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
+      const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, allMatches);
       
       // 8. Attempt ML backend prediction (parallel — started earlier or fetched now)
       let mlPrediction: MLPrediction | null = null;
