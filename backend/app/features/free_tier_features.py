@@ -331,7 +331,20 @@ class FreeTierFeatureEngineer:
 
         frames: list[pd.DataFrame] = []
         for f in files:
-            df = pd.read_csv(f, encoding='utf-8-sig')
+            # Try UTF-8 first, fall back to latin-1 for older files with
+            # non-UTF-8 characters (e.g. EPL20042005.csv).
+            # on_bad_lines='skip' handles malformed rows (e.g. EPL20032004.csv).
+            try:
+                df = pd.read_csv(f, encoding='utf-8-sig', on_bad_lines='skip')
+            except UnicodeDecodeError:
+                df = pd.read_csv(f, encoding='latin-1', on_bad_lines='skip')
+
+            # Drop incomplete rows missing essential match data
+            essential = ['HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR']
+            present = [c for c in essential if c in df.columns]
+            if present:
+                df = df.dropna(subset=present)
+
             # Extract season from filename (e.g. EPL20202021 -> 2020/21)
             basename = os.path.basename(f).replace('.csv', '')
             digits = ''.join(c for c in basename if c.isdigit())
