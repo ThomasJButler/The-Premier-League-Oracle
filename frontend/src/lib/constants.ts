@@ -107,6 +107,19 @@ export const POISSON_FALLBACK_AWAY_GOALS = 1.2;
 export const POISSON_FALLBACK_AVG_GOALS = 1.35;
 
 /**
+ * MAX_PREDICTED_GOALS — hard cap on the predicted scoreline per team.
+ *
+ * Prevents degenerate Poisson outputs from producing impossible scores
+ * (e.g. 22-0). The PL record is 9-0 (Man United vs Ipswich, 1995) but
+ * 7 is a practical ceiling for a model prediction — anything higher would
+ * be noise, not signal.
+ *
+ * Used in:
+ * - optimizedPredictions.ts (predictGoals)
+ */
+export const MAX_PREDICTED_GOALS = 7;
+
+/**
  * Form recency weights — how much weight each of the last 5 matches gets.
  *
  * Most recent match = 35%, second = 25%, third = 20%, fourth = 12%, fifth = 8%.

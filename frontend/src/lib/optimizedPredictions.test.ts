@@ -279,15 +279,18 @@ describe('OptimizedPredictor', () => {
 
   describe('Poisson Dixon-Coles lambdas', () => {
     it('should produce higher expected goals for stronger teams when match data is available', async () => {
-      // Create a season of matches where Arsenal scores heavily at home, Southampton concedes heavily away
+      // Create a season of matches where Arsenal scores heavily at home, Southampton concedes heavily away.
+      // Space dates across several weeks so fatigue multipliers are realistic (close to 1.0).
       const completedMatches: Match[] = [];
       const teams = ['Arsenal FC', 'Chelsea FC', 'Southampton FC', 'Liverpool FC'];
       let matchId = 1;
+      const weekAgo = (weeks: number) => new Date(Date.now() - weeks * 7 * 86_400_000).toISOString();
 
       // Arsenal at home: scores 3, concedes 0 (4 matches)
       for (let i = 0; i < 4; i++) {
         completedMatches.push(createMockMatch({
           id: String(matchId++),
+          date: weekAgo(i + 1),
           home_team: 'Arsenal FC',
           away_team: teams[(i + 1) % teams.length],
           home_goals: 3,
@@ -301,6 +304,7 @@ describe('OptimizedPredictor', () => {
       for (let i = 0; i < 4; i++) {
         completedMatches.push(createMockMatch({
           id: String(matchId++),
+          date: weekAgo(i + 1),
           home_team: teams[(i + 1) % teams.length],
           away_team: 'Southampton FC',
           home_goals: 3,
@@ -314,6 +318,7 @@ describe('OptimizedPredictor', () => {
       for (let i = 0; i < 8; i++) {
         completedMatches.push(createMockMatch({
           id: String(matchId++),
+          date: weekAgo(i + 1),
           home_team: teams[i % teams.length],
           away_team: teams[(i + 2) % teams.length],
           home_goals: 1,

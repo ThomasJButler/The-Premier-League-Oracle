@@ -18,6 +18,7 @@ import {
   ML_AGREEMENT_BOOST_MAX, ML_AGREEMENT_BOOST_FACTOR,
   ML_DISAGREEMENT_PENALTY_MAX, ML_DISAGREEMENT_PENALTY_FACTOR,
   REFEREE_ADJUSTMENT_MAX, REFEREE_ADJUSTMENT_THRESHOLD,
+  MAX_PREDICTED_GOALS,
 } from './constants';
 
 export interface ModelOutputs {
@@ -369,11 +370,14 @@ export class OptimizedPredictor {
       const rawLambdas =
         this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
 
-      // Apply fatigue: tired teams score less (lambda × fatigue) and concede
-      // more (opponent lambda ÷ fatigue). Multipliers are in [0.85, 1.0] so
-      // the adjustment is modest but data-driven per spec 01.
-      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
-      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
+      // Apply fatigue: tired teams score fewer goals (lambda × fatigue).
+      // Multipliers are in (0, 1.0] so the adjustment only reduces lambda.
+      // Clamp to [POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX] to prevent
+      // degenerate outputs — matches advancedPredictions.ts implementation.
+      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX,
+        rawLambdas.lambdaHome * fatigueFactor.homeFatigue));
+      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX,
+        rawLambdas.lambdaAway * fatigueFactor.awayFatigue));
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
@@ -933,14 +937,14 @@ export class OptimizedPredictor {
     formAnalysis: FormAnalysis,
     h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    let homeGoals = Math.round(homeExpected);
-    let awayGoals = Math.round(awayExpected);
-    
+    let homeGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(homeExpected));
+    let awayGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(awayExpected));
+
     // Adjust based on predicted result
     if (predictedResult === 'H' && homeGoals <= awayGoals) {
-      homeGoals = awayGoals + 1;
+      homeGoals = Math.min(MAX_PREDICTED_GOALS, awayGoals + 1);
     } else if (predictedResult === 'A' && awayGoals <= homeGoals) {
-      awayGoals = homeGoals + 1;
+      awayGoals = Math.min(MAX_PREDICTED_GOALS, homeGoals + 1);
     } else if (predictedResult === 'D' && homeGoals !== awayGoals) {
       // Make it a draw
       if (Math.abs(homeGoals - awayGoals) === 1) {
