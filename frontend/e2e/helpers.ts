@@ -2,6 +2,13 @@ import { type Page } from '@playwright/test';
 import { mockFootballApi } from './mockApi';
 
 /**
+ * Timeout strategy:
+ *   3000ms — UI elements expected instantly (nav, buttons, headings)
+ *  10000ms — elements requiring API data or app bootstrap
+ *  30000ms — CPU-intensive operations (prediction computation)
+ */
+
+/**
  * Sets up API mocking and a mock API key in localStorage so the setup
  * wizard is skipped. Call this at the start of every test.
  *
@@ -50,14 +57,12 @@ export async function navigateTo(page: Page, viewName: string) {
     } else {
       // Open "More" menu, then click the target item
       await page.locator('button[aria-label="More options"]').click();
-      await page.locator('.grid.grid-cols-4').waitFor({ state: 'visible' });
-      await page.locator('.grid.grid-cols-4 button').filter({ hasText: viewName }).click();
+      await page.locator('[data-testid="more-menu-grid"]').waitFor({ state: 'visible' });
+      await page.locator('[data-testid="more-menu-grid"] button').filter({ hasText: viewName }).click();
     }
   } else {
     await page.getByRole('button', { name: viewName }).click();
   }
 
-  // Wait for the view transition to complete (App.svelte uses 200ms + 50ms delays)
-  await page.waitForTimeout(400);
   await page.waitForLoadState('domcontentloaded');
 }

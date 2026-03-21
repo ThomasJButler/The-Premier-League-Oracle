@@ -45,10 +45,9 @@ test.describe('Dashboard', () => {
   test('"View All Matches" button exists and navigates', async ({ page }) => {
     const viewBtn = page.locator('[data-testid="view-all-matches"]');
     await expect(viewBtn).toBeVisible({ timeout: 10000 });
-    // On mobile the fixed bottom nav can obscure the button, so force the click
-    await viewBtn.click({ force: true });
-    // Should have navigated to the Matches view (MatchList component)
-    await page.waitForTimeout(400);
+    // Scroll into view in case bottom nav obscures the button on mobile
+    await viewBtn.scrollIntoViewIfNeeded();
+    await viewBtn.click();
     // The dashboard hero should no longer be visible — we've navigated away
     await expect(page.locator('[data-testid="stat-cards"]')).not.toBeVisible({ timeout: 5000 });
   });

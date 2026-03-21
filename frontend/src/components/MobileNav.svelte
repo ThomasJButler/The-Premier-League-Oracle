@@ -66,7 +66,7 @@
           <X class="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
-      <div class="grid grid-cols-4 gap-1">
+      <div class="grid grid-cols-4 gap-1" data-testid="more-menu-grid">
         {#each moreItems as item}
           <button
             class="flex flex-col items-center justify-center py-3 px-1 rounded-lg text-xs font-medium transition-colors {currentView === item.view ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}"
