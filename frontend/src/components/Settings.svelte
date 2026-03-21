@@ -62,6 +62,7 @@
   let selectedAiModel = DEFAULT_AI_MODEL;
   let aiApiKey = '';
   let aiApiKeyEditing = false; // true when user wants to change/enter a new key
+  let aiKeySaved = false; // true only when a key is confirmed saved in localStorage
 
   function detectProvider(key: string): string | null {
     if (key.startsWith('sk-ant-')) return 'Anthropic';
@@ -73,6 +74,7 @@
     const trimmed = aiApiKey.trim();
     if (!trimmed || trimmed.length < 10) return;
     localStorage.setItem('openai_api_key', trimmed);
+    aiKeySaved = true;
     aiKeyAvailable = true;
     aiApiKeyEditing = false;
     window.dispatchEvent(new CustomEvent('api-key-changed'));
@@ -81,6 +83,7 @@
   function clearAiApiKey() {
     localStorage.removeItem('openai_api_key');
     aiApiKey = '';
+    aiKeySaved = false;
     aiKeyAvailable = false;
     aiApiKeyEditing = false;
     localStorage.removeItem('ai_analysis_server_key');
@@ -288,6 +291,7 @@
     const savedAiKey = localStorage.getItem('openai_api_key');
     if (savedAiKey) {
       aiApiKey = savedAiKey;
+      aiKeySaved = true;
     }
     aiAnalysisService.hasApiKey().then(available => {
       aiKeyAvailable = available;
@@ -619,7 +623,7 @@
       <!-- AI API Key -->
       <div class="p-3 bg-muted rounded-lg mb-4" transition:fade>
         <p class="text-sm font-medium text-foreground mb-2">AI API Key</p>
-        {#if aiApiKey && !aiApiKeyEditing}
+        {#if aiKeySaved && !aiApiKeyEditing}
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="w-3 h-3 rounded-full bg-green-500"></span>
