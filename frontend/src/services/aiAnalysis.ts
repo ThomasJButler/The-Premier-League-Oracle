@@ -267,8 +267,8 @@ Do NOT invent specific injury news, transfer rumours, or manager quotes. Only re
       model: getSavedAiModel(),
     };
 
-    // Only send user key if server doesn't have one
-    if (apiKey && !this.serverKeyAvailable) {
+    // Always send user key — server prioritises its own env var anyway
+    if (apiKey) {
       body.apiKey = apiKey;
     }
 

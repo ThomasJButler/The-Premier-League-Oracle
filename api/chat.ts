@@ -137,10 +137,6 @@ export default async function handler(req: Request): Promise<Response> {
 
   const { messages, apiKey: userKey, model: requestedModel } = body;
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return jsonResponse({ error: 'Messages array required.' }, 400);
-  }
-
   // Resolve model: request body → env var → default. Only allow known models.
   const envModel = process.env.ORACLE_AI_MODEL;
   const resolvedModel =
@@ -150,7 +146,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const useAnthropic = isAnthropicModel(resolvedModel);
 
-  // Server-side key takes priority over user-provided key
+  // Server-side key takes priority over user-provided key.
+  // Key check runs before messages check so that the checkServerKey() probe
+  // (which sends empty messages) can detect whether a server key exists.
   const apiKey = useAnthropic
     ? (process.env.ANTHROPIC_API_KEY || userKey)
     : (process.env.OPENAI_API_KEY || userKey);
@@ -161,6 +159,10 @@ export default async function handler(req: Request): Promise<Response> {
       { error: `No API key configured. Please enter your ${provider} key or ask the site owner to set ${useAnthropic ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY'}.` },
       400,
     );
+  }
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return jsonResponse({ error: 'Messages array required.' }, 400);
   }
 
   try {
