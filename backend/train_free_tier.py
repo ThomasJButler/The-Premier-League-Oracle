@@ -601,54 +601,53 @@ def tune_hyperparameters(
     X_val: np.ndarray, y_val: np.ndarray,
     feature_names: list[str],
     seasons_train: np.ndarray | None = None,
-    n_trials: int = 25,
+    n_trials: int = 100,
     seed: int = 42,
 ) -> dict:
     """
-    Random search over XGBoost hyperparameters.
+    Bayesian hyperparameter optimisation using Optuna.
 
     Uses chronological train/val split (no shuffled CV) to avoid data leakage.
-    Evaluates `n_trials` random parameter combinations and returns the best.
+    Evaluates `n_trials` parameter combinations using Tree-structured Parzen
+    Estimator (TPE) — concentrates trials in promising regions of the search
+    space, typically finding better parameters than random search with the
+    same budget.
 
-    No additional dependencies required — uses numpy random sampling.
+    Falls back to random search if Optuna is not installed.
     """
     import xgboost as xgb
-
-    rng = np.random.RandomState(seed)
-
-    # Search space
-    search_space = {
-        'max_depth': [3, 4, 5, 6, 7, 8],
-        'learning_rate': [0.01, 0.02, 0.05, 0.08, 0.1],
-        'min_child_weight': [1, 2, 3, 5, 7],
-        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
-        'gamma': [0.0, 0.05, 0.1, 0.2, 0.5],
-        'reg_alpha': [0.0, 0.01, 0.05, 0.1, 0.5],
-        'reg_lambda': [0.5, 1.0, 2.0, 5.0],
-    }
 
     sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
     dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
                          weight=sample_weights)
     dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
 
-    best_score = float('inf')
+    try:
+        import optuna
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+    except ImportError:
+        logger.warning('Optuna not installed — falling back to random search')
+        return _tune_random(dtrain, dval, y_train, feature_names,
+                            seasons_train, n_trials, seed)
+
     best_params: dict = {}
-    results = []
 
-    logger.info('Hyperparameter tuning: %d trials...', n_trials)
-
-    for trial in range(n_trials):
+    def objective(trial: optuna.Trial) -> float:
         params = {
             'objective': 'multi:softprob',
             'num_class': 3,
             'eval_metric': 'mlogloss',
             'verbosity': 0,
             'seed': seed,
+            'max_depth': trial.suggest_int('max_depth', 3, 8),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+            'min_child_weight': trial.suggest_int('min_child_weight', 1, 7),
+            'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+            'gamma': trial.suggest_float('gamma', 0.0, 0.5),
+            'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 1.0, log=True),
+            'reg_lambda': trial.suggest_float('reg_lambda', 0.5, 5.0),
         }
-        for key, choices in search_space.items():
-            params[key] = choices[rng.randint(len(choices))]
 
         evals_result: dict = {}
         model = xgb.train(
@@ -661,38 +660,91 @@ def tune_hyperparameters(
             verbose_eval=False,
         )
 
+        return evals_result['val']['mlogloss'][model.best_iteration]
+
+    logger.info('Hyperparameter tuning (Optuna TPE): %d trials...', n_trials)
+    study = optuna.create_study(
+        direction='minimize',
+        sampler=optuna.samplers.TPESampler(seed=seed),
+    )
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+
+    # Log top 5 results
+    trials_sorted = sorted(study.trials, key=lambda t: t.value if t.value is not None else float('inf'))
+    logger.info('\nTop 5 parameter sets:')
+    for i, t in enumerate(trials_sorted[:5], 1):
+        logger.info(
+            '  %d. mlogloss=%.4f — depth=%d, lr=%.3f, mcw=%d, sub=%.2f, col=%.2f',
+            i, t.value, t.params['max_depth'], t.params['learning_rate'],
+            t.params['min_child_weight'], t.params['subsample'], t.params['colsample_bytree'],
+        )
+
+    # Build best params dict compatible with xgb.train()
+    best_params = {
+        'objective': 'multi:softprob',
+        'num_class': 3,
+        'eval_metric': 'mlogloss',
+        'verbosity': 0,
+        'seed': seed,
+        **study.best_params,
+    }
+    logger.info('\nBest params (mlogloss=%.4f): %s', study.best_value,
+                {k: v for k, v in study.best_params.items()})
+
+    return best_params
+
+
+def _tune_random(
+    dtrain, dval, y_train, feature_names,
+    seasons_train, n_trials, seed,
+) -> dict:
+    """Fallback random search when Optuna is not available."""
+    import xgboost as xgb
+
+    rng = np.random.RandomState(seed)
+    search_space = {
+        'max_depth': [3, 4, 5, 6, 7, 8],
+        'learning_rate': [0.01, 0.02, 0.05, 0.08, 0.1],
+        'min_child_weight': [1, 2, 3, 5, 7],
+        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'gamma': [0.0, 0.05, 0.1, 0.2, 0.5],
+        'reg_alpha': [0.0, 0.01, 0.05, 0.1, 0.5],
+        'reg_lambda': [0.5, 1.0, 2.0, 5.0],
+    }
+
+    best_score = float('inf')
+    best_params: dict = {}
+
+    logger.info('Hyperparameter tuning (random fallback): %d trials...', n_trials)
+
+    for trial_num in range(n_trials):
+        params = {
+            'objective': 'multi:softprob',
+            'num_class': 3,
+            'eval_metric': 'mlogloss',
+            'verbosity': 0,
+            'seed': seed,
+        }
+        for key, choices in search_space.items():
+            params[key] = choices[rng.randint(len(choices))]
+
+        evals_result: dict = {}
+        model = xgb.train(
+            params, dtrain, num_boost_round=500,
+            evals=[(dval, 'val')], early_stopping_rounds=30,
+            evals_result=evals_result, verbose_eval=False,
+        )
         score = evals_result['val']['mlogloss'][model.best_iteration]
-        results.append({'params': params.copy(), 'score': score, 'iterations': model.best_iteration})
 
         if score < best_score:
             best_score = score
             best_params = params.copy()
-            logger.info(
-                '  Trial %d/%d: mlogloss=%.4f (NEW BEST) — depth=%d, lr=%.3f, mcw=%d',
-                trial + 1, n_trials, score,
-                params['max_depth'], params['learning_rate'], params['min_child_weight'],
-            )
-        elif (trial + 1) % 5 == 0:
-            logger.info('  Trial %d/%d: mlogloss=%.4f (best=%.4f)', trial + 1, n_trials, score, best_score)
+            logger.info('  Trial %d/%d: mlogloss=%.4f (NEW BEST)', trial_num + 1, n_trials, score)
 
-    # Sort by score and show top 5
-    results.sort(key=lambda r: r['score'])
-    logger.info('\nTop 5 parameter sets:')
-    for i, r in enumerate(results[:5], 1):
-        p = r['params']
-        logger.info(
-            '  %d. mlogloss=%.4f — depth=%d, lr=%.3f, mcw=%d, sub=%.1f, col=%.1f, iters=%d',
-            i, r['score'], p['max_depth'], p['learning_rate'],
-            p['min_child_weight'], p['subsample'], p['colsample_bytree'],
-            r['iterations'],
-        )
-
-    # Remove non-XGBoost keys from best_params (keep only training params)
-    logger.info('\nBest params (mlogloss=%.4f): %s', best_score, {
-        k: v for k, v in best_params.items()
-        if k not in ('objective', 'num_class', 'eval_metric', 'verbosity', 'seed')
-    })
-
+    logger.info('Best params (mlogloss=%.4f): %s', best_score,
+                {k: v for k, v in best_params.items()
+                 if k not in ('objective', 'num_class', 'eval_metric', 'verbosity', 'seed')})
     return best_params
 
 
@@ -1300,11 +1352,11 @@ def main():
     )
     parser.add_argument(
         '--tune', action='store_true',
-        help='Run hyperparameter tuning before final training (random search, ~25 trials)',
+        help='Run hyperparameter tuning before final training (Optuna Bayesian optimisation)',
     )
     parser.add_argument(
-        '--tune-trials', type=int, default=25,
-        help='Number of hyperparameter search trials (default: 25)',
+        '--tune-trials', type=int, default=100,
+        help='Number of hyperparameter search trials (default: 100)',
     )
     parser.add_argument(
         '--cv', action='store_true',
