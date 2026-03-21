@@ -128,6 +128,7 @@ def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
 def build_dataset(
     df: pd.DataFrame,
     engineer: FreeTierFeatureEngineer | None = None,
+    skip_odds: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
     """
     Build feature matrix from historical matches.
@@ -135,6 +136,11 @@ def build_dataset(
     Iterates chronologically. For each match, uses only prior data
     (no leakage). Skips matches where either team has < MIN_PRIOR_MATCHES.
     Extracts bookmaker odds from CSV rows to populate odds features.
+
+    Args:
+        df: Historical match DataFrame.
+        engineer: Feature engineer instance. Created from df if None.
+        skip_odds: When True, odds features are zeroed (--no-odds mode).
 
     Returns:
         X: Feature matrix (n_samples, n_features)
@@ -188,7 +194,8 @@ def build_dataset(
             odds_present_count += 1
 
         try:
-            features = engineer.create_features(ht, at, match_date, odds=odds)
+            features = engineer.create_features(ht, at, match_date, odds=odds,
+                                                   skip_odds=skip_odds)
             feature_vec = np.array([features[name] for name in feature_names])
             X_rows.append(feature_vec)
             y_rows.append(LABEL_MAP[result])
@@ -1377,9 +1384,12 @@ def main():
     seasons = sorted(df['season'].unique())
 
     # 2. Build feature matrix
-    logger.info('Building feature matrix...')
+    if args.no_odds:
+        logger.info('Building feature matrix (--no-odds: odds features zeroed)...')
+    else:
+        logger.info('Building feature matrix...')
     engineer = FreeTierFeatureEngineer(df)
-    X, y, feature_names, sample_seasons = build_dataset(df, engineer)
+    X, y, feature_names, sample_seasons = build_dataset(df, engineer, skip_odds=args.no_odds)
 
     if len(X) < 50:
         logger.error('Too few samples (%d) — need at least 50 to train', len(X))
@@ -1550,6 +1560,7 @@ def main():
                 try:
                     features = test_engineer.create_features(
                         row['home_team'], row['away_team'], match_date,
+                        skip_odds=args.no_odds,
                     )
                     vec = [features[name] for name in all_feature_names]
                     X_test_rows.append(vec)

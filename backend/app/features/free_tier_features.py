@@ -213,9 +213,10 @@ class FreeTierFeatureEngineer:
         away_team: str,
         match_date: datetime | None = None,
         odds: dict[str, float] | None = None,
+        skip_odds: bool = False,
     ) -> dict[str, float]:
         """
-        Compute all ~109 features for a match prediction.
+        Compute all features for a match prediction.
 
         Only data strictly before *match_date* is used (no leakage).
         Returns a dict keyed by FEATURE_NAMES with float values.
@@ -228,6 +229,10 @@ class FreeTierFeatureEngineer:
                   (e.g. 'PSCH', 'PSCD', 'PSCA', 'AvgH', 'AvgD', 'AvgA',
                   'AHCh', 'Avg>2.5', 'Avg<2.5'). When None, odds features
                   are 0.0 — XGBoost handles this gracefully.
+            skip_odds: When True, odds features are zeroed even if odds data
+                       is available. Used with --no-odds training to produce
+                       a model that reflects honest inference accuracy (free
+                       API provides no odds at prediction time).
         """
         if match_date is not None:
             if isinstance(match_date, pd.Timestamp):
@@ -247,7 +252,7 @@ class FreeTierFeatureEngineer:
         features.update(self._match_stats(home_team, away_team, pre_match))
         features.update(self._draw_indicators(home_team, away_team, pre_match, match_date))
         features.update(self._elo_features(home_team, away_team, match_date))
-        features.update(self._odds_features(odds))
+        features.update(self._odds_features(None if skip_odds else odds))
 
         # Ensure every feature present; replace NaN with 0.0
         result: dict[str, float] = {}
