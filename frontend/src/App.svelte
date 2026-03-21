@@ -124,7 +124,7 @@
         {:else if currentView === 'Matches'}
           <MatchList />
         {:else if currentView === 'Predictions'}
-          <Predictions />
+          <Predictions on:navigate={navigate} />
         {:else if currentView === 'Kelly Calculator'}
           <KellyCalculator />
         {:else if currentView === 'Value Bets'}

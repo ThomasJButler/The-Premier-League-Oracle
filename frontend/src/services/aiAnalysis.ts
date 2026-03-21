@@ -59,6 +59,11 @@ class AIAnalysisService {
     localStorage.setItem(SETTINGS_KEY, enabled ? 'true' : 'false');
   }
 
+  /** Whether the user has a local API key stored (synchronous, no server probe) */
+  hasLocalApiKey(): boolean {
+    return !!localStorage.getItem(API_KEY_STORAGE);
+  }
+
   /** Whether an API key is available (user-provided or server-side) */
   async hasApiKey(): Promise<boolean> {
     if (localStorage.getItem(API_KEY_STORAGE)) return true;

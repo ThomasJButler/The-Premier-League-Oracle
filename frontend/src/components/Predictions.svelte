@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
@@ -21,6 +21,8 @@
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
   import DataFreshness from './DataFreshness.svelte';
+
+  const dispatch = createEventDispatcher();
 
   let predictions: Array<Match & {
     prediction?: Prediction;
@@ -81,6 +83,16 @@
 
     aiAnalysisLoading.add(matchData.id);
     aiAnalysisLoading = new Set(aiAnalysisLoading); // trigger reactivity
+
+    // Check key availability before calling the API
+    const keyAvailable = await aiAnalysisService.hasApiKey();
+    if (!keyAvailable) {
+      aiAnalysisErrors.set(matchData.id, 'NO_API_KEY');
+      aiAnalysisErrors = new Map(aiAnalysisErrors);
+      aiAnalysisLoading.delete(matchData.id);
+      aiAnalysisLoading = new Set(aiAnalysisLoading);
+      return;
+    }
 
     const input: AnalysisInput = {
       homeTeam: matchData.home_team,
@@ -377,7 +389,20 @@
     flippedCards = new Set(flippedCards);
   }
 
+  // Listen for API key changes from Settings/ChatBot to clear NO_API_KEY errors
+  function handleApiKeyChange() {
+    let changed = false;
+    for (const [id, err] of aiAnalysisErrors) {
+      if (err === 'NO_API_KEY') {
+        aiAnalysisErrors.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) aiAnalysisErrors = new Map(aiAnalysisErrors);
+  }
+
   onMount(async () => {
+    window.addEventListener('api-key-changed', handleApiKeyChange);
     try {
       const season = await dataService.getCurrentSeason();
       if (season?.currentMatchday) {
@@ -388,7 +413,11 @@
     }
     loadGameweekMatches(selectedGameweek);
   });
-  
+
+  onDestroy(() => {
+    window.removeEventListener('api-key-changed', handleApiKeyChange);
+  });
+
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
   }
@@ -1122,7 +1151,18 @@
                           <span>Generating analysis…</span>
                         </div>
                       {:else if aiAnalysisErrors.has(prediction.id)}
-                        <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                        {#if aiAnalysisErrors.get(prediction.id) === 'NO_API_KEY'}
+                          <p class="text-xs text-amber-600 dark:text-amber-400">
+                            No AI API key configured.
+                            <button
+                              class="underline font-medium hover:text-amber-700 dark:hover:text-amber-300"
+                              on:click={() => dispatch('navigate', { view: 'Settings' })}
+                            >Add one in Settings</button>
+                            to enable analysis.
+                          </p>
+                        {:else}
+                          <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                        {/if}
                       {:else}
                         <p class="text-xs text-muted-foreground">Flip the card to load AI analysis</p>
                       {/if}

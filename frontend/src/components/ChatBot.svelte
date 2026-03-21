@@ -2,7 +2,7 @@
   import { MessageCircle, Send, Key, Loader2, AlertTriangle, Trash2, ShieldAlert } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
@@ -37,7 +37,22 @@
   let lastRequestTime = 0;
 
   // --- Lifecycle ---
+
+  // Listen for API key changes from Settings
+  function handleExternalKeyChange() {
+    const savedKey = localStorage.getItem(STORAGE_KEY_API_KEY);
+    if (savedKey) {
+      apiKey = savedKey;
+      hasApiKey = true;
+    } else if (!useServerKey && !useBackendRAG) {
+      apiKey = '';
+      hasApiKey = false;
+    }
+  }
+
   onMount(() => {
+    window.addEventListener('api-key-changed', handleExternalKeyChange);
+
     const savedKey = localStorage.getItem(STORAGE_KEY_API_KEY);
     if (savedKey) {
       apiKey = savedKey;
@@ -67,6 +82,10 @@
     }];
 
     checkBackendRAG();
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('api-key-changed', handleExternalKeyChange);
   });
 
   /** Check backend RAG availability first, then fall back to the Vercel chat proxy.
@@ -137,6 +156,7 @@
     apiKey = trimmed;
     hasApiKey = true;
     error = null;
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
   }
 
   export function clearApiKey() {
@@ -148,6 +168,7 @@
       content: 'API key removed. Enter a new key to continue chatting.',
       timestamp: Date.now()
     }];
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
   }
 
   // --- Build Context (batched) ---

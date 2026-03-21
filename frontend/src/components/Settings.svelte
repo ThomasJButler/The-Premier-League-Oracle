@@ -60,6 +60,48 @@
   let aiAnalysisEnabled = false;
   let aiKeyAvailable: boolean | null = null;
   let selectedAiModel = DEFAULT_AI_MODEL;
+  let aiApiKey = '';
+  let aiApiKeyEditing = false; // true when user wants to change/enter a new key
+
+  function detectProvider(key: string): string | null {
+    if (key.startsWith('sk-ant-')) return 'Anthropic';
+    if (key.startsWith('sk-')) return 'OpenAI';
+    return null;
+  }
+
+  function saveAiApiKey() {
+    const trimmed = aiApiKey.trim();
+    if (!trimmed || trimmed.length < 10) return;
+    localStorage.setItem('openai_api_key', trimmed);
+    aiKeyAvailable = true;
+    aiApiKeyEditing = false;
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
+  }
+
+  function clearAiApiKey() {
+    localStorage.removeItem('openai_api_key');
+    aiApiKey = '';
+    aiKeyAvailable = false;
+    aiApiKeyEditing = false;
+    localStorage.removeItem('ai_analysis_server_key');
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
+    // Re-check for server key
+    checkAiKeyStatus();
+  }
+
+  function startEditingAiKey() {
+    aiApiKeyEditing = true;
+    aiApiKey = '';
+  }
+
+  function handleAiKeyKeydown(e: Event) {
+    if ((e as KeyboardEvent).key === 'Enter') saveAiApiKey();
+  }
+
+  async function checkAiKeyStatus() {
+    aiKeyAvailable = null;
+    aiKeyAvailable = await aiAnalysisService.hasApiKey();
+  }
 
   function saveAiModel(model: string) {
     selectedAiModel = model;
@@ -243,6 +285,10 @@
 
     // Load AI analysis settings
     aiAnalysisEnabled = aiAnalysisService.isEnabled();
+    const savedAiKey = localStorage.getItem('openai_api_key');
+    if (savedAiKey) {
+      aiApiKey = savedAiKey;
+    }
     aiAnalysisService.hasApiKey().then(available => {
       aiKeyAvailable = available;
     }).catch(() => {
@@ -547,7 +593,7 @@
       <span>AI Match Analysis</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Add AI-powered qualitative analysis to match predictions. Uses the same OpenAI key as Oracle Chat. Analyses are cached for 24 hours per match.
+      Add AI-powered qualitative analysis to match predictions. Supports OpenAI and Anthropic (Claude). Analyses are cached for 24 hours per match.
     </p>
 
     <!-- Toggle -->
@@ -570,6 +616,55 @@
     </div>
 
     {#if aiAnalysisEnabled}
+      <!-- AI API Key -->
+      <div class="p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <p class="text-sm font-medium text-foreground mb-2">AI API Key</p>
+        {#if aiApiKey && !aiApiKeyEditing}
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-green-500"></span>
+              <span class="text-sm text-foreground">
+                {detectProvider(aiApiKey) ?? 'API'} key configured
+              </span>
+              <span class="text-xs text-muted-foreground font-mono">
+                (•••{aiApiKey.slice(-4)})
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <Button on:click={startEditingAiKey} variant="secondary" size="sm">
+                Change
+              </Button>
+              <Button on:click={clearAiApiKey} variant="ghost" size="sm">
+                Remove
+              </Button>
+            </div>
+          </div>
+        {:else}
+          <div class="flex gap-2">
+            <input
+              type="password"
+              bind:value={aiApiKey}
+              placeholder="sk-... or sk-ant-..."
+              class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground"
+              on:keydown={handleAiKeyKeydown}
+            />
+            <Button on:click={saveAiApiKey} size="sm">
+              Save
+            </Button>
+            {#if aiApiKeyEditing}
+              <Button on:click={() => { aiApiKeyEditing = false; aiApiKey = localStorage.getItem('openai_api_key') || ''; }} variant="ghost" size="sm">
+                Cancel
+              </Button>
+            {/if}
+          </div>
+          <p class="text-xs text-muted-foreground mt-2">
+            Get a key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">OpenAI</a>
+            or <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic</a>.
+            Used for Oracle Chat and AI match analysis. Stored in your browser only.
+          </p>
+        {/if}
+      </div>
+
       <!-- API Key Status -->
       <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
         <div>
@@ -578,9 +673,9 @@
             {#if aiKeyAvailable === null}
               Checking…
             {:else if aiKeyAvailable}
-              Ready — using {localStorage.getItem('openai_api_key') ? 'your API key' : 'server-side key'}
+              Ready — using {aiApiKey ? `your ${detectProvider(aiApiKey) ?? ''} key`.trim() : 'server-side key'}
             {:else}
-              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
+              No key — add one above or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
             {/if}
           </p>
         </div>
