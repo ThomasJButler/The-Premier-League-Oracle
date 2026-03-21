@@ -661,7 +661,7 @@ export class OptimizedPredictor {
     };
 
     // Calculate form-based probabilities — no home bias here as ELO already
-    // accounts for home advantage via HOME_ADVANTAGE (65 ELO points)
+    // accounts for home advantage via ELO_HOME_ADVANTAGE
     const homeMomentum = homeFormScore;
     const awayMomentum = awayFormScore;
     

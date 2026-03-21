@@ -91,7 +91,7 @@
 
   function startEditingAiKey() {
     aiApiKeyEditing = true;
-    aiApiKey = '';
+    // Don't clear aiApiKey — the input is type="password" so it's already masked
   }
 
   function handleAiKeyKeydown(e: Event) {

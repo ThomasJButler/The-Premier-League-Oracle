@@ -343,7 +343,7 @@ class FootballDataAPI {
   
   // Get team matches
   public async getTeamMatches(teamId: number, limit: number = 10): Promise<Match[]> {
-    const endpoint = `/teams/${teamId}/matches?limit=${limit}`;
+    const endpoint = `/teams/${teamId}/matches?limit=${limit}&status=FINISHED`;
     const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
     
     if (!data) return [];
@@ -473,11 +473,14 @@ class FootballDataAPI {
     const team = await this.getTeamByName(teamName);
     if (!team) return null;
 
-    // Use provided matches or fetch recent team matches
-    const teamMatches = matches?.filter(m => 
-      m.home_team.toLowerCase() === teamName.toLowerCase() || 
-      m.away_team.toLowerCase() === teamName.toLowerCase()
-    ).slice(0, 5) || await this.getTeamMatches(team.id, 5);
+    // Use provided matches or fetch recent team matches.
+    // Filter for completed matches only (result is truthy) and take the
+    // last 5 (most recent) since arrays are sorted chronologically.
+    const teamMatches = matches?.filter(m =>
+      (m.home_team.toLowerCase() === teamName.toLowerCase() ||
+       m.away_team.toLowerCase() === teamName.toLowerCase()) &&
+      m.result
+    ).slice(-5) || await this.getTeamMatches(team.id, 5);
 
     return teamMatches.map(match => {
       const isHome = match.home_team.toLowerCase() === teamName.toLowerCase();

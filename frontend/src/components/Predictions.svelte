@@ -116,6 +116,10 @@
       if (analysis) {
         aiAnalyses.set(matchData.id, analysis);
         aiAnalyses = new Map(aiAnalyses);
+      } else {
+        // getAnalysis returns null when the API call fails silently — surface an error
+        aiAnalysisErrors.set(matchData.id, 'Analysis unavailable — check your API key or try again later');
+        aiAnalysisErrors = new Map(aiAnalysisErrors);
       }
     } catch (err) {
       aiAnalysisErrors.set(matchData.id, err instanceof Error ? err.message : 'Analysis failed');
