@@ -54,14 +54,19 @@ See `backend/PREDICTION_ENGINE_STRATEGY.md` for full strategy and `backend/P8_PH
 - [x] **P8c — --no-odds training flag** — `skip_odds` parameter flows through `build_dataset` → `create_features` → `_odds_features`. Produces honest inference baseline model.
 - [x] **P8d — Feature interactions** — 5 new interaction features (119 total): `elo_x_form`, `derby_x_closeness`, `elo_x_rest`, `trend_x_form`, `h2h_draw_x_closeness`.
 
-### Phase 2 — Planned
+### Phase 2 — DONE
 
-- [ ] **P8e — Dedicated draw model** — Binary XGBoost classifier (draw vs not-draw) cascading with main 3-class model. Est. +0.5–1.5%.
-- [ ] **P8f — Form orthogonalisation** — Replace raw form with form-vs-ELO residual (both backend features + frontend ensemble). Est. +0.3–0.5%.
-- [ ] **P8g — Value Scanner rename** — Rename "Value Bets" → "Value Scanner" throughout frontend (nav, routing, components).
-- [ ] **P8h — Suggested Bets page** — Extract Suggested Bets from KellyCalculator into standalone page with shared bankroll.
-- [ ] **P8i — Add 10 extra seasons** — Download EPL 2010/11–2019/20 CSVs, retrain with expanded dataset. Est. +0.5–1.0%.
-- [ ] **P8j — Retrain V4** — Full retrain with all Phase 1+2 improvements + expanded data.
+- [x] **P8e — Dedicated draw model** — Binary XGBoost classifier (draw vs not-draw) with cascade prediction. Threshold auto-tuned on validation set.
+- [x] **P8f — Form orthogonalisation** — Added `home_form_vs_elo` and `away_form_vs_elo` residual features (121 total). Isolates recent momentum from overall quality.
+- [x] **P8g — Value Scanner rename** — Renamed "Value Bets" → "Value Scanner" across nav, routing, Dashboard, Help, BettingHistory, tests.
+- [x] **P8h — Suggested Bets page** — Extracted from KellyCalculator into standalone `SuggestedBets.svelte` with shared bankroll via localStorage.
+- [x] **P8i — Expanded to 33 seasons** — All PL seasons 1993/94–2025/26 (12,535 matches). Fixed CSV encoding + bad lines handling.
+- [x] **P8j — Retrained on full dataset** — 53.8% accuracy on 2,468 validation samples. ELO features dominate (#1-#3). `elo_x_form` interaction at #3.
+
+### Remaining
+
+- [ ] **P8k — Retrain V5** — Retrain with A5+A6 features (dedicated draw model + form orthogonalisation). User to run training command.
+- [ ] **P8l — RAG historical data access** — Extend Oracle Chat to query historical CSV data (all 33 seasons) for questions like "what position was Liverpool in 1995?"
 
 ---
 
