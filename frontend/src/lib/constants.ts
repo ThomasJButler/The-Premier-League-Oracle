@@ -207,47 +207,50 @@ export const REFEREE_ADJUSTMENT_THRESHOLD = 0.005;
 // ─────────────────────────────────────────────────────────────────────────────
 // Data-derived constants
 //
-// Computed from 2,191 Premier League matches (2020/21–2025/26 partial) by
-// backend/scripts/compute_constants.py. Re-run the script after adding new
+// Computed from 12,535 Premier League matches (1993/94–2025/26, all 33 seasons)
+// by backend/scripts/compute_constants.py. Re-run the script after adding new
 // season data to get updated values.
+// Data source: football-data.co.uk — credit to the maintainers for 30+ years
+// of freely available Premier League match data.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * ELO_HOME_ADVANTAGE — ELO points added to the home team's rating.
  *
- * Derived from observed home performance: 43.1% home wins, 23.2% draws,
- * 33.7% away wins → home expected score 0.547 → 33 ELO points.
+ * Derived from observed home performance across all 33 PL seasons:
+ * 45.6% home wins, 25.5% draws, 28.9% away wins → home expected score
+ * 0.584 → 59 ELO points.
  * Formula: -400 × log₁₀(1 / expectedScore - 1).
  *
- * Lower than historical estimates (~65) because the 2020-2025 dataset
- * includes pandemic-era matches with reduced/no crowds.
+ * Higher than the pandemic-era estimate (33) because the full dataset
+ * includes pre-2020 seasons where home advantage was stronger.
  */
-export const ELO_HOME_ADVANTAGE = 33;
+export const ELO_HOME_ADVANTAGE = 59;
 
 /**
  * Default referee card averages — fallback when no referee-specific data exists.
  *
- * Derived from 2,191 matches: mean(HY + AY) = 3.6, mean(HR + AR) = 0.12.
+ * Derived from 12,535 matches: mean(HY + AY) = 3.3, mean(HR + AR) = 0.15.
  */
-export const DEFAULT_REFEREE_AVG_YELLOWS = 3.6;
-export const DEFAULT_REFEREE_AVG_REDS = 0.12;
+export const DEFAULT_REFEREE_AVG_YELLOWS = 3.3;
+export const DEFAULT_REFEREE_AVG_REDS = 0.15;
 
 /**
  * Half-time / full-time correlation parameters.
  *
- * HT_FT_CORRELATION (0.37) — weight given to full-time probabilities when
+ * HT_FT_CORRELATION (0.39) — weight given to full-time probabilities when
  * predicting the half-time result. Derived from the normalised match rate
- * between HT and FT outcomes (58.4% match rate vs 34.1% baseline).
+ * between HT and FT outcomes (60.0% match rate vs 34.9% baseline).
  *
- * HT_PRIOR_* — observed half-time result distribution:
- *   Home leading 35%, Draw 39%, Away leading 26%.
+ * HT_PRIOR_* — observed half-time result distribution from 11,611 matches
+ * with HT data: Home leading 35%, Draw 41%, Away leading 24%.
  * Note: draws are the most common HT result because many matches are still
  * goalless or level at half-time.
  */
-export const HT_FT_CORRELATION = 0.37;
+export const HT_FT_CORRELATION = 0.39;
 export const HT_PRIOR_HOME = 0.35;
-export const HT_PRIOR_DRAW = 0.39;
-export const HT_PRIOR_AWAY = 0.26;
+export const HT_PRIOR_DRAW = 0.41;
+export const HT_PRIOR_AWAY = 0.24;
 
 export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
 export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';

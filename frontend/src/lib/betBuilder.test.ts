@@ -500,13 +500,13 @@ describe('BetBuilderPredictor', () => {
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // Constants from constants.ts (derived from 2,191 PL matches):
-      //   HT_FT_CORRELATION=0.37, HT_PRIOR_HOME=0.35, HT_PRIOR_DRAW=0.39, HT_PRIOR_AWAY=0.26
-      // FT homeWin=0.60: raw = 0.60*0.37 + 0.35*0.63 = 0.4425
-      // FT draw=0.20:    raw = 0.20*0.37 + 0.39*0.63 = 0.3197
-      // FT away=0.20:    raw = 0.20*0.37 + 0.26*0.63 = 0.2378
-      // total = 1.0, homeWinProb = 0.4425/1.0 = 0.4425
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4425, 2);
+      // Constants from constants.ts (derived from 12,535 PL matches, 33 seasons):
+      //   HT_FT_CORRELATION=0.39, HT_PRIOR_HOME=0.35, HT_PRIOR_DRAW=0.41, HT_PRIOR_AWAY=0.24
+      // FT homeWin=0.60: raw = 0.60*0.39 + 0.35*0.61 = 0.4475
+      // FT draw=0.20:    raw = 0.20*0.39 + 0.41*0.61 = 0.3281
+      // FT away=0.20:    raw = 0.20*0.39 + 0.24*0.61 = 0.2244
+      // total = 1.0, homeWinProb = 0.4475/1.0 = 0.4475
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4475, 2);
       // And sum to 1
       const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
       expect(sum).toBeCloseTo(1.0, 6);
