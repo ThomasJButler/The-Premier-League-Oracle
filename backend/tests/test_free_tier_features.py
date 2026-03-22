@@ -152,9 +152,9 @@ class TestFeatureCompleteness:
         assert set(features.keys()) == set(FreeTierFeatureEngineer.FEATURE_NAMES)
         assert len(features) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
 
-    def test_feature_count_is_119(self):
-        """FEATURE_NAMES should have exactly 119 entries (86 original + 13 draw + 5 interactions + 5 Elo + 10 odds)."""
-        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 119
+    def test_feature_count_is_121(self):
+        """FEATURE_NAMES should have exactly 121 entries (86 original + 13 draw + 2 form-ELO + 5 interactions + 5 Elo + 10 odds)."""
+        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 121
 
     def test_no_duplicate_feature_names(self):
         """No duplicate entries in FEATURE_NAMES."""

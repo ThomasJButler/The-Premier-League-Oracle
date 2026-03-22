@@ -176,6 +176,8 @@ class FreeTierFeatureEngineer:
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
+        # Form-vs-ELO residuals (2) — orthogonal form component not explained by rating
+        'home_form_vs_elo', 'away_form_vs_elo',
         # Interaction features (5) — non-linear relationships between base features
         'elo_x_form', 'derby_x_closeness', 'elo_x_rest',
         'trend_x_form', 'h2h_draw_x_closeness',
@@ -255,6 +257,7 @@ class FreeTierFeatureEngineer:
         features.update(self._match_stats(home_team, away_team, pre_match))
         features.update(self._draw_indicators(home_team, away_team, pre_match, match_date))
         features.update(self._elo_features(home_team, away_team, match_date))
+        features.update(self._form_elo_residuals(features))
         features.update(self._interaction_features(features))
         features.update(self._odds_features(None if skip_odds else odds))
 
@@ -1274,6 +1277,34 @@ class FreeTierFeatureEngineer:
         f['elo_home_advantage'] = exp_home - exp_neutral
 
         return f
+
+    @staticmethod
+    def _form_elo_residuals(features: dict[str, float]) -> dict[str, float]:
+        """
+        Form-vs-ELO residual features (orthogonalisation).
+
+        ELO and form both measure team quality — when a team wins, both
+        improve. These residuals isolate the "recent momentum" signal
+        (outperforming/underperforming ELO expectation) from the "overall
+        quality" signal that ELO already captures.
+
+        Positive residual = team on a hot streak (outperforming their rating).
+        Negative residual = team underperforming (cold streak despite quality).
+        """
+        def _get(name: str) -> float:
+            val = features.get(name, 0.0)
+            return 0.0 if val is None or np.isnan(val) else float(val)
+
+        # Weighted form is on a 0–3 PPG scale; normalise to [0, 1]
+        home_form_norm = _get('home_weighted_form') / 3.0
+        away_form_norm = _get('away_weighted_form') / 3.0
+        # ELO expected home is already in [0, 1]
+        home_exp = _get('elo_expected_home')
+
+        return {
+            'home_form_vs_elo': home_form_norm - home_exp,
+            'away_form_vs_elo': away_form_norm - (1.0 - home_exp),
+        }
 
     @staticmethod
     def _interaction_features(features: dict[str, float]) -> dict[str, float]:
