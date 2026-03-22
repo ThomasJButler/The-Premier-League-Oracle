@@ -31,6 +31,7 @@ vi.mock('lucide-svelte', () => {
     MoreHorizontal: stub, List: stub, Calculator: stub, History: stub,
     Trophy: stub, HelpCircle: stub, Settings: stub, BarChart2: stub,
     X: stub, MessageCircle: stub, Search: stub, Layers: stub, Calendar: stub,
+    Zap: stub,
   };
 });
 
@@ -74,8 +75,8 @@ describe('MobileNav', () => {
 
     const secondaryItems = [
       'Matches', 'Oracle Chat', 'Top Scorers', 'Kelly Calculator',
-      'Value Scanner', 'Accumulators', 'Season Stats', 'Timeline',
-      'Betting History', 'Settings', 'Help',
+      'Suggested Bets', 'Value Scanner', 'Accumulators', 'Season Stats',
+      'Timeline', 'Betting History', 'Settings', 'Help',
     ];
     for (const name of secondaryItems) {
       expect(screen.getByText(name)).toBeInTheDocument();

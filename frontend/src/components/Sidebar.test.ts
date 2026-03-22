@@ -29,7 +29,7 @@ vi.mock('lucide-svelte', () => {
     LayoutDashboard: stub, List: stub, BarChart2: stub, BarChart3: stub,
     History: stub, Settings: stub, Calculator: stub, HelpCircle: stub,
     Trophy: stub, Tv: stub, Table: stub, X: stub, MessageCircle: stub,
-    Search: stub, Layers: stub, Calendar: stub,
+    Search: stub, Layers: stub, Calendar: stub, Zap: stub,
   };
 });
 

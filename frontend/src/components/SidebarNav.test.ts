@@ -29,7 +29,7 @@ vi.mock('lucide-svelte', () => {
     LayoutDashboard: stub, List: stub, BarChart2: stub, BarChart3: stub,
     History: stub, Settings: stub, Calculator: stub, HelpCircle: stub,
     Trophy: stub, Tv: stub, Table: stub, X: stub, MessageCircle: stub,
-    Search: stub, Layers: stub, Calendar: stub,
+    Search: stub, Layers: stub, Calendar: stub, Zap: stub,
   };
 });
 
@@ -80,9 +80,9 @@ describe('SidebarNav', () => {
     }
   });
 
-  it('renders all 4 betting navigation items', () => {
+  it('renders all 5 betting navigation items', () => {
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
-    const bettingItems = ['Kelly Calculator', 'Value Scanner', 'Accumulators', 'Betting History'];
+    const bettingItems = ['Kelly Calculator', 'Suggested Bets', 'Value Scanner', 'Accumulators', 'Betting History'];
     for (const name of bettingItems) {
       expect(screen.getByTitle(name)).toBeInTheDocument();
     }
