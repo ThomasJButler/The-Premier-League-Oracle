@@ -481,39 +481,54 @@ def recover_draws(
     Post-calibration draw recovery.
 
     Isotonic/Platt calibration often suppresses draw probabilities because
-    the model's draw confidence is poorly calibrated (AUC 0.601 but accuracy
-    16.3% → calibrator learns "suppress draws"). This recovers draw
-    predictions where the raw model was confident about a draw but
-    calibration crushed the signal.
+    the model's draw confidence is poorly calibrated. The calibrator learns
+    "suppress draws" and flips the argmax from draw to home/away — even when
+    the raw model correctly identified a draw-prone match (AUC > 0.55).
 
-    The raw model correctly *ranks* draw-prone matches — calibration
-    destroys the decision boundary but preserves the ranking. We use the
-    ranking to selectively restore draw predictions.
+    This function detects matches where:
+    1. The raw model's top prediction was "draw" (argmax = 1), AND
+    2. Calibration changed the prediction to home/away, AND
+    3. The raw draw probability exceeded the threshold
+
+    For these matches, it partially restores the draw probability using
+    the raw model's signal, then re-normalises.
 
     Args:
         calibrated: Calibrated probabilities (n_samples, 3).
         raw: Raw (uncalibrated) probabilities (n_samples, 3).
-        threshold: If raw draw probability exceeds this, boost calibrated
-                   draw probability. Tuned via --draw-threshold CLI arg.
+        threshold: Minimum raw draw probability to consider for recovery.
+                   Lower = more aggressive recovery. Default 0.22.
     """
     recovered = calibrated.copy()
     draw_col = 1  # Class index: 0=Home, 1=Draw, 2=Away
+    n_recovered = 0
 
     for i in range(len(recovered)):
         raw_draw = raw[i, draw_col]
-        cal_draw = recovered[i, draw_col]
+        raw_argmax = int(np.argmax(raw[i]))
+        cal_argmax = int(np.argmax(recovered[i]))
 
-        if raw_draw > threshold and cal_draw < raw_draw * 0.5:
-            # Calibration suppressed this draw prediction — partially restore
-            recovered[i, draw_col] = max(cal_draw, raw_draw * 0.7)
-            # Re-normalise so probabilities sum to 1.0
+        # Case 1: Raw model predicted draw but calibration flipped it
+        if raw_argmax == draw_col and cal_argmax != draw_col and raw_draw > threshold:
+            recovered[i, draw_col] = max(recovered[i, draw_col], raw_draw * 0.75)
             recovered[i] /= recovered[i].sum()
+            n_recovered += 1
 
-    n_recovered = ((recovered[:, draw_col] > calibrated[:, draw_col]) &
-                   (raw[:, draw_col] > threshold)).sum()
+        # Case 2: Raw model had draw as a strong second choice and
+        # calibration suppressed it significantly (draw was close to top)
+        elif raw_draw > threshold and raw_draw > raw[i, cal_argmax] * 0.85:
+            boost = raw_draw * 0.6
+            if boost > recovered[i, draw_col]:
+                recovered[i, draw_col] = boost
+                recovered[i] /= recovered[i].sum()
+                n_recovered += 1
+
     if n_recovered > 0:
         logger.info('Draw recovery: boosted %d/%d samples (threshold=%.2f)',
                     n_recovered, len(calibrated), threshold)
+    else:
+        logger.info('Draw recovery: no samples met recovery criteria (threshold=%.2f)',
+                    threshold)
 
     return recovered
 
