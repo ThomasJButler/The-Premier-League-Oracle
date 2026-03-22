@@ -1299,6 +1299,137 @@ def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
+# Dedicated draw classifier
+# ---------------------------------------------------------------------------
+
+def train_draw_classifier(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_val: np.ndarray, y_val: np.ndarray,
+    feature_names: list[str],
+    seasons_train: np.ndarray | None = None,
+) -> dict:
+    """
+    Train a dedicated binary XGBoost classifier for draw vs not-draw.
+
+    Draws are the hardest class to predict — the main 3-class model achieves
+    23% raw draw accuracy but calibration suppresses it. This dedicated model
+    runs independently with conservative hyperparameters optimised for draws.
+
+    Returns the trained model, optimal cascade threshold, and validation stats.
+    """
+    import xgboost as xgb
+
+    # Binary labels: 1 = draw, 0 = not-draw
+    y_train_binary = (y_train == 1).astype(int)
+    y_val_binary = (y_val == 1).astype(int)
+
+    n_pos = y_train_binary.sum()
+    n_neg = len(y_train_binary) - n_pos
+    spw = n_neg / max(n_pos, 1)
+
+    sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
+    dtrain = xgb.DMatrix(X_train, label=y_train_binary, feature_names=feature_names,
+                         weight=sample_weights)
+    dval = xgb.DMatrix(X_val, label=y_val_binary, feature_names=feature_names)
+
+    params = {
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'verbosity': 0,
+        'seed': 42,
+        'max_depth': 4,
+        'learning_rate': 0.03,
+        'min_child_weight': 5,
+        'subsample': 0.8,
+        'colsample_bytree': 0.7,
+        'gamma': 0.2,
+        'reg_alpha': 0.1,
+        'reg_lambda': 2.0,
+        'scale_pos_weight': spw,
+    }
+
+    evals_result: dict = {}
+    model = xgb.train(
+        params, dtrain,
+        num_boost_round=500,
+        evals=[(dval, 'val')],
+        early_stopping_rounds=50,
+        evals_result=evals_result,
+        verbose_eval=False,
+    )
+
+    val_probs = model.predict(dval)
+    logger.info('Draw classifier trained: best iteration %d, val logloss %.4f, spw=%.2f',
+                model.best_iteration, evals_result['val']['logloss'][model.best_iteration], spw)
+
+    return {
+        'model': model,
+        'val_probs': val_probs,
+        'params': params,
+    }
+
+
+def find_draw_cascade_threshold(
+    draw_probs: np.ndarray,
+    main_probs: np.ndarray,
+    y_val: np.ndarray,
+) -> tuple[float, float, dict]:
+    """
+    Find the optimal threshold for cascading the draw classifier with
+    the main 3-class model.
+
+    For each candidate threshold:
+      - If draw_classifier P(draw) > threshold → predict draw
+      - Otherwise → use main model's argmax
+
+    Sweeps thresholds and selects the one that maximises overall accuracy
+    on the validation set. Also reports draw-specific accuracy at each threshold.
+
+    Returns (best_threshold, best_accuracy, stats_at_best).
+    """
+    best_threshold = 0.30
+    best_accuracy = 0.0
+    best_stats: dict = {}
+
+    for threshold in np.arange(0.20, 0.55, 0.01):
+        # Build combined predictions
+        combined_preds = np.argmax(main_probs, axis=1)
+
+        # Override with draw where draw classifier is confident
+        draw_mask = draw_probs > threshold
+        combined_preds[draw_mask] = 1  # 1 = Draw
+
+        accuracy = (combined_preds == y_val).mean()
+        n_draw_preds = draw_mask.sum()
+        draw_correct = ((combined_preds == 1) & (y_val == 1)).sum()
+        n_actual_draws = (y_val == 1).sum()
+        draw_acc = draw_correct / max(n_actual_draws, 1)
+
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_threshold = float(threshold)
+            best_stats = {
+                'threshold': float(threshold),
+                'accuracy': float(accuracy),
+                'n_draw_predictions': int(n_draw_preds),
+                'draw_correct': int(draw_correct),
+                'draw_accuracy': float(draw_acc),
+                'total_actual_draws': int(n_actual_draws),
+            }
+
+    logger.info(
+        'Draw cascade threshold: %.2f → accuracy %.1f%% (draw acc %.1f%%, '
+        '%d draw predictions, %d correct)',
+        best_threshold, best_accuracy * 100,
+        best_stats.get('draw_accuracy', 0) * 100,
+        best_stats.get('n_draw_predictions', 0),
+        best_stats.get('draw_correct', 0),
+    )
+
+    return best_threshold, best_accuracy, best_stats
+
+
+# ---------------------------------------------------------------------------
 # Model saving
 # ---------------------------------------------------------------------------
 
@@ -1306,6 +1437,7 @@ def save_model(xgb_result: dict, feature_names: list[str],
                metrics: dict, training_info: dict,
                ensemble_result: dict | None = None,
                ensemble_metrics: dict | None = None,
+               draw_classifier: dict | None = None,
                ) -> str:
     """Save trained model with metadata to joblib."""
     import joblib
@@ -1352,6 +1484,11 @@ def save_model(xgb_result: dict, feature_names: list[str],
                 '(%.1f%% vs %.1f%%)',
                 ens_acc * 100, xgb_acc * 100,
             )
+
+    # Include dedicated draw classifier if provided
+    if draw_classifier is not None:
+        payload['draw_classifier'] = draw_classifier
+        logger.info('Draw classifier included in model file')
 
     joblib.dump(payload, MODEL_PATH)
     logger.info('Model saved to %s', MODEL_PATH)
@@ -1529,6 +1666,30 @@ def main():
         x = xgb_per.get(name, 0) * 100
         logger.info('    %-10s %5.1f%% vs %5.1f%% (%+.1f%%)', name, e, x, e - x)
 
+    # 10b. Dedicated draw classifier — binary model cascading with main XGBoost
+    logger.info('\n=== Training Dedicated Draw Classifier ===')
+    draw_result = train_draw_classifier(
+        X_train_active, y_train, X_val_active, y_val,
+        active_feature_names, seasons_train=seasons_train,
+    )
+    draw_threshold, draw_cascade_acc, draw_stats = find_draw_cascade_threshold(
+        draw_result['val_probs'], cal_probs, y_val,
+    )
+
+    # Compare cascade model vs calibrated XGBoost alone
+    cascade_improvement = draw_cascade_acc - xgb_acc
+    if cascade_improvement > 0:
+        logger.info(
+            'Draw cascade IMPROVES accuracy: %.1f%% → %.1f%% (+%.1f%%)',
+            xgb_acc * 100, draw_cascade_acc * 100, cascade_improvement * 100,
+        )
+    else:
+        logger.info(
+            'Draw cascade does not improve accuracy (%.1f%% vs %.1f%%) — '
+            'model saved but cascade disabled at inference',
+            draw_cascade_acc * 100, xgb_acc * 100,
+        )
+
     # 11. Top features
     sorted_imp = sorted(
         xgb_result['importance'].items(), key=lambda x: x[1], reverse=True,
@@ -1544,10 +1705,19 @@ def main():
     }
     xgb_result['calibrators'] = cal_result['calibrators']
     xgb_result['calibration_method'] = cal_result['calibration_method']
+    # Prepare draw classifier dict for saving
+    draw_clf_payload = {
+        'model': draw_result['model'],
+        'threshold': draw_threshold,
+        'cascade_accuracy': draw_cascade_acc,
+        'stats': draw_stats,
+        'improves_accuracy': cascade_improvement > 0,
+    }
     save_model(
         xgb_result, active_feature_names, xgb_metrics, training_info,
         ensemble_result=ensemble_result,
         ensemble_metrics=ensemble_metrics,
+        draw_classifier=draw_clf_payload,
     )
 
     # 12. Calibration curve
