@@ -373,7 +373,7 @@
                 </div>
                 
                 <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-                  <h3 class="font-bold text-lg mb-3">💎 Value Bets</h3>
+                  <h3 class="font-bold text-lg mb-3">💎 Value Scanner</h3>
                   <p class="text-sm mb-3">Identify opportunities where odds exceed true probability.</p>
                   <ul class="text-sm space-y-1">
                     <li>• Automatic value detection</li>

@@ -22,7 +22,7 @@
 
   const bettingItems = [
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
-    { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Value Scanner', icon: Search, view: 'Value Scanner' },
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
   ];

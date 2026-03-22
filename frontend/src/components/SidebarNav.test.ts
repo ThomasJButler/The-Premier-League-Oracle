@@ -82,7 +82,7 @@ describe('SidebarNav', () => {
 
   it('renders all 4 betting navigation items', () => {
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
-    const bettingItems = ['Kelly Calculator', 'Value Bets', 'Accumulators', 'Betting History'];
+    const bettingItems = ['Kelly Calculator', 'Value Scanner', 'Accumulators', 'Betting History'];
     for (const name of bettingItems) {
       expect(screen.getByTitle(name)).toBeInTheDocument();
     }

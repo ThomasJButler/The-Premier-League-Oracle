@@ -299,7 +299,7 @@
       <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-12">
         <PoundSterling class="w-12 h-12 mb-2 opacity-50" />
         <p>No betting history found.</p>
-        <p class="text-sm">Place some bets via the Kelly Calculator or Value Bets page to see them here.</p>
+        <p class="text-sm">Place some bets via the Kelly Calculator or Value Scanner page to see them here.</p>
       </div>
     {:else if filteredBets.length === 0}
       <div class="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground py-8">

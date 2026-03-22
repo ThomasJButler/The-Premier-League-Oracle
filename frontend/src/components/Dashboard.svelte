@@ -557,7 +557,7 @@
         <div class="h-44 sm:h-52 flex flex-col items-center justify-center text-center" data-testid="profit-empty-state">
           <TrendingUp class="w-8 h-8 text-muted-foreground/30 mb-2" />
           <p class="text-sm font-medium text-foreground mb-1">Place your first bet to track P&L</p>
-          <p class="text-xs text-muted-foreground mb-3">Use the Kelly Calculator or Value Bets to place tracked bets.</p>
+          <p class="text-xs text-muted-foreground mb-3">Use the Kelly Calculator or Value Scanner to place tracked bets.</p>
           <Button variant="secondary" size="sm" on:click={() => dispatch('navigate', { view: 'Kelly Calculator' })}>Open Kelly Calculator</Button>
         </div>
       {:else}

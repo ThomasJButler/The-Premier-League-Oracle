@@ -21,7 +21,7 @@
     { name: 'Oracle Chat', icon: MessageCircle, view: 'Oracle Chat' },
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
-    { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Value Scanner', icon: Search, view: 'Value Scanner' },
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Timeline', icon: Calendar, view: 'Season Timeline' },

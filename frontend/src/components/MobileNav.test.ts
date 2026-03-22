@@ -74,7 +74,7 @@ describe('MobileNav', () => {
 
     const secondaryItems = [
       'Matches', 'Oracle Chat', 'Top Scorers', 'Kelly Calculator',
-      'Value Bets', 'Accumulators', 'Season Stats', 'Timeline',
+      'Value Scanner', 'Accumulators', 'Season Stats', 'Timeline',
       'Betting History', 'Settings', 'Help',
     ];
     for (const name of secondaryItems) {

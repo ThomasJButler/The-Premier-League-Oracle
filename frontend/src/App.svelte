@@ -24,7 +24,7 @@
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
 
-  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Bets' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Season Timeline' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
+  type ViewName = 'Dashboard' | 'Matches' | 'Predictions' | 'Kelly Calculator' | 'Value Scanner' | 'Accumulators' | 'Betting History' | 'Season Stats' | 'Season Timeline' | 'Settings' | 'Help' | 'Top Scorers' | 'Live Matches' | 'Standings' | 'Oracle Chat';
 
   let currentView: ViewName = 'Dashboard';
   let isSidebarOpen = false; // Start with sidebar closed
@@ -127,7 +127,7 @@
           <Predictions on:navigate={navigate} />
         {:else if currentView === 'Kelly Calculator'}
           <KellyCalculator />
-        {:else if currentView === 'Value Bets'}
+        {:else if currentView === 'Value Scanner'}
           <ValueBets />
         {:else if currentView === 'Accumulators'}
           <AccumulatorBuilder />
