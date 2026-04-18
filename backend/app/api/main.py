@@ -75,6 +75,15 @@ free_tier_model = None  # xgb.Booster loaded from joblib
 free_tier_metadata: dict[str, Any] = {}  # Model metadata (version, features, etc.)
 free_tier_engineer: Any | None = None  # FreeTierFeatureEngineer for live predictions
 
+# Draw classifier cascade — a dedicated binary draw-vs-not-draw model that
+# overrides the main model when it's confident a match will be drawn. Loaded
+# from the joblib payload at startup when available and only used when training
+# confirmed it improves validation accuracy.
+draw_classifier_model = None  # xgb.Booster (binary)
+draw_classifier_threshold: float | None = None  # P(draw) threshold for cascade
+_draw_cascade_overrides = 0  # Counts of cascade overrides since startup
+_draw_cascade_total = 0
+
 # In-memory rate limiter for /predict/free
 _rate_limit_store: dict[str, list[float]] = {}
 RATE_LIMIT_MAX = 60  # requests per minute per IP
@@ -89,6 +98,7 @@ async def lifespan(app: FastAPI):
 
     # Load free-tier model if available
     global free_tier_model, free_tier_metadata, free_tier_engineer
+    global draw_classifier_model, draw_classifier_threshold
     free_tier_model_path = BACKEND_ROOT / "models" / "xgboost_free_tier.joblib"
     if free_tier_model_path.exists() and FREE_TIER_AVAILABLE:
         try:
@@ -109,6 +119,35 @@ async def lifespan(app: FastAPI):
                 logger.info("Probability calibrators loaded")
             if payload.get('stacked_ensemble'):
                 logger.info("Stacked ensemble loaded (3 OvR classifiers + meta-learner)")
+
+            # Activate the dedicated draw classifier cascade if training
+            # confirmed it improved validation accuracy. The env var
+            # ORACLE_DRAW_THRESHOLD overrides the trained threshold if set.
+            draw_clf_payload = payload.get('draw_classifier')
+            if draw_clf_payload and draw_clf_payload.get('model') is not None:
+                trained_threshold = float(draw_clf_payload.get('threshold', 0.42))
+                env_threshold = os.getenv('ORACLE_DRAW_THRESHOLD')
+                threshold = float(env_threshold) if env_threshold else trained_threshold
+                improves = bool(draw_clf_payload.get('improves_accuracy', False))
+                # Default to activating when training flagged it as beneficial;
+                # env var ORACLE_DRAW_CASCADE=1 force-enables, =0 force-disables.
+                force = os.getenv('ORACLE_DRAW_CASCADE')
+                activate = (force == '1') if force in ('0', '1') else improves
+                if activate:
+                    draw_classifier_model = draw_clf_payload['model']
+                    draw_classifier_threshold = threshold
+                    logger.info(
+                        "Draw classifier cascade active (threshold=%.3f, training flagged improves=%s)",
+                        threshold, improves,
+                    )
+                else:
+                    logger.info(
+                        "Draw classifier present but cascade disabled (improves_accuracy=%s, "
+                        "set ORACLE_DRAW_CASCADE=1 to force-enable)",
+                        improves,
+                    )
+            else:
+                logger.info("No draw classifier in payload — skipping cascade")
             logger.info(
                 "Free-tier model loaded: version %s, %d features",
                 payload.get('version', 'unknown'),
@@ -425,6 +464,29 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         # draw accuracy vs 0% after calibration, while the returned
         # probabilities still use calibrated values for better estimates.
         outcome_idx = int(np.argmax(raw_probs))
+        draw_cascade_override = False
+        draw_clf_prob: float | None = None
+
+        # Dedicated draw classifier cascade: when the binary draw model is
+        # confident a match will be drawn (P(draw) > threshold), override the
+        # main model's prediction. Recovers part of the draw signal that the
+        # calibrated 3-class model suppresses.
+        if draw_classifier_model is not None and draw_classifier_threshold is not None:
+            global _draw_cascade_overrides, _draw_cascade_total
+            _draw_cascade_total += 1
+            draw_clf_prob = float(draw_classifier_model.predict(dmatrix)[0])
+            if draw_clf_prob > draw_classifier_threshold:
+                outcome_idx = 1  # Draw
+                draw_cascade_override = True
+                _draw_cascade_overrides += 1
+                # Log override rate periodically so Tom can tune the threshold
+                if _draw_cascade_total % 20 == 0:
+                    override_rate = _draw_cascade_overrides / _draw_cascade_total
+                    logger.info(
+                        "Draw cascade override rate: %.1f%% (%d/%d since startup)",
+                        override_rate * 100, _draw_cascade_overrides, _draw_cascade_total,
+                    )
+
         outcomes = ['Home win', 'Draw', 'Away win']
         predicted = outcomes[outcome_idx]
 
@@ -434,7 +496,7 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             sorted(importance.items(), key=lambda x: x[1], reverse=True)[:10]
         )
 
-        return {
+        response: dict[str, Any] = {
             "home_team": home,
             "away_team": away,
             "probabilities": {
@@ -447,6 +509,13 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             "model_version": free_tier_metadata.get('version', 'unknown'),
             "feature_importance": top_features,
         }
+        if draw_clf_prob is not None:
+            response["draw_classifier"] = {
+                "probability": round(draw_clf_prob, 4),
+                "threshold": round(draw_classifier_threshold or 0.0, 4),
+                "overrode_main_model": draw_cascade_override,
+            }
+        return response
 
     except HTTPException:
         raise
