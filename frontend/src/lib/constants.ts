@@ -36,21 +36,14 @@ export const DEFAULT_DRAW_RATE = 0.27;
 /**
  * AI_MODELS defines the models available in the Settings dropdown.
  * The server-side allowlist in api/chat.ts and vite.config.ts must match.
- * Provider is detected from the model ID: claude-* → Anthropic, gpt-* → OpenAI.
+ * Anthropic is the sole provider — keep Haiku 4.5 first so it's the default.
  */
 export const AI_MODELS = [
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini (fastest, cheapest)' },
-  { id: 'gpt-4o', label: 'GPT-4o (balanced)' },
-  { id: 'gpt-4-turbo', label: 'GPT-4 Turbo (powerful)' },
-  { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku (fastest, cheapest)' },
-  { id: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet (balanced)' },
-  { id: 'claude-3-opus-latest', label: 'Claude 3 Opus (powerful)' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast & cheap' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — Balanced' },
+  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 — High quality' },
+  { id: 'claude-opus-4-7', label: 'Claude Opus 4.7 — Deepest analysis' },
 ] as const;
-
-/** Determine the API provider from a model ID. */
-export function getModelProvider(modelId: string): 'openai' | 'anthropic' {
-  return modelId.startsWith('claude') ? 'anthropic' : 'openai';
-}
 
 /**
  * PREMIER_LEAGUE_GAMEWEEKS — the Premier League always has 38 matchdays
@@ -265,11 +258,39 @@ export const HT_PRIOR_HOME = 0.35;
 export const HT_PRIOR_DRAW = 0.41;
 export const HT_PRIOR_AWAY = 0.24;
 
-export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
+export const DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001';
 export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';
+
+/**
+ * Legacy storage key from the OpenAI era. Callers should prefer
+ * ANTHROPIC_API_KEY_STORAGE_KEY and migrate via migrateLegacyApiKey().
+ */
+export const ANTHROPIC_API_KEY_STORAGE_KEY = 'anthropic_api_key';
+export const LEGACY_OPENAI_API_KEY_STORAGE_KEY = 'openai_api_key';
+
+/**
+ * One-time migration: copy the legacy `openai_api_key` localStorage entry
+ * into `anthropic_api_key` and remove the original. Many users pasted an
+ * Anthropic `sk-ant-` key into the historically OpenAI-labelled field, so
+ * we preserve whatever they had. Idempotent: safe to call on every load.
+ */
+export function migrateLegacyApiKey(): void {
+  if (typeof localStorage === 'undefined') return;
+  const legacy = localStorage.getItem(LEGACY_OPENAI_API_KEY_STORAGE_KEY);
+  if (!legacy) return;
+  if (!localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY)) {
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, legacy);
+  }
+  localStorage.removeItem(LEGACY_OPENAI_API_KEY_STORAGE_KEY);
+}
 
 /** Read the user's saved model preference from localStorage. */
 export function getSavedAiModel(): string {
   if (typeof localStorage === 'undefined') return DEFAULT_AI_MODEL;
-  return localStorage.getItem(AI_MODEL_STORAGE_KEY) || DEFAULT_AI_MODEL;
+  const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
+  // Defend against stale OpenAI model IDs left over in localStorage from
+  // before the Anthropic-only migration — fall through to the new default.
+  if (!saved) return DEFAULT_AI_MODEL;
+  const known = AI_MODELS.some((m) => m.id === saved);
+  return known ? saved : DEFAULT_AI_MODEL;
 }

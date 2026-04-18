@@ -5,7 +5,13 @@
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
   import { aiAnalysisService } from '../services/aiAnalysis';
-  import { AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY } from '$lib/constants';
+  import {
+    AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY,
+    ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey,
+  } from '$lib/constants';
+
+  // Run the legacy openai_api_key → anthropic_api_key migration once on load.
+  migrateLegacyApiKey();
   import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
@@ -64,16 +70,15 @@
   let aiApiKeyEditing = false; // true when user wants to change/enter a new key
   let aiKeySaved = false; // true only when a key is confirmed saved in localStorage
 
-  function detectProvider(key: string): string | null {
-    if (key.startsWith('sk-ant-')) return 'Anthropic';
-    if (key.startsWith('sk-')) return 'OpenAI';
-    return null;
+  /** Shallow sanity check — Anthropic keys start with `sk-ant-`. */
+  function isLikelyAnthropicKey(key: string): boolean {
+    return key.startsWith('sk-ant-');
   }
 
   function saveAiApiKey() {
     const trimmed = aiApiKey.trim();
     if (!trimmed || trimmed.length < 10) return;
-    localStorage.setItem('openai_api_key', trimmed);
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, trimmed);
     aiKeySaved = true;
     aiKeyAvailable = true;
     aiApiKeyEditing = false;
@@ -81,7 +86,7 @@
   }
 
   function clearAiApiKey() {
-    localStorage.removeItem('openai_api_key');
+    localStorage.removeItem(ANTHROPIC_API_KEY_STORAGE_KEY);
     aiApiKey = '';
     aiKeySaved = false;
     aiKeyAvailable = false;
@@ -288,7 +293,7 @@
 
     // Load AI analysis settings
     aiAnalysisEnabled = aiAnalysisService.isEnabled();
-    const savedAiKey = localStorage.getItem('openai_api_key');
+    const savedAiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY);
     if (savedAiKey) {
       aiApiKey = savedAiKey;
       aiKeySaved = true;
@@ -597,7 +602,7 @@
       <span>AI Match Analysis</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Add AI-powered qualitative analysis to match predictions. Supports OpenAI and Anthropic (Claude). Analyses are cached for 24 hours per match.
+      Add Claude-powered qualitative analysis to match predictions. Analyses are cached for 24 hours per match.
     </p>
 
     <!-- Toggle -->
@@ -628,7 +633,10 @@
             <div class="flex items-center gap-2">
               <span class="w-3 h-3 rounded-full bg-green-500"></span>
               <span class="text-sm text-foreground">
-                {detectProvider(aiApiKey) ?? 'API'} key configured
+                Anthropic key configured
+                {#if !isLikelyAnthropicKey(aiApiKey)}
+                  <span class="text-amber-500 ml-1" title="Key doesn't look like an Anthropic key (expected sk-ant-…)">⚠</span>
+                {/if}
               </span>
               <span class="text-xs text-muted-foreground font-mono">
                 (•••{aiApiKey.slice(-4)})
@@ -648,7 +656,7 @@
             <input
               type="password"
               bind:value={aiApiKey}
-              placeholder="sk-... or sk-ant-..."
+              placeholder="sk-ant-..."
               class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground"
               on:keydown={handleAiKeyKeydown}
             />
@@ -656,14 +664,13 @@
               Save
             </Button>
             {#if aiApiKeyEditing}
-              <Button on:click={() => { aiApiKeyEditing = false; aiApiKey = localStorage.getItem('openai_api_key') || ''; }} variant="ghost" size="sm">
+              <Button on:click={() => { aiApiKeyEditing = false; aiApiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || ''; }} variant="ghost" size="sm">
                 Cancel
               </Button>
             {/if}
           </div>
           <p class="text-xs text-muted-foreground mt-2">
-            Get a key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">OpenAI</a>
-            or <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic</a>.
+            Get a key from the <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic Console</a>.
             Used for Oracle Chat and AI match analysis. Stored in your browser only.
           </p>
         {/if}
@@ -677,9 +684,9 @@
             {#if aiKeyAvailable === null}
               Checking…
             {:else if aiKeyAvailable}
-              Ready — using {aiApiKey ? `your ${detectProvider(aiApiKey) ?? ''} key`.trim() : 'server-side key'}
+              Ready — using {aiApiKey ? 'your Anthropic key' : 'server-side key'}
             {:else}
-              No key — add one above or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
+              No key — add one above or ask the site owner to set ANTHROPIC_API_KEY
             {/if}
           </p>
         </div>
@@ -718,9 +725,9 @@
       <span>AI Model</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Choose which model powers Oracle Chat and AI Match Analysis.
-      Supports OpenAI (GPT) and Anthropic (Claude). Larger models
-      produce richer analysis but cost more per request.
+      Choose which Claude model powers Oracle Chat and AI Match Analysis.
+      Larger models produce richer analysis but cost more per request —
+      Haiku 4.5 is the fast, cheap default.
     </p>
 
     <div class="flex items-center gap-3">

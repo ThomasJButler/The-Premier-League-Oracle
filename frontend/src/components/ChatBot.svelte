@@ -6,7 +6,10 @@
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
-  import { getSavedAiModel, getModelProvider } from '$lib/constants';
+  import { getSavedAiModel, ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey } from '$lib/constants';
+
+  // Run the legacy openai_api_key → anthropic_api_key migration once on load.
+  migrateLegacyApiKey();
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -20,7 +23,7 @@
   const MIN_REQUEST_INTERVAL = 3000;
   const MAX_INPUT_LENGTH = 500;
   const STORAGE_KEY_MESSAGES = 'oracle_chat_history';
-  const STORAGE_KEY_API_KEY = 'openai_api_key';
+  const STORAGE_KEY_API_KEY = ANTHROPIC_API_KEY_STORAGE_KEY;
   const MAX_STORED_MESSAGES = 50;
 
   // --- State ---
@@ -308,10 +311,9 @@ Current data:\n`;
         .map(m => ({ role: m.role, content: m.content }));
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      // Pass user's API key as header if no server key is configured
+      // Pass user's Anthropic API key as header if no server key is configured
       if (apiKey && !useServerKey) {
-        const provider = getModelProvider(getSavedAiModel());
-        headers[provider === 'anthropic' ? 'X-Anthropic-Key' : 'X-OpenAI-Key'] = apiKey;
+        headers['X-Anthropic-Key'] = apiKey;
       }
 
       const response = await fetch('/api/oracle/chat/rag', {
@@ -421,8 +423,8 @@ Current data:\n`;
           </p>
           <ul class="text-xs text-muted-foreground mt-2 space-y-1">
             <li>• Your key is stored in localStorage (browser only)</li>
-            <li>• Your key is sent to our server-side proxy, which forwards it to OpenAI — it is not sent directly from your browser to OpenAI</li>
-            <li>• Use a key with spend limits set in your OpenAI dashboard</li>
+            <li>• Your key is sent to our server-side proxy, which forwards it to Anthropic — it is not sent directly from your browser</li>
+            <li>• Use a key with spend limits set in your Anthropic console</li>
             <li>• You can remove it anytime via "Change key"</li>
           </ul>
         </div>
@@ -442,7 +444,7 @@ Current data:\n`;
           <Key class="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 class="text-lg font-bold font-display text-foreground">Connect AI Provider</h2>
+          <h2 class="text-lg font-bold font-display text-foreground">Connect Anthropic</h2>
           <p class="text-xs text-muted-foreground">Your key is stored in your browser only</p>
         </div>
       </div>
@@ -451,7 +453,7 @@ Current data:\n`;
         <input
           type="password"
           bind:value={apiKey}
-          placeholder="sk-... or sk-ant-..."
+          placeholder="sk-ant-..."
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
           on:keydown={handleKeydown}
         />
@@ -471,8 +473,7 @@ Current data:\n`;
       {/if}
 
       <p class="text-xs text-muted-foreground mt-3">
-        Get a key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">OpenAI</a>
-        or <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic</a>.
+        Get a key from the <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic Console</a>.
         Choose the model in Settings.
       </p>
     </Card>
@@ -558,7 +559,7 @@ Current data:\n`;
           id="chatbot-input"
           type="text"
           bind:value={inputText}
-          placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your OpenAI key to start chatting'}
+          placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your Anthropic key to start chatting'}
           disabled={!hasApiKey || isLoading}
           maxlength={MAX_INPUT_LENGTH}
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground disabled:opacity-50"

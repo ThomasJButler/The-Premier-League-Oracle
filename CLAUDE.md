@@ -59,7 +59,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `betting/kelly.ts` - Kelly Criterion calculator
   - `betting/value.ts` - Value bet detection engine (imports PoissonPredictor from advancedPredictions)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
-  - `aiAnalysis.ts` - AI-powered match analysis with OpenAI/Anthropic support
+  - `aiAnalysis.ts` - AI-powered match analysis (Anthropic Claude only, Haiku 4.5 default)
 - `types/index.ts` - Shared TypeScript types
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
@@ -73,7 +73,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
 
 ### Vercel Edge Functions (`api/`)
-- `api/chat.ts` - Vercel Edge Function for AI chat proxying (OpenAI + Anthropic). Resolves model from request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Server-side API keys take priority over user-provided keys
+- `api/chat.ts` - Vercel Edge Function for AI chat proxying (Anthropic only). Resolves model from request body → `ORACLE_AI_MODEL` env var → `claude-haiku-4-5-20251001` default. Server-side `ANTHROPIC_API_KEY` takes priority over user-provided keys. Applies ephemeral prompt caching to the system prompt
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.

@@ -71,7 +71,7 @@ Create a `.env` file in `backend/`:
 
 ```bash
 FOOTBALL_DATA_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here  # Optional — only needed for LangChain natural language queries
+ANTHROPIC_API_KEY=sk-ant-your_key_here  # Optional — used by /chat/rag for natural-language queries
 ```
 
 ### Run the API
@@ -202,7 +202,7 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
 - Python 3.10+
 - Football-Data.org API key (free tier sufficient for the active prediction path)
-- OpenAI API key (optional — only for LangChain natural language queries)
+- Anthropic API key (optional — used by the `/chat/rag` endpoint for data-grounded natural-language queries)
 
 ---
 

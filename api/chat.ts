@@ -2,22 +2,26 @@ export const config = {
   runtime: 'edge',
 };
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
-const DEFAULT_MODEL = 'gpt-4o-mini';
-const MAX_TOKENS = 800;
-const TEMPERATURE = 0.7;
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+const MAX_TOKENS = 1024;
 
-/** Supported models that users can select via Settings. */
+/**
+ * Supported Claude models the frontend may select from.
+ * Keep this list in sync with frontend/vite.config.ts ALLOWED_MODELS
+ * and frontend/src/lib/constants.ts AI_MODELS.
+ */
 const ALLOWED_MODELS = [
-  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo',
-  'claude-3-5-haiku-latest', 'claude-3-5-sonnet-latest', 'claude-3-opus-latest',
-];
+  'claude-opus-4-7',
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5-20251001',
+] as const;
 
-function isAnthropicModel(model: string): boolean {
-  return model.startsWith('claude');
-}
+type AllowedModel = typeof ALLOWED_MODELS[number];
+
+interface InboundMessage { role: string; content: string }
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -26,50 +30,22 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   });
 }
 
-/** Call OpenAI Chat Completions API. */
-async function callOpenAI(
-  apiKey: string, model: string, messages: unknown[],
-): Promise<Response> {
-  const response = await fetch(OPENAI_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
-    }),
-  });
-
-  if (!response.ok) {
-    const status = response.status;
-    const errorMap: Record<number, string> = {
-      401: 'Invalid API key. Please check your OpenAI key.',
-      429: 'Rate limited by OpenAI. Please wait a moment and try again.',
-    };
-    return jsonResponse(
-      { error: errorMap[status] || `OpenAI API error (${status}).` },
-      status,
-    );
-  }
-
-  let data: Record<string, unknown>;
-  try {
-    data = await response.json();
-  } catch {
-    return jsonResponse({ error: 'OpenAI returned an unexpected response.' }, 502);
-  }
-  return jsonResponse(data);
-}
-
-/** Call Anthropic Messages API and normalise to OpenAI-compatible response shape. */
+/**
+ * Call Anthropic Messages API and normalise to the OpenAI-ish shape the
+ * frontend has historically consumed so callers don't need to change.
+ *
+ * Prompt caching strategy: match analyses and chat turns share a long
+ * grounded system prompt. We mark the system prompt with
+ * cache_control: ephemeral so subsequent requests with the same system
+ * text (e.g. the same gameweek's ten matches) hit the cache.
+ */
 async function callAnthropic(
-  apiKey: string, model: string, messages: Array<{ role: string; content: string }>,
+  apiKey: string,
+  model: AllowedModel,
+  messages: InboundMessage[],
 ): Promise<Response> {
-  // Extract system message — Anthropic uses a separate `system` field
+  // Anthropic takes `system` as a separate top-level field — extract any
+  // role:'system' messages from the list, concatenate, and cache.
   let systemPrompt = '';
   const userMessages: Array<{ role: string; content: string }> = [];
   for (const msg of messages) {
@@ -79,6 +55,14 @@ async function callAnthropic(
       userMessages.push({ role: msg.role, content: msg.content });
     }
   }
+
+  const systemField = systemPrompt
+    ? [{
+        type: 'text' as const,
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' as const },
+      }]
+    : undefined;
 
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -90,7 +74,7 @@ async function callAnthropic(
     body: JSON.stringify({
       model,
       max_tokens: MAX_TOKENS,
-      ...(systemPrompt ? { system: systemPrompt } : {}),
+      ...(systemField ? { system: systemField } : {}),
       messages: userMessages,
     }),
   });
@@ -107,15 +91,24 @@ async function callAnthropic(
     );
   }
 
-  let data: { content?: Array<{ text?: string }>; model?: string; usage?: unknown };
+  let data: {
+    content?: Array<{ type: string; text?: string }>;
+    model?: string;
+    usage?: unknown;
+  };
   try {
     data = await response.json();
   } catch {
     return jsonResponse({ error: 'Anthropic returned an unexpected response.' }, 502);
   }
 
-  // Normalise to OpenAI response shape so the frontend doesn't need to care
-  const text = data.content?.[0]?.text || '';
+  // Concatenate all text blocks — normally there's just one, but adaptive
+  // thinking can produce thinking blocks before the text block.
+  const text = (data.content ?? [])
+    .filter((b) => b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text as string)
+    .join('');
+
   return jsonResponse({
     choices: [{ message: { role: 'assistant', content: text } }],
     model: data.model,
@@ -139,24 +132,21 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Resolve model: request body → env var → default. Only allow known models.
   const envModel = process.env.ORACLE_AI_MODEL;
-  const resolvedModel =
-    (requestedModel && ALLOWED_MODELS.includes(requestedModel) ? requestedModel : null)
-    ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
+  const resolvedModel: AllowedModel =
+    (requestedModel && (ALLOWED_MODELS as readonly string[]).includes(requestedModel)
+      ? requestedModel as AllowedModel : null)
+    ?? (envModel && (ALLOWED_MODELS as readonly string[]).includes(envModel)
+      ? envModel as AllowedModel : null)
     ?? DEFAULT_MODEL;
 
-  const useAnthropic = isAnthropicModel(resolvedModel);
-
   // Server-side key takes priority over user-provided key.
-  // Key check runs before messages check so that the checkServerKey() probe
+  // Key check runs before messages check so the server-key probe
   // (which sends empty messages) can detect whether a server key exists.
-  const apiKey = useAnthropic
-    ? (process.env.ANTHROPIC_API_KEY || userKey)
-    : (process.env.OPENAI_API_KEY || userKey);
+  const apiKey = process.env.ANTHROPIC_API_KEY || userKey;
 
   if (!apiKey) {
-    const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
     return jsonResponse(
-      { error: `No API key configured. Please enter your ${provider} key or ask the site owner to set ${useAnthropic ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY'}.` },
+      { error: 'No API key configured. Please enter your Anthropic key or ask the site owner to set ANTHROPIC_API_KEY.' },
       400,
     );
   }
@@ -166,13 +156,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    if (useAnthropic) {
-      return await callAnthropic(apiKey, resolvedModel, messages as Array<{ role: string; content: string }>);
-    } else {
-      return await callOpenAI(apiKey, resolvedModel, messages);
-    }
+    return await callAnthropic(apiKey, resolvedModel, messages as InboundMessage[]);
   } catch {
-    const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
-    return jsonResponse({ error: `Failed to connect to ${provider}.` }, 502);
+    return jsonResponse({ error: 'Failed to connect to Anthropic.' }, 502);
   }
 }

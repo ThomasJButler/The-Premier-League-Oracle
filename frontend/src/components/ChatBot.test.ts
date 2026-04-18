@@ -51,8 +51,8 @@ vi.mock('svelte/transition', () => ({
 
 /** Helper: type a valid API key into the password input and click Connect */
 async function connectApiKey() {
-  const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
-  await fireEvent.input(keyInput, { target: { value: 'sk-1234567890abcdef' } });
+  const keyInput = screen.getByPlaceholderText('sk-ant-...');
+  await fireEvent.input(keyInput, { target: { value: 'sk-ant-1234567890abcdef' } });
   const connectBtn = screen.getByText('Connect');
   await fireEvent.click(connectBtn);
   await act();
@@ -81,7 +81,7 @@ describe('ChatBot Component', () => {
           try {
             const body = JSON.parse(reqOpts.body as string);
             if (Array.isArray(body.messages) && body.messages.length === 0) {
-              return { ok: false, status: 400, json: () => Promise.resolve({ error: 'No API key configured. Please enter your OpenAI key.' }) } as unknown as Response;
+              return { ok: false, status: 400, json: () => Promise.resolve({ error: 'No API key configured. Please enter your Anthropic key.' }) } as unknown as Response;
             }
           } catch {
             // Not JSON — fall through
@@ -110,19 +110,18 @@ describe('ChatBot Component', () => {
 
   it('should show API key setup form when no key stored', () => {
     render(ChatBot);
-    expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('sk-... or sk-ant-...')).toBeInTheDocument();
+    expect(screen.getByText('Connect Anthropic')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('sk-ant-...')).toBeInTheDocument();
     expect(screen.getByText('Connect')).toBeInTheDocument();
   });
 
-  it('should show links to OpenAI and Anthropic platforms', () => {
+  it('should link to the Anthropic console for API key creation', () => {
     render(ChatBot);
-    const openaiLink = screen.getByText('OpenAI');
-    expect(openaiLink).toBeInTheDocument();
-    expect(openaiLink.closest('a')).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
-    const anthropicLink = screen.getByText('Anthropic');
+    const anthropicLink = screen.getByText('Anthropic Console');
     expect(anthropicLink).toBeInTheDocument();
     expect(anthropicLink.closest('a')).toHaveAttribute('href', 'https://console.anthropic.com/settings/keys');
+    // The old OpenAI link must be gone post-migration
+    expect(screen.queryByText('OpenAI')).not.toBeInTheDocument();
   });
 
   it('should have chat input disabled without API key', () => {
@@ -140,7 +139,7 @@ describe('ChatBot Component', () => {
   it('should show validation error for short API key', async () => {
     render(ChatBot);
 
-    const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
+    const keyInput = screen.getByPlaceholderText('sk-ant-...');
     await fireEvent.input(keyInput, { target: { value: 'short' } });
     const connectBtn = screen.getByText('Connect');
     await fireEvent.click(connectBtn);
@@ -160,7 +159,7 @@ describe('ChatBot Component', () => {
     });
 
     // Verify localStorage.setItem was called with the API key
-    expect(localStorage.setItem).toHaveBeenCalledWith('openai_api_key', 'sk-1234567890abcdef');
+    expect(localStorage.setItem).toHaveBeenCalledWith('anthropic_api_key', 'sk-ant-1234567890abcdef');
   });
 
   it('should show security notice banner after connecting with user key', async () => {
@@ -193,10 +192,10 @@ describe('ChatBot Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
+      expect(screen.getByText('Connect Anthropic')).toBeInTheDocument();
     });
 
-    expect(localStorage.removeItem).toHaveBeenCalledWith('openai_api_key');
+    expect(localStorage.removeItem).toHaveBeenCalledWith('anthropic_api_key');
   });
 
   it('should clear chat and show reset message', async () => {
@@ -268,7 +267,7 @@ describe('ChatBot Component', () => {
         return {
           ok: false,
           status: 401,
-          json: () => Promise.resolve({ error: 'Invalid API key. Please check your OpenAI key.' })
+          json: () => Promise.resolve({ error: 'Invalid API key. Please check your Anthropic key.' })
         } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -294,7 +293,7 @@ describe('ChatBot Component', () => {
         return {
           ok: false,
           status: 429,
-          json: () => Promise.resolve({ error: 'Rate limited by OpenAI. Please wait a moment and try again.' })
+          json: () => Promise.resolve({ error: 'Rate limited by Anthropic. Please wait a moment and try again.' })
         } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -310,7 +309,7 @@ describe('ChatBot Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Rate limited by OpenAI/)).toBeInTheDocument();
+      expect(screen.getByText(/Rate limited by Anthropic/)).toBeInTheDocument();
     });
   });
 

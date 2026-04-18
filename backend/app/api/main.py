@@ -67,8 +67,17 @@ except ImportError as e:
 
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Supported Claude models — keep in sync with api/chat.ts ALLOWED_MODELS
+# and frontend/src/lib/constants.ts AI_MODELS.
+ALLOWED_AI_MODELS = {
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+}
+DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
@@ -609,8 +618,8 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
 
     Parses user intent, queries the in-memory historical match DataFrame
     (2,191+ matches), builds an augmented prompt with relevant data, and
-    calls the OpenAI API server-side. No client-side API key needed when
-    OPENAI_API_KEY is set.
+    calls the Anthropic Claude API server-side. No client-side API key
+    needed when ANTHROPIC_API_KEY is set.
     """
     # Rate limiting
     client_ip = _get_client_ip(request)
@@ -620,28 +629,21 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
             detail="Rate limit exceeded — maximum 60 requests per minute",
         )
 
-    # Determine which AI provider to use
-    ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
-    use_anthropic = ai_model.startswith("claude")
+    # Resolve Claude model — ORACLE_AI_MODEL overrides the default, but must
+    # be one of the allow-listed Claude models. Unknown values fall back.
+    env_model = os.getenv("ORACLE_AI_MODEL", "")
+    ai_model = env_model if env_model in ALLOWED_AI_MODELS else DEFAULT_AI_MODEL
 
     # Resolve API key: server env var takes priority, then request header
-    if use_anthropic:
-        api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
-        provider_name = "Anthropic"
-        env_var_name = "ANTHROPIC_API_KEY"
-        header_name = "X-Anthropic-Key"
-    else:
-        api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
-        provider_name = "OpenAI"
-        env_var_name = "OPENAI_API_KEY"
-        header_name = "X-OpenAI-Key"
+    api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
 
     if not api_key:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"No {provider_name} API key configured. "
-                f"Set the {env_var_name} environment variable or pass via {header_name} header."
+                "No Anthropic API key configured. "
+                "Set the ANTHROPIC_API_KEY environment variable or pass via "
+                "X-Anthropic-Key header."
             ),
         )
 
@@ -683,36 +685,35 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     user_messages.append({"role": "user", "content": request_body.message})
 
     try:
-        if use_anthropic:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model=ai_model,
-                max_tokens=800,
-                system=system_prompt,
-                messages=user_messages,  # type: ignore[arg-type]
-            )
-            reply = response.content[0].text if response.content else ""
-        else:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
-            messages: list[dict[str, str]] = [
-                {"role": "system", "content": system_prompt},
-                *user_messages,
-            ]
-            response = client.chat.completions.create(
-                model=ai_model,
-                messages=messages,  # type: ignore[arg-type]
-                max_tokens=800,
-                temperature=0.7,
-            )
-            reply = response.choices[0].message.content or ""
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        # Prompt caching: the RAG system prompt (team stats, player data,
+        # match context) is long and reused across turns in a session. Marking
+        # it ephemeral turns repeat turns within the 5-min cache window into
+        # ~0.1x cost reads rather than full-price writes.
+        response = client.messages.create(
+            model=ai_model,
+            max_tokens=1024,
+            system=[{
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=user_messages,  # type: ignore[arg-type]
+        )
+        # Concatenate all text blocks — adaptive thinking on Opus 4.6/4.7 can
+        # emit thinking blocks before the text block.
+        reply = "".join(
+            getattr(block, "text", "")
+            for block in (response.content or [])
+            if getattr(block, "type", None) == "text"
+        )
 
         return ChatRAGResponse(reply=reply, grounded=has_data)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Chat RAG %s call failed: %s", provider_name, e)
+        logger.error("Chat RAG Anthropic call failed: %s", e)
         raise HTTPException(
             status_code=502,
             detail="Failed to generate response — please try again",

@@ -354,11 +354,10 @@ class TestChatRAGEndpoint:
     """Tests for POST /chat/rag."""
 
     def test_400_without_api_key(self, client):
-        """Should return 400 if no OpenAI API key is configured."""
-        # Ensure no env var
+        """Should return 400 if no Anthropic API key is configured."""
         import app.api.main as main_module
-        original_key = main_module.OPENAI_API_KEY
-        main_module.OPENAI_API_KEY = ''
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = ''
         try:
             response = client.post('/chat/rag', json={
                 'message': 'How is Arsenal doing?',
@@ -366,7 +365,7 @@ class TestChatRAGEndpoint:
             assert response.status_code == 400
             assert 'API key' in response.json()['detail']
         finally:
-            main_module.OPENAI_API_KEY = original_key
+            main_module.ANTHROPIC_API_KEY = original_key
 
     def test_422_empty_message(self, client):
         """Should return 422 for empty message."""
@@ -378,22 +377,26 @@ class TestChatRAGEndpoint:
         response = client.post('/chat/rag', json={'message': 'x' * 501})
         assert response.status_code == 422
 
-    def test_valid_request_with_mock_openai(self, client):
-        """Should return a reply when OpenAI is mocked."""
+    def test_valid_request_with_mock_anthropic(self, client):
+        """Should return a reply when the Anthropic SDK is mocked."""
         import app.api.main as main_module
 
-        original_key = main_module.OPENAI_API_KEY
-        main_module.OPENAI_API_KEY = 'sk-test-key'
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = 'sk-ant-test'
 
+        # Simulate the Anthropic SDK shape: response.content is a list of
+        # blocks with .type and .text attributes.
+        text_block = MagicMock()
+        text_block.type = 'text'
+        text_block.text = 'Arsenal are in great form!'
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = 'Arsenal are in great form!'
+        mock_response.content = [text_block]
 
         try:
-            with patch('openai.OpenAI') as mock_openai_cls:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls:
                 mock_client = MagicMock()
-                mock_client.chat.completions.create.return_value = mock_response
-                mock_openai_cls.return_value = mock_client
+                mock_client.messages.create.return_value = mock_response
+                mock_anthropic_cls.return_value = mock_client
 
                 response = client.post('/chat/rag', json={
                     'message': 'How is Arsenal doing?',
@@ -408,52 +411,88 @@ class TestChatRAGEndpoint:
             assert data['reply'] == 'Arsenal are in great form!'
             assert 'grounded' in data
         finally:
-            main_module.OPENAI_API_KEY = original_key
+            main_module.ANTHROPIC_API_KEY = original_key
 
     def test_api_key_from_header(self, client):
-        """Should accept API key from X-OpenAI-Key header."""
+        """Should accept API key from X-Anthropic-Key header."""
         import app.api.main as main_module
 
-        original_key = main_module.OPENAI_API_KEY
-        main_module.OPENAI_API_KEY = ''
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = ''
 
+        text_block = MagicMock()
+        text_block.type = 'text'
+        text_block.text = 'Test reply'
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = 'Test reply'
+        mock_response.content = [text_block]
 
         try:
-            with patch('openai.OpenAI') as mock_openai_cls:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls:
                 mock_client = MagicMock()
-                mock_client.chat.completions.create.return_value = mock_response
-                mock_openai_cls.return_value = mock_client
+                mock_client.messages.create.return_value = mock_response
+                mock_anthropic_cls.return_value = mock_client
 
                 response = client.post(
                     '/chat/rag',
                     json={'message': 'Hello'},
-                    headers={'X-OpenAI-Key': 'sk-user-key'},
+                    headers={'X-Anthropic-Key': 'sk-ant-user'},
                 )
 
             assert response.status_code == 200
             assert response.json()['reply'] == 'Test reply'
+            # The SDK must have been constructed with the header's key.
+            mock_anthropic_cls.assert_called_with(api_key='sk-ant-user')
         finally:
-            main_module.OPENAI_API_KEY = original_key
+            main_module.ANTHROPIC_API_KEY = original_key
 
-    def test_conversation_history_passed(self, client):
-        """Should pass conversation history to OpenAI."""
+    def test_system_prompt_uses_cache_control(self, client):
+        """Regression guard: the RAG system prompt must be sent with
+        cache_control:'ephemeral' so repeat turns hit the prompt cache."""
         import app.api.main as main_module
 
-        original_key = main_module.OPENAI_API_KEY
-        main_module.OPENAI_API_KEY = 'sk-test-key'
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = 'sk-ant-test'
 
+        text_block = MagicMock()
+        text_block.type = 'text'
+        text_block.text = 'Reply'
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = 'Reply'
+        mock_response.content = [text_block]
 
         try:
-            with patch('openai.OpenAI') as mock_openai_cls:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls:
                 mock_client = MagicMock()
-                mock_client.chat.completions.create.return_value = mock_response
-                mock_openai_cls.return_value = mock_client
+                mock_client.messages.create.return_value = mock_response
+                mock_anthropic_cls.return_value = mock_client
+
+                client.post('/chat/rag', json={'message': 'How is Arsenal?'})
+
+                call_args = mock_client.messages.create.call_args
+                system_field = call_args.kwargs['system']
+                assert isinstance(system_field, list)
+                assert system_field[0]['type'] == 'text'
+                assert system_field[0]['cache_control'] == {'type': 'ephemeral'}
+        finally:
+            main_module.ANTHROPIC_API_KEY = original_key
+
+    def test_conversation_history_passed(self, client):
+        """Should pass conversation history to the Anthropic SDK."""
+        import app.api.main as main_module
+
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = 'sk-ant-test'
+
+        text_block = MagicMock()
+        text_block.type = 'text'
+        text_block.text = 'Reply'
+        mock_response = MagicMock()
+        mock_response.content = [text_block]
+
+        try:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls:
+                mock_client = MagicMock()
+                mock_client.messages.create.return_value = mock_response
+                mock_anthropic_cls.return_value = mock_client
 
                 client.post('/chat/rag', json={
                     'message': 'And Chelsea?',
@@ -463,15 +502,16 @@ class TestChatRAGEndpoint:
                     ],
                 })
 
-                # Verify the messages sent to OpenAI include history
-                call_args = mock_client.chat.completions.create.call_args
-                messages = call_args.kwargs.get('messages', call_args[1].get('messages', []))
+                call_args = mock_client.messages.create.call_args
+                messages = call_args.kwargs['messages']
                 roles = [m['role'] for m in messages]
-                assert 'system' in roles
+                # Anthropic's API takes system separately; messages list
+                # contains only user/assistant turns.
+                assert 'system' not in roles
                 assert roles.count('user') >= 2  # history + current
                 assert 'assistant' in roles
         finally:
-            main_module.OPENAI_API_KEY = original_key
+            main_module.ANTHROPIC_API_KEY = original_key
 
 
 # ---------------------------------------------------------------------------

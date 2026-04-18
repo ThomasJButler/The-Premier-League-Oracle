@@ -12,10 +12,11 @@ The Premier League Oracle has two independently deployable components:
 | Variable | Component | Required? | Description |
 |----------|-----------|-----------|-------------|
 | `VITE_FOOTBALL_DATA_API_KEY` | Frontend | No | Football-Data.org API key. Users can also set this in the app's Settings UI (stored in localStorage) |
-| `OPENAI_API_KEY` | Frontend (Edge Function) + Backend | No | OpenAI API key for the Oracle Chat. Without it, users must provide their own key in the chat UI |
-| `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Claude model support (added in P7b). Without it, the chat falls back to OpenAI or requires a user-supplied key |
+| `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Oracle Chat and AI match analysis. Without it, users must provide their own key in the chat UI |
 | `FOOTBALL_DATA_API_KEY` | Backend | No | Football-Data.org API key for live match data. Server starts without it but match endpoints return empty data |
-| `ORACLE_AI_MODEL` | Frontend (Edge Function) | No | AI model for Oracle Chat (optional). Default: gpt-4o-mini. Supports gpt-4o-mini, gpt-4o, gpt-4-turbo, claude-3-5-haiku-latest, claude-3-5-sonnet-latest, claude-3-opus-latest |
+| `ORACLE_AI_MODEL` | Frontend (Edge Function) + Backend | No | Claude model for Oracle Chat and analyses. Default: `claude-haiku-4-5-20251001`. Also supports `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-7` |
+| `ORACLE_DRAW_THRESHOLD` | Backend | No | Override the trained draw-classifier cascade threshold (default ~0.42) |
+| `ORACLE_DRAW_CASCADE` | Backend | No | `1` force-enables the draw classifier cascade, `0` force-disables. Defaults to the `improves_accuracy` flag saved in the trained model |
 
 ---
 
@@ -37,22 +38,23 @@ The frontend is a static Svelte SPA — no server-side rendering. Vercel deploys
    - Output directory: `dist`
    - Framework: Vite (auto-detected)
 4. **Add environment variables** (optional):
-   - `OPENAI_API_KEY` — enables server-side ChatBot without exposing the key to browsers
-   - `ANTHROPIC_API_KEY` — enables Claude model support (P7b); falls back to OpenAI if not set
+   - `ANTHROPIC_API_KEY` — enables server-side ChatBot and AI analyses without exposing the key to browsers
+   - `ORACLE_AI_MODEL` — optional override of the default `claude-haiku-4-5-20251001`
    - `VITE_FOOTBALL_DATA_API_KEY` — pre-configures the API key (users can override in Settings)
 5. **Deploy** — Vercel handles the rest. Preview deployments are created for every PR.
 
 ### Edge Function (`api/chat.ts`)
 
-The `api/chat.ts` file at the repository root is a Vercel Edge Function that proxies ChatBot requests to OpenAI. It runs on V8 isolates (not Node.js).
+The `api/chat.ts` file at the repository root is a Vercel Edge Function that proxies ChatBot requests to Anthropic. It runs on V8 isolates (not Node.js).
 
-**Important:** Vercel must be configured to deploy from the **repository root** (not `frontend/`) for the Edge Function to be picked up. If you set the root directory to `frontend/`, the `api/` directory at the repo root will be outside the deployment scope and the Edge Function will not work. In that case, users fall back to providing their own OpenAI key in the chat UI.
+**Important:** Vercel must be configured to deploy from the **repository root** (not `frontend/`) for the Edge Function to be picked up. If you set the root directory to `frontend/`, the `api/` directory at the repo root will be outside the deployment scope and the Edge Function will not work. In that case, users fall back to providing their own Anthropic key in the chat UI.
 
 **How it works:**
 - Accepts `POST /api/chat` with `{ messages: [...], apiKey?: string, model?: string }`
-- Supports both OpenAI and Anthropic (Claude) models — the active model is resolved from the request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default
-- Uses server-side API keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) if set, otherwise falls back to the user-provided key
-- Returns the response JSON to the frontend
+- Uses Anthropic Claude exclusively — model resolves from request body → `ORACLE_AI_MODEL` env var → `claude-haiku-4-5-20251001` default
+- Uses the server-side `ANTHROPIC_API_KEY` if set, otherwise falls back to the user-provided key
+- Applies ephemeral prompt caching to the system prompt, so repeat requests within the same gameweek hit the cache (~0.1x the normal cost on cached tokens)
+- Returns the response normalised to a `{choices:[{message:{content}}]}` shape
 
 ### Local Development
 
@@ -87,8 +89,8 @@ cd backend
 
 # Set environment variables (optional)
 export FOOTBALL_DATA_API_KEY=your_key_here
-export OPENAI_API_KEY=your_key_here
-export ANTHROPIC_API_KEY=your_key_here
+export ANTHROPIC_API_KEY=sk-ant-your_key_here
+export ORACLE_AI_MODEL=claude-haiku-4-5-20251001  # optional override
 
 # Build and run
 docker-compose up --build
@@ -179,7 +181,7 @@ The Docker image can be deployed to any container hosting platform:
 
 All platforms need:
 1. Port 8000 exposed
-2. `FOOTBALL_DATA_API_KEY`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` set as environment variables
+2. `FOOTBALL_DATA_API_KEY` and `ANTHROPIC_API_KEY` set as environment variables
 3. The trained model file baked into the Docker image (or mounted as a volume)
 
 ### Connecting Frontend to Backend
@@ -227,7 +229,7 @@ Vercel deploys automatically on push — independent of the CI pipeline.
 |-------|----------|
 | `XGBoostError: Library could not be loaded` | macOS: `brew install libomp`. Linux: `apt-get install libgomp1` |
 | `/predict/free` returns 503 | Model not loaded. Run `python train_free_tier.py` first |
-| ChatBot says "API key required" | Set `OPENAI_API_KEY` in Vercel env vars or provide a key in the chat UI |
+| ChatBot says "API key required" | Set `ANTHROPIC_API_KEY` in Vercel env vars or provide an `sk-ant-...` key in the chat UI |
 | Football data returns empty | Set `FOOTBALL_DATA_API_KEY` env var or configure in the app's Settings |
 | CORS errors from frontend | Backend CORS allows `localhost:5173`, `localhost:4173`, and `*.vercel.app`. Check your backend URL matches |
 | Docker build fails on ARM Mac | Add `platform: linux/amd64` to `docker-compose.yml` if targeting x86 images |

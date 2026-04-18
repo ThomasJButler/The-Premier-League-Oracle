@@ -13,11 +13,11 @@ test.describe('Oracle Chat', () => {
     await expect(chatbot).toBeVisible();
   });
 
-  test('shows API key setup when no OpenAI key is configured', async ({ page }) => {
-    // setupApp sets football_data_api_key but not openai_api_key
+  test('shows API key setup when no Anthropic key is configured', async ({ page }) => {
+    // setupApp sets football_data_api_key but not anthropic_api_key
     // So the API key setup card should be visible
-    await expect(page.getByText('Connect OpenAI')).toBeVisible();
-    await expect(page.getByPlaceholder('sk-...')).toBeVisible();
+    await expect(page.getByText('Connect Anthropic')).toBeVisible();
+    await expect(page.getByPlaceholder('sk-ant-...')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
   });
 
@@ -38,12 +38,12 @@ test.describe('Oracle Chat', () => {
   });
 
   test('can enter and save an API key', async ({ page }) => {
-    const keyInput = page.getByPlaceholder('sk-...');
-    await keyInput.fill('sk-test-key-for-e2e-testing-1234567890');
+    const keyInput = page.getByPlaceholder('sk-ant-...');
+    await keyInput.fill('sk-ant-test-key-for-e2e-testing-1234567890');
     await page.getByRole('button', { name: 'Connect' }).click();
 
     // After saving, the API key setup card should disappear
-    await expect(page.getByText('Connect OpenAI')).not.toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Connect Anthropic')).not.toBeVisible({ timeout: 3000 });
 
     // Input should now be enabled
     const chatInput = page.locator('[data-testid="chatbot-input"]');
@@ -58,8 +58,8 @@ test.describe('Oracle Chat', () => {
     await keyInput.fill('short');
     await page.getByRole('button', { name: 'Connect' }).click();
 
-    // Error message should appear
-    await expect(page.getByText(/valid OpenAI API key/i)).toBeVisible({ timeout: 3000 });
+    // Error message should appear — matches the component's "Please enter a valid API key" copy
+    await expect(page.getByText(/valid API key/i)).toBeVisible({ timeout: 3000 });
   });
 
   test('clear chat button works', async ({ page }) => {
@@ -74,8 +74,8 @@ test.describe('Oracle Chat', () => {
 
   test('character counter shows on input', async ({ page }) => {
     // Set API key first
-    const keyInput = page.getByPlaceholder('sk-...');
-    await keyInput.fill('sk-test-key-for-e2e-testing-1234567890');
+    const keyInput = page.getByPlaceholder('sk-ant-...');
+    await keyInput.fill('sk-ant-test-key-for-e2e-testing-1234567890');
     await page.getByRole('button', { name: 'Connect' }).click();
     await expect(page.locator('[data-testid="chatbot-input"]')).toBeEnabled();
 

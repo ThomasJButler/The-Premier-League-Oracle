@@ -6,7 +6,8 @@ services:
       - "8000:8000"
     environment:
       - FOOTBALL_DATA_API_KEY=${FOOTBALL_DATA_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ORACLE_AI_MODEL=${ORACLE_AI_MODEL:-claude-haiku-4-5-20251001}
     volumes:
       - ./app:/app/app
       - ./models:/app/models

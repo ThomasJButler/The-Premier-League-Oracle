@@ -433,7 +433,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your OpenAI key out of the browser.</p>
+                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your Anthropic key out of the browser.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">

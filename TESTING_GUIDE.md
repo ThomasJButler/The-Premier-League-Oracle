@@ -88,7 +88,7 @@ curl -X POST http://localhost:8000/chat/rag \
   -d '{"message":"How is Liverpool doing this season?"}'
 ```
 
-**If RAG returns "No OpenAI API key configured":** The `.env` file isn't being loaded. Check that `backend/.env` contains `OPENAI_API_KEY=sk-...` and restart the backend.
+**If RAG returns "No Anthropic API key configured":** The `.env` file isn't being loaded. Check that `backend/.env` contains `ANTHROPIC_API_KEY=sk-ant-...` and restart the backend.
 
 ---
 
