@@ -6,11 +6,12 @@
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
 | Free-tier XGBoost model | **Trained** — 53.3% accuracy with draw features + dual calibration (retrained 20 March 2026) |
+| Dedicated draw classifier | **Active cascade** — trained binary draw-vs-not-draw model overrides the main argmax when P(draw) > tuned threshold (set `ORACLE_DRAW_CASCADE=0` to force-disable) |
 | Free-tier feature engineering | 114 features (incl. 13 draw indicators, 10 bookmaker odds, 5 Elo), standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
-| Backend tests | **190 tests across 5 files — all non-skip tests passing** |
+| Backend tests | **194 tests across 5 files — all non-skip tests passing** |
+| AI chat provider | Anthropic Claude only (Haiku 4.5 default, Sonnet 4.6 / Opus 4.6 / Opus 4.7 selectable) — OpenAI removed April 2026 |
 | Redis | Optional — server starts without it |
-| LangChain / ChromaDB | Optional — server starts without them |
 
 ---
 
@@ -41,8 +42,8 @@ backend/
 ├── tests/
 │   ├── test_free_tier_features.py        # 60 feature engineering tests (incl. Elo leakage)
 │   ├── test_train_free_tier.py           # 33 training pipeline tests (incl. rolling CV, ensemble)
-│   ├── test_predict_free_tier.py         # 17 API endpoint tests
-│   ├── test_rag.py                       # 58 RAG engine tests (incl. 14 player data)
+│   ├── test_predict_free_tier.py         # 20 API endpoint tests (incl. 3 draw cascade)
+│   ├── test_rag.py                       # 59 RAG engine tests (Anthropic-only, incl. cache_control guard)
 │   └── test_web_search.py               # 22 web search fallback tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
@@ -82,7 +83,7 @@ uvicorn app.api.main:app --reload --port 8000
 # Interactive docs: http://localhost:8000/docs
 ```
 
-Redis, MLflow, and LangChain are all optional — the server starts and serves predictions without them.
+Redis and MLflow are optional — the server starts and serves predictions without them. The `/chat/rag` endpoint needs `ANTHROPIC_API_KEY` to be set (or a per-request `X-Anthropic-Key` header).
 
 ---
 
