@@ -180,11 +180,11 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-190 tests across 5 files, all non-skip tests passing (8 skip without libomp/XGBoost):
+194 tests across 5 files, all non-skip tests passing (8 skip without libomp/XGBoost):
 - `test_free_tier_features.py` — 60 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
 - `test_train_free_tier.py` — 33 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection, 5 odds extraction, and 3 calibrator dispatch tests)
-- `test_predict_free_tier.py` — 17 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
-- `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding, 14 player data tests)
+- `test_predict_free_tier.py` — 20 tests covering `/predict/free`, rate limiting, client IP extraction, and the **draw classifier cascade** (3 cases: override above threshold, no-op below, no-op when classifier absent)
+- `test_rag.py` — 59 tests covering the Anthropic-only RAG engine (team extraction, intent parsing, query builder, prompt grounding, 14 player data tests, and a `cache_control: ephemeral` regression guard)
 - `test_web_search.py` — 22 tests covering the DuckDuckGo web search fallback (cache, prompt injection, graceful degradation)
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
