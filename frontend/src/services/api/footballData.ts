@@ -370,15 +370,23 @@ class FootballDataAPI {
   
   // Transform Football-Data match to our Match type
   private transformMatch(fdMatch: FDMatch): Match {
-    const result = fdMatch.score.winner === 'HOME_TEAM' ? 'H' :
-                  fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
-                  fdMatch.score.winner === 'DRAW' ? 'D' : null;
-    
+    // `result` is only valid once the match has actually finished.
+    // Football-Data sometimes populates score.winner mid-match, which previously
+    // caused live matches to render as "Full Time" and be marked correct/incorrect
+    // before they ended. `home_goals`/`away_goals` stay populated as the running
+    // score so the live ticker and goal-event detection keep working.
+    const isFinished = fdMatch.status === 'FINISHED';
+    const result = isFinished
+      ? (fdMatch.score.winner === 'HOME_TEAM' ? 'H' :
+         fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
+         fdMatch.score.winner === 'DRAW' ? 'D' : null)
+      : null;
+
     const halfTimeResult = fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.home === undefined ||
                            fdMatch.score.halfTime.away === null || fdMatch.score.halfTime.away === undefined ? null :
                            fdMatch.score.halfTime.home > fdMatch.score.halfTime.away ? 'H' :
                            fdMatch.score.halfTime.home < fdMatch.score.halfTime.away ? 'A' : 'D';
-    
+
     // Derive season year from match date (July onwards = new season)
     const matchDate = new Date(fdMatch.utcDate);
     const seasonYear = getSeasonYear(matchDate);

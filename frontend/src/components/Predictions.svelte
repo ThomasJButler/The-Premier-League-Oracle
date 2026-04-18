@@ -9,6 +9,7 @@
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
   import { getTeamLogo, getTeamColor } from '../utils/teamLogos';
+  import { getMatchStatusLabel, isMatchLive } from '$lib/utils';
   import { PoissonPredictor } from '../lib/advancedPredictions';
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
@@ -38,7 +39,8 @@
     };
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
-    storedResult?: boolean; // true = correct, false = incorrect, undefined = pending/unsettled
+    storedResult?: boolean; // true = correct outcome, false = incorrect, undefined = pending/unsettled
+    scoreExact?: boolean; // true when the exact scoreline was predicted correctly
   }> = [];
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
@@ -224,7 +226,11 @@
               recommendedStake: 0
             },
             predictionStatus: 'complete' as const,
-            storedResult: stored.isCorrect
+            storedResult: stored.isCorrect,
+            scoreExact: stored.actualHomeGoals !== undefined && stored.actualAwayGoals !== undefined
+              ? stored.predictedHomeGoals === stored.actualHomeGoals
+                  && stored.predictedAwayGoals === stored.actualAwayGoals
+              : undefined
           };
         }
 
@@ -857,7 +863,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
+            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true && prediction.scoreExact === true ? 'border-green-500/40' : prediction.storedResult === true ? 'border-amber-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -889,11 +895,25 @@
                   </div>
                   <div class="text-center">
                     {#if prediction.result && prediction.home_goals !== null && prediction.away_goals !== null}
-                      <!-- Completed match: show actual score prominently, predicted score smaller -->
+                      <!-- Finished match: show actual score prominently, predicted score smaller -->
                       <div class="text-2xl font-bold text-foreground" data-testid="actual-score">
                         {prediction.home_goals}-{prediction.away_goals}
                       </div>
-                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Full Time</div>
+                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{getMatchStatusLabel(prediction)}</div>
+                      {#if prediction.detailedAnalysis}
+                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                          Predicted: {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
+                    {:else if isMatchLive(prediction) && prediction.home_goals !== null && prediction.away_goals !== null}
+                      <!-- Live match: show current score + stage; verdict is deferred until FINISHED -->
+                      <div class="text-2xl font-bold text-foreground" data-testid="live-score">
+                        {prediction.home_goals}-{prediction.away_goals}
+                      </div>
+                      <div class="text-[10px] uppercase tracking-wider text-red-500 mt-0.5 flex items-center justify-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        {getMatchStatusLabel(prediction)}
+                      </div>
                       {#if prediction.detailedAnalysis}
                         <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
                           Predicted: {prediction.detailedAnalysis.predictedScore}
@@ -948,16 +968,20 @@
                 </div>
               {/if}
 
-              <!-- Result verdict banner for settled matches with predictions -->
+              <!-- Result verdict banner for settled matches with predictions.
+                   Four states: exact scoreline, correct outcome only, incorrect, pending. -->
               {#if prediction.result && prediction.prediction}
+                {@const actualLabel = prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
                 <div
-                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
+                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true && prediction.scoreExact === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === true ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
                   data-testid="result-verdict"
                 >
-                  {#if prediction.storedResult === true}
-                    Correct prediction
+                  {#if prediction.storedResult === true && prediction.scoreExact === true}
+                    Exact score — {prediction.home_goals}-{prediction.away_goals}
+                  {:else if prediction.storedResult === true}
+                    Correct outcome ({actualLabel}) — actual {prediction.home_goals}-{prediction.away_goals}, predicted {prediction.prediction.predicted_home_goals}-{prediction.prediction.predicted_away_goals}
                   {:else if prediction.storedResult === false}
-                    Incorrect — actual result: {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
+                    Incorrect — actual result: {actualLabel}
                   {:else}
                     Awaiting result
                   {/if}
