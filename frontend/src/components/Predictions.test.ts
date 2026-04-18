@@ -257,6 +257,7 @@ describe('Predictions Component', () => {
     const pastMatch = makeMatch({
       matchday: 20,
       date: new Date(Date.now() - 86400000).toISOString(),
+      status: 'FINISHED',
       result: 'H',
       home_goals: 2,
       away_goals: 1
@@ -278,10 +279,11 @@ describe('Predictions Component', () => {
     expect(screen.getByText(/no prediction made/)).toBeInTheDocument();
   });
 
-  it('should show correct indicator for a correctly predicted completed match', async () => {
+  it('should show "Exact score" verdict when predicted scoreline matches actual', async () => {
     const pastMatch = makeMatch({
       matchday: 20,
       date: new Date(Date.now() - 86400000).toISOString(),
+      status: 'FINISHED',
       result: 'H',
       home_goals: 2,
       away_goals: 1
@@ -310,13 +312,60 @@ describe('Predictions Component', () => {
     await act();
 
     expect(screen.getByTestId('result-correct')).toBeInTheDocument();
-    expect(screen.getByTestId('result-verdict')).toHaveTextContent('Correct prediction');
+    expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Exact score/);
+    expect(screen.getByTestId('result-verdict')).toHaveTextContent('2-1');
+  });
+
+  it('should show amber "Correct outcome" verdict when outcome is right but scoreline differs', async () => {
+    // LIV 2-0 actual, predicted 2-1 — both are Home Wins, but scoreline is off.
+    // The bug Tom spotted: this used to say "Correct prediction" with no indication
+    // the scoreline was wrong. New verdict surfaces the nuance.
+    const pastMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() - 86400000).toISOString(),
+      status: 'FINISHED',
+      result: 'H',
+      home_goals: 2,
+      away_goals: 0
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([pastMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_outcome_only',
+      matchId: pastMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.69,
+      actualResult: 'H',
+      actualHomeGoals: 2,
+      actualAwayGoals: 0,
+      isCorrect: true,
+      timestamp: new Date().toISOString(),
+      matchDate: pastMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    const verdict = screen.getByTestId('result-verdict');
+    expect(verdict).toHaveTextContent(/Correct outcome/);
+    expect(verdict).toHaveTextContent(/Home Win/);
+    expect(verdict).toHaveTextContent('2-0');
+    expect(verdict).toHaveTextContent('2-1');
+    // Amber styling, not green
+    expect(verdict.className).toContain('amber');
+    expect(verdict.className).not.toContain('bg-green-500');
   });
 
   it('should show incorrect indicator for a wrongly predicted completed match', async () => {
     const pastMatch = makeMatch({
       matchday: 20,
       date: new Date(Date.now() - 86400000).toISOString(),
+      status: 'FINISHED',
       result: 'A',
       home_goals: 0,
       away_goals: 2
@@ -347,6 +396,44 @@ describe('Predictions Component', () => {
     expect(screen.getByTestId('result-incorrect')).toBeInTheDocument();
     expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Incorrect/);
     expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Away Win/);
+  });
+
+  it('shows live score with "Live {minute}\'" label and no verdict for in-play matches', async () => {
+    // Regression for the "Full Time during live match" bug. Transform now leaves
+    // result null for IN_PLAY, so the verdict banner must not render and the
+    // stage label must read "Live 67'", not "Full Time".
+    const liveMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() - 3600_000).toISOString(),
+      status: 'IN_PLAY',
+      minute: 67,
+      result: null,
+      home_goals: 1,
+      away_goals: 0
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([liveMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_live',
+      matchId: liveMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.70,
+      timestamp: new Date().toISOString(),
+      matchDate: liveMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    expect(screen.getByTestId('live-score')).toHaveTextContent('1-0');
+    expect(screen.getByText(/Live 67'/)).toBeInTheDocument();
+    expect(screen.queryByText(/Full Time/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('result-verdict')).not.toBeInTheDocument();
   });
 
   it('should filter matches by gameweek number', async () => {

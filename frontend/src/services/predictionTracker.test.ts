@@ -160,6 +160,33 @@ describe('PredictionTracker Service', () => {
       expect(predictions[0].isCorrect).toBe(false);
     });
 
+    it('stays outcome-based: correct when H/H even if scoreline differs', () => {
+      // Regression guard for the UX-clarifying amber "Correct outcome, wrong
+      // scoreline" state. isCorrect must remain the 1X2 outcome check — the
+      // UI layer is what surfaces the scoreline mismatch.
+      tracker.storePrediction(
+        'liv_ful',
+        'Liverpool',
+        'Fulham',
+        {
+          predictedResult: 'H',
+          predictedHomeGoals: 2,
+          predictedAwayGoals: 1,
+          confidence: 0.69
+        },
+        '2026-04-11'
+      );
+
+      tracker.updateWithResult('liv_ful', 'H', 2, 0);
+
+      const [pred] = tracker.getMatchPredictions('liv_ful');
+      expect(pred.isCorrect).toBe(true);
+      expect(pred.actualHomeGoals).toBe(2);
+      expect(pred.actualAwayGoals).toBe(0);
+      expect(pred.predictedHomeGoals).toBe(2);
+      expect(pred.predictedAwayGoals).toBe(1);
+    });
+
     it('should handle multiple predictions for same match', () => {
       // Two different predictions for same match
       tracker.storePrediction(
