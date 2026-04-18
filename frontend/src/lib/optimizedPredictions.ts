@@ -12,6 +12,7 @@ import {
   FORM_RECENCY_WEIGHTS, FORM_DRAW_WEIGHT, FORM_SCORE_MIN, FORM_SCORE_MAX,
   FORM_EXCELLENT_THRESHOLD, FORM_POOR_THRESHOLD,
   FORM_DRAW_BASE, FORM_DRAW_SENSITIVITY, FORM_DRAW_MIN, FORM_DRAW_MAX,
+  FORM_ELO_BETA,
   STANDINGS_POSITION_STEP,
   CONFIDENCE_MIN, CONFIDENCE_MAX, CONFIDENCE_BOOST_THRESHOLD, CONFIDENCE_BOOST_AMOUNT,
   CONFIDENCE_PENALTY_THRESHOLD, CONFIDENCE_PENALTY_AMOUNT, MODEL_DISAGREEMENT_PENALTY,
@@ -107,6 +108,51 @@ export const MODEL_WEIGHTS = {
 
 /** Mutable weight shape for user-applied weights (same keys as MODEL_WEIGHTS). */
 export type ModelWeightValues = { elo: number; poisson: number; form: number; h2h: number; standings: number };
+
+/**
+ * Residualise the Form model's H/A probabilities against ELO's implied
+ * advantage, on the logit scale, so Form contributes signal orthogonal to ELO.
+ *
+ * Both inputs are probability triples that should sum to ~1. We:
+ *   1. Compute each model's "home-over-away" log-odds (draw mass ignored).
+ *   2. Subtract β × ELO logit from Form logit (β = FORM_ELO_BETA).
+ *   3. Rebuild a Form triple that preserves Form's draw probability and
+ *      splits the non-draw mass per the residual log-odds.
+ *
+ * Exported for unit testing — the production path calls it inline in
+ * OptimizedPredictor.predictMatch().
+ */
+export function orthogonaliseFormVsElo(
+  formProbs: { home: number; draw: number; away: number },
+  eloProbs: { home: number; draw: number; away: number },
+  beta: number = FORM_ELO_BETA
+): { home: number; draw: number; away: number } {
+  // Guard: degenerate probabilities (all zero, or only draw mass) — return form unchanged
+  const formNonDraw = formProbs.home + formProbs.away;
+  const eloNonDraw = eloProbs.home + eloProbs.away;
+  if (formNonDraw <= 1e-9 || eloNonDraw <= 1e-9) return { ...formProbs };
+
+  // Clamp shares away from 0/1 so logit is finite
+  const clamp = (x: number) => Math.max(1e-4, Math.min(1 - 1e-4, x));
+  const formHomeShare = clamp(formProbs.home / formNonDraw);
+  const eloHomeShare = clamp(eloProbs.home / eloNonDraw);
+
+  const logit = (p: number) => Math.log(p / (1 - p));
+  const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+  const formLogit = logit(formHomeShare);
+  const eloLogit = logit(eloHomeShare);
+  const residualLogit = formLogit - beta * eloLogit;
+  const residualHomeShare = sigmoid(residualLogit);
+
+  const drawKeep = formProbs.draw;
+  const nonDrawMass = 1 - drawKeep;
+  return {
+    home: residualHomeShare * nonDrawMass,
+    draw: drawKeep,
+    away: (1 - residualHomeShare) * nonDrawMass
+  };
+}
 
 const WEIGHTS_STORAGE_KEY = 'oracle_model_weights';
 
@@ -416,10 +462,21 @@ export class OptimizedPredictor {
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
       const standingsProbs = this.getStandingsProbabilities(homePosition, awayPosition);
+
+      // Residualise form against ELO so Form contributes signal that isn't
+      // already encoded in ELO — prevents double-counting recent results.
+      const formProbsTriple = {
+        home: formAnalysis.probabilities.homeWin,
+        draw: formAnalysis.probabilities.draw,
+        away: formAnalysis.probabilities.awayWin
+      };
+      const residualForm = orthogonaliseFormVsElo(formProbsTriple, eloProbs);
+      const formOrthogonal = { homeWin: residualForm.home, draw: residualForm.draw, awayWin: residualForm.away };
+
       const modelInputs = {
         elo: eloProbs,
         poisson: poissonProbs,
-        form: formAnalysis.probabilities,
+        form: formOrthogonal,
         h2h: h2hAnalysis.probabilities,
         standings: standingsProbs
       };

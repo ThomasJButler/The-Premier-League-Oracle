@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights } from './optimizedPredictions';
+import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, orthogonaliseFormVsElo } from './optimizedPredictions';
 import { EloRatingSystem, sharedEloSystem } from './advancedPredictions';
 import { dataService } from '../services/dataService';
 import { backendService } from '../services/backendService';
@@ -618,5 +618,108 @@ describe('OptimizedPredictor', () => {
       expect(prediction.modelWeights.elo).toBeCloseTo(0.40);
       expect(prediction.modelWeights.poisson).toBeCloseTo(0.20);
     });
+  });
+});
+
+describe('orthogonaliseFormVsElo', () => {
+  const sumClose = (probs: { home: number; draw: number; away: number }) =>
+    expect(probs.home + probs.draw + probs.away).toBeCloseTo(1, 6);
+
+  it('is a near no-op when ELO is neutral (50/50 home vs away)', () => {
+    const form = { home: 0.55, draw: 0.20, away: 0.25 };
+    const elo = { home: 0.40, draw: 0.20, away: 0.40 }; // neutral home/away
+
+    const result = orthogonaliseFormVsElo(form, elo, 0.15);
+
+    // Draw stays exactly
+    expect(result.draw).toBe(form.draw);
+    sumClose(result);
+    // Home probability shouldn't move much — ELO isn't signalling anything
+    expect(result.home).toBeCloseTo(form.home, 2);
+    expect(result.away).toBeCloseTo(form.away, 2);
+  });
+
+  it('reduces the home advantage when Form and ELO both strongly favour home', () => {
+    // Both models say home heavily favoured — residual should be smaller
+    const form = { home: 0.70, draw: 0.15, away: 0.15 };
+    const elo = { home: 0.65, draw: 0.20, away: 0.15 };
+
+    const result = orthogonaliseFormVsElo(form, elo, 0.15);
+
+    sumClose(result);
+    expect(result.draw).toBe(form.draw);
+    // Home probability is trimmed: ELO already explains part of the advantage
+    expect(result.home).toBeLessThan(form.home);
+    // But still favours home (residual > 0.5 of non-draw mass)
+    expect(result.home).toBeGreaterThan(result.away);
+  });
+
+  it('amplifies Form when it disagrees with ELO (e.g. Form says away, ELO says home)', () => {
+    const form = { home: 0.25, draw: 0.20, away: 0.55 };
+    const elo = { home: 0.60, draw: 0.20, away: 0.20 };
+
+    const result = orthogonaliseFormVsElo(form, elo, 0.15);
+
+    sumClose(result);
+    expect(result.draw).toBe(form.draw);
+    // Away share in the non-draw mass should grow because ELO's home tilt gets subtracted
+    const formAwayShare = form.away / (form.home + form.away);
+    const residualAwayShare = result.away / (result.home + result.away);
+    expect(residualAwayShare).toBeGreaterThan(formAwayShare);
+  });
+
+  it('beta=0 disables the residualisation (pure passthrough)', () => {
+    const form = { home: 0.55, draw: 0.20, away: 0.25 };
+    const elo = { home: 0.70, draw: 0.10, away: 0.20 };
+
+    const result = orthogonaliseFormVsElo(form, elo, 0);
+
+    expect(result.home).toBeCloseTo(form.home, 6);
+    expect(result.draw).toBeCloseTo(form.draw, 6);
+    expect(result.away).toBeCloseTo(form.away, 6);
+  });
+
+  it('beta scales the residual monotonically (bigger beta → bigger correction)', () => {
+    const form = { home: 0.70, draw: 0.15, away: 0.15 };
+    const elo = { home: 0.70, draw: 0.15, away: 0.15 };
+
+    const mild = orthogonaliseFormVsElo(form, elo, 0.10);
+    const strong = orthogonaliseFormVsElo(form, elo, 0.30);
+
+    // Stronger beta should bring the residual Home share closer to 0.5 (of non-draw mass)
+    const mildHomeShare = mild.home / (mild.home + mild.away);
+    const strongHomeShare = strong.home / (strong.home + strong.away);
+    expect(strongHomeShare).toBeLessThan(mildHomeShare);
+    expect(strongHomeShare).toBeGreaterThan(0.5);
+  });
+
+  it('returns form unchanged when inputs are degenerate (all-draw mass)', () => {
+    const allDrawForm = { home: 0, draw: 1, away: 0 };
+    const normalElo = { home: 0.5, draw: 0.2, away: 0.3 };
+
+    const result = orthogonaliseFormVsElo(allDrawForm, normalElo);
+
+    expect(result.home).toBe(0);
+    expect(result.draw).toBe(1);
+    expect(result.away).toBe(0);
+  });
+
+  it('result probabilities always sum to 1 and stay in [0, 1]', () => {
+    const inputs = [
+      { home: 0.33, draw: 0.34, away: 0.33 },
+      { home: 0.90, draw: 0.05, away: 0.05 },
+      { home: 0.05, draw: 0.05, away: 0.90 },
+      { home: 0.45, draw: 0.30, away: 0.25 }
+    ];
+    const elo = { home: 0.60, draw: 0.20, away: 0.20 };
+
+    for (const form of inputs) {
+      const r = orthogonaliseFormVsElo(form, elo);
+      sumClose(r);
+      expect(r.home).toBeGreaterThanOrEqual(0);
+      expect(r.away).toBeGreaterThanOrEqual(0);
+      expect(r.home).toBeLessThanOrEqual(1);
+      expect(r.away).toBeLessThanOrEqual(1);
+    }
   });
 });

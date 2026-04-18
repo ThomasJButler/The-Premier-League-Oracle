@@ -152,6 +152,19 @@ export const FORM_DRAW_MIN = 0.15;
 export const FORM_DRAW_MAX = 0.35;
 
 /**
+ * Fraction of ELO's implied home-vs-away advantage that is subtracted from the
+ * Form model before it enters the ensemble. ELO already partly encodes recent
+ * form, so without this the ensemble double-counts momentum. Applied on the
+ * logit scale in optimizedPredictions.orthogonaliseFormVsElo().
+ *
+ * 0.15 = "remove 15% of the ELO-implied tilt from Form" — a conservative value
+ * that keeps most of Form's unique short-term signal (injury recoveries,
+ * tactical tweaks, schedule dynamics) while preventing the most obvious
+ * double-count.
+ */
+export const FORM_ELO_BETA = 0.15;
+
+/**
  * Standings-derived probability parameters.
  *
  * STANDINGS_POSITION_STEP (0.025) — each league position difference adds 2.5%
