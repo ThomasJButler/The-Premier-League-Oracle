@@ -76,6 +76,26 @@ function getTopScorelines(
     .slice(0, n);
 }
 
+/**
+ * Return the single most likely (modal) scoreline from a Poisson grid.
+ * This differs from `round(E[home])-round(E[away])` because the Poisson mean
+ * exceeds the mode for small λ, so rounded means systematically overstate goals
+ * (e.g. λ=1.5 rounds to 2 but mode=1). Using argmax gives the single most likely
+ * individual scoreline rather than the score closest to the expected goals.
+ */
+export function argmaxScoreline(
+  scoreProbabilities: { [score: string]: number }
+): { home: number; away: number; probability: number } {
+  let best = { home: 0, away: 0, probability: -1 };
+  for (const [score, prob] of Object.entries(scoreProbabilities)) {
+    if (prob > best.probability) {
+      const [home, away] = score.split('-').map(Number);
+      best = { home, away, probability: prob };
+    }
+  }
+  return best;
+}
+
 // Home/away attack & defence strengths for the Poisson model
 interface TeamStrengths {
   homeAttack: number;   // Goals scored at home relative to league average
@@ -582,10 +602,10 @@ export class OptimizedPredictor {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
       }
 
-      // 11. Predict goals with adjusted model
+      // 11. Predict goals with adjusted model — argmax over the Poisson grid
+      // (most likely single scoreline), then apply result-consistency + H2H tweaks
       const predictedGoals = this.predictGoals(
-        homeGoalsExpected,
-        awayGoalsExpected,
+        scoreProbabilities,
         prediction.result,
         formAnalysis,
         h2hAnalysis
@@ -1010,14 +1030,17 @@ export class OptimizedPredictor {
   }
 
   private static predictGoals(
-    homeExpected: number,
-    awayExpected: number,
+    scoreProbabilities: { [score: string]: number },
     predictedResult: 'H' | 'D' | 'A',
     formAnalysis: FormAnalysis,
     h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    let homeGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(homeExpected));
-    let awayGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(awayExpected));
+    // Start from the modal scoreline (argmax of the joint Poisson grid) rather
+    // than rounded expected goals — round(mean) systematically overstates goals
+    // for small λ because Poisson mean > mode.
+    const modal = argmaxScoreline(scoreProbabilities);
+    let homeGoals = Math.min(MAX_PREDICTED_GOALS, modal.home);
+    let awayGoals = Math.min(MAX_PREDICTED_GOALS, modal.away);
 
     // Adjust based on predicted result
     if (predictedResult === 'H' && homeGoals <= awayGoals) {

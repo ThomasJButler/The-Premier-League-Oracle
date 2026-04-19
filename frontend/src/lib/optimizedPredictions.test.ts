@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, orthogonaliseFormVsElo } from './optimizedPredictions';
-import { EloRatingSystem, sharedEloSystem } from './advancedPredictions';
+import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, orthogonaliseFormVsElo, argmaxScoreline } from './optimizedPredictions';
+import { EloRatingSystem, sharedEloSystem, PoissonPredictor } from './advancedPredictions';
 import { dataService } from '../services/dataService';
 import { backendService } from '../services/backendService';
 import { BackendUnavailableError } from '../types';
@@ -721,5 +721,42 @@ describe('orthogonaliseFormVsElo', () => {
       expect(r.home).toBeLessThanOrEqual(1);
       expect(r.away).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('argmaxScoreline', () => {
+  it('returns the single highest-probability cell from a Poisson grid', () => {
+    const grid = {
+      '0-0': 0.05,
+      '1-0': 0.10,
+      '1-1': 0.15,
+      '2-1': 0.08,
+      '0-1': 0.04
+    };
+    const result = argmaxScoreline(grid);
+    expect(result.home).toBe(1);
+    expect(result.away).toBe(1);
+    expect(result.probability).toBeCloseTo(0.15, 6);
+  });
+
+  it('differs from round(mean)-round(mean) when Poisson mean > mode', () => {
+    // λ_h=1.5, λ_a=1.2: rounded-mean gives 2-1, but the joint modal cell is 1-1
+    // (P(h=1)=0.335, P(a=1)=0.361 → P(1,1)=0.121, the grid maximum).
+    const grid = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+    const roundedMean = { home: Math.round(1.5), away: Math.round(1.2) };
+    expect(`${roundedMean.home}-${roundedMean.away}`).toBe('2-1');
+
+    const argmax = argmaxScoreline(grid);
+    expect(argmax.home).toBe(1);
+    expect(argmax.away).toBe(1);
+    expect(argmax.home !== roundedMean.home || argmax.away !== roundedMean.away).toBe(true);
+  });
+
+  it('picks 1-0 over 0-0 when home attack clearly dominates', () => {
+    // λ_h=1.2, λ_a=0.5: argmax is 1-0; rounded-mean is 1-1.
+    const grid = PoissonPredictor.predictScoreProbabilities(1.2, 0.5);
+    const argmax = argmaxScoreline(grid);
+    expect(argmax.home).toBe(1);
+    expect(argmax.away).toBe(0);
   });
 });
