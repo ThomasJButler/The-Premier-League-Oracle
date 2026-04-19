@@ -82,7 +82,7 @@ describe('Advanced Predictions Module', () => {
     describe('predictScoreProbabilities', () => {
       it('should generate score probability matrix', () => {
         const probs = PoissonPredictor.predictScoreProbabilities(1.8, 1.2, 5);
-        
+
         // Check structure
         expect(probs).toBeDefined();
         expect(probs['0-0']).toBeDefined();
@@ -96,6 +96,42 @@ describe('Advanced Predictions Module', () => {
         // Most likely scores for these parameters
         expect(probs['2-1']).toBeGreaterThan(probs['5-5']);
         expect(probs['1-1']).toBeGreaterThan(probs['4-4']);
+      });
+
+      it('top-5 scorelines for λ_h=1.5, λ_a=1.2 contain {1-0, 2-1, 1-1, 2-0, 0-0}', () => {
+        // A typical EPL fixture. The five modal scorelines from the joint
+        // Dixon-Coles grid should exactly be the clustered low-score block
+        // plus 2-1 — no 2-2, no 3-1, no 0-1.
+        const probs = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+        const top5 = Object.entries(probs)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([score]) => score);
+
+        expect(top5).toContain('1-0');
+        expect(top5).toContain('2-1');
+        expect(top5).toContain('1-1');
+        expect(top5).toContain('2-0');
+        expect(top5).toContain('0-0');
+      });
+
+      it('Dixon-Coles τ: P(1-1) rises and P(1-0)+P(0-1) falls vs naive Poisson', () => {
+        // Calling with rho=0 disables the τ correction, giving the plain
+        // independent-Poisson baseline. The default ρ=-0.1 (EPL-typical)
+        // should push mass onto draws at the expense of 1-0/0-1.
+        const naive = PoissonPredictor.predictScoreProbabilities(1.5, 1.2, 7, 0);
+        const corrected = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+
+        expect(corrected['1-1']).toBeGreaterThan(naive['1-1']);
+        expect(corrected['1-0'] + corrected['0-1']).toBeLessThan(
+          naive['1-0'] + naive['0-1']
+        );
+      });
+
+      it('grid sums to 1 (±1e-9) after τ correction and re-normalisation', () => {
+        const probs = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+        const sum = Object.values(probs).reduce((a, b) => a + b, 0);
+        expect(sum).toBeCloseTo(1, 9);
       });
     });
 

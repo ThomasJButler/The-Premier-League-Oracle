@@ -760,3 +760,39 @@ describe('argmaxScoreline', () => {
     expect(argmax.away).toBe(0);
   });
 });
+
+describe('topScorelines wiring (predictMatch)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.removeItem('use_backend');
+    localStorage.removeItem('oracle_model_weights');
+  });
+
+  it('returns at least 5 distinct scorelines, sorted by descending probability', async () => {
+    vi.mocked(dataService.getStandings).mockResolvedValue([]);
+    vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
+    vi.mocked(dataService.getMatches).mockResolvedValue([]);
+
+    const prediction = await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+    expect(prediction.topScorelines).toBeDefined();
+    const top = prediction.topScorelines!;
+    expect(top.length).toBeGreaterThanOrEqual(5);
+
+    // All entries distinct
+    const scores = top.map((t) => t.score);
+    expect(new Set(scores).size).toBe(scores.length);
+
+    // Descending by probability
+    for (let i = 1; i < top.length; i++) {
+      expect(top[i - 1].probability).toBeGreaterThanOrEqual(top[i].probability);
+    }
+
+    // Each probability is a valid [0, 1] value
+    for (const entry of top) {
+      expect(entry.probability).toBeGreaterThanOrEqual(0);
+      expect(entry.probability).toBeLessThanOrEqual(1);
+      expect(entry.score).toMatch(/^\d+-\d+$/);
+    }
+  });
+});
