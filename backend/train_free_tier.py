@@ -515,67 +515,6 @@ def _calibrate_with_method(
     return calibrators, cal_probs
 
 
-def recover_draws(
-    calibrated: np.ndarray,
-    raw: np.ndarray,
-    threshold: float = 0.22,
-) -> np.ndarray:
-    """
-    Post-calibration draw recovery.
-
-    Isotonic/Platt calibration often suppresses draw probabilities because
-    the model's draw confidence is poorly calibrated. The calibrator learns
-    "suppress draws" and flips the argmax from draw to home/away — even when
-    the raw model correctly identified a draw-prone match (AUC > 0.55).
-
-    This function detects matches where:
-    1. The raw model's top prediction was "draw" (argmax = 1), AND
-    2. Calibration changed the prediction to home/away, AND
-    3. The raw draw probability exceeded the threshold
-
-    For these matches, it partially restores the draw probability using
-    the raw model's signal, then re-normalises.
-
-    Args:
-        calibrated: Calibrated probabilities (n_samples, 3).
-        raw: Raw (uncalibrated) probabilities (n_samples, 3).
-        threshold: Minimum raw draw probability to consider for recovery.
-                   Lower = more aggressive recovery. Default 0.22.
-    """
-    recovered = calibrated.copy()
-    draw_col = 1  # Class index: 0=Home, 1=Draw, 2=Away
-    n_recovered = 0
-
-    for i in range(len(recovered)):
-        raw_draw = raw[i, draw_col]
-        raw_argmax = int(np.argmax(raw[i]))
-        cal_argmax = int(np.argmax(recovered[i]))
-
-        # Case 1: Raw model predicted draw but calibration flipped it
-        if raw_argmax == draw_col and cal_argmax != draw_col and raw_draw > threshold:
-            recovered[i, draw_col] = max(recovered[i, draw_col], raw_draw * 0.75)
-            recovered[i] /= recovered[i].sum()
-            n_recovered += 1
-
-        # Case 2: Raw model had draw as a strong second choice and
-        # calibration suppressed it significantly (draw was close to top)
-        elif raw_draw > threshold and raw_draw > raw[i, cal_argmax] * 0.85:
-            boost = raw_draw * 0.6
-            if boost > recovered[i, draw_col]:
-                recovered[i, draw_col] = boost
-                recovered[i] /= recovered[i].sum()
-                n_recovered += 1
-
-    if n_recovered > 0:
-        logger.info('Draw recovery: boosted %d/%d samples (threshold=%.2f)',
-                    n_recovered, len(calibrated), threshold)
-    else:
-        logger.info('Draw recovery: no samples met recovery criteria (threshold=%.2f)',
-                    threshold)
-
-    return recovered
-
-
 def apply_calibrators(
     raw_probs: np.ndarray,
     calibrators,
@@ -1597,10 +1536,6 @@ def main():
         help='Run rolling (expanding-window) cross-validation across seasons',
     )
     parser.add_argument(
-        '--draw-threshold', type=float, default=0.22,
-        help='Raw draw probability threshold for post-calibration recovery (default: 0.22)',
-    )
-    parser.add_argument(
         '--no-odds', action='store_true',
         help='Train without bookmaker odds features (honest inference baseline)',
     )
@@ -1707,12 +1642,7 @@ def main():
         cal_result['calibration_method'],
     )
 
-    # 7b. Draw recovery — restore draw predictions suppressed by calibration
-    if args.draw_threshold > 0:
-        cal_probs = recover_draws(cal_probs, xgb_probs_raw, threshold=args.draw_threshold)
-        cal_result['draw_threshold'] = args.draw_threshold
-
-    xgb_metrics = evaluate(y_val, cal_probs, label='XGBoost (calibrated + draw recovery)')
+    xgb_metrics = evaluate(y_val, cal_probs, label='XGBoost (calibrated)')
     xgb_probs = cal_probs
 
     # 8. Train and evaluate logistic regression baseline
@@ -1846,13 +1776,10 @@ def main():
                 X_test_sel = X_test[:, sel_indices]
                 dtest = xgb.DMatrix(X_test_sel, feature_names=active_feature_names)
                 test_probs_raw = xgb_result['model'].predict(dtest)
-                # Apply calibration + draw recovery
                 test_probs = apply_calibrators(
                     test_probs_raw, cal_result['calibrators'],
                     cal_result['calibration_method'],
                 )
-                if args.draw_threshold > 0:
-                    test_probs = recover_draws(test_probs, test_probs_raw, threshold=args.draw_threshold)
                 evaluate(y_test, test_probs, label='Held-out 2025/26')
             else:
                 logger.warning('No test samples from 2025/26 season')
