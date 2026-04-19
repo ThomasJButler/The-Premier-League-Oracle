@@ -196,6 +196,7 @@ _(Ralph appends findings here during Phase 1 iterations. Format: `- <YYYY-MM-DD>
     2. Separately confirm whether Dirichlet calibration alone (without the feature pruning) holds the ≤ 0.96 envelope by running `python train_free_tier.py --calibrator dirichlet` against a git-stash restore of `free_tier_features.py` at HEAD~3.
     3. If Dirichlet still regresses log loss when features are whole, investigate the matrix-scaling fit stability — the current `LogisticRegression(multi_class='multinomial')` path may be under-regularised for a 3-class problem with only ~2.5k val samples.
   - **Phase 2 status:** P9f–P9i remain `[x]` (their per-task gates passed). P9j is NOT flipped to `[x]` and the Status line is NOT updated to `COMPLETE`. Phase 2 stays open pending the Phase-3 investigation above.
+  - **2026-04-19 re-confirmation (iteration 2):** second closeout attempt produced identical metrics — val log loss 0.9790, draw AUC 0.5572, val accuracy 53.3%, 111 features. The regression is fully deterministic (not random-seed variance), so further loop iterations will keep hitting the same blocker. Human triage required before any more Ralph time is spent on Phase 2.
 
 ---
 
