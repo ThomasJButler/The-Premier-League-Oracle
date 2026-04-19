@@ -446,8 +446,11 @@ class TestChatRAGEndpoint:
             main_module.ANTHROPIC_API_KEY = original_key
 
     def test_system_prompt_uses_cache_control(self, client):
-        """Regression guard: the RAG system prompt must be sent with
-        cache_control:'ephemeral' so repeat turns hit the prompt cache."""
+        """Regression guard: when the RAG system prompt is long enough to
+        meet Anthropic's minimum cacheable prefix (~8000 chars), it must
+        be sent with cache_control:'ephemeral'. Real RAG prompts embed
+        team stats + player data + match context and comfortably clear
+        the threshold; we stub a long prompt here to mirror production."""
         import app.api.main as main_module
 
         original_key = main_module.ANTHROPIC_API_KEY
@@ -459,8 +462,12 @@ class TestChatRAGEndpoint:
         mock_response = MagicMock()
         mock_response.content = [text_block]
 
+        long_prompt = 'SYSTEM PROMPT ' * 700  # ~9.8k chars, clears 8000 floor
+
         try:
-            with patch('anthropic.Anthropic') as mock_anthropic_cls:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls, \
+                    patch.object(main_module, 'build_rag_prompt',
+                                 return_value=(long_prompt, True)):
                 mock_client = MagicMock()
                 mock_client.messages.create.return_value = mock_response
                 mock_anthropic_cls.return_value = mock_client
@@ -472,6 +479,40 @@ class TestChatRAGEndpoint:
                 assert isinstance(system_field, list)
                 assert system_field[0]['type'] == 'text'
                 assert system_field[0]['cache_control'] == {'type': 'ephemeral'}
+        finally:
+            main_module.ANTHROPIC_API_KEY = original_key
+
+    def test_system_prompt_skips_cache_control_when_short(self, client):
+        """Conditional caching: short prompts (below Anthropic's minimum
+        cacheable prefix) MUST NOT carry cache_control — paying for a
+        cache write that will never be hit back is wasted tokens."""
+        import app.api.main as main_module
+
+        original_key = main_module.ANTHROPIC_API_KEY
+        main_module.ANTHROPIC_API_KEY = 'sk-ant-test'
+
+        text_block = MagicMock()
+        text_block.type = 'text'
+        text_block.text = 'Reply'
+        mock_response = MagicMock()
+        mock_response.content = [text_block]
+
+        short_prompt = 'You are an assistant.'
+
+        try:
+            with patch('anthropic.Anthropic') as mock_anthropic_cls, \
+                    patch.object(main_module, 'build_rag_prompt',
+                                 return_value=(short_prompt, False)):
+                mock_client = MagicMock()
+                mock_client.messages.create.return_value = mock_response
+                mock_anthropic_cls.return_value = mock_client
+
+                client.post('/chat/rag', json={'message': 'Hi'})
+
+                call_args = mock_client.messages.create.call_args
+                system_field = call_args.kwargs['system']
+                assert isinstance(system_field, list)
+                assert 'cache_control' not in system_field[0]
         finally:
             main_module.ANTHROPIC_API_KEY = original_key
 
