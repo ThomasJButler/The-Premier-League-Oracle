@@ -182,6 +182,21 @@ Loop stops when ALL true:
 
 _(Ralph appends findings here during Phase 1 iterations. Format: `- <YYYY-MM-DD> <P9a|P9b|...>: <finding>`.)_
 
+- 2026-04-19 P9j `DEFERRED-P10`: **Integrated retrain fails the Phase 2 envelope.** Ran `python train_free_tier.py` on the full 33-season CSV dataset (12,339 usable samples, 111 features after P9h pruning, Dirichlet calibrator, draw-recovery hack removed). Result:
+  - **Val accuracy:** 53.3% (same as pre-Phase-2 baseline)
+  - **Val log loss:** **0.9790** (envelope ≤ 0.96 → **FAIL by +0.019**; pre-P9 baseline 0.954)
+  - **Draw AUC-ROC:** **0.5572** (envelope ≥ 0.60 → **FAIL by -0.0438**; pre-P9 baseline 0.601)
+  - **Feature count:** 111 (baseline 121, delta -10 — P9h target met)
+  - **Calibration delta:** Dirichlet reduces raw mlogloss 1.0137 → 0.9790 (-0.0347), so the calibrator itself is working; the regression is upstream in the raw-model log loss.
+  - **Draw cascade note:** the dedicated draw classifier (val logloss 0.6555, spw=2.85) scored 48.9% overall accuracy at threshold 0.54 — worse than the main XGBoost 53.3%. Trainer log: "Draw cascade does not improve accuracy — model saved but cascade disabled at inference." This is expected on a model with compressed draw probabilities and was not a regression introduced by Phase 2, but worth re-evaluating once the root cause is fixed.
+  - **Rollback performed:** pre-retrain `.joblib` restored from the iteration-local backup. Live model is unchanged from the pre-P9-Phase-2 baseline (isotonic, 0.954 log loss, 0.601 draw AUC). No commit required — `backend/models/` is gitignored.
+  - **Hypothesis for the regression:** P9h pruned 10 draw-indicator features on the strength of correlation + gain-importance, but 7 of those 10 were not over the strict |r|>0.85 cut — they were pruned under the "retain 2-3" directive. The combined information loss appears larger than the gain-importance estimate suggested. The three retained features (`standings_closeness`, `h2h_draw_tendency`, `goals_per_game_combined`) are insufficient on their own to preserve draw-ranking.
+  - **Recommended Phase-3 action plan (`DEFERRED-P10`):**
+    1. Reinstate a subset of the pruned draw features and re-run with ablation to identify which ones materially lift draw AUC back above 0.60. Prime candidates to restore first: `form_closeness`, `elo_draw_band`, `low_scoring_indicator` (highest pre-prune gain among the removed 10).
+    2. Separately confirm whether Dirichlet calibration alone (without the feature pruning) holds the ≤ 0.96 envelope by running `python train_free_tier.py --calibrator dirichlet` against a git-stash restore of `free_tier_features.py` at HEAD~3.
+    3. If Dirichlet still regresses log loss when features are whole, investigate the matrix-scaling fit stability — the current `LogisticRegression(multi_class='multinomial')` path may be under-regularised for a 3-class problem with only ~2.5k val samples.
+  - **Phase 2 status:** P9f–P9i remain `[x]` (their per-task gates passed). P9j is NOT flipped to `[x]` and the Status line is NOT updated to `COMPLETE`. Phase 2 stays open pending the Phase-3 investigation above.
+
 ---
 
 ### Phase 2 — Python Calibration & Cleanup (ACTIVE — 5 tasks, 10-loop cap)
