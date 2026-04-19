@@ -36,6 +36,7 @@
       h2hRecord: string;
       poissonProbs: { homeWin: number; draw: number; awayWin: number };
       recommendedStake: number;
+      topScorelines?: Array<{ score: string; probability: number }>;
     };
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
@@ -300,7 +301,8 @@
           predictedHomeGoals: optimizedPrediction.predictedHomeGoals,
           predictedAwayGoals: optimizedPrediction.predictedAwayGoals,
           insights: optimizedPrediction.insights,
-          eloRating: optimizedPrediction.modelWeights.elo
+          eloRating: optimizedPrediction.modelWeights.elo,
+          topScorelines: optimizedPrediction.topScorelines
         };
         
         // Calculate Poisson probabilities for additional analysis
@@ -343,7 +345,8 @@
             awayForm: optimizedPrediction.awayForm,
             h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
             poissonProbs: outcomeProbabilities,
-            recommendedStake: kellyResult.recommendedStake
+            recommendedStake: kellyResult.recommendedStake,
+            topScorelines: prediction.topScorelines
           },
           betBuilder: betBuilder,
           predictionStatus: 'complete'
@@ -1037,6 +1040,20 @@
                     <div class="text-sm text-center text-muted-foreground mt-1">
                       Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
+
+                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length >= 5}
+                      <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
+                        <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Most Likely Scorelines</span>
+                        <ul class="mt-2 grid grid-cols-1 gap-1 text-sm" aria-label="Top scorelines by probability">
+                          {#each prediction.detailedAnalysis.topScorelines as entry}
+                            <li class="flex items-center justify-between gap-3 text-blue-900 dark:text-blue-100">
+                              <span class="font-mono tabular-nums">{entry.score}</span>
+                              <span class="text-xs text-blue-700/80 dark:text-blue-300/80">{(entry.probability * 100).toFixed(1)}%</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </div>
+                    {/if}
                   </div>
 
                   <!-- Form Section -->

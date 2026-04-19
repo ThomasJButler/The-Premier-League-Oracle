@@ -102,6 +102,14 @@ export interface Prediction {
   was_correct?: boolean;
   prediction_date: string;
   created_at: string;
+  /**
+   * Top-N most likely scorelines from the Poisson grid, sorted by
+   * probability descending. Each entry carries the raw grid probability
+   * (0–1) so the UI can render it as a percentage. Populated by
+   * OptimizedPredictor.predictMatch; absent for restored-from-storage
+   * predictions that pre-date this field.
+   */
+  topScorelines?: Array<{ score: string; probability: number }>;
 }
 
 export interface TeamForm {

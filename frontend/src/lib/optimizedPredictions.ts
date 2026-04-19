@@ -53,6 +53,27 @@ export interface EnhancedPredictionModel {
   };
   /** Raw per-model probabilities before ensemble combination (for weight optimisation) */
   modelOutputs?: ModelOutputs;
+  /**
+   * Top-N scorelines from the Poisson grid, sorted by probability descending.
+   * Surfaces the shape of the distribution instead of collapsing it to one score.
+   */
+  topScorelines?: Array<{ score: string; probability: number }>;
+}
+
+/** Number of top scorelines to surface on the Predictions card. */
+const TOP_SCORELINES_COUNT = 7;
+
+/**
+ * Sort a Poisson score-probability grid descending and return the top N entries.
+ */
+function getTopScorelines(
+  scoreProbabilities: { [score: string]: number },
+  n: number = TOP_SCORELINES_COUNT
+): Array<{ score: string; probability: number }> {
+  return Object.entries(scoreProbabilities)
+    .map(([score, probability]) => ({ score, probability }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, n);
 }
 
 // Home/away attack & defence strengths for the Poisson model
@@ -634,7 +655,8 @@ export class OptimizedPredictor {
         modelWeights: effectiveWeights,
         insights,
         valueOdds,
-        modelOutputs
+        modelOutputs,
+        topScorelines: getTopScorelines(scoreProbabilities)
       };
 
     } catch (error) {
