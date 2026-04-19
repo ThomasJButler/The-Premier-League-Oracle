@@ -165,21 +165,15 @@ class FreeTierFeatureEngineer:
         'home_shots_on_target_avg', 'away_shots_on_target_avg',
         'home_corners_avg', 'away_corners_avg',
         'home_yellows_avg', 'away_yellows_avg',
-        # Draw indicators (13) — target the model's weakest class
-        'form_closeness', 'standings_closeness',
-        'home_draw_rate', 'away_draw_rate',
-        'combined_defensive_strength', 'low_scoring_indicator',
-        'h2h_draw_tendency', 'draw_streak_proximity',
-        'goal_difference_symmetry', 'season_ppg_closeness',
-        'mid_table_indicator', 'elo_draw_band',
-        'goals_per_game_combined',
+        # Draw indicators (3) — pruned from 13 in P9h; retain orthogonal signals
+        'standings_closeness', 'h2h_draw_tendency', 'goals_per_game_combined',
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
         # Form-vs-ELO residuals (2) — orthogonal form component not explained by rating
         'home_form_vs_elo', 'away_form_vs_elo',
         # Interaction features (5) — non-linear relationships between base features
-        'elo_x_form', 'derby_x_closeness', 'elo_x_rest',
+        'elo_x_closeness', 'derby_x_closeness', 'elo_x_rest',
         'trend_x_form', 'h2h_draw_x_closeness',
         # Bookmaker odds (10) — strongest predictor; 0.0 when unavailable
         # Pinnacle closing implied probabilities (sharpest market)
@@ -1060,117 +1054,45 @@ class FreeTierFeatureEngineer:
                          match_date: datetime | None = None,
                          ) -> dict[str, float]:
         """
-        13 features: explicit draw-prediction signals.
+        3 orthogonal draw-prediction signals retained after P9h pruning.
 
-        Draws are ~23% of PL outcomes but are the hardest to predict.
-        These features capture patterns that correlate with drawn matches:
-        evenly-matched teams, defensive setups, historical draw tendencies,
-        goal difference symmetry, mid-table matchups, and combined scoring rate.
+        The original 13 indicators had high mutual correlation in the closeness
+        cluster (form/standings/season_ppg/elo_draw_band/goal_difference_symmetry
+        all measure the same latent "evenness" variable). Pearson correlation
+        analysis on 2000 recent PL matches plus XGBoost gain importance ranking
+        informed the selection below. Retained:
+
+        - ``standings_closeness``: closeness-cluster proxy (highest gain; r=0.94
+          with the removed ``elo_draw_band``).
+        - ``goals_per_game_combined``: orthogonal goal-volume signal.
+        - ``h2h_draw_tendency``: orthogonal head-to-head signal (near-zero
+          correlation with the other two).
         """
         f: dict[str, float] = {}
-        hm = self._get_team_matches(home_team, data)
-        am = self._get_team_matches(away_team, data)
 
-        # 1. Form closeness: absolute difference in recent PPG (lower = more likely draw)
-        def _ppg(matches: pd.DataFrame, n: int = 10) -> float:
-            recent = matches.tail(n)
-            if recent.empty:
-                return 1.0  # neutral default
-            pts = recent['team_result'].map({'W': 3, 'D': 1, 'L': 0})
-            return float(pts.mean())
-
-        h_ppg = _ppg(hm)
-        a_ppg = _ppg(am)
-        # Invert so higher = more likely draw (closer teams)
-        f['form_closeness'] = 1.0 / (1.0 + abs(h_ppg - a_ppg))
-
-        # 2. Standings closeness: inverse of position gap (higher = closer)
+        # 1. Standings closeness: inverse of position gap (higher = closer).
+        # Represents the closeness-cluster (absorbs form, season-PPG, Elo-band,
+        # and goal-difference symmetry, which all correlated r=0.33-0.94 with it).
         standings = self._compute_standings(data, match_date)
-        h_pos = standings.get(home_team, {}).get('position', 10)
-        a_pos = standings.get(away_team, {}).get('position', 10)
+        h_stats = standings.get(home_team, {})
+        a_stats = standings.get(away_team, {})
+        h_pos = h_stats.get('position', 10)
+        a_pos = a_stats.get('position', 10)
         f['standings_closeness'] = 1.0 / (1.0 + abs(h_pos - a_pos))
 
-        # 3-4. Draw rates: proportion of draws in recent matches per team
-        def _draw_rate(matches: pd.DataFrame, n: int = 15) -> float:
-            recent = matches.tail(n)
-            if recent.empty:
-                return 0.0
-            return float((recent['team_result'] == 'D').mean())
-
-        f['home_draw_rate'] = _draw_rate(hm)
-        f['away_draw_rate'] = _draw_rate(am)
-
-        # 5. Combined defensive strength: average clean sheet rate (higher = more defensive)
-        def _cs_rate(matches: pd.DataFrame, n: int = 10) -> float:
-            recent = matches.tail(n)
-            if recent.empty:
-                return 0.0
-            return float((recent['opponent_goals'] == 0).mean())
-
-        f['combined_defensive_strength'] = (_cs_rate(hm) + _cs_rate(am)) / 2.0
-
-        # 6. Low-scoring indicator: average total goals in recent matches (lower = more likely draw)
-        def _avg_total_goals(matches: pd.DataFrame, n: int = 10) -> float:
-            recent = matches.tail(n)
-            if recent.empty:
-                return 2.5  # PL average
-            return float((recent['team_goals'] + recent['opponent_goals']).mean())
-
-        avg_goals = (_avg_total_goals(hm) + _avg_total_goals(am)) / 2.0
-        # Invert: lower total goals → higher draw probability
-        f['low_scoring_indicator'] = max(0.0, 3.0 - avg_goals)
-
-        # 7. H2H draw tendency: draw rate in head-to-head matches
+        # 2. H2H draw tendency: draw rate in head-to-head matches.
+        # Orthogonal to the closeness cluster — adds unique historical signal.
         h2h = self._get_h2h_matches(home_team, away_team, data)
-        if len(h2h) >= 2:
-            h2h_draws = 0
-            for _, row in h2h.iterrows():
-                if row.get('result') == 'D':
-                    h2h_draws += 1
+        if len(h2h) >= 2 and 'result' in h2h.columns:
+            h2h_draws = int((h2h['result'] == 'D').sum())
             f['h2h_draw_tendency'] = h2h_draws / len(h2h)
         else:
             f['h2h_draw_tendency'] = 0.0
 
-        # 8. Draw streak proximity: are either team on a sequence close to drawing?
-        #    (teams that recently drew are slightly more likely to draw again in close matchups)
-        def _recent_draw_count(matches: pd.DataFrame, n: int = 5) -> float:
-            recent = matches.tail(n)
-            if recent.empty:
-                return 0.0
-            return float((recent['team_result'] == 'D').sum())
-
-        h_recent = _recent_draw_count(hm)
-        a_recent = _recent_draw_count(am)
-        f['draw_streak_proximity'] = (h_recent + a_recent) / 10.0  # normalise to 0-1 range
-
-        # 9. Goal difference symmetry: similar GD/GP → evenly matched → draw-prone
-        h_stats = standings.get(home_team, {})
-        a_stats = standings.get(away_team, {})
+        # 3. Goals per game combined: low combined goals → draw-prone.
+        # Orthogonal volume signal (r≈0.4 with standings_closeness).
         h_played = max(h_stats.get('played', 1), 1)
         a_played = max(a_stats.get('played', 1), 1)
-        h_gd_pg = h_stats.get('gd', 0) / h_played
-        a_gd_pg = a_stats.get('gd', 0) / a_played
-        f['goal_difference_symmetry'] = 1.0 / (1.0 + abs(h_gd_pg - a_gd_pg))
-
-        # 10. Season PPG closeness: overall season PPG similarity (not just recent form)
-        h_ppg_season = h_stats.get('points', 0) / h_played
-        a_ppg_season = a_stats.get('points', 0) / a_played
-        f['season_ppg_closeness'] = 1.0 / (1.0 + abs(h_ppg_season - a_ppg_season))
-
-        # 11. Mid-table indicator: both teams in positions 8-14 → higher draw rate
-        h_pos_val = h_stats.get('position', 10)
-        a_pos_val = a_stats.get('position', 10)
-        h_mid = 1.0 if 8 <= h_pos_val <= 14 else 0.0
-        a_mid = 1.0 if 8 <= a_pos_val <= 14 else 0.0
-        f['mid_table_indicator'] = h_mid * a_mid  # 1.0 only when both are mid-table
-
-        # 12. Elo draw band: small Elo difference → draw zone
-        # Uses the already-computed elo_difference from _elo_features (but that's
-        # normalised by /400). Recompute from raw standings closeness as proxy:
-        # When form + standings are both close, draws are most likely.
-        f['elo_draw_band'] = f['form_closeness'] * f['standings_closeness']
-
-        # 13. Goals per game combined: low combined goals → draw-prone
         h_gpg = h_stats.get('gf', 0) / h_played
         a_gpg = a_stats.get('gf', 0) / a_played
         combined_gpg = (h_gpg + a_gpg) / 2.0
@@ -1318,16 +1240,17 @@ class FreeTierFeatureEngineer:
             return 0.0 if val is None or np.isnan(val) else float(val)
 
         return {
-            # Strong teams with close form are more predictable
-            'elo_x_form': _get('elo_difference') * _get('form_closeness'),
+            # Elo difference weighted by evenness: big gap + close standings → upset risk.
+            # Post-P9h, closeness is sourced from standings_closeness (form_closeness pruned).
+            'elo_x_closeness': _get('elo_difference') * _get('standings_closeness'),
             # Derby matches between closely-ranked teams → draw-prone
             'derby_x_closeness': _get('is_derby') * _get('standings_closeness'),
             # Fatigued favourites underperform more than fatigued underdogs
             'elo_x_rest': _get('elo_difference') * _get('rest_day_advantage'),
             # Accelerating form (positive trend × high recent form)
             'trend_x_form': _get('home_trend_short') * _get('home_form_last_5'),
-            # H2H draw history amplified by current form similarity
-            'h2h_draw_x_closeness': _get('h2h_draw_tendency') * _get('form_closeness'),
+            # H2H draw history amplified by current closeness
+            'h2h_draw_x_closeness': _get('h2h_draw_tendency') * _get('standings_closeness'),
         }
 
     @staticmethod
@@ -1344,7 +1267,7 @@ class FreeTierFeatureEngineer:
         When odds are None (no odds available at inference time), all features
         return 0.0. XGBoost handles this gracefully — tree splits on odds
         features simply take the "no information" branch, and the model falls
-        back to the remaining 99 non-odds features.
+        back to the remaining non-odds features.
 
         Args:
             odds: Dict of raw CSV column values, e.g.
