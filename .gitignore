@@ -43,6 +43,10 @@ loop.sh
 .claude-run/
 scripts/
 
+# Ralph prompts — local execution artefacts per RALPH_LOOP_TEMPLATE.md
+PROMPT_build.md
+PROMPT_plan.md
+
 # Python
 **/__pycache__/
 *.pyc
@@ -80,3 +84,4 @@ urgenttodo.txt
 /CoachWiggumV3Learn
 DEPLOY_CHECKLIST.md
 backend/Data_Sourcing.md
+RALPH_LOOP_TEMPLATE.md

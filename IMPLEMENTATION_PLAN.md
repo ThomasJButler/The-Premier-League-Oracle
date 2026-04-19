@@ -1,6 +1,10 @@
 # Premier League Oracle — Implementation Plan
 
-Last updated: 20 March 2026
+## Status: P9 Phase 1 open — Frontend scoreline realism (5 tasks, 8-loop cap)
+
+> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P9 Phase 1 only**. Phase 2 items (P9f–P9i) are explicitly DEFERRED and fenced off — do not pick them up in this loop.
+
+Last updated: 19 April 2026
 Active branch: `v3.0-MVP-UX`
 
 ---
@@ -26,6 +30,9 @@ Active branch: `v3.0-MVP-UX`
 | P5h Twentieth Audit | 17/17 (100%) | ALL DONE |
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 | P7 Beyond MVP | 57/59 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority. P7m 10/10 complete |
+| P8 Prediction Engine | 10/12 | P8a–j DONE; P8k retrain + P8l RAG historical remaining |
+| P9 Phase 1 — Scoreline Realism | 0/5 | ACTIVE — frontend only, v3.0-MVP-UX. P9a–P9e. Loop terminates on P9e. |
+| P9 Phase 2 — Python Calibration | 0/4 | **DEFERRED** — fenced off from active loop. Requires separate branch + fresh planning session. |
 
 **Frontend:** 597 Vitest tests (38 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -67,6 +74,96 @@ See `backend/PREDICTION_ENGINE_STRATEGY.md` for full strategy and `backend/P8_PH
 
 - [ ] **P8k — Retrain V5** — Retrain with A5+A6 features (dedicated draw model + form orthogonalisation). User to run training command.
 - [ ] **P8l — RAG historical data access** — Extend Oracle Chat to query historical CSV data (all 33 seasons) for questions like "what position was Liverpool in 1995?"
+
+---
+
+## P9: Scoreline Realism & Calibration (Audit-Driven)
+
+**Context:** User reported that predictions are dominated by 1-0 and 2-1 scorelines, with very few matches predicted over 3 goals. Audit (19 April 2026) traced the cause to the **frontend display layer**, not the Python model:
+
+1. `optimizedPredictions.ts:997-998` rounds the Poisson mean (`Math.round(λ_h)-Math.round(λ_a)`) — for typical EPL lambdas (λ_h≈1.5, λ_a≈1.2) this almost always yields "2-1", collapsing a rich probability distribution into one integer pair.
+2. `advancedPredictions.ts:15-35` uses **independent** Poisson without the Dixon-Coles τ correction — mathematically over-predicts 1-0 / 0-1 and under-predicts 1-1 / 0-0.
+3. Python H/D/A model itself (53.3% accuracy) is competitive with SOTA for free-tier data (~55-56% ceiling); no accuracy is being lost to the display issue.
+
+See `/Users/tombutler/.claude/plans/please-ecamine-our-phyton-linear-minsky.md` for the full audit and SOTA benchmarking.
+
+### Design Decisions (locked in 19 April 2026)
+
+| Decision | Choice |
+|----------|--------|
+| Phase 1 branch | `v3.0-MVP-UX` (current) |
+| Phase 2 branch | `v3.0-python-calibration` (future, separate run) |
+| Dixon-Coles ρ default | -0.1 (EPL-typical; TODO to fit from data later) |
+| Top-N scoreline count | 5–7 (UI should support a configurable cap) |
+| Grid size | 8×8 (maxGoals=7, unchanged) |
+| RPS regression tolerance | 0 — Phase 1 must not degrade backtest RPS |
+
+---
+
+### Phase 1 — Frontend Scoreline Fix (ACTIVE — 5 tasks, 8-loop cap)
+
+> **ACTIVE scope.** All Phase 1 tasks are self-contained in `frontend/src/`. No backend changes. No model retraining. No Python file edits.
+
+- [ ] **P9a — [P1] Top-N scoreline display.** Show the top 5–7 most likely scorelines with probabilities in the Predictions UI instead of one rounded score (e.g. `1-0 (10%) · 2-1 (8%) · 1-1 (8%) · 2-0 (7%) · 0-0 (5%)`). Source files: `frontend/src/components/Predictions.svelte:339` (display), `frontend/src/types/index.ts` (`Prediction` type — add `topScorelines: Array<{score: string, probability: number}>`), `frontend/src/lib/optimizedPredictions.ts` (populate the new field from the existing Poisson grid). **Acceptance:** Predictions card shows ≥5 distinct scorelines with percentages that sum to ≥50% of total grid probability; existing `predictedScore` single-string field still works for backward compatibility.
+
+- [ ] **P9b — [P1] Argmax-of-grid for "predicted score".** Replace `Math.round(homeExpected)-Math.round(awayExpected)` in `frontend/src/lib/optimizedPredictions.ts:990-1036` (`predictGoals` method) with argmax over the `PoissonPredictor.predictScoreProbabilities` grid. Keep the H2H low/high-scoring adjustment at lines 1017-1029, but apply after argmax rather than after rounding. **Acceptance:** for a typical fixture with λ_h=1.5, λ_a=1.2, the returned score is `1-0` (actual modal), NOT `2-1` (rounded mean); unit test in `optimizedPredictions.test.ts` added to prove this.
+
+- [ ] **P9c — [P1] Dixon-Coles τ correction.** Add the low-score correlation adjustment to `PoissonPredictor.predictScoreProbabilities` at `frontend/src/lib/advancedPredictions.ts:19-35`. Multiply (0,0), (1,0), (0,1), (1,1) cells by τ(i,j,λ_h,λ_a,ρ) per Dixon-Coles (1997); τ=1 elsewhere. Add `POISSON_DIXON_COLES_RHO = -0.1` to `frontend/src/lib/constants.ts:96-100` with a derivation comment citing EPL-typical values. Re-normalise the grid after correction so probabilities sum to 1. **Acceptance:** P(1-1) increases vs naive Poisson; P(1-0) + P(0-1) decreases; grid probabilities sum to 1 ± 1e-9.
+
+- [ ] **P9d — [P1] Tests + backtest validation.** Add Vitest cases: (i) for λ_h=1.5, λ_a=1.2, top-5 contains {1-0, 2-1, 1-1, 2-0, 0-0}; (ii) after Dixon-Coles, P(1-1) > naive P(1-1) and P(1-0) + P(0-1) < naive equivalent; (iii) grid probabilities sum to 1 after τ correction. Update `frontend/src/lib/advancedPredictions.test.ts` (line 82-99 already has a smoke test) and `frontend/src/lib/optimizedPredictions.test.ts`. Run `backtest.ts` before/after to confirm RPS does not degrade. **Acceptance:** new tests pass; `npm run test:run` shows ≥600 tests green; backtest RPS ≤ pre-change baseline (record both in commit message).
+
+- [ ] **P9e — [P1] Final verification + terminator.** Verify P9a–P9d all marked `[x]`. Run gates: `cd frontend && npm run test:run && npm run check`; run `npm run lint` if configured. Confirm backtest output: record pre-change and post-change RPS in the completion report. Manual E2E (spin up `npm run dev`): confirm Predictions page shows distinct top-N scorelines for 3+ different fixtures (not all "2-1"). Write `### P9 Phase 1 Completion Report` block under this phase containing: files changed, RPS delta, 3 sample before/after scoreline outputs, commit hashes. Update the Status line at the top of this file to `P9 Phase 1 COMPLETE — scoreline realism shipped`. Commit with message `P9: closeout + terminator`. **Acceptance:** Status line contains terminator phrase; Completion Report section exists; gates all green.
+
+### Terminator (Phase 1)
+
+Loop stops when ALL true:
+- P9a–P9e all marked `[x]` in this document
+- Gates green: `npm run test:run` (≥600 passing), `npm run check` (0 errors/warnings)
+- Backtest RPS ≤ pre-change baseline (no regression in H/D/A)
+- Status line at top of this file contains: **"P9 Phase 1 COMPLETE — scoreline realism shipped"**
+- `### P9 Phase 1 Completion Report` block written below
+
+### Guardrails (Phase 1)
+
+- **OUT OF SCOPE — Phase 2 (P9f–P9i) is DEFERRED.** Do not pick up those tasks. Do not edit any file listed under off-limits.
+- **Off-limits paths (Phase 1):**
+  - `backend/train_free_tier.py` — training pipeline, re-runs not permitted
+  - `backend/app/features/free_tier_features.py` — feature engineering, unchanged this phase
+  - `backend/models/*` — no retraining, no model artefact changes
+  - `backend/app/api/main.py` — draw cascade and endpoint logic unchanged
+  - Any `.joblib`, `.pkl`, or `.onnx` file under `backend/`
+- **No new tasks mid-loop.** Discoveries → `### P9 Discovered Work` section below, NOT the active task list. Tag discoveries `DEFERRED-P9-PHASE-2` if backend-related.
+- **Reuse existing patterns.** Use `PoissonPredictor` class as-is; extend rather than reimplement. Use `constants.ts` for any new magic numbers.
+- **UK English in commits.** No `Co-Authored-By` lines, no `Claude Code` references in messages, no `--no-verify`.
+
+### P9 Discovered Work
+
+_(Ralph appends findings here during Phase 1 iterations. Format: `- <YYYY-MM-DD> <P9a|P9b|...>: <finding>`.)_
+
+---
+
+### Phase 2 — DEFERRED (DO NOT WORK ON IN THIS LOOP)
+
+> **⚠ FENCED OFF.** These items are documented for future planning only. A fresh planning session on a new branch (`v3.0-python-calibration`) is required before any of these start. **If you are a Ralph loop iteration reading this: skip this entire subsection. The active terminator is P9e.**
+>
+> **Grep-safety:** Phase 2 items below use `- [~]` (tilde) instead of `- [ ]` (space) on purpose — the standard Ralph grep pattern `^- \[ \] \*\*P9` will NOT match these, so even a mis-configured loop cannot accidentally pick them up. When Phase 2 work is actually opened on a future branch, the tildes get flipped to spaces at that point.
+
+Recommended future work, in priority order:
+
+- [~] **P9f — [P2 — DEFERRED] Dirichlet calibration.** Replace per-class isotonic/Platt dispatch in `backend/train_free_tier.py:564-618` with joint Dirichlet calibration (Kull et al. 2019) over the full H/D/A simplex. Typical gain: better-calibrated draw probabilities without the suppression artefact that currently requires a post-hoc recovery hack. Implementation: fit Dirichlet calibrator on validation OOF probabilities (ODIR or full matrix scaling; ODIR is simpler and performs comparably).
+
+- [~] **P9g — [P2 — DEFERRED] Remove ad-hoc draw recovery.** Once P9f lands, delete the post-calibration draw boost at `backend/train_free_tier.py:475-533` (the `recovered[i, draw] = max(cal_draw, raw_draw * 0.75)` logic and the `--draw-threshold` CLI arg). Dirichlet calibration handles this correctly at training time. The draw cascade in `backend/app/api/main.py:484-498` may be retained — A/B before deciding.
+
+- [~] **P9h — [P2 — DEFERRED] Prune redundant draw indicator features.** The 13 draw indicators at `backend/app/features/free_tier_features.py:1058-1180` have high mutual correlation. Compute pairwise correlation matrix on training data; drop features with |r| > 0.85 vs a retained feature. Retain the 2-3 highest-gain features per XGBoost feature importance. Retrain and compare val log-loss and draw AUC-ROC — expect no regression, simpler code.
+
+- [~] **P9i — [P2 — DEFERRED] Empirical validation of Poisson lambdas.** Backtest the frontend lambda computation (`optimizedPredictions.ts:302-332`, `calculatePoissonLambdas`) against actual goal distributions from 2020-2025 CSV data. Check clamp hit rate, mean predicted λ_h vs empirical ~1.5, fatigue multiplier impact. If systematic bias found, widen clamps or tune fatigue coefficients.
+
+**Phase 2 completion definition (for future planning — not this loop):**
+- New model artefact trained with Dirichlet calibration, saved to `backend/models/xgboost_free_tier.joblib`
+- Draw AUC-ROC ≥ 0.601 (current baseline), draw precision at threshold ≥ previous calibrated value
+- Feature count reduced by 8-10 with no val log-loss regression
+- `pytest` green (190+ tests)
+- README `backend/README.md` status section updated
 
 ---
 
