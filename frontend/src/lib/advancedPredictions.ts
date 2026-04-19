@@ -3,6 +3,7 @@ import type { Match } from '../types';
 import {
   VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE,
   ELO_HOME_ADVANTAGE, DEFAULT_REFEREE_AVG_YELLOWS, DEFAULT_REFEREE_AVG_REDS,
+  POISSON_DIXON_COLES_RHO,
 } from './constants';
 
 // Poisson distribution for goal prediction
@@ -16,18 +17,54 @@ export class PoissonPredictor {
     return (Math.pow(lambda, k) * Math.exp(-lambda)) / this.factorial(k);
   }
 
+  /**
+   * Dixon-Coles τ factor for low-score cells. Returns 1 outside the
+   * 2×2 low-score block, so callers can multiply unconditionally.
+   */
+  private static dixonColesTau(
+    homeGoals: number,
+    awayGoals: number,
+    lambdaHome: number,
+    lambdaAway: number,
+    rho: number
+  ): number {
+    if (homeGoals === 0 && awayGoals === 0) return 1 - lambdaHome * lambdaAway * rho;
+    if (homeGoals === 1 && awayGoals === 0) return 1 + lambdaAway * rho;
+    if (homeGoals === 0 && awayGoals === 1) return 1 + lambdaHome * rho;
+    if (homeGoals === 1 && awayGoals === 1) return 1 - rho;
+    return 1;
+  }
+
   static predictScoreProbabilities(
     expectedHomeGoals: number,
     expectedAwayGoals: number,
-    maxGoals: number = 7
+    maxGoals: number = 7,
+    rho: number = POISSON_DIXON_COLES_RHO
   ): { [key: string]: number } {
     const probabilities: { [key: string]: number } = {};
+    let total = 0;
 
     for (let homeGoals = 0; homeGoals <= maxGoals; homeGoals++) {
       for (let awayGoals = 0; awayGoals <= maxGoals; awayGoals++) {
         const homeProb = this.poissonProbability(expectedHomeGoals, homeGoals);
         const awayProb = this.poissonProbability(expectedAwayGoals, awayGoals);
-        probabilities[`${homeGoals}-${awayGoals}`] = homeProb * awayProb;
+        const tau = this.dixonColesTau(
+          homeGoals, awayGoals, expectedHomeGoals, expectedAwayGoals, rho
+        );
+        // τ can theoretically go negative for extreme ρ/λ combinations.
+        // Clamp to 0 so we never emit a negative probability from the grid.
+        const cell = Math.max(0, homeProb * awayProb * tau);
+        probabilities[`${homeGoals}-${awayGoals}`] = cell;
+        total += cell;
+      }
+    }
+
+    // Re-normalise so the grid remains a proper probability distribution.
+    // τ shifts mass between cells; without this, the grid sums to slightly
+    // less than (or more than) 1 depending on ρ and truncation at maxGoals.
+    if (total > 0) {
+      for (const key of Object.keys(probabilities)) {
+        probabilities[key] /= total;
       }
     }
 

@@ -100,6 +100,31 @@ export const POISSON_FALLBACK_AWAY_GOALS = 1.2;
 export const POISSON_FALLBACK_AVG_GOALS = 1.35;
 
 /**
+ * Dixon-Coles low-score correlation parameter (ρ).
+ *
+ * The naive independent-Poisson model under-predicts P(0-0) and P(1-1) and
+ * over-predicts P(1-0) and P(0-1) because real match goals are weakly
+ * correlated at low scorelines (defensive shapes, late-game closing out).
+ * Dixon & Coles (1997) correct this by multiplying the four low-score cells
+ * by a factor τ(i, j, λ_h, λ_a, ρ):
+ *
+ *   τ(0,0) = 1 − λ_h · λ_a · ρ
+ *   τ(1,0) = 1 + λ_a · ρ
+ *   τ(0,1) = 1 + λ_h · ρ
+ *   τ(1,1) = 1 − ρ
+ *   τ elsewhere = 1
+ *
+ * A negative ρ therefore boosts (0,0) and (1,1) and dampens (1,0) and (0,1),
+ * matching empirical PL scoreline frequencies. Typical fitted values for
+ * top European leagues fall in ρ ∈ [−0.2, −0.05]; we pick −0.1 as a
+ * conservative mid-point pending an empirical fit against the 2020-2025
+ * CSV goals distribution (flagged for Phase 2 under P9i).
+ *
+ * After applying τ, the grid is re-normalised so probabilities still sum to 1.
+ */
+export const POISSON_DIXON_COLES_RHO = -0.1;
+
+/**
  * MAX_PREDICTED_GOALS — hard cap on the predicted scoreline per team.
  *
  * Prevents degenerate Poisson outputs from producing impossible scores
