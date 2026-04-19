@@ -421,6 +421,49 @@ def select_features(
     return X_train_sel, X_val_sel, keep_names
 
 
+class DirichletCalibrator:
+    """
+    Joint Dirichlet calibration for multi-class probabilities (Kull et al. 2019).
+
+    Fits a multinomial logistic regression in log-probability space:
+        p_cal = softmax(W @ log(p_raw) + b)
+
+    This calibrates the full simplex jointly, unlike per-class isotonic/Platt
+    which breaks the sum-to-1 constraint and requires post-hoc renormalisation.
+
+    Uses full matrix scaling (L2 penalty on all coefficients) by default.
+    True ODIR (off-diagonal-only regularisation) would require a custom
+    optimiser — matrix scaling performs comparably in practice and uses
+    sklearn's LBFGS solver directly.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(self, reg_lambda: float = 1e-2, clip: float = 1e-8):
+        self.reg_lambda = reg_lambda
+        self.clip = clip
+        self._lr = None
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'DirichletCalibrator':
+        from sklearn.linear_model import LogisticRegression
+
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        # sklearn C = inverse regularisation strength; higher C = weaker penalty.
+        self._lr = LogisticRegression(
+            solver='lbfgs',
+            C=1.0 / self.reg_lambda,
+            max_iter=1000,
+        )
+        self._lr.fit(log_probs, y)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        if self._lr is None:
+            raise RuntimeError('DirichletCalibrator.predict_proba called before fit')
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        return self._lr.predict_proba(log_probs)
+
+
 def _calibrate_with_method(
     raw_probs: np.ndarray, y_val: np.ndarray, method: str,
 ) -> tuple[list, np.ndarray]:
@@ -535,17 +578,22 @@ def recover_draws(
 
 def apply_calibrators(
     raw_probs: np.ndarray,
-    calibrators: list,
+    calibrators,
     method: str,
 ) -> np.ndarray:
     """
     Apply fitted calibrators to raw probabilities, dispatching on method.
 
-    Isotonic calibrators use .predict() on 1D input.
-    Platt calibrators (LogisticRegression) use .predict_proba() on 2D input.
+    - 'dirichlet': single DirichletCalibrator (joint calibration of the simplex).
+    - 'platt': list of 3 LogisticRegression objects (predict_proba on 2D).
+    - 'isotonic' (or legacy): list of 3 IsotonicRegression objects (predict on 1D).
 
-    Returns re-normalised probabilities (n_samples, 3).
+    Returns probabilities (n_samples, 3). Joint Dirichlet output already sums
+    to 1 by construction; per-class methods are re-normalised row-wise.
     """
+    if method == 'dirichlet':
+        return calibrators.predict_proba(raw_probs)
+
     if method == 'platt':
         cal_probs = np.column_stack([
             cal.predict_proba(raw_probs[:, i].reshape(-1, 1))[:, 1]
@@ -563,19 +611,23 @@ def apply_calibrators(
 
 def calibrate_probabilities(
     model, X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: list[str],
+    feature_names: list[str], method: str = 'dirichlet',
 ) -> dict:
     """
-    Calibrate XGBoost probabilities using the best of isotonic and Platt scaling.
+    Calibrate XGBoost probabilities using the requested method.
 
     Raw XGBoost probabilities are often overconfident. Calibration maps
     predicted probabilities to observed frequencies using a held-out set.
 
-    Both methods are tried and the one with lower log loss is selected:
-    - Isotonic regression: flexible piecewise-constant mapping, but needs
-      many samples per class to avoid overfitting.
-    - Platt scaling: logistic sigmoid with only 2 parameters per class,
-      better suited for small validation sets (e.g. 420 samples).
+    Methods:
+    - 'dirichlet' (default): joint calibration of the full H/D/A simplex.
+      Preserves the sum-to-1 constraint natively and avoids the draw-class
+      suppression seen with independent per-class calibration.
+    - 'isotonic': piecewise-constant per-class mapping; flexible but hungry
+      for samples.
+    - 'platt': logistic sigmoid per class (2 params); robust on small sets.
+    - 'auto': picks whichever of isotonic/platt gives lower log loss
+      (the pre-P9f behaviour; kept for A/B comparison).
     """
     import xgboost as xgb
     from sklearn.metrics import log_loss
@@ -584,7 +636,36 @@ def calibrate_probabilities(
     raw_probs = model.predict(dval)
     raw_ll = log_loss(y_val, raw_probs, labels=[0, 1, 2])
 
-    # Try both calibration methods, keep the one with lower log loss
+    if method == 'dirichlet':
+        dir_cal = DirichletCalibrator().fit(raw_probs, y_val)
+        dir_probs = dir_cal.predict_proba(raw_probs)
+        dir_ll = log_loss(y_val, dir_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using Dirichlet',
+            raw_ll, dir_ll, dir_ll - raw_ll,
+        )
+        return {
+            'calibrators': dir_cal,
+            'calibration_method': 'dirichlet',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': dir_ll,
+        }
+
+    if method in ('isotonic', 'platt'):
+        cals, probs = _calibrate_with_method(raw_probs, y_val, method)
+        ll = log_loss(y_val, probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling',
+            raw_ll, ll, ll - raw_ll, method,
+        )
+        return {
+            'calibrators': cals,
+            'calibration_method': method,
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': ll,
+        }
+
+    # 'auto' — pick the best of isotonic/platt (legacy behaviour)
     iso_calibrators, iso_probs = _calibrate_with_method(raw_probs, y_val, 'isotonic')
     iso_ll = log_loss(y_val, iso_probs, labels=[0, 1, 2])
 
@@ -597,16 +678,12 @@ def calibrate_probabilities(
     )
 
     if platt_ll <= iso_ll:
-        best_method = 'platt'
-        best_calibrators = platt_calibrators
-        best_ll = platt_ll
+        best_method, best_calibrators, best_ll = 'platt', platt_calibrators, platt_ll
     else:
-        best_method = 'isotonic'
-        best_calibrators = iso_calibrators
-        best_ll = iso_ll
+        best_method, best_calibrators, best_ll = 'isotonic', iso_calibrators, iso_ll
 
     logger.info(
-        'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling',
+        'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling (auto)',
         raw_ll, best_ll, best_ll - raw_ll, best_method,
     )
 
@@ -1137,17 +1214,15 @@ def rolling_cross_validation(
             dval = xgb.DMatrix(X_val_fold, feature_names=feature_names)
             raw_probs = xgb_res['model'].predict(dval)
 
-            # Calibrate
+            # Calibrate (CV path uses 'auto' — avoids Dirichlet overhead per fold
+            # and matches the historical baseline used for CV comparisons).
             cal_res = calibrate_probabilities(
                 xgb_res['model'], X_val_fold, y_val_fold, feature_names,
+                method='auto',
             )
-            cal_probs = np.column_stack([
-                cal.predict(raw_probs[:, i])
-                for i, cal in enumerate(cal_res['calibrators'])
-            ])
-            row_sums = cal_probs.sum(axis=1, keepdims=True)
-            row_sums[row_sums == 0] = 1.0
-            cal_probs = cal_probs / row_sums
+            cal_probs = apply_calibrators(
+                raw_probs, cal_res['calibrators'], cal_res['calibration_method'],
+            )
 
             xgb_preds = np.argmax(cal_probs, axis=1)
             fold_metrics['xgboost'] = {
@@ -1529,6 +1604,15 @@ def main():
         '--no-odds', action='store_true',
         help='Train without bookmaker odds features (honest inference baseline)',
     )
+    parser.add_argument(
+        '--calibrator',
+        choices=['dirichlet', 'isotonic', 'platt', 'auto'],
+        default='dirichlet',
+        help=(
+            'Probability calibration method (default: dirichlet — joint simplex '
+            'calibration). "auto" picks the best of isotonic/platt.'
+        ),
+    )
     args = parser.parse_args()
 
     # 1. Load data
@@ -1611,9 +1695,10 @@ def main():
     evaluate(y_val, xgb_probs_raw, label='XGBoost (raw)')
 
     # 7. Probability calibration
-    logger.info('Calibrating probabilities...')
+    logger.info('Calibrating probabilities (method=%s)...', args.calibrator)
     cal_result = calibrate_probabilities(
         xgb_result['model'], X_val_active, y_val, active_feature_names,
+        method=args.calibrator,
     )
 
     # Use calibrated probabilities for final evaluation

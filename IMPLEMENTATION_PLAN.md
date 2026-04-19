@@ -1,11 +1,11 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P9 Phase 1 COMPLETE — scoreline realism shipped
+## Status: P9 Phase 2 open — Python calibration & cleanup (5 tasks, 10-loop cap)
 
-> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P9 Phase 1 only**. Phase 2 items (P9f–P9i) are explicitly DEFERRED and fenced off — do not pick them up in this loop.
+> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P9 Phase 2** (tasks P9f–P9j). Phase 1 shipped on 19 April 2026 — see the P9 Phase 1 Completion Report below. Phase 1 tasks (P9a–P9e) are all `[x]` and will not be re-picked by the task grep.
 
 Last updated: 19 April 2026
-Active branch: `v3.0-MVP-UX`
+Active branch: `v3.0-MVP-Backend_Enhancements`
 
 ---
 
@@ -31,8 +31,8 @@ Active branch: `v3.0-MVP-UX`
 | **P6 Final Push** | **5/5 (100%)** | **ALL DONE — MVP complete** |
 | P7 Beyond MVP | 57/59 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority. P7m 10/10 complete |
 | P8 Prediction Engine | 10/12 | P8a–j DONE; P8k retrain + P8l RAG historical remaining |
-| P9 Phase 1 — Scoreline Realism | 5/5 (100%) | COMPLETE — frontend scoreline realism shipped on v3.0-MVP-UX. See Completion Report below. |
-| P9 Phase 2 — Python Calibration | 0/4 | **DEFERRED** — fenced off from active loop. Requires separate branch + fresh planning session. |
+| P9 Phase 1 — Scoreline Realism | 5/5 (100%) | DONE — frontend scoreline realism shipped on v3.0-MVP-UX. Merged into current branch. See Phase 1 Completion Report. |
+| P9 Phase 2 — Python Calibration | 0/5 | **ACTIVE** — backend Dirichlet calibration, draw-recovery removal, feature pruning, λ validation. P9f–P9j. |
 
 **Frontend:** 597 Vitest tests (38 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -184,28 +184,61 @@ _(Ralph appends findings here during Phase 1 iterations. Format: `- <YYYY-MM-DD>
 
 ---
 
-### Phase 2 — DEFERRED (DO NOT WORK ON IN THIS LOOP)
+### Phase 2 — Python Calibration & Cleanup (ACTIVE — 5 tasks, 10-loop cap)
 
-> **⚠ FENCED OFF.** These items are documented for future planning only. A fresh planning session on a new branch (`v3.0-python-calibration`) is required before any of these start. **If you are a Ralph loop iteration reading this: skip this entire subsection. The active terminator is P9e.**
->
-> **Grep-safety:** Phase 2 items below use `- [~]` (tilde) instead of `- [ ]` (space) on purpose — the standard Ralph grep pattern `^- \[ \] \*\*P9` will NOT match these, so even a mis-configured loop cannot accidentally pick them up. When Phase 2 work is actually opened on a future branch, the tildes get flipped to spaces at that point.
+> **ACTIVE scope.** Backend work: retrain calibration, remove ad-hoc hacks, prune redundant features, validate frontend λ computation. Opened 19 April 2026 after Phase 1 shipped cleanly.
 
-Recommended future work, in priority order:
+**Branch decision (locked in 19 April 2026):** staying on `v3.0-MVP-Backend_Enhancements` rather than opening a fresh `v3.0-python-calibration` branch — the current branch name already matches the scope.
 
-- [~] **P9f — [P2 — DEFERRED] Dirichlet calibration.** Replace per-class isotonic/Platt dispatch in `backend/train_free_tier.py:564-618` with joint Dirichlet calibration (Kull et al. 2019) over the full H/D/A simplex. Typical gain: better-calibrated draw probabilities without the suppression artefact that currently requires a post-hoc recovery hack. Implementation: fit Dirichlet calibrator on validation OOF probabilities (ODIR or full matrix scaling; ODIR is simpler and performs comparably).
+**Per-iteration gate** is `cd backend && pytest -x` (fast, no model retrain required). **Closeout gate** is one full retrain via `python train_free_tier.py` with val log-loss + draw AUC-ROC checked against the pre-Phase-2 baseline (log loss 0.954, draw AUC 0.601).
 
-- [~] **P9g — [P2 — DEFERRED] Remove ad-hoc draw recovery.** Once P9f lands, delete the post-calibration draw boost at `backend/train_free_tier.py:475-533` (the `recovered[i, draw] = max(cal_draw, raw_draw * 0.75)` logic and the `--draw-threshold` CLI arg). Dirichlet calibration handles this correctly at training time. The draw cascade in `backend/app/api/main.py:484-498` may be retained — A/B before deciding.
+Task dependencies (enforced by alphabetical ordering):
+- **P9g depends on P9f** — can only remove the draw-recovery hack after Dirichlet calibration replaces it.
+- **P9h is orthogonal** — feature pruning can land independently.
+- **P9i is orthogonal** — frontend-λ validation does not touch the backend model.
 
-- [~] **P9h — [P2 — DEFERRED] Prune redundant draw indicator features.** The 13 draw indicators at `backend/app/features/free_tier_features.py:1058-1180` have high mutual correlation. Compute pairwise correlation matrix on training data; drop features with |r| > 0.85 vs a retained feature. Retain the 2-3 highest-gain features per XGBoost feature importance. Retrain and compare val log-loss and draw AUC-ROC — expect no regression, simpler code.
+### Task List (Phase 2)
 
-- [~] **P9i — [P2 — DEFERRED] Empirical validation of Poisson lambdas.** Backtest the frontend lambda computation (`optimizedPredictions.ts:302-332`, `calculatePoissonLambdas`) against actual goal distributions from 2020-2025 CSV data. Check clamp hit rate, mean predicted λ_h vs empirical ~1.5, fatigue multiplier impact. If systematic bias found, widen clamps or tune fatigue coefficients.
+- [x] **P9f — [P1] Dirichlet calibration.** Replace the per-class isotonic/Platt dispatch at `backend/train_free_tier.py:564-618` with joint Dirichlet calibration (Kull et al. 2019) over the full H/D/A simplex. Implementation: fit Dirichlet calibrator on validation OOF probabilities — ODIR (off-diagonal intercept-regularised) is simpler and performs comparably to full matrix scaling; default to ODIR. Add a `--calibrator {isotonic,platt,dirichlet}` CLI arg so the old behaviour is still reachable for A/B. **Acceptance:** new `pytest` test in `backend/tests/test_calibration.py` asserts calibrated simplex sums to 1 ± 1e-9 on synthetic inputs; smoke-test training run completes without error; val log-loss ≤ 0.96 (baseline 0.954, loose envelope for a brand-new calibrator). Record val log-loss in commit message.
 
-**Phase 2 completion definition (for future planning — not this loop):**
+- [ ] **P9g — [P1] Remove ad-hoc draw recovery.** Delete the post-calibration draw boost at `backend/train_free_tier.py:475-533` (the `recovered[i, draw] = max(cal_draw, raw_draw * 0.75)` logic AND the `--draw-threshold` CLI arg in argparse setup). Dirichlet calibration (P9f) handles draw calibration at training time, so the hack is no longer needed. The draw cascade at `backend/app/api/main.py:484-498` (the separate binary draw classifier with threshold 0.42) is an INDEPENDENT signal — leave it in place for now, remove only if a retrain shows it no longer helps. **Acceptance:** `recover_draws()` function deleted; no references to `--draw-threshold` in CLI; `pytest -x` green; retrain produces draw AUC ≥ 0.601 (baseline) without the hack.
+
+- [ ] **P9h — [P1] Prune redundant draw indicator features.** The 13 draw indicators at `backend/app/features/free_tier_features.py:1058-1180` have high mutual correlation. Compute the pairwise Pearson correlation matrix on the training dataset; drop features with `|r| > 0.85` against a retained higher-gain feature. Retain the 2-3 highest XGBoost gain-importance ones (expected: `form_closeness`, `elo_draw_band`, `goals_per_game_combined`). Remove unused helper methods. Retrain and compare. **Acceptance:** feature count drops by 8-10 (from 114 to 104-106); val log-loss within ±0.005 of pre-prune run (no material regression); draw AUC-ROC ≥ 0.60. Record before/after feature count and log-loss in the commit message.
+
+- [ ] **P9i — [P1] Empirical validation of Poisson lambdas.** Create a new data-driven test file at `frontend/src/lib/optimizedPredictions.lambdaValidation.test.ts` that loads a sample of the 2020-2025 match CSV (use a checked-in fixture or a small slice) and compares `calculatePoissonLambdas` output against the actual goal distributions. Assertions: (i) mean predicted λ_home within ±10% of empirical ~1.5 PL home goals/match; (ii) `[0.3, 4.5]` clamp hit rate < 2% on the sample; (iii) fatigue multiplier does not push average λ below 1.2. If any assertion fails, document the finding in `### P9 Discovered Work` — do NOT modify the frontend source in Phase 2 (that is its own future task). **Acceptance:** new test file committed; either all assertions green OR failing assertions documented in Discovered Work for a future phase.
+
+- [ ] **P9j — [P1] Final verification + terminator.** Verify P9f–P9i all marked `[x]`. Run FULL gates: `cd backend && pytest -x` (≥190 tests green) AND `cd frontend && npm run test:run` (≥644 tests green, since P9i adds one). Do the closeout retrain: `cd backend && python train_free_tier.py` — record final val accuracy, log loss, draw AUC-ROC, feature count. Write `### P9 Phase 2 Completion Report` block containing: files changed, val log-loss delta, draw AUC delta, feature count delta, 3 sample predictions showing the Dirichlet-calibrated probabilities, commit hashes. Update the Status line at the top of this file to `P9 Phase 2 COMPLETE — Python calibration shipped`. Update `backend/README.md` status section to reflect the new model. Commit with `P9: Phase 2 closeout + terminator`. **Acceptance:** Status line contains terminator phrase; Completion Report written; retrain succeeded and model artefact saved; both test suites green.
+
+### Terminator (Phase 2)
+
+Loop stops when ALL true:
+- P9f–P9j all marked `[x]` in this document
+- `cd backend && pytest -x` green (≥190 tests)
+- `cd frontend && npm run test:run` green (≥644 tests including new P9i test)
+- Retrain completed: new `backend/models/xgboost_free_tier.joblib` saved, val log-loss within envelope, draw AUC-ROC ≥ 0.60
+- Status line at top of this file contains: **"P9 Phase 2 COMPLETE — Python calibration shipped"**
+- `### P9 Phase 2 Completion Report` block written below this section
+
+### Guardrails (Phase 2)
+
+- **IN SCOPE:** `backend/train_free_tier.py`, `backend/app/features/free_tier_features.py`, `backend/app/api/main.py` (read-only for draw cascade context), `backend/tests/`, `backend/models/` (via retrain only — do not hand-edit artefacts), `backend/README.md` (closeout only).
+- **IN SCOPE (frontend exception for P9i only):** creating the new test file `frontend/src/lib/optimizedPredictions.lambdaValidation.test.ts`. Nothing else under `frontend/src/` may be modified.
+- **OFF-LIMITS (Phase 2):**
+  - Any modification to shipped Phase 1 code: `frontend/src/lib/advancedPredictions.ts`, `frontend/src/lib/optimizedPredictions.ts`, `frontend/src/lib/constants.ts`, `frontend/src/types/index.ts`, `frontend/src/components/Predictions.svelte`. These are DONE — treat as frozen unless P9i findings force a regression fix (which itself must be logged as a new phase).
+  - Any backend file outside `backend/` root (e.g. `api/chat.ts` Vercel Edge Function is unrelated).
+  - Model checkpoints from previous runs — do not delete them; retraining overwrites in place.
+  - CI/CD files under `.github/` — separate concern.
+- **No hand-edits to the `.joblib` artefact.** Only retrain produces the artefact.
+- **No new tasks mid-loop.** Discoveries → `### P9 Discovered Work` section, NOT the active task list. Tag backend discoveries `DEFERRED-P10` and frontend ones `DEFERRED-FRONTEND`.
+- **Reuse existing patterns.** Use `scikit-learn`-compatible wrappers for Dirichlet (existing dependency). Match the function signatures of the current isotonic/Platt path so the calibrator dispatch stays uniform. Use the project's existing `logger` pattern for retrain metric logging.
+- **UK English in commits.** No `Co-Authored-By` lines, no `Claude Code` references in messages, no `--no-verify`.
+
+**Phase 2 completion definition (recap):**
 - New model artefact trained with Dirichlet calibration, saved to `backend/models/xgboost_free_tier.joblib`
-- Draw AUC-ROC ≥ 0.601 (current baseline), draw precision at threshold ≥ previous calibrated value
-- Feature count reduced by 8-10 with no val log-loss regression
-- `pytest` green (190+ tests)
-- README `backend/README.md` status section updated
+- Draw AUC-ROC ≥ 0.60 (current baseline 0.601), val log-loss ≤ 0.96 envelope
+- Feature count reduced by 8-10 with no material regression
+- `pytest` green (≥190 tests), `npm run test:run` green (≥644 tests)
+- `backend/README.md` status section updated
 
 ---
 

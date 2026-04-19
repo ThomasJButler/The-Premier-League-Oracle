@@ -440,10 +440,15 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            # Single XGBoost with calibration (isotonic or Platt scaling)
+            # Single XGBoost with calibration (Dirichlet, isotonic, or Platt).
             calibrators = free_tier_metadata.get('calibrators')
             cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
-            if calibrators and len(calibrators) == 3:
+            if cal_method == 'dirichlet' and calibrators is not None:
+                # Joint calibration: calibrators is a single DirichletCalibrator.
+                probs = calibrators.predict_proba(
+                    np.asarray(raw_probs).reshape(1, -1)
+                )[0]
+            elif calibrators and hasattr(calibrators, '__len__') and len(calibrators) == 3:
                 if cal_method == 'platt':
                     cal_probs = np.array([
                         float(cal.predict_proba(
