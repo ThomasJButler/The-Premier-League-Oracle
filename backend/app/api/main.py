@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import anthropic
 import numpy as np
 import uvicorn
 from dotenv import load_dotenv
@@ -685,20 +686,27 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     user_messages.append({"role": "user", "content": request_body.message})
 
     try:
-        import anthropic
         client = anthropic.Anthropic(api_key=api_key)
+
         # Prompt caching: the RAG system prompt (team stats, player data,
-        # match context) is long and reused across turns in a session. Marking
-        # it ephemeral turns repeat turns within the 5-min cache window into
-        # ~0.1x cost reads rather than full-price writes.
-        response = client.messages.create(
-            model=ai_model,
-            max_tokens=1024,
-            system=[{
+        # match context) is reused across turns in a session — ephemeral
+        # caching turns repeat turns into ~0.1x cost reads. Only request
+        # caching when the prompt is long enough to plausibly meet the
+        # model's minimum cacheable prefix (~2048 tokens for Sonnet 4.6,
+        # 4096 for Haiku 4.5); ~4 chars/token → 8000 char floor.
+        if len(system_prompt) >= 8000:
+            system_field = [{
                 "type": "text",
                 "text": system_prompt,
                 "cache_control": {"type": "ephemeral"},
-            }],
+            }]
+        else:
+            system_field = [{"type": "text", "text": system_prompt}]
+
+        response = client.messages.create(
+            model=ai_model,
+            max_tokens=1024,
+            system=system_field,
             messages=user_messages,  # type: ignore[arg-type]
         )
         # Concatenate all text blocks — adaptive thinking on Opus 4.6/4.7 can
@@ -712,6 +720,20 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
         return ChatRAGResponse(reply=reply, grounded=has_data)
     except HTTPException:
         raise
+    except anthropic.APIStatusError as e:
+        # Typed SDK exceptions carry the upstream status + Anthropic's own
+        # error message. Surface both so invalid-key and other 4xx failures
+        # are diagnosable instead of hiding behind a generic 502.
+        upstream_status = getattr(e, "status_code", 502)
+        detail = getattr(e, "message", "") or str(e)
+        logger.error(
+            "Chat RAG Anthropic call failed (status=%s): %s",
+            upstream_status, detail,
+        )
+        raise HTTPException(
+            status_code=upstream_status if 400 <= upstream_status < 600 else 502,
+            detail=f"Anthropic API error ({upstream_status}). {detail}".strip(),
+        )
     except Exception as e:
         logger.error("Chat RAG Anthropic call failed: %s", e)
         raise HTTPException(

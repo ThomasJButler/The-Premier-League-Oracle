@@ -1,0 +1,19 @@
+AI analysis failed: Anthropic API error (400). 5 aiAnalysis.ts:152:15
+Rate limit exceeded (429) 2 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). aiAnalysis.ts:152:15
+Rate limit exceeded (429) 2 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). aiAnalysis.ts:152:15
+Rate limit exceeded (429) 2 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). aiAnalysis.ts:152:15
+Rate limit exceeded (429) 2 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). aiAnalysis.ts:152:15
+Rate limit exceeded (429) 2 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). 2 aiAnalysis.ts:152:15
+Rate limit exceeded (429) footballData.ts:232:19
+Rate limit exceeded (429) 4 footballData.ts:232:19
+Rate limit exceeded (429) footballData.ts:232:19
+Rate limit exceeded (429) 8 footballData.ts:232:19
+Rate limit exceeded (429) 4 footballData.ts:232:19
+AI analysis failed: Anthropic API error (400). 4 aiAnalysis.ts:152:15
+
+​

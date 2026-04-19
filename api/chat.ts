@@ -6,6 +6,11 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 1024;
+// Smallest cacheable prefix across our allowed models is 2048 tokens
+// (Sonnet 4.6); Haiku 4.5 needs 4096. ~4 chars/token gives a conservative
+// 8000-char floor — below this, applying cache_control is pure waste at
+// best and a 400 risk at worst.
+const CACHE_CONTROL_MIN_CHARS = 8000;
 
 /**
  * Supported Claude models the frontend may select from.
@@ -56,12 +61,23 @@ async function callAnthropic(
     }
   }
 
+  // Only request prompt caching when the system text is long enough to
+  // plausibly meet the model's minimum cacheable prefix. Short prompts
+  // (e.g. the AI match analysis ~70-token system message) gain nothing
+  // from cache_control and can trigger 400s from Anthropic.
   const systemField = systemPrompt
-    ? [{
-        type: 'text' as const,
-        text: systemPrompt,
-        cache_control: { type: 'ephemeral' as const },
-      }]
+    ? [
+        systemPrompt.length >= CACHE_CONTROL_MIN_CHARS
+          ? {
+              type: 'text' as const,
+              text: systemPrompt,
+              cache_control: { type: 'ephemeral' as const },
+            }
+          : {
+              type: 'text' as const,
+              text: systemPrompt,
+            },
+      ]
     : undefined;
 
   const response = await fetch(ANTHROPIC_API_URL, {
@@ -85,10 +101,19 @@ async function callAnthropic(
       401: 'Invalid API key. Please check your Anthropic key.',
       429: 'Rate limited by Anthropic. Please wait a moment and try again.',
     };
-    return jsonResponse(
-      { error: errorMap[status] || `Anthropic API error (${status}).` },
-      status,
-    );
+    // Pull Anthropic's error detail so we can see what's actually wrong.
+    // Shape: { type: 'error', error: { type, message }, request_id }
+    let detail = '';
+    try {
+      const body = await response.json() as {
+        error?: { message?: string; type?: string };
+      };
+      detail = body?.error?.message || '';
+    } catch { /* non-JSON body — ignore */ }
+
+    const baseMessage = errorMap[status] || `Anthropic API error (${status}).`;
+    const message = detail ? `${baseMessage} ${detail}` : baseMessage;
+    return jsonResponse({ error: message }, status);
   }
 
   let data: {
