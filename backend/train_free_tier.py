@@ -464,6 +464,60 @@ class DirichletCalibrator:
         return self._lr.predict_proba(log_probs)
 
 
+class TemperatureCalibrator:
+    """
+    Temperature scaling for multi-class probabilities (Guo et al. 2017).
+
+    Fits a single scalar T ≥ bounds[0] by minimising validation log loss:
+        p_cal = softmax(log(p_raw) / T)
+
+    XGBoost emits probabilities rather than pre-softmax logits; log-probs act
+    as equivalent logits up to an additive constant that softmax is invariant
+    to. T > 1 softens overconfident predictions (flattens the simplex toward
+    the uniform prior), T < 1 sharpens. Because it cannot re-rank classes, it
+    preserves raw AUC exactly — only the confidence calibration changes.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(
+        self, bounds: tuple[float, float] = (0.5, 5.0), clip: float = 1e-8,
+    ):
+        self.bounds = bounds
+        self.clip = clip
+        self.temperature: float = 1.0
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'TemperatureCalibrator':
+        from scipy.optimize import minimize_scalar
+        from sklearn.metrics import log_loss
+
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+
+        def neg_log_likelihood(T: float) -> float:
+            scaled = log_probs / T
+            # Softmax with max-subtraction for numerical stability.
+            scaled = scaled - scaled.max(axis=1, keepdims=True)
+            exp_scaled = np.exp(scaled)
+            probs = exp_scaled / exp_scaled.sum(axis=1, keepdims=True)
+            return log_loss(y, probs, labels=[0, 1, 2])
+
+        result = minimize_scalar(
+            neg_log_likelihood,
+            bounds=self.bounds,
+            method='bounded',
+            options={'xatol': 1e-4},
+        )
+        self.temperature = float(result.x)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        scaled = log_probs / self.temperature
+        scaled = scaled - scaled.max(axis=1, keepdims=True)
+        exp_scaled = np.exp(scaled)
+        return exp_scaled / exp_scaled.sum(axis=1, keepdims=True)
+
+
 def _calibrate_with_method(
     raw_probs: np.ndarray, y_val: np.ndarray, method: str,
 ) -> tuple[list, np.ndarray]:
@@ -524,13 +578,14 @@ def apply_calibrators(
     Apply fitted calibrators to raw probabilities, dispatching on method.
 
     - 'dirichlet': single DirichletCalibrator (joint calibration of the simplex).
+    - 'temperature': single TemperatureCalibrator (softmax with fitted scalar T).
     - 'platt': list of 3 LogisticRegression objects (predict_proba on 2D).
     - 'isotonic' (or legacy): list of 3 IsotonicRegression objects (predict on 1D).
 
-    Returns probabilities (n_samples, 3). Joint Dirichlet output already sums
-    to 1 by construction; per-class methods are re-normalised row-wise.
+    Returns probabilities (n_samples, 3). Joint methods (dirichlet, temperature)
+    already sum to 1 by construction; per-class methods are re-normalised row-wise.
     """
-    if method == 'dirichlet':
+    if method in ('dirichlet', 'temperature'):
         return calibrators.predict_proba(raw_probs)
 
     if method == 'platt':
@@ -562,6 +617,8 @@ def calibrate_probabilities(
     - 'dirichlet' (default): joint calibration of the full H/D/A simplex.
       Preserves the sum-to-1 constraint natively and avoids the draw-class
       suppression seen with independent per-class calibration.
+    - 'temperature': single scalar T fitted on val log-loss; softmax(log(p)/T).
+      Cannot re-rank classes, only rescales sharpness.
     - 'isotonic': piecewise-constant per-class mapping; flexible but hungry
       for samples.
     - 'platt': logistic sigmoid per class (2 params); robust on small sets.
@@ -588,6 +645,21 @@ def calibrate_probabilities(
             'calibration_method': 'dirichlet',
             'raw_log_loss': raw_ll,
             'calibrated_log_loss': dir_ll,
+        }
+
+    if method == 'temperature':
+        temp_cal = TemperatureCalibrator().fit(raw_probs, y_val)
+        temp_probs = temp_cal.predict_proba(raw_probs)
+        temp_ll = log_loss(y_val, temp_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using temperature T=%.4f',
+            raw_ll, temp_ll, temp_ll - raw_ll, temp_cal.temperature,
+        )
+        return {
+            'calibrators': temp_cal,
+            'calibration_method': 'temperature',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': temp_ll,
         }
 
     if method in ('isotonic', 'platt'):
@@ -1541,11 +1613,12 @@ def main():
     )
     parser.add_argument(
         '--calibrator',
-        choices=['dirichlet', 'isotonic', 'platt', 'auto'],
+        choices=['dirichlet', 'temperature', 'isotonic', 'platt', 'auto'],
         default='dirichlet',
         help=(
             'Probability calibration method (default: dirichlet — joint simplex '
-            'calibration). "auto" picks the best of isotonic/platt.'
+            'calibration). "temperature" fits a single scalar T via softmax. '
+            '"auto" picks the best of isotonic/platt.'
         ),
     )
     args = parser.parse_args()
