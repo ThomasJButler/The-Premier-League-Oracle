@@ -518,6 +518,71 @@ class TemperatureCalibrator:
         return exp_scaled / exp_scaled.sum(axis=1, keepdims=True)
 
 
+class BetaCalibrator:
+    """
+    Per-class beta calibration (Kull, Filho & Flach 2017).
+
+    For each class k, fits a 3-parameter logistic model:
+        p_cal_k = sigmoid(a_k * log(p_k) + b_k * log(1 - p_k) + c_k)
+
+    The two log features (log p and log(1-p)) give the sigmoid enough
+    flexibility to correct both under- and over-confidence asymmetrically,
+    which is why the method is better behaved on minority classes than
+    Platt scaling (a single log(p) slope).
+
+    Per-class outputs are renormalised to sum to 1, restoring the simplex.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(self, clip: float = 1e-8):
+        self.clip = clip
+        self._classifiers: list = []
+
+    def _features(self, raw_probs: np.ndarray) -> np.ndarray:
+        p = np.clip(raw_probs, self.clip, 1.0 - self.clip)
+        return np.stack([np.log(p), np.log(1.0 - p)], axis=-1)
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'BetaCalibrator':
+        from sklearn.linear_model import LogisticRegression
+
+        feats = self._features(raw_probs)
+        self._classifiers = []
+        for k in range(raw_probs.shape[1]):
+            binary_target = (y == k).astype(int)
+            lr = LogisticRegression(solver='lbfgs', max_iter=1000)
+            # Degenerate single-class slice: fall back to a constant predictor.
+            if len(np.unique(binary_target)) < 2:
+                lr = _ConstantClassifier(binary_target.mean())
+            else:
+                lr.fit(feats[:, k, :], binary_target)
+            self._classifiers.append(lr)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        if not self._classifiers:
+            raise RuntimeError('BetaCalibrator.predict_proba called before fit')
+        feats = self._features(raw_probs)
+        cols = []
+        for k, clf in enumerate(self._classifiers):
+            if isinstance(clf, _ConstantClassifier):
+                cols.append(np.full(raw_probs.shape[0], clf.prob))
+            else:
+                cols.append(clf.predict_proba(feats[:, k, :])[:, 1])
+        out = np.column_stack(cols)
+        row_sums = out.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        return out / row_sums
+
+
+class _ConstantClassifier:
+    """Fallback used when a class is absent from the validation set — rare, but
+    the multinomial LR cannot fit with only one class of the binary target."""
+
+    def __init__(self, prob: float):
+        self.prob = float(prob)
+
+
 def _calibrate_with_method(
     raw_probs: np.ndarray, y_val: np.ndarray, method: str,
 ) -> tuple[list, np.ndarray]:
@@ -579,13 +644,15 @@ def apply_calibrators(
 
     - 'dirichlet': single DirichletCalibrator (joint calibration of the simplex).
     - 'temperature': single TemperatureCalibrator (softmax with fitted scalar T).
+    - 'beta': single BetaCalibrator (per-class beta, internally renormalised).
     - 'platt': list of 3 LogisticRegression objects (predict_proba on 2D).
     - 'isotonic' (or legacy): list of 3 IsotonicRegression objects (predict on 1D).
 
-    Returns probabilities (n_samples, 3). Joint methods (dirichlet, temperature)
-    already sum to 1 by construction; per-class methods are re-normalised row-wise.
+    Returns probabilities (n_samples, 3). Joint methods (dirichlet, temperature,
+    beta) already sum to 1 by construction; per-class methods are re-normalised
+    row-wise.
     """
-    if method in ('dirichlet', 'temperature'):
+    if method in ('dirichlet', 'temperature', 'beta'):
         return calibrators.predict_proba(raw_probs)
 
     if method == 'platt':
@@ -660,6 +727,21 @@ def calibrate_probabilities(
             'calibration_method': 'temperature',
             'raw_log_loss': raw_ll,
             'calibrated_log_loss': temp_ll,
+        }
+
+    if method == 'beta':
+        beta_cal = BetaCalibrator().fit(raw_probs, y_val)
+        beta_probs = beta_cal.predict_proba(raw_probs)
+        beta_ll = log_loss(y_val, beta_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using beta (per-class)',
+            raw_ll, beta_ll, beta_ll - raw_ll,
+        )
+        return {
+            'calibrators': beta_cal,
+            'calibration_method': 'beta',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': beta_ll,
         }
 
     if method in ('isotonic', 'platt'):
@@ -1613,12 +1695,13 @@ def main():
     )
     parser.add_argument(
         '--calibrator',
-        choices=['dirichlet', 'temperature', 'isotonic', 'platt', 'auto'],
+        choices=['dirichlet', 'temperature', 'beta', 'isotonic', 'platt', 'auto'],
         default='dirichlet',
         help=(
             'Probability calibration method (default: dirichlet — joint simplex '
             'calibration). "temperature" fits a single scalar T via softmax. '
-            '"auto" picks the best of isotonic/platt.'
+            '"beta" fits per-class Kull et al. (2017) 3-parameter logistic on '
+            '[log p, log(1-p)]. "auto" picks the best of isotonic/platt.'
         ),
     )
     args = parser.parse_args()
