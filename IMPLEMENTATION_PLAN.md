@@ -1,8 +1,8 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P10 open — Draw feature reinstatement & ablation (4 tasks, 8-loop cap)
+## Status: P11 open — Calibrator investigation (5 tasks, 10-loop cap)
 
-> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P10** (tasks P10a–P10d). Phase 1 (P9a–P9e) shipped 19 April 2026. Phase 2 (P9f–P9i) shipped per-task but **P9j never closed** — the Phase 2 closeout retrain failed the envelope (val log-loss 0.979 > 0.96, draw AUC 0.557 < 0.60). P10 exists to fix the root cause: P9h over-pruned the draw indicators. P9j's checkbox remains `[ ]` as historical truth; the P10 task-grep targets only `P10[a-d]` so the old P9 tasks will not be re-picked.
+> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P11** (tasks P11a–P11e). P10 proved the blocker is not feature pruning — it is the calibrator itself (Dirichlet matrix-scaling collapses draw predictions to 0/575). P11 investigates alternative calibrators and, if none beat isotonic+cascade, reverts to the known-working baseline as a clean close-out. The P11 task-grep targets only `P11[a-e]`; stale `[ ]` tasks from P9j/P10c/P10d will not be re-picked.
 
 Last updated: 19 April 2026
 Active branch: `v3.0-MVP-Backend_Enhancements`
@@ -33,7 +33,8 @@ Active branch: `v3.0-MVP-Backend_Enhancements`
 | P8 Prediction Engine | 10/12 | P8a–j DONE; P8k retrain + P8l RAG historical remaining |
 | P9 Phase 1 — Scoreline Realism | 5/5 (100%) | DONE — frontend scoreline realism shipped on v3.0-MVP-UX. Merged into current branch. See Phase 1 Completion Report. |
 | P9 Phase 2 — Python Calibration | 4/5 | P9f–P9i DONE (Dirichlet, hack removal, feature pruning, λ validation). P9j closeout BLOCKED on retrain envelope fail — see `### P9 Discovered Work` log. Superseded by P10. |
-| P10 — Draw Feature Ablation | 0/4 | **ACTIVE** — undo P9h's over-pruning, isolate Dirichlet regression, re-retrain to envelope. P10a–P10d. |
+| P10 — Draw Feature Ablation | 2/4 | P10a diagnostic + P10b ablation DONE. P10c retrain committed but checkbox unflipped (envelope failed). P10d unreached. Findings: feature pruning NOT the root cause — see `### P10 Discovered Work`. Superseded by P11. |
+| P11 — Calibrator Investigation | 1/5 | **ACTIVE** — P11a isotonic benchmark done (FAILS envelope: 6/575 draws predicted, log-loss 0.968, draw AUC 0.572). Key finding: post-P10b feature set has lost draw discrimination — not a pure calibrator problem. P11b–P11e pending. |
 
 **Frontend:** 597 Vitest tests (38 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -328,6 +329,75 @@ _(Ralph appends findings here during P10 iterations. Format: `- <YYYY-MM-DD> <P1
   Each restored feature passes the material-contribution bar individually (Δll -0.002 to -0.004, Δauc +0.004 to +0.008). Combined they exhibit multicollinearity (all three are closeness-cluster derivatives — `elo_draw_band = form_closeness × standings_closeness`), so the joint draw-AUC gain shrinks to +0.0018 while accuracy peaks at **0.538** (vs 0.533 baseline, highest of any variant). Chose v4 (all three restored, 114 features total) for the final state: highest accuracy, second-lowest cal log-loss, still net-positive on draw AUC, and aligns with the runbook's "typically 6 draw indicators total" default. Envelope remains unmet (all variants cal_ll > 0.9600, draw_auc < 0.6000) — confirms P10a's DEFERRED-P11 diagnosis that Dirichlet over-regularisation is the real block. P10c retrain expected to fail envelope; will be logged as blocker per P9j pattern.
 
 - 2026-04-20 P10c: Final retrain with Dirichlet calibrator on restored 114-feature set (33-season, 12,339 samples, 9,871 train / 2,468 val, seed=42). **ENVELOPE FAILED as predicted by P10b.** XGBoost calibrated: val log-loss **0.9761** (envelope ≤ 0.96, FAIL by +0.0161), Draw AUC-ROC **0.5600** (envelope ≥ 0.60, FAIL by -0.0400), overall accuracy 53.4%. Dirichlet reduced raw log loss 1.0100 → 0.9761 (-0.0339) but draw accuracy still collapsed to 0.0% (confusion matrix: 0/575 draws predicted) — identical failure mode to P9j and P10a. Stacked ensemble slightly better (53.8% accuracy, 0.9781 log loss, draw AUC 0.5625) but also fails envelope. Per runbook: rolled `backend/models/xgboost_free_tier.joblib` back from pre-P10c backup (isotonic, 119 features, trained 2026-04-11 — the pre-Phase-2 working baseline). P10c NOT marked `[x]`; terminator NOT written. **DEFERRED-P11 confirmed as hard blocker:** draw class cannot be rescued by feature restoration alone; Dirichlet matrix-scaling fit needs proper regularisation (prior / L2 on scaling matrix) or an alternative approach (e.g., calibrated isotonic with post-hoc draw threshold). Future phase must address the calibrator fit itself.
+
+---
+
+## P11: Calibrator Investigation (ACTIVE — 5 tasks, 10-loop cap)
+
+> **Context:** Opened 20 April 2026 after P10 proved the blocker is not feature pruning. Three retrain cycles (P9j, P10a, P10c) all produced the same failure signature: calibrator collapses draw predictions to 0/575, log-loss ~0.976–0.979, draw AUC ~0.557. The draw cascade architecture already in `backend/app/api/main.py:484-498` works at inference time but Phase 2 disabled it during retrain because `train_free_tier.py` stopped returning a useful cascade model. P11 isolates the calibrator question: is there ANY calibrator that preserves draw predictions on this dataset, or is isotonic+cascade (the pre-Phase-2 state) the architectural answer?
+>
+> **This phase closes out cleanly regardless of outcome.** If a calibrator wins, P11e applies it. If none do, P11e reverts `train_free_tier.py`'s calibrator default back to isotonic (undoing the P9f change for the `--calibrator` default) while keeping the draw cascade restored — documenting "no calibrator beats isotonic+cascade on this data" as a real finding. Either way, the terminator fires.
+
+### Design Decisions (locked in 20 April 2026)
+
+| Decision | Choice |
+|----------|--------|
+| Pass criterion | ALL of: draws predicted ≥ 30/575 (5% of val), val log-loss ≤ 0.96, draw AUC-ROC ≥ 0.60 |
+| Why the draw-count criterion | P9j/P10a/P10c all failed by predicting 0/575 draws — pure log-loss envelope missed this. New criterion forces calibrators to actually USE the draw class. |
+| Task independence | P11b/c/d are fully independent calibrator experiments. If one errors, Ralph moves to the next. |
+| Fallback | If no calibrator meets pass criterion, revert `--calibrator` default to isotonic and re-enable cascade at inference. Terminator still fires. |
+| Budget | ~2 iterations per calibrator test (implement + retrain) + 1 for benchmark + 1 for decision = ~10 cap. |
+
+### Task List (P11)
+
+- [x] **P11a — [P1] Isotonic benchmark (sanity target).** Run `python train_free_tier.py --calibrator isotonic` on the current (post-P10b) feature set (114 features). Confirm it reproduces or approximates the pre-Phase-2 baseline (log-loss ~0.954, draw AUC ~0.601, draws predicted > 30/575). This establishes the target to beat and verifies that the post-P9g/P9h code path still works correctly with isotonic. Do NOT overwrite the production `.joblib` — use `--output` to save to a temp path if the CLI supports it, or accept that the benchmark overwrites and is later overwritten by P11e. **Acceptance:** isotonic + post-P10b features hits draws predicted ≥ 30/575 AND log-loss ≤ 0.97; record metrics in commit message.
+
+- [ ] **P11b — [P1] Temperature scaling.** Add a `temperature` option to the calibrator dispatch in `backend/train_free_tier.py:564-618`. Fit a single scalar T ≥ 0.1 by minimising val log-loss on raw logits (`scipy.optimize.minimize_scalar` or a 50-point grid search is fine). Apply `softmax(logits / T)` at inference. Retrain, capture metrics, keep draws-predicted count from confusion matrix. **Acceptance:** temperature fit converges; metrics logged; check pass criterion. If temperature scaling passes, note it as a leading candidate. Do NOT flip production calibrator yet.
+
+- [ ] **P11c — [P1] Beta calibration (per-class).** Add a `beta` option to the calibrator dispatch. Implement the 2-parameter beta calibrator from Kull, Filho & Flach (2017) — fits `y = 1 / (1 + exp(-(a*log(p) + b*log(1-p) + c)))` per class via OvR logistic regression on `log(p)` and `log(1-p)` features. Re-normalise the 3 class outputs to sum to 1. Retrain, capture metrics including draws-predicted. **Acceptance:** beta fit converges per class; pass criterion checked. Beta is designed for minority classes — a reasonable candidate.
+
+- [ ] **P11d — [P1] Regularised Dirichlet (L2 on scaling matrix).** Modify the existing Dirichlet calibrator (from P9f) to add an L2 penalty on the off-diagonal entries of the scaling matrix, with λ selected on a small validation grid `[1e-3, 1e-2, 1e-1, 1, 10]`. This implements the regularisation that Kull et al. (2019) recommend but the initial P9f implementation likely omitted. Retrain per λ, select best by pass criterion. **Acceptance:** regularised Dirichlet tested across the λ grid; best λ recorded; pass criterion checked. If the existing Dirichlet implementation doesn't expose a regularisation hook, log the finding and narrow scope — do NOT rewrite the whole calibrator from scratch in this task.
+
+- [ ] **P11e — [P1] Decision + closeout + terminator.** Compare P11a (isotonic baseline), P11b (temperature), P11c (beta), P11d (regularised Dirichlet) on the pass criterion. **Decision logic:**
+  - If any calibrator passes AND beats isotonic on log-loss or draw AUC → set it as the default in `train_free_tier.py`; retrain final production model; save `.joblib`.
+  - If isotonic is the best performer → set `--calibrator` default back to `isotonic` (reverting P9f's default change); re-enable the draw cascade at inference by un-disabling it in training output if applicable; retrain final production model; save `.joblib`.
+  - If NO calibrator passes (not even isotonic) → this indicates the dataset itself has drifted or the feature restoration broke something; flag `DEFERRED-P12` and DO still terminate: revert `train_free_tier.py`'s calibrator default to isotonic and leave production model as the pre-Phase-2 baseline.
+  - Run full gates: `cd backend && pytest -x` (≥203 tests), `cd frontend && npm run test:run` (≥648 tests).
+  - Write `### P11 Completion Report` containing: comparison table of all 4 calibrators (log-loss, draw AUC, draws predicted, accuracy), decision rationale, final model parameters, files changed.
+  - Update `backend/README.md` status section.
+  - Flip P11a–P11e to `[x]`. Flip P9j, P10c, P10d to `[x]` with inline note `superseded by P11e`.
+  - Update Status line to `P11 COMPLETE — calibrator investigation shipped`.
+  - Commit `P11: closeout + terminator`. **Acceptance:** Status line has terminator phrase; Completion Report written; decision made; production model artefact is either improved OR reverted to known-working baseline.
+
+### Terminator (P11)
+
+Loop stops when ALL true:
+- P11a–P11e all marked `[x]` in this document
+- Production `backend/models/xgboost_free_tier.joblib` exists and loads without error
+- `cd backend && pytest -x` green (≥203 tests)
+- `cd frontend && npm run test:run` green (≥648 tests)
+- Status line at top of this file contains: **"P11 COMPLETE — calibrator investigation shipped"**
+- `### P11 Completion Report` block written (including the 4-calibrator comparison table and the decision rationale)
+
+### Guardrails (P11)
+
+- **IN SCOPE:** `backend/train_free_tier.py` (calibrator dispatch, CLI default change), any new calibrator implementation under `backend/app/` (e.g. `backend/app/calibration.py` if you choose to factor out), `backend/tests/` (calibrator unit tests), `backend/models/xgboost_free_tier.joblib` (via retrain only), `backend/README.md` (closeout only, P11e only), `backend/app/api/main.py` (ONLY to re-enable the draw cascade at inference if P11a/e decide to — no other edits).
+- **OFF-LIMITS (P11):**
+  - The 3 restored draw features from P10b (`form_closeness`, `elo_draw_band`, `low_scoring_indicator`) — FROZEN. Don't re-prune them.
+  - All shipped Phase 1 frontend files — still FROZEN.
+  - `api/chat.ts`, CI/CD workflows — separate concerns.
+  - Existing P9f Dirichlet code — extend it (P11d), don't rewrite it unless explicitly in scope of P11d.
+- **Benchmarking rule:** each calibrator test (P11b/c/d) must record the full confusion matrix in its commit message, not just log-loss and AUC. The 0/575 draw collapse must be visible if it happens.
+- **No hand-edits to `.joblib`.** Only retrain produces the artefact.
+- **No new tasks mid-loop.** Discoveries → `### P11 Discovered Work` section. If a calibrator needs investigation beyond its 1-iteration budget, tag `DEFERRED-P12` and move on.
+- **Commit messages:** UK English, format `P11<letter>: <summary>`. Include pass-criterion result (PASS/FAIL + draws-predicted count) in the commit body. No `Co-Authored-By`, no `Claude Code` references, no `--no-verify`.
+
+### P11 Discovered Work
+
+_(Ralph appends findings here during P11 iterations. Format: `- <YYYY-MM-DD> <P11a|P11b|...>: <finding>`.)_
+
+- 2026-04-20 P11a: isotonic benchmark on post-P10b features (114→112 selected) FAILS envelope. Val log-loss 0.9679, draw AUC 0.5724, draws predicted 6/575 (0 correct). Confusion matrix (calibrated): `[[880,1,188],[388,0,187],[381,5,438]]`. Raw XGBoost pre-calibration predicts 30.8% draw accuracy and LR baseline 30.1% — so the draw signal exists in features but isotonic collapses it at argmax. This replicates the Dirichlet failure pattern, meaning P10b did NOT restore enough draw discrimination. Implication for P11e: isotonic alone will not meet Decision 2 either — Decision 3 becomes more likely unless P11b/c/d surface a calibrator that avoids the argmax collapse. Note: draw-cascade standalone at threshold 0.54 gives 198/755 correct draw predictions (34.4% recall) but 48.1% overall accuracy — cascade remains valuable if re-enabled at inference, per pre-Phase-2 baseline.
+- 2026-04-20 P11a: raw XGBoost draws predicted in confusion (pre-calibration) is much higher than post-isotonic — confirms the calibrator layer itself erases minority-class probability mass. Temperature scaling (P11b) is a sharper test of this: it preserves raw argmax exactly if T=1 and only reshapes for log-loss, so draws-predicted should not drop below the raw 30.8% unless T drives probabilities toward uniform.
 
 ---
 
