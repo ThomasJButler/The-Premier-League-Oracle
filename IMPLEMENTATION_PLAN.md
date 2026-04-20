@@ -1,8 +1,8 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P9 Phase 2 open — Python calibration & cleanup (5 tasks, 10-loop cap)
+## Status: P10 open — Draw feature reinstatement & ablation (4 tasks, 8-loop cap)
 
-> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P9 Phase 2** (tasks P9f–P9j). Phase 1 shipped on 19 April 2026 — see the P9 Phase 1 Completion Report below. Phase 1 tasks (P9a–P9e) are all `[x]` and will not be re-picked by the task grep.
+> **Ralph loop note:** `loop.sh` terminates when this Status line contains `COMPLETE` or `POLISHED`. The active phase is **P10** (tasks P10a–P10d). Phase 1 (P9a–P9e) shipped 19 April 2026. Phase 2 (P9f–P9i) shipped per-task but **P9j never closed** — the Phase 2 closeout retrain failed the envelope (val log-loss 0.979 > 0.96, draw AUC 0.557 < 0.60). P10 exists to fix the root cause: P9h over-pruned the draw indicators. P9j's checkbox remains `[ ]` as historical truth; the P10 task-grep targets only `P10[a-d]` so the old P9 tasks will not be re-picked.
 
 Last updated: 19 April 2026
 Active branch: `v3.0-MVP-Backend_Enhancements`
@@ -32,7 +32,8 @@ Active branch: `v3.0-MVP-Backend_Enhancements`
 | P7 Beyond MVP | 57/59 | 2 deferred: retrain awaiting season completion, rate-limit persistence low priority. P7m 10/10 complete |
 | P8 Prediction Engine | 10/12 | P8a–j DONE; P8k retrain + P8l RAG historical remaining |
 | P9 Phase 1 — Scoreline Realism | 5/5 (100%) | DONE — frontend scoreline realism shipped on v3.0-MVP-UX. Merged into current branch. See Phase 1 Completion Report. |
-| P9 Phase 2 — Python Calibration | 3/5 | **ACTIVE** — backend Dirichlet calibration, draw-recovery removal, feature pruning, λ validation. P9f–P9j. |
+| P9 Phase 2 — Python Calibration | 4/5 | P9f–P9i DONE (Dirichlet, hack removal, feature pruning, λ validation). P9j closeout BLOCKED on retrain envelope fail — see `### P9 Discovered Work` log. Superseded by P10. |
+| P10 — Draw Feature Ablation | 0/4 | **ACTIVE** — undo P9h's over-pruning, isolate Dirichlet regression, re-retrain to envelope. P10a–P10d. |
 
 **Frontend:** 597 Vitest tests (38 files), 43 E2E tests, 0 type errors, 0 svelte-check warnings
 **Backend free-tier:** Pipeline complete with hyperparameter tuning, v3 training run done (53.3% accuracy with draw features + dual calibration, model saved)
@@ -255,6 +256,64 @@ Loop stops when ALL true:
 - Feature count reduced by 8-10 with no material regression
 - `pytest` green (≥190 tests), `npm run test:run` green (≥644 tests)
 - `backend/README.md` status section updated
+
+---
+
+## P10: Draw Feature Reinstatement & Ablation (ACTIVE — 4 tasks, 8-loop cap)
+
+> **Context:** Opened 19 April 2026 after P9 Phase 2 closeout failed the envelope. Root cause per Ralph's Phase 2 discovery: P9h over-pruned the draw indicators (dropped 10 of 13 on "retain 2-3 highest-gain", but 7 of those weren't over the strict `|r|>0.85` correlation cut). Result: val log-loss 0.954 → 0.979 (+0.025), draw AUC-ROC 0.601 → 0.557 (-0.044). Dirichlet calibrator itself is working (reduces raw mlogloss from 1.0137 to 0.9790); the regression is upstream in the raw model. P10 fixes the root cause by restoring the information-bearing subset of pruned features and verifying Dirichlet doesn't independently regress.
+>
+> **Keep from P9 Phase 2:** Dirichlet calibrator (P9f), removal of the `recover_draws()` hack (P9g), empirical λ validation test (P9i). These are correct and stay.
+>
+> **Revisit from P9 Phase 2:** only P9h (feature pruning). Restore a subset, ablate, re-retrain.
+
+### Design Decisions (locked in 19 April 2026)
+
+| Decision | Choice |
+|----------|--------|
+| Envelope | Same as Phase 2: val log-loss ≤ 0.96, draw AUC-ROC ≥ 0.60. Tighter targets welcome but not required. |
+| Ablation order | Diagnostic-first: P10a isolates Dirichlet vs feature pruning BEFORE restoring anything. |
+| Restoration priority | Top-3 highest pre-prune gain among the 10 removed features: `form_closeness`, `elo_draw_band`, `low_scoring_indicator` (per Ralph's Phase 2 hypothesis). |
+| Terminator on ablation failure | If P10c retrain fails the envelope, do NOT write terminator. Log findings and stop (same pattern as P9j). |
+
+### Task List (P10)
+
+- [x] **P10a — [P1] Isolate Dirichlet vs feature-pruning regression.** Run `python train_free_tier.py --calibrator dirichlet` against the pre-P9h feature set (restore `backend/app/features/free_tier_features.py` momentarily from `git show HEAD~N:backend/app/features/free_tier_features.py` or a `git stash` checkout at a commit BEFORE `249deb0` P9h). Capture val log-loss and draw AUC-ROC. Restore the current (pruned) file when the diagnostic run finishes — do NOT commit the temporary restore. **Acceptance:** diagnostic numbers recorded in commit message AND in `### P10 Discovered Work`. Two outcomes: (a) **Dirichlet + whole features passes the envelope** → regression is 100% due to feature pruning; proceed to P10b with confidence. (b) **Dirichlet + whole features still fails the envelope** → Dirichlet matrix-scaling fit has a regularisation problem; log as `DEFERRED-P11` and narrow P10b scope to feature work only. Commit message format: `P10a: Dirichlet+whole-features diagnostic — log-loss X, draw AUC Y`.
+
+- [ ] **P10b — [P1] Restore top-3 pruned draw features + per-feature ablation.** Based on P10a's outcome, reinstate `form_closeness`, `elo_draw_band`, and `low_scoring_indicator` in `backend/app/features/free_tier_features.py` (re-add their computation AND their names in the feature list). Run a leave-one-in ablation: train 3 models, each with exactly one of the three restored (plus the 3 features P9h retained). Record val log-loss and draw AUC for each, plus all-three-together. **Acceptance:** ablation table in commit message shows which of the three restored features contribute most to lifting draw AUC above 0.60; final feature count is retained-3 + subset-of-3-restored, typically 6 draw indicators total. Do NOT restore features whose ablation shows no material contribution.
+
+- [ ] **P10c — [P1] Final retrain with restored feature set.** With the ablation-validated feature set from P10b, run `python train_free_tier.py --calibrator dirichlet` on the full 33-season dataset. Verify envelope: val log-loss ≤ 0.96, draw AUC-ROC ≥ 0.60. If both pass, save the new `backend/models/xgboost_free_tier.joblib`; if either fails, do NOT write the terminator (same rule as P9j) and log the outcome. **Acceptance:** envelope met, new `.joblib` saved, retrain metrics captured in commit message. If envelope fails despite ablation, exit with blocker and flag `DEFERRED-P11`.
+
+- [ ] **P10d — [P1] Final verification + terminator.** Verify P10a–P10c all marked `[x]` and P10c's envelope check passed. Run `cd backend && pytest -x` (≥203 tests green) AND `cd frontend && npm run test:run` (≥648 tests green). Write `### P10 Completion Report` block containing: files changed, final val log-loss and draw AUC, final feature count, the ablation table from P10b, commit hashes. Update the Status line at the top of the file to `P10 COMPLETE — draw features restored & calibrated`. Update `backend/README.md` status section with the new model parameters. Flip P9j's checkbox to `[x]` with a note "superseded by P10d". Commit with `P10: closeout + terminator`.
+
+### Terminator (P10)
+
+Loop stops when ALL true:
+- P10a–P10d all marked `[x]` in this document
+- P10c retrain succeeded: val log-loss ≤ 0.96, draw AUC-ROC ≥ 0.60
+- `cd backend && pytest -x` green (≥203 tests)
+- `cd frontend && npm run test:run` green (≥648 tests)
+- Status line at top of this file contains: **"P10 COMPLETE — draw features restored & calibrated"**
+- `### P10 Completion Report` block written
+
+### Guardrails (P10)
+
+- **IN SCOPE:** `backend/app/features/free_tier_features.py` (restore pruned feature computations), `backend/train_free_tier.py` (if feature list reference needs re-sync), `backend/tests/` (add/update tests for restored features), `backend/models/xgboost_free_tier.joblib` (via retrain only — do not hand-edit), `backend/README.md` (closeout only, P10d only).
+- **OFF-LIMITS (P10):**
+  - Dirichlet calibration code added in P9f — DO NOT revert. It is working (mlogloss reduced). If P10a shows it's the regression source, log under `DEFERRED-P11` and narrow P10 scope, do NOT revert here.
+  - The `recover_draws()` removal from P9g — DO NOT restore. That hack was papering over the real problem.
+  - All shipped Phase 1 frontend files — FROZEN as before.
+  - `api/chat.ts`, CI/CD workflows under `.github/`, anything outside `backend/` except `IMPLEMENTATION_PLAN.md` and `backend/README.md`.
+- **No hand-edits to the `.joblib` artefact.** Only retrain produces the artefact.
+- **No new tasks mid-loop.** Discoveries → `### P10 Discovered Work` section, NOT the active task list.
+- **Commit messages**: UK English, format `P10<letter>: <summary>`. No `Co-Authored-By`, no `Claude Code` references, no `--no-verify`.
+- **Do not skip P10a.** Even if "restore features" feels like the obvious move, running the diagnostic first means we're not flying blind. If Dirichlet is independently broken, restoring features alone won't save the envelope.
+
+### P10 Discovered Work
+
+_(Ralph appends findings here during P10 iterations. Format: `- <YYYY-MM-DD> <P10a|P10b|...>: <finding>`.)_
+
+- 2026-04-20 P10a: Diagnostic retrain on pre-P9h feature set (121 raw → 119 after auto-prune dropped `is_six_pointer` and `odds_asian_handicap`) with Dirichlet calibration on full 33-season dataset (12,339 samples, 9,871 train / 2,468 val). Calibrated XGBoost: val log-loss **0.9785** (envelope ≤ 0.96, FAIL by +0.0185), draw AUC-ROC **0.5569** (envelope ≥ 0.60, FAIL by -0.0431), overall accuracy 52.9%. Compare P9j post-prune: 0.9790 / 0.5572 / 53.3% — differences are within noise (Δlog-loss -0.0005, Δdraw-AUC -0.0003). **Feature pruning is NOT the regression source.** Confusion matrix after calibration (L140–143) shows draw predictions collapse to 0/575 — Dirichlet matrix-scaling over-regularises the draw class, identical failure mode to the earlier isotonic paradox. Compared against pre-Phase-2 isotonic baseline (0.954 / 0.601) with the same pre-P9h feature set, the +0.0245 log-loss and -0.0432 draw-AUC gap is attributable almost entirely to the calibrator swap (plus minor post-calibration drift from `recover_draws()` removal). Outcome (b) per the P10a decision tree: **DEFERRED-P11 — Dirichlet refit with proper matrix-scaling regularisation (Dirichlet prior / L2 on scaling matrix) required.** Narrowing P10b scope to feature work only per the runbook; P10c expected to fail envelope unless DEFERRED-P11 is picked up in a follow-up phase. Raw top-20 importance confirms `elo_x_form` at rank 3 (gain 0.0390) — the pre-P9h interaction feature IS informative at the tree level but the signal is erased by calibration.
 
 ---
 
