@@ -152,9 +152,9 @@ class TestFeatureCompleteness:
         assert set(features.keys()) == set(FreeTierFeatureEngineer.FEATURE_NAMES)
         assert len(features) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
 
-    def test_feature_count_is_111(self):
-        """FEATURE_NAMES should have exactly 111 entries post-P9h prune (86 original + 3 draw + 2 form-ELO + 5 interactions + 5 Elo + 10 odds)."""
-        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 111
+    def test_feature_count_is_114(self):
+        """FEATURE_NAMES should have exactly 114 entries post-P10b restoration (86 original + 6 draw + 2 form-ELO + 5 interactions + 5 Elo + 10 odds)."""
+        assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 114
 
     def test_no_duplicate_feature_names(self):
         """No duplicate entries in FEATURE_NAMES."""
@@ -505,28 +505,30 @@ class TestDrawIndicators:
     """Draw-specific feature signals."""
 
     def test_draw_features_present(self, engineer, sample_data):
-        """The 3 retained draw indicator features should be present (post-P9h prune)."""
+        """The 6 draw indicator features (3 retained + 3 restored in P10b) should be present."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         draw_features = [
             'standings_closeness',
             'h2h_draw_tendency',
             'goals_per_game_combined',
+            'form_closeness',
+            'elo_draw_band',
+            'low_scoring_indicator',
         ]
         for name in draw_features:
             assert name in features, f'Missing draw feature: {name}'
 
     def test_pruned_draw_features_absent(self, engineer, sample_data):
-        """Draw indicators pruned in P9h must no longer be emitted."""
+        """Draw indicators pruned in P9h and not restored in P10b must not be emitted."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         pruned = [
-            'form_closeness',
             'home_draw_rate', 'away_draw_rate',
-            'combined_defensive_strength', 'low_scoring_indicator',
+            'combined_defensive_strength',
             'draw_streak_proximity',
             'goal_difference_symmetry', 'season_ppg_closeness',
-            'mid_table_indicator', 'elo_draw_band',
+            'mid_table_indicator',
         ]
         for name in pruned:
             assert name not in features, f'Pruned feature leaked: {name}'
@@ -550,6 +552,31 @@ class TestDrawIndicators:
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         assert features['goals_per_game_combined'] >= 0.0
+
+    def test_form_closeness_bounded(self, engineer, sample_data):
+        """form_closeness = 1/(1+|Δppg|) — strictly within (0, 1]."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        assert 0.0 < features['form_closeness'] <= 1.0, (
+            f"form_closeness out of bounds: {features['form_closeness']}"
+        )
+
+    def test_low_scoring_indicator_non_negative_and_capped(self, engineer, sample_data):
+        """low_scoring_indicator = max(0, 3 - avg_goals); bounded in [0, 3]."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        val = features['low_scoring_indicator']
+        assert 0.0 <= val <= 3.0, f'low_scoring_indicator out of bounds: {val}'
+
+    def test_elo_draw_band_is_product_of_closeness(self, engineer, sample_data):
+        """elo_draw_band == form_closeness × standings_closeness."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        expected = features['form_closeness'] * features['standings_closeness']
+        assert abs(features['elo_draw_band'] - expected) < 1e-9, (
+            f"elo_draw_band ({features['elo_draw_band']}) != "
+            f"form_closeness × standings_closeness ({expected})"
+        )
 
 
 # ---------------------------------------------------------------------------

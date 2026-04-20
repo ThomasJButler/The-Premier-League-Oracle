@@ -165,8 +165,9 @@ class FreeTierFeatureEngineer:
         'home_shots_on_target_avg', 'away_shots_on_target_avg',
         'home_corners_avg', 'away_corners_avg',
         'home_yellows_avg', 'away_yellows_avg',
-        # Draw indicators (3) — pruned from 13 in P9h; retain orthogonal signals
+        # Draw indicators (6) — P10b restoration of 3 high-gain features pruned in P9h
         'standings_closeness', 'h2h_draw_tendency', 'goals_per_game_combined',
+        'form_closeness', 'elo_draw_band', 'low_scoring_indicator',
         # Elo ratings (5) — running team strength from historical results
         'home_elo', 'away_elo', 'elo_difference',
         'elo_expected_home', 'elo_home_advantage',
@@ -1054,25 +1055,45 @@ class FreeTierFeatureEngineer:
                          match_date: datetime | None = None,
                          ) -> dict[str, float]:
         """
-        3 orthogonal draw-prediction signals retained after P9h pruning.
+        6 draw-prediction signals.
 
-        The original 13 indicators had high mutual correlation in the closeness
-        cluster (form/standings/season_ppg/elo_draw_band/goal_difference_symmetry
-        all measure the same latent "evenness" variable). Pearson correlation
-        analysis on 2000 recent PL matches plus XGBoost gain importance ranking
-        informed the selection below. Retained:
+        After P9h collapsed 13 indicators to 3 (standings_closeness,
+        h2h_draw_tendency, goals_per_game_combined), P10b restores the three
+        highest-gain removed features (form_closeness, elo_draw_band,
+        low_scoring_indicator) following the Phase 2 closeout envelope failure.
 
+        Retained from P9h:
         - ``standings_closeness``: closeness-cluster proxy (highest gain; r=0.94
-          with the removed ``elo_draw_band``).
+          with ``elo_draw_band``).
+        - ``h2h_draw_tendency``: orthogonal head-to-head signal.
         - ``goals_per_game_combined``: orthogonal goal-volume signal.
-        - ``h2h_draw_tendency``: orthogonal head-to-head signal (near-zero
-          correlation with the other two).
+
+        Restored by P10b:
+        - ``form_closeness``: recent-PPG similarity (r=0.33 with standings —
+          orthogonal enough to add signal).
+        - ``elo_draw_band``: form_closeness × standings_closeness — multiplicative
+          "both-close" interaction that bare features can't express at tree depth.
+        - ``low_scoring_indicator``: inverted recent total-goals average (tactical
+          draw-prone signal; orthogonal to season-PPG volume).
         """
         f: dict[str, float] = {}
+        hm = self._get_team_matches(home_team, data)
+        am = self._get_team_matches(away_team, data)
 
-        # 1. Standings closeness: inverse of position gap (higher = closer).
-        # Represents the closeness-cluster (absorbs form, season-PPG, Elo-band,
-        # and goal-difference symmetry, which all correlated r=0.33-0.94 with it).
+        # form_closeness: absolute difference in recent PPG (lower diff = closer).
+        def _ppg(matches: pd.DataFrame, n: int = 10) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 1.0
+            pts = recent['team_result'].map({'W': 3, 'D': 1, 'L': 0})
+            return float(pts.mean())
+
+        h_ppg = _ppg(hm)
+        a_ppg = _ppg(am)
+        # Invert so higher = more likely draw (closer teams).
+        f['form_closeness'] = 1.0 / (1.0 + abs(h_ppg - a_ppg))
+
+        # standings_closeness: inverse of position gap.
         standings = self._compute_standings(data, match_date)
         h_stats = standings.get(home_team, {})
         a_stats = standings.get(away_team, {})
@@ -1080,8 +1101,17 @@ class FreeTierFeatureEngineer:
         a_pos = a_stats.get('position', 10)
         f['standings_closeness'] = 1.0 / (1.0 + abs(h_pos - a_pos))
 
-        # 2. H2H draw tendency: draw rate in head-to-head matches.
-        # Orthogonal to the closeness cluster — adds unique historical signal.
+        # low_scoring_indicator: inverted average total goals (lower goals → draw).
+        def _avg_total_goals(matches: pd.DataFrame, n: int = 10) -> float:
+            recent = matches.tail(n)
+            if recent.empty:
+                return 2.5  # PL average
+            return float((recent['team_goals'] + recent['opponent_goals']).mean())
+
+        avg_goals = (_avg_total_goals(hm) + _avg_total_goals(am)) / 2.0
+        f['low_scoring_indicator'] = max(0.0, 3.0 - avg_goals)
+
+        # h2h_draw_tendency: draw rate in head-to-head matches.
         h2h = self._get_h2h_matches(home_team, away_team, data)
         if len(h2h) >= 2 and 'result' in h2h.columns:
             h2h_draws = int((h2h['result'] == 'D').sum())
@@ -1089,15 +1119,20 @@ class FreeTierFeatureEngineer:
         else:
             f['h2h_draw_tendency'] = 0.0
 
-        # 3. Goals per game combined: low combined goals → draw-prone.
-        # Orthogonal volume signal (r≈0.4 with standings_closeness).
+        # goals_per_game_combined: inverted season-average goals (season-scale
+        # volume, complements the recent-form low_scoring_indicator).
         h_played = max(h_stats.get('played', 1), 1)
         a_played = max(a_stats.get('played', 1), 1)
         h_gpg = h_stats.get('gf', 0) / h_played
         a_gpg = a_stats.get('gf', 0) / a_played
         combined_gpg = (h_gpg + a_gpg) / 2.0
-        # Invert: lower goals → higher draw probability (capped at 2.0)
         f['goals_per_game_combined'] = max(0.0, 2.0 - combined_gpg)
+
+        # elo_draw_band: multiplicative closeness interaction.
+        # Both form AND standings close → strongest draw signal. Trees can
+        # approximate this with two splits, but the explicit product gives
+        # a cleaner single-feature split (historical top-5 gain feature).
+        f['elo_draw_band'] = f['form_closeness'] * f['standings_closeness']
 
         return f
 
