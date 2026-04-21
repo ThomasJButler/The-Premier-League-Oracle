@@ -19,6 +19,76 @@ export interface HalfTimeTempo {
   capitulationLossRate: number; // rate of losses despite leading at HT
 }
 
+/**
+ * Goal-frequency tail for one venue (home or away). The `distribution` field
+ * is a histogram keyed "0".."5" plus "6+", summing to ~1.0. Use these rates
+ * as direct observations of P(score ≥ N) rather than relying on Poisson CDF
+ * estimates at fitted λ — top teams hit the tail meaningfully more often than
+ * their mean λ would imply.
+ */
+export interface GoalFrequencyVenue {
+  scored3Plus: number;
+  scored4Plus: number;
+  scored5Plus: number;
+  scored6Plus: number;
+  conceded3Plus: number;
+  conceded4Plus: number;
+  distribution: Record<string, number>;
+}
+
+export interface GoalFrequencyEraWeighted {
+  homeScored3Plus: number;
+  homeScored4Plus: number;
+  homeScored5Plus: number;
+  awayScored3Plus: number;
+  awayScored4Plus: number;
+  awayScored5Plus: number;
+}
+
+export interface GoalFrequency {
+  home: GoalFrequencyVenue;
+  away: GoalFrequencyVenue;
+  eraWeighted: GoalFrequencyEraWeighted;
+}
+
+/**
+ * Big-win / capitulation margins. `homeBy3Plus` = the team won at home by 3+
+ * goals; `homeLossBy3Plus` = the team lost at home by 3+ goals. Useful for
+ * reasoning about blowout probability on either side of the predicted result.
+ */
+export interface BigWin {
+  homeBy3Plus: number;
+  awayBy3Plus: number;
+  homeLossBy3Plus: number;
+  awayLossBy3Plus: number;
+}
+
+/**
+ * Longest consecutive runs in the 33-season archive. Scoring-run = fixtures
+ * where the team scored at least 1 goal; clean-sheet = the team kept the
+ * opposition to 0. Informative but not directly consumed by the ensemble.
+ */
+export interface Streaks {
+  longestScoringRunHome: number;
+  longestScoringRunAway: number;
+  longestCleanSheetRunHome: number;
+  longestCleanSheetRunAway: number;
+}
+
+export interface LeagueGoalFrequency {
+  homeScored3PlusRate: number;
+  homeScored4PlusRate: number;
+  homeScored5PlusRate: number;
+  awayScored3PlusRate: number;
+  awayScored4PlusRate: number;
+  awayScored5PlusRate: number;
+  match3PlusGoalsEitherRate: number; // either side scored ≥3
+  match4PlusGoalsEitherRate: number; // either side scored ≥4
+  match5PlusTotalRate: number; // total goals ≥5
+  match6PlusTotalRate: number; // total goals ≥6
+  highestScoringMatch: number; // largest single-match total goals in the archive
+}
+
 export interface OverRates {
   over15: number;
   over25: number;
@@ -80,6 +150,13 @@ export interface TeamProfile {
   // Optional — generator skips a side of the split with <20 matches, and
   // omits the whole field if both sides are too thin.
   commonScorelines?: CommonScorelines;
+  // Goal-frequency tail data. Direct observations of P(score ≥ N) per venue,
+  // plus histogram and era-weighted thresholds for current-relevance bias.
+  goalFrequency?: GoalFrequency;
+  // Big-win + big-loss margins.
+  bigWin?: BigWin;
+  // Longest consecutive scoring / clean-sheet runs on each side of the venue.
+  streaks?: Streaks;
 }
 
 export interface SeasonStats {
@@ -210,6 +287,13 @@ export interface StatsPack {
    * Optional because older generator runs may predate this section.
    */
   matchdayStats?: Record<string, MatchdayStats>;
+  /**
+   * League-wide high-scoring normaliser. Useful when reasoning about whether
+   * a team's 3+/4+/5+ rate is exceptional — comparing the team's rate against
+   * these league-average numerators is the direct way to identify blowout
+   * teams (Man City's home 3+ rate 0.37 vs league 0.20 = 1.8× more likely).
+   */
+  leagueGoalFrequency?: LeagueGoalFrequency;
 }
 
 export const statsPack = rawStatsPack as unknown as StatsPack;
@@ -307,6 +391,15 @@ export function getAnomalies(): Anomaly[] {
  */
 export function getRefereeStats(refereeName: string): RefereeStats | undefined {
   return statsPack.referees?.[refereeName];
+}
+
+/**
+ * League-wide goal-frequency summary — home/away scored-≥N rates, match-level
+ * blowout rates, and the highest-scoring match in the archive. Useful as a
+ * normaliser for team-level goal-frequency exceptionality checks.
+ */
+export function getLeagueGoalFrequency(): LeagueGoalFrequency | undefined {
+  return statsPack.leagueGoalFrequency;
 }
 
 /**

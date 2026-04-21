@@ -21,7 +21,7 @@
     }
   ],
   "eraDecay": 0.85,
-  "generatedAt": "2026-04-21T03:40:30+00:00",
+  "generatedAt": "2026-04-21T04:12:31+00:00",
   "leagueEra": {
     "avgAwayGoalsOverall": 1.1658,
     "avgBTTSOverall": 0.5102,
@@ -48,6 +48,19 @@
     "avgHomeGoalsOverall": 1.5292,
     "avgOver25Overall": 0.5056,
     "avgTotalGoalsOverall": 2.6949
+  },
+  "leagueGoalFrequency": {
+    "awayScored3PlusRate": 0.1253,
+    "awayScored4PlusRate": 0.0396,
+    "awayScored5PlusRate": 0.0108,
+    "highestScoringMatch": 11,
+    "homeScored3PlusRate": 0.2011,
+    "homeScored4PlusRate": 0.0779,
+    "homeScored5PlusRate": 0.0259,
+    "match3PlusGoalsEitherRate": 0.3043,
+    "match4PlusGoalsEitherRate": 0.1152,
+    "match5PlusTotalRate": 0.1376,
+    "match6PlusTotalRate": 0.0585
   },
   "matchdayStats": {
     "1": {
@@ -39492,6 +39505,12 @@
     "Arsenal": {
       "awayGoalsConceded": 1.1218,
       "awayGoalsScored": 1.5737,
+      "bigWin": {
+        "awayBy3Plus": 0.1234,
+        "awayLossBy3Plus": 0.0385,
+        "homeBy3Plus": 0.2045,
+        "homeLossBy3Plus": 0.0145
+      },
       "bttsRate": 0.5189,
       "cleanSheetRateAway": 0.3397,
       "cleanSheetRateHome": 0.4219,
@@ -39539,6 +39558,50 @@
       },
       "failedToScoreRateAway": 0.2196,
       "failedToScoreRateHome": 0.1288,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1058,
+          "conceded4Plus": 0.0321,
+          "distribution": {
+            "0": 0.2196,
+            "1": 0.3397,
+            "2": 0.2179,
+            "3": 0.1298,
+            "4": 0.0641,
+            "5": 0.0208,
+            "6+": 0.008
+          },
+          "scored3Plus": 0.2228,
+          "scored4Plus": 0.0929,
+          "scored5Plus": 0.0288,
+          "scored6Plus": 0.008
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.2352,
+          "awayScored4Plus": 0.1205,
+          "awayScored5Plus": 0.0475,
+          "homeScored3Plus": 0.3512,
+          "homeScored4Plus": 0.1596,
+          "homeScored5Plus": 0.0685
+        },
+        "home": {
+          "conceded3Plus": 0.066,
+          "conceded4Plus": 0.0081,
+          "distribution": {
+            "0": 0.1288,
+            "1": 0.2496,
+            "2": 0.2882,
+            "3": 0.1836,
+            "4": 0.087,
+            "5": 0.0483,
+            "6+": 0.0145
+          },
+          "scored3Plus": 0.3333,
+          "scored4Plus": 0.1498,
+          "scored5Plus": 0.0628,
+          "scored6Plus": 0.0145
+        }
+      },
       "goalVariance": 1.9289,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.8355,
@@ -39567,11 +39630,23 @@
         "under25": 0.4651
       },
       "recentScoringTrend": 1.1348,
+      "streaks": {
+        "longestCleanSheetRunAway": 6,
+        "longestCleanSheetRunHome": 8,
+        "longestScoringRunAway": 27,
+        "longestScoringRunHome": 46
+      },
       "totalMatches": 1245
     },
     "Aston Villa": {
       "awayGoalsConceded": 1.5062,
       "awayGoalsScored": 1.1376,
+      "bigWin": {
+        "awayBy3Plus": 0.0441,
+        "awayLossBy3Plus": 0.1058,
+        "homeBy3Plus": 0.0779,
+        "homeLossBy3Plus": 0.0407
+      },
       "bttsRate": 0.5124,
       "cleanSheetRateAway": 0.2363,
       "cleanSheetRateHome": 0.3345,
@@ -39619,6 +39694,50 @@
       },
       "failedToScoreRateAway": 0.3263,
       "failedToScoreRateHome": 0.2673,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2099,
+          "conceded4Plus": 0.067,
+          "distribution": {
+            "0": 0.3263,
+            "1": 0.3563,
+            "2": 0.2152,
+            "3": 0.0688,
+            "4": 0.0247,
+            "5": 0.0071,
+            "6+": 0.0018
+          },
+          "scored3Plus": 0.1023,
+          "scored4Plus": 0.0335,
+          "scored5Plus": 0.0088,
+          "scored6Plus": 0.0018
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1089,
+          "awayScored4Plus": 0.0257,
+          "awayScored5Plus": 0.0113,
+          "homeScored3Plus": 0.2177,
+          "homeScored4Plus": 0.07,
+          "homeScored5Plus": 0.0142
+        },
+        "home": {
+          "conceded3Plus": 0.1027,
+          "conceded4Plus": 0.0407,
+          "distribution": {
+            "0": 0.2673,
+            "1": 0.3398,
+            "2": 0.2265,
+            "3": 0.108,
+            "4": 0.0425,
+            "5": 0.0088,
+            "6+": 0.0071
+          },
+          "scored3Plus": 0.1664,
+          "scored4Plus": 0.0584,
+          "scored5Plus": 0.0159,
+          "scored6Plus": 0.0071
+        }
+      },
       "goalVariance": 1.3641,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.562,
@@ -39647,11 +39766,23 @@
         "under25": 0.5133
       },
       "recentScoringTrend": 1.2887,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 13,
+        "longestScoringRunHome": 27
+      },
       "totalMatches": 1132
     },
     "Barnsley": {
       "awayGoalsConceded": 2.4737,
       "awayGoalsScored": 0.6316,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.3158,
+        "homeBy3Plus": 0.0,
+        "homeLossBy3Plus": 0.1053
+      },
       "bttsRate": 0.5,
       "cleanSheetRateAway": 0.1579,
       "cleanSheetRateHome": 0.1579,
@@ -39663,6 +39794,50 @@
       },
       "failedToScoreRateAway": 0.4211,
       "failedToScoreRateHome": 0.2632,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3684,
+          "conceded4Plus": 0.3158,
+          "distribution": {
+            "0": 0.4211,
+            "1": 0.5263,
+            "2": 0.0526,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0526,
+          "homeScored4Plus": 0.0526,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2632,
+          "conceded4Plus": 0.0526,
+          "distribution": {
+            "0": 0.2632,
+            "1": 0.2632,
+            "2": 0.4211,
+            "3": 0.0,
+            "4": 0.0526,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0526,
+          "scored4Plus": 0.0526,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.8151,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5789,
@@ -39691,11 +39866,23 @@
         "under25": 0.4211
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 1,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 4,
+        "longestScoringRunHome": 12
+      },
       "totalMatches": 38
     },
     "Birmingham": {
       "awayGoalsConceded": 1.6641,
       "awayGoalsScored": 0.8359,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.1094,
+        "homeBy3Plus": 0.0692,
+        "homeLossBy3Plus": 0.0462
+      },
       "bttsRate": 0.4845,
       "cleanSheetRateAway": 0.1953,
       "cleanSheetRateHome": 0.3154,
@@ -39743,6 +39930,50 @@
       },
       "failedToScoreRateAway": 0.3984,
       "failedToScoreRateHome": 0.3077,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2188,
+          "conceded4Plus": 0.0703,
+          "distribution": {
+            "0": 0.3984,
+            "1": 0.4141,
+            "2": 0.1406,
+            "3": 0.0469,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0469,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0414,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0819,
+          "homeScored4Plus": 0.0326,
+          "homeScored5Plus": 0.0061
+        },
+        "home": {
+          "conceded3Plus": 0.0615,
+          "conceded4Plus": 0.0154,
+          "distribution": {
+            "0": 0.3077,
+            "1": 0.3308,
+            "2": 0.2538,
+            "3": 0.0692,
+            "4": 0.0308,
+            "5": 0.0077,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1077,
+          "scored4Plus": 0.0385,
+          "scored5Plus": 0.0077,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.984,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4457,
@@ -39771,11 +40002,23 @@
         "under25": 0.5736
       },
       "recentScoringTrend": 1.0555,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 10
+      },
       "totalMatches": 258
     },
     "Blackburn": {
       "awayGoalsConceded": 1.5155,
       "awayGoalsScored": 1.0745,
+      "bigWin": {
+        "awayBy3Plus": 0.0311,
+        "awayLossBy3Plus": 0.1087,
+        "homeBy3Plus": 0.1056,
+        "homeLossBy3Plus": 0.0311
+      },
       "bttsRate": 0.5186,
       "cleanSheetRateAway": 0.236,
       "cleanSheetRateHome": 0.3478,
@@ -39823,6 +40066,50 @@
       },
       "failedToScoreRateAway": 0.3292,
       "failedToScoreRateHome": 0.2329,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2019,
+          "conceded4Plus": 0.0714,
+          "distribution": {
+            "0": 0.3292,
+            "1": 0.382,
+            "2": 0.1925,
+            "3": 0.0807,
+            "4": 0.0124,
+            "5": 0.0031,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0963,
+          "scored4Plus": 0.0155,
+          "scored5Plus": 0.0031,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0926,
+          "awayScored4Plus": 0.008,
+          "awayScored5Plus": 0.0007,
+          "homeScored3Plus": 0.1889,
+          "homeScored4Plus": 0.0575,
+          "homeScored5Plus": 0.0102
+        },
+        "home": {
+          "conceded3Plus": 0.1087,
+          "conceded4Plus": 0.0342,
+          "distribution": {
+            "0": 0.2329,
+            "1": 0.3106,
+            "2": 0.236,
+            "3": 0.146,
+            "4": 0.0497,
+            "5": 0.0155,
+            "6+": 0.0093
+          },
+          "scored3Plus": 0.2205,
+          "scored4Plus": 0.0745,
+          "scored5Plus": 0.0248,
+          "scored6Plus": 0.0093
+        }
+      },
       "goalVariance": 1.4437,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5768,
@@ -39851,11 +40138,23 @@
         "under25": 0.5031
       },
       "recentScoringTrend": 0.9027,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 14,
+        "longestScoringRunHome": 20
+      },
       "totalMatches": 644
     },
     "Blackpool": {
       "awayGoalsConceded": 2.1579,
       "awayGoalsScored": 1.3158,
+      "bigWin": {
+        "awayBy3Plus": 0.0526,
+        "awayLossBy3Plus": 0.2105,
+        "homeBy3Plus": 0.0,
+        "homeLossBy3Plus": 0.0
+      },
       "bttsRate": 0.6842,
       "cleanSheetRateAway": 0.2632,
       "cleanSheetRateHome": 0.0526,
@@ -39867,6 +40166,50 @@
       },
       "failedToScoreRateAway": 0.3684,
       "failedToScoreRateHome": 0.0526,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.4211,
+          "conceded4Plus": 0.2632,
+          "distribution": {
+            "0": 0.3684,
+            "1": 0.1053,
+            "2": 0.4211,
+            "3": 0.0526,
+            "4": 0.0526,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1053,
+          "scored4Plus": 0.0526,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1053,
+          "awayScored4Plus": 0.0526,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1053,
+          "homeScored4Plus": 0.0526,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.3684,
+          "conceded4Plus": 0.0,
+          "distribution": {
+            "0": 0.0526,
+            "1": 0.4737,
+            "2": 0.3684,
+            "3": 0.0526,
+            "4": 0.0526,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1053,
+          "scored4Plus": 0.0526,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.0893,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.7368,
@@ -39895,11 +40238,23 @@
         "under25": 0.2632
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 1,
+        "longestScoringRunAway": 3,
+        "longestScoringRunHome": 17
+      },
       "totalMatches": 38
     },
     "Bolton": {
       "awayGoalsConceded": 1.7582,
       "awayGoalsScored": 1.0328,
+      "bigWin": {
+        "awayBy3Plus": 0.0205,
+        "awayLossBy3Plus": 0.1352,
+        "homeBy3Plus": 0.062,
+        "homeLossBy3Plus": 0.062
+      },
       "bttsRate": 0.5309,
       "cleanSheetRateAway": 0.1516,
       "cleanSheetRateHome": 0.2893,
@@ -39947,6 +40302,50 @@
       },
       "failedToScoreRateAway": 0.3607,
       "failedToScoreRateHome": 0.281,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2541,
+          "conceded4Plus": 0.1107,
+          "distribution": {
+            "0": 0.3607,
+            "1": 0.3566,
+            "2": 0.2049,
+            "3": 0.0492,
+            "4": 0.0246,
+            "5": 0.0041,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0779,
+          "scored4Plus": 0.0287,
+          "scored5Plus": 0.0041,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1001,
+          "awayScored4Plus": 0.0256,
+          "awayScored5Plus": 0.0018,
+          "homeScored3Plus": 0.1507,
+          "homeScored4Plus": 0.0662,
+          "homeScored5Plus": 0.0182
+        },
+        "home": {
+          "conceded3Plus": 0.1322,
+          "conceded4Plus": 0.0455,
+          "distribution": {
+            "0": 0.281,
+            "1": 0.3554,
+            "2": 0.2314,
+            "3": 0.0702,
+            "4": 0.0496,
+            "5": 0.0124,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1322,
+          "scored4Plus": 0.062,
+          "scored5Plus": 0.0124,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.217,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5391,
@@ -39975,11 +40374,23 @@
         "under25": 0.5082
       },
       "recentScoringTrend": 1.0599,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 6,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 12
+      },
       "totalMatches": 486
     },
     "Bournemouth": {
       "awayGoalsConceded": 1.9461,
       "awayGoalsScored": 1.2395,
+      "bigWin": {
+        "awayBy3Plus": 0.0479,
+        "awayLossBy3Plus": 0.1677,
+        "homeBy3Plus": 0.0659,
+        "homeLossBy3Plus": 0.0838
+      },
       "bttsRate": 0.5479,
       "cleanSheetRateAway": 0.1737,
       "cleanSheetRateHome": 0.2635,
@@ -40027,6 +40438,50 @@
       },
       "failedToScoreRateAway": 0.3174,
       "failedToScoreRateHome": 0.2754,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3174,
+          "conceded4Plus": 0.1257,
+          "distribution": {
+            "0": 0.3174,
+            "1": 0.3174,
+            "2": 0.2156,
+            "3": 0.1138,
+            "4": 0.0299,
+            "5": 0.006,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1497,
+          "scored4Plus": 0.0359,
+          "scored5Plus": 0.006,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1654,
+          "awayScored4Plus": 0.0426,
+          "awayScored5Plus": 0.0039,
+          "homeScored3Plus": 0.1502,
+          "homeScored4Plus": 0.0502,
+          "homeScored5Plus": 0.013
+        },
+        "home": {
+          "conceded3Plus": 0.1796,
+          "conceded4Plus": 0.0659,
+          "distribution": {
+            "0": 0.2754,
+            "1": 0.3234,
+            "2": 0.2455,
+            "3": 0.0958,
+            "4": 0.0479,
+            "5": 0.006,
+            "6+": 0.006
+          },
+          "scored3Plus": 0.1557,
+          "scored4Plus": 0.0599,
+          "scored5Plus": 0.012,
+          "scored6Plus": 0.006
+        }
+      },
       "goalVariance": 1.3774,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5719,
@@ -40055,11 +40510,23 @@
         "under25": 0.4042
       },
       "recentScoringTrend": 1.1621,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 13,
+        "longestScoringRunHome": 8
+      },
       "totalMatches": 334
     },
     "Bradford": {
       "awayGoalsConceded": 2.1053,
       "awayGoalsScored": 0.5789,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.1842,
+        "homeBy3Plus": 0.0263,
+        "homeLossBy3Plus": 0.1579
+      },
       "bttsRate": 0.4474,
       "cleanSheetRateAway": 0.1316,
       "cleanSheetRateHome": 0.2105,
@@ -40107,6 +40574,50 @@
       },
       "failedToScoreRateAway": 0.5789,
       "failedToScoreRateHome": 0.2895,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2895,
+          "conceded4Plus": 0.1579,
+          "distribution": {
+            "0": 0.5789,
+            "1": 0.3158,
+            "2": 0.0789,
+            "3": 0.0,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0263,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0242,
+          "awayScored4Plus": 0.0242,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1252,
+          "homeScored4Plus": 0.0242,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2105,
+          "conceded4Plus": 0.1053,
+          "distribution": {
+            "0": 0.2895,
+            "1": 0.3684,
+            "2": 0.2105,
+            "3": 0.1053,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1316,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.0152,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4474,
@@ -40135,11 +40646,23 @@
         "under25": 0.5395
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 1,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 4,
+        "longestScoringRunHome": 5
+      },
       "totalMatches": 76
     },
     "Brentford": {
       "awayGoalsConceded": 1.5495,
       "awayGoalsScored": 1.3407,
+      "bigWin": {
+        "awayBy3Plus": 0.0549,
+        "awayLossBy3Plus": 0.0659,
+        "homeBy3Plus": 0.0879,
+        "homeLossBy3Plus": 0.033
+      },
       "bttsRate": 0.5824,
       "cleanSheetRateAway": 0.2308,
       "cleanSheetRateHome": 0.2418,
@@ -40187,6 +40710,50 @@
       },
       "failedToScoreRateAway": 0.2857,
       "failedToScoreRateHome": 0.2198,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2088,
+          "conceded4Plus": 0.044,
+          "distribution": {
+            "0": 0.2857,
+            "1": 0.3297,
+            "2": 0.2308,
+            "3": 0.0879,
+            "4": 0.044,
+            "5": 0.022,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1538,
+          "scored4Plus": 0.0659,
+          "scored5Plus": 0.022,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1532,
+          "awayScored4Plus": 0.0744,
+          "awayScored5Plus": 0.0237,
+          "homeScored3Plus": 0.298,
+          "homeScored4Plus": 0.1103,
+          "homeScored5Plus": 0.022
+        },
+        "home": {
+          "conceded3Plus": 0.1429,
+          "conceded4Plus": 0.033,
+          "distribution": {
+            "0": 0.2198,
+            "1": 0.2857,
+            "2": 0.2198,
+            "3": 0.1758,
+            "4": 0.0769,
+            "5": 0.022,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.2747,
+          "scored4Plus": 0.0989,
+          "scored5Plus": 0.022,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.6456,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.6593,
@@ -40215,11 +40782,23 @@
         "under25": 0.4396
       },
       "recentScoringTrend": 1.0561,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 14,
+        "longestScoringRunHome": 19
+      },
       "totalMatches": 182
     },
     "Brighton": {
       "awayGoalsConceded": 1.515,
       "awayGoalsScored": 1.1916,
+      "bigWin": {
+        "awayBy3Plus": 0.0659,
+        "awayLossBy3Plus": 0.0659,
+        "homeBy3Plus": 0.0778,
+        "homeLossBy3Plus": 0.0719
+      },
       "bttsRate": 0.5599,
       "cleanSheetRateAway": 0.2216,
       "cleanSheetRateHome": 0.2695,
@@ -40267,6 +40846,50 @@
       },
       "failedToScoreRateAway": 0.2934,
       "failedToScoreRateHome": 0.2754,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1617,
+          "conceded4Plus": 0.0659,
+          "distribution": {
+            "0": 0.2934,
+            "1": 0.3772,
+            "2": 0.2096,
+            "3": 0.0898,
+            "4": 0.024,
+            "5": 0.006,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1198,
+          "scored4Plus": 0.0299,
+          "scored5Plus": 0.006,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.138,
+          "awayScored4Plus": 0.0403,
+          "awayScored5Plus": 0.0077,
+          "homeScored3Plus": 0.1918,
+          "homeScored4Plus": 0.0581,
+          "homeScored5Plus": 0.0132
+        },
+        "home": {
+          "conceded3Plus": 0.1317,
+          "conceded4Plus": 0.0599,
+          "distribution": {
+            "0": 0.2754,
+            "1": 0.3653,
+            "2": 0.1796,
+            "3": 0.1257,
+            "4": 0.0419,
+            "5": 0.006,
+            "6+": 0.006
+          },
+          "scored3Plus": 0.1796,
+          "scored4Plus": 0.0539,
+          "scored5Plus": 0.012,
+          "scored6Plus": 0.006
+        }
+      },
       "goalVariance": 1.3078,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5419,
@@ -40295,11 +40918,23 @@
         "under25": 0.503
       },
       "recentScoringTrend": 1.1239,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 21,
+        "longestScoringRunHome": 18
+      },
       "totalMatches": 334
     },
     "Burnley": {
       "awayGoalsConceded": 1.7742,
       "awayGoalsScored": 0.957,
+      "bigWin": {
+        "awayBy3Plus": 0.0376,
+        "awayLossBy3Plus": 0.1344,
+        "homeBy3Plus": 0.0323,
+        "homeLossBy3Plus": 0.086
+      },
       "bttsRate": 0.4892,
       "cleanSheetRateAway": 0.1828,
       "cleanSheetRateHome": 0.2688,
@@ -40347,6 +40982,50 @@
       },
       "failedToScoreRateAway": 0.414,
       "failedToScoreRateHome": 0.3065,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2796,
+          "conceded4Plus": 0.0914,
+          "distribution": {
+            "0": 0.414,
+            "1": 0.3118,
+            "2": 0.1935,
+            "3": 0.0645,
+            "4": 0.0161,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0806,
+          "scored4Plus": 0.0161,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0817,
+          "awayScored4Plus": 0.0167,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0809,
+          "homeScored4Plus": 0.0181,
+          "homeScored5Plus": 0.0097
+        },
+        "home": {
+          "conceded3Plus": 0.172,
+          "conceded4Plus": 0.0699,
+          "distribution": {
+            "0": 0.3065,
+            "1": 0.4462,
+            "2": 0.1667,
+            "3": 0.0591,
+            "4": 0.0161,
+            "5": 0.0054,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0806,
+          "scored4Plus": 0.0215,
+          "scored5Plus": 0.0054,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9758,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.457,
@@ -40375,11 +41054,23 @@
         "under25": 0.5215
       },
       "recentScoringTrend": 1.0173,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 15
+      },
       "totalMatches": 372
     },
     "Cardiff": {
       "awayGoalsConceded": 1.8421,
       "awayGoalsScored": 0.6579,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.1842,
+        "homeBy3Plus": 0.0,
+        "homeLossBy3Plus": 0.2632
+      },
       "bttsRate": 0.4079,
       "cleanSheetRateAway": 0.2105,
       "cleanSheetRateHome": 0.2368,
@@ -40427,6 +41118,50 @@
       },
       "failedToScoreRateAway": 0.5526,
       "failedToScoreRateHome": 0.3947,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3158,
+          "conceded4Plus": 0.1316,
+          "distribution": {
+            "0": 0.5526,
+            "1": 0.2632,
+            "2": 0.1579,
+            "3": 0.0263,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0263,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0162,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.085,
+          "homeScored4Plus": 0.0365,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.3158,
+          "conceded4Plus": 0.1316,
+          "distribution": {
+            "0": 0.3947,
+            "1": 0.2632,
+            "2": 0.2368,
+            "3": 0.0789,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1053,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9827,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.2763,
@@ -40455,11 +41190,23 @@
         "under25": 0.4737
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 3,
+        "longestScoringRunHome": 4
+      },
       "totalMatches": 76
     },
     "Charlton": {
       "awayGoalsConceded": 1.6242,
       "awayGoalsScored": 0.953,
+      "bigWin": {
+        "awayBy3Plus": 0.0268,
+        "awayLossBy3Plus": 0.1477,
+        "homeBy3Plus": 0.0408,
+        "homeLossBy3Plus": 0.0748
+      },
       "bttsRate": 0.4764,
       "cleanSheetRateAway": 0.2886,
       "cleanSheetRateHome": 0.3197,
@@ -40507,6 +41254,50 @@
       },
       "failedToScoreRateAway": 0.3758,
       "failedToScoreRateHome": 0.2789,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.255,
+          "conceded4Plus": 0.1208,
+          "distribution": {
+            "0": 0.3758,
+            "1": 0.4027,
+            "2": 0.1409,
+            "3": 0.0537,
+            "4": 0.0268,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0805,
+          "scored4Plus": 0.0268,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0713,
+          "awayScored4Plus": 0.0191,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1256,
+          "homeScored4Plus": 0.048,
+          "homeScored5Plus": 0.0031
+        },
+        "home": {
+          "conceded3Plus": 0.1429,
+          "conceded4Plus": 0.0544,
+          "distribution": {
+            "0": 0.2789,
+            "1": 0.3265,
+            "2": 0.2585,
+            "3": 0.0816,
+            "4": 0.0476,
+            "5": 0.0068,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1361,
+          "scored4Plus": 0.0544,
+          "scored5Plus": 0.0068,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1685,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5068,
@@ -40535,11 +41326,23 @@
         "under25": 0.5203
       },
       "recentScoringTrend": 0.9366,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 7,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 296
     },
     "Chelsea": {
       "awayGoalsConceded": 1.1431,
       "awayGoalsScored": 1.4968,
+      "bigWin": {
+        "awayBy3Plus": 0.1013,
+        "awayLossBy3Plus": 0.0418,
+        "homeBy3Plus": 0.1833,
+        "homeLossBy3Plus": 0.0145
+      },
       "bttsRate": 0.4984,
       "cleanSheetRateAway": 0.336,
       "cleanSheetRateHome": 0.4421,
@@ -40587,6 +41390,50 @@
       },
       "failedToScoreRateAway": 0.2395,
       "failedToScoreRateHome": 0.135,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.119,
+          "conceded4Plus": 0.0322,
+          "distribution": {
+            "0": 0.2395,
+            "1": 0.3344,
+            "2": 0.2251,
+            "3": 0.1238,
+            "4": 0.0547,
+            "5": 0.0129,
+            "6+": 0.0096
+          },
+          "scored3Plus": 0.201,
+          "scored4Plus": 0.0772,
+          "scored5Plus": 0.0225,
+          "scored6Plus": 0.0096
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.2472,
+          "awayScored4Plus": 0.0986,
+          "awayScored5Plus": 0.0353,
+          "homeScored3Plus": 0.2504,
+          "homeScored4Plus": 0.1012,
+          "homeScored5Plus": 0.0364
+        },
+        "home": {
+          "conceded3Plus": 0.0659,
+          "conceded4Plus": 0.0193,
+          "distribution": {
+            "0": 0.135,
+            "1": 0.2846,
+            "2": 0.3055,
+            "3": 0.1383,
+            "4": 0.0868,
+            "5": 0.0257,
+            "6+": 0.0241
+          },
+          "scored3Plus": 0.2749,
+          "scored4Plus": 0.1367,
+          "scored5Plus": 0.0498,
+          "scored6Plus": 0.0241
+        }
+      },
       "goalVariance": 1.8992,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.8034,
@@ -40615,11 +41462,23 @@
         "under25": 0.4887
       },
       "recentScoringTrend": 1.0987,
+      "streaks": {
+        "longestCleanSheetRunAway": 7,
+        "longestCleanSheetRunHome": 9,
+        "longestScoringRunAway": 18,
+        "longestScoringRunHome": 36
+      },
       "totalMatches": 1244
     },
     "Coventry": {
       "awayGoalsConceded": 1.6795,
       "awayGoalsScored": 0.9295,
+      "bigWin": {
+        "awayBy3Plus": 0.0256,
+        "awayLossBy3Plus": 0.1346,
+        "homeBy3Plus": 0.0641,
+        "homeLossBy3Plus": 0.0513
+      },
       "bttsRate": 0.4936,
       "cleanSheetRateAway": 0.1859,
       "cleanSheetRateHome": 0.3333,
@@ -40667,6 +41526,50 @@
       },
       "failedToScoreRateAway": 0.4423,
       "failedToScoreRateHome": 0.2949,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2372,
+          "conceded4Plus": 0.1026,
+          "distribution": {
+            "0": 0.4423,
+            "1": 0.2756,
+            "2": 0.2115,
+            "3": 0.0577,
+            "4": 0.0064,
+            "5": 0.0064,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0705,
+          "scored4Plus": 0.0128,
+          "scored5Plus": 0.0064,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0633,
+          "awayScored4Plus": 0.0143,
+          "awayScored5Plus": 0.0066,
+          "homeScored3Plus": 0.1269,
+          "homeScored4Plus": 0.0628,
+          "homeScored5Plus": 0.0047
+        },
+        "home": {
+          "conceded3Plus": 0.1026,
+          "conceded4Plus": 0.0321,
+          "distribution": {
+            "0": 0.2949,
+            "1": 0.3718,
+            "2": 0.2179,
+            "3": 0.0577,
+            "4": 0.0513,
+            "5": 0.0064,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1154,
+          "scored4Plus": 0.0577,
+          "scored5Plus": 0.0064,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1708,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4825,
@@ -40695,11 +41598,23 @@
         "under25": 0.5385
       },
       "recentScoringTrend": 1.0245,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 9
+      },
       "totalMatches": 312
     },
     "Crystal Palace": {
       "awayGoalsConceded": 1.55,
       "awayGoalsScored": 1.1267,
+      "bigWin": {
+        "awayBy3Plus": 0.03,
+        "awayLossBy3Plus": 0.1133,
+        "homeBy3Plus": 0.06,
+        "homeLossBy3Plus": 0.0667
+      },
       "bttsRate": 0.4867,
       "cleanSheetRateAway": 0.2133,
       "cleanSheetRateHome": 0.3033,
@@ -40747,6 +41662,50 @@
       },
       "failedToScoreRateAway": 0.3367,
       "failedToScoreRateHome": 0.3533,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.21,
+          "conceded4Plus": 0.0933,
+          "distribution": {
+            "0": 0.3367,
+            "1": 0.33,
+            "2": 0.2333,
+            "3": 0.0767,
+            "4": 0.0167,
+            "5": 0.0067,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1,
+          "scored4Plus": 0.0233,
+          "scored5Plus": 0.0067,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0971,
+          "awayScored4Plus": 0.0213,
+          "awayScored5Plus": 0.0098,
+          "homeScored3Plus": 0.1371,
+          "homeScored4Plus": 0.0571,
+          "homeScored5Plus": 0.0206
+        },
+        "home": {
+          "conceded3Plus": 0.1633,
+          "conceded4Plus": 0.03,
+          "distribution": {
+            "0": 0.3533,
+            "1": 0.35,
+            "2": 0.1733,
+            "3": 0.0833,
+            "4": 0.0233,
+            "5": 0.0167,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1233,
+          "scored4Plus": 0.04,
+          "scored5Plus": 0.0167,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.2194,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4642,
@@ -40775,11 +41734,23 @@
         "under25": 0.5367
       },
       "recentScoringTrend": 1.2,
+      "streaks": {
+        "longestCleanSheetRunAway": 5,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 12
+      },
       "totalMatches": 600
     },
     "Derby": {
       "awayGoalsConceded": 1.8271,
       "awayGoalsScored": 0.8571,
+      "bigWin": {
+        "awayBy3Plus": 0.0226,
+        "awayLossBy3Plus": 0.1353,
+        "homeBy3Plus": 0.0451,
+        "homeLossBy3Plus": 0.0827
+      },
       "bttsRate": 0.4586,
       "cleanSheetRateAway": 0.1729,
       "cleanSheetRateHome": 0.3233,
@@ -40827,6 +41798,50 @@
       },
       "failedToScoreRateAway": 0.4286,
       "failedToScoreRateHome": 0.3534,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2632,
+          "conceded4Plus": 0.1504,
+          "distribution": {
+            "0": 0.4286,
+            "1": 0.3835,
+            "2": 0.1203,
+            "3": 0.0451,
+            "4": 0.015,
+            "5": 0.0075,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0677,
+          "scored4Plus": 0.0226,
+          "scored5Plus": 0.0075,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0478,
+          "awayScored4Plus": 0.0152,
+          "awayScored5Plus": 0.004,
+          "homeScored3Plus": 0.0925,
+          "homeScored4Plus": 0.0171,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.1579,
+          "conceded4Plus": 0.0827,
+          "distribution": {
+            "0": 0.3534,
+            "1": 0.2857,
+            "2": 0.218,
+            "3": 0.1128,
+            "4": 0.0301,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1429,
+          "scored4Plus": 0.0301,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1387,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4511,
@@ -40855,11 +41870,23 @@
         "under25": 0.5301
       },
       "recentScoringTrend": 0.7067,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 7,
+        "longestScoringRunHome": 9
+      },
       "totalMatches": 266
     },
     "Everton": {
       "awayGoalsConceded": 1.4412,
       "awayGoalsScored": 1.0419,
+      "bigWin": {
+        "awayBy3Plus": 0.0225,
+        "awayLossBy3Plus": 0.0886,
+        "homeBy3Plus": 0.0946,
+        "homeLossBy3Plus": 0.0481
+      },
       "bttsRate": 0.4924,
       "cleanSheetRateAway": 0.2544,
       "cleanSheetRateHome": 0.3574,
@@ -40907,6 +41934,50 @@
       },
       "failedToScoreRateAway": 0.3494,
       "failedToScoreRateHome": 0.2276,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1771,
+          "conceded4Plus": 0.0628,
+          "distribution": {
+            "0": 0.3494,
+            "1": 0.3559,
+            "2": 0.2126,
+            "3": 0.0725,
+            "4": 0.0048,
+            "5": 0.0048,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0821,
+          "scored4Plus": 0.0097,
+          "scored5Plus": 0.0048,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0828,
+          "awayScored4Plus": 0.0089,
+          "awayScored5Plus": 0.0077,
+          "homeScored3Plus": 0.1562,
+          "homeScored4Plus": 0.046,
+          "homeScored5Plus": 0.0095
+        },
+        "home": {
+          "conceded3Plus": 0.1186,
+          "conceded4Plus": 0.0369,
+          "distribution": {
+            "0": 0.2276,
+            "1": 0.3317,
+            "2": 0.2596,
+            "3": 0.1154,
+            "4": 0.0465,
+            "5": 0.0096,
+            "6+": 0.0096
+          },
+          "scored3Plus": 0.1811,
+          "scored4Plus": 0.0657,
+          "scored5Plus": 0.0192,
+          "scored6Plus": 0.0096
+        }
+      },
       "goalVariance": 1.314,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5874,
@@ -40935,11 +42006,23 @@
         "under25": 0.543
       },
       "recentScoringTrend": 0.8758,
+      "streaks": {
+        "longestCleanSheetRunAway": 5,
+        "longestCleanSheetRunHome": 7,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 19
+      },
       "totalMatches": 1245
     },
     "Fulham": {
       "awayGoalsConceded": 1.6307,
       "awayGoalsScored": 0.9489,
+      "bigWin": {
+        "awayBy3Plus": 0.0227,
+        "awayLossBy3Plus": 0.0994,
+        "homeBy3Plus": 0.0625,
+        "homeLossBy3Plus": 0.0739
+      },
       "bttsRate": 0.5213,
       "cleanSheetRateAway": 0.2074,
       "cleanSheetRateHome": 0.2955,
@@ -40987,6 +42070,50 @@
       },
       "failedToScoreRateAway": 0.3778,
       "failedToScoreRateHome": 0.2585,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2358,
+          "conceded4Plus": 0.0767,
+          "distribution": {
+            "0": 0.3778,
+            "1": 0.3835,
+            "2": 0.1591,
+            "3": 0.071,
+            "4": 0.0085,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0795,
+          "scored4Plus": 0.0085,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1045,
+          "awayScored4Plus": 0.0103,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1796,
+          "homeScored4Plus": 0.0483,
+          "homeScored5Plus": 0.0291
+        },
+        "home": {
+          "conceded3Plus": 0.1591,
+          "conceded4Plus": 0.0455,
+          "distribution": {
+            "0": 0.2585,
+            "1": 0.3267,
+            "2": 0.267,
+            "3": 0.1136,
+            "4": 0.0114,
+            "5": 0.017,
+            "6+": 0.0057
+          },
+          "scored3Plus": 0.1477,
+          "scored4Plus": 0.0341,
+          "scored5Plus": 0.0227,
+          "scored6Plus": 0.0057
+        }
+      },
       "goalVariance": 1.1726,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4844,
@@ -41015,11 +42142,23 @@
         "under25": 0.4929
       },
       "recentScoringTrend": 1.2439,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 14,
+        "longestScoringRunHome": 13
+      },
       "totalMatches": 704
     },
     "Huddersfield": {
       "awayGoalsConceded": 2.0526,
       "awayGoalsScored": 0.6316,
+      "bigWin": {
+        "awayBy3Plus": 0.0526,
+        "awayLossBy3Plus": 0.2368,
+        "homeBy3Plus": 0.0263,
+        "homeLossBy3Plus": 0.1579
+      },
       "bttsRate": 0.3684,
       "cleanSheetRateAway": 0.1316,
       "cleanSheetRateHome": 0.2632,
@@ -41067,6 +42206,50 @@
       },
       "failedToScoreRateAway": 0.6053,
       "failedToScoreRateHome": 0.4474,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3158,
+          "conceded4Plus": 0.1842,
+          "distribution": {
+            "0": 0.6053,
+            "1": 0.2632,
+            "2": 0.0526,
+            "3": 0.0526,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0789,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0768,
+          "awayScored4Plus": 0.0242,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0242,
+          "homeScored4Plus": 0.0242,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2105,
+          "conceded4Plus": 0.0789,
+          "distribution": {
+            "0": 0.4474,
+            "1": 0.4737,
+            "2": 0.0526,
+            "3": 0.0,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0263,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.804,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.3421,
@@ -41095,11 +42278,23 @@
         "under25": 0.5921
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 1,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 5,
+        "longestScoringRunHome": 6
+      },
       "totalMatches": 76
     },
     "Hull": {
       "awayGoalsConceded": 1.8737,
       "awayGoalsScored": 0.7789,
+      "bigWin": {
+        "awayBy3Plus": 0.0211,
+        "awayLossBy3Plus": 0.1789,
+        "homeBy3Plus": 0.0105,
+        "homeLossBy3Plus": 0.1158
+      },
       "bttsRate": 0.4737,
       "cleanSheetRateAway": 0.1579,
       "cleanSheetRateHome": 0.2421,
@@ -41147,6 +42342,50 @@
       },
       "failedToScoreRateAway": 0.4737,
       "failedToScoreRateHome": 0.3368,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2842,
+          "conceded4Plus": 0.1158,
+          "distribution": {
+            "0": 0.4737,
+            "1": 0.3368,
+            "2": 0.1368,
+            "3": 0.0421,
+            "4": 0.0105,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0526,
+          "scored4Plus": 0.0105,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0448,
+          "awayScored4Plus": 0.011,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0875,
+          "homeScored4Plus": 0.029,
+          "homeScored5Plus": 0.011
+        },
+        "home": {
+          "conceded3Plus": 0.2105,
+          "conceded4Plus": 0.0842,
+          "distribution": {
+            "0": 0.3368,
+            "1": 0.3158,
+            "2": 0.2737,
+            "3": 0.0526,
+            "4": 0.0105,
+            "5": 0.0,
+            "6+": 0.0105
+          },
+          "scored3Plus": 0.0737,
+          "scored4Plus": 0.0211,
+          "scored5Plus": 0.0105,
+          "scored6Plus": 0.0105
+        }
+      },
       "goalVariance": 1.0241,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4263,
@@ -41175,11 +42414,23 @@
         "under25": 0.5263
       },
       "recentScoringTrend": 1.0077,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 8
+      },
       "totalMatches": 190
     },
     "Ipswich": {
       "awayGoalsConceded": 1.9192,
       "awayGoalsScored": 0.9596,
+      "bigWin": {
+        "awayBy3Plus": 0.0303,
+        "awayLossBy3Plus": 0.2222,
+        "homeBy3Plus": 0.0303,
+        "homeLossBy3Plus": 0.0707
+      },
       "bttsRate": 0.5354,
       "cleanSheetRateAway": 0.1717,
       "cleanSheetRateHome": 0.2323,
@@ -41227,6 +42478,50 @@
       },
       "failedToScoreRateAway": 0.3535,
       "failedToScoreRateHome": 0.2929,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2929,
+          "conceded4Plus": 0.1818,
+          "distribution": {
+            "0": 0.3535,
+            "1": 0.404,
+            "2": 0.1717,
+            "3": 0.0707,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0707,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0554,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0065,
+          "homeScored4Plus": 0.0016,
+          "homeScored5Plus": 0.0012
+        },
+        "home": {
+          "conceded3Plus": 0.1515,
+          "conceded4Plus": 0.0808,
+          "distribution": {
+            "0": 0.2929,
+            "1": 0.4141,
+            "2": 0.2121,
+            "3": 0.0606,
+            "4": 0.0101,
+            "5": 0.0101,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0808,
+          "scored4Plus": 0.0202,
+          "scored5Plus": 0.0101,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9028,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5263,
@@ -41255,11 +42550,23 @@
         "under25": 0.4798
       },
       "recentScoringTrend": 1.1011,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 12
+      },
       "totalMatches": 198
     },
     "Leeds": {
       "awayGoalsConceded": 1.5355,
       "awayGoalsScored": 1.273,
+      "bigWin": {
+        "awayBy3Plus": 0.0567,
+        "awayLossBy3Plus": 0.1064,
+        "homeBy3Plus": 0.0919,
+        "homeLossBy3Plus": 0.0707
+      },
       "bttsRate": 0.4973,
       "cleanSheetRateAway": 0.2447,
       "cleanSheetRateHome": 0.3675,
@@ -41307,6 +42614,50 @@
       },
       "failedToScoreRateAway": 0.3227,
       "failedToScoreRateHome": 0.2721,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2092,
+          "conceded4Plus": 0.0816,
+          "distribution": {
+            "0": 0.3227,
+            "1": 0.305,
+            "2": 0.2199,
+            "3": 0.1028,
+            "4": 0.0319,
+            "5": 0.0142,
+            "6+": 0.0035
+          },
+          "scored3Plus": 0.1525,
+          "scored4Plus": 0.0496,
+          "scored5Plus": 0.0177,
+          "scored6Plus": 0.0035
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1657,
+          "awayScored4Plus": 0.0344,
+          "awayScored5Plus": 0.0104,
+          "homeScored3Plus": 0.1792,
+          "homeScored4Plus": 0.0561,
+          "homeScored5Plus": 0.0096
+        },
+        "home": {
+          "conceded3Plus": 0.1519,
+          "conceded4Plus": 0.0636,
+          "distribution": {
+            "0": 0.2721,
+            "1": 0.2968,
+            "2": 0.2261,
+            "3": 0.1378,
+            "4": 0.0601,
+            "5": 0.0035,
+            "6+": 0.0035
+          },
+          "scored3Plus": 0.2049,
+          "scored4Plus": 0.0671,
+          "scored5Plus": 0.0071,
+          "scored6Plus": 0.0035
+        }
+      },
       "goalVariance": 1.5182,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.6237,
@@ -41335,11 +42686,23 @@
         "under25": 0.4885
       },
       "recentScoringTrend": 0.8913,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 8,
+        "longestScoringRunAway": 12,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 565
     },
     "Leicester": {
       "awayGoalsConceded": 1.6441,
       "awayGoalsScored": 1.2588,
+      "bigWin": {
+        "awayBy3Plus": 0.0529,
+        "awayLossBy3Plus": 0.0853,
+        "homeBy3Plus": 0.0729,
+        "homeLossBy3Plus": 0.0816
+      },
       "bttsRate": 0.5373,
       "cleanSheetRateAway": 0.2059,
       "cleanSheetRateHome": 0.2945,
@@ -41387,6 +42750,50 @@
       },
       "failedToScoreRateAway": 0.2853,
       "failedToScoreRateHome": 0.2711,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1882,
+          "conceded4Plus": 0.1,
+          "distribution": {
+            "0": 0.2853,
+            "1": 0.3676,
+            "2": 0.2147,
+            "3": 0.0882,
+            "4": 0.0353,
+            "5": 0.0059,
+            "6+": 0.0029
+          },
+          "scored3Plus": 0.1324,
+          "scored4Plus": 0.0441,
+          "scored5Plus": 0.0088,
+          "scored6Plus": 0.0029
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1284,
+          "awayScored4Plus": 0.0587,
+          "awayScored5Plus": 0.0172,
+          "homeScored3Plus": 0.1716,
+          "homeScored4Plus": 0.0815,
+          "homeScored5Plus": 0.015
+        },
+        "home": {
+          "conceded3Plus": 0.1545,
+          "conceded4Plus": 0.0525,
+          "distribution": {
+            "0": 0.2711,
+            "1": 0.312,
+            "2": 0.2595,
+            "3": 0.0962,
+            "4": 0.0466,
+            "5": 0.0146,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1574,
+          "scored4Plus": 0.0612,
+          "scored5Plus": 0.0146,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.4091,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5835,
@@ -41415,11 +42822,23 @@
         "under25": 0.4685
       },
       "recentScoringTrend": 0.94,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 16,
+        "longestScoringRunHome": 14
+      },
       "totalMatches": 683
     },
     "Liverpool": {
       "awayGoalsConceded": 1.1955,
       "awayGoalsScored": 1.5593,
+      "bigWin": {
+        "awayBy3Plus": 0.1106,
+        "awayLossBy3Plus": 0.0433,
+        "homeBy3Plus": 0.2029,
+        "homeLossBy3Plus": 0.0064
+      },
       "bttsRate": 0.502,
       "cleanSheetRateAway": 0.3205,
       "cleanSheetRateHome": 0.4428,
@@ -41467,6 +42886,50 @@
       },
       "failedToScoreRateAway": 0.2484,
       "failedToScoreRateHome": 0.1385,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1314,
+          "conceded4Plus": 0.0256,
+          "distribution": {
+            "0": 0.2484,
+            "1": 0.2885,
+            "2": 0.2404,
+            "3": 0.1506,
+            "4": 0.0385,
+            "5": 0.0192,
+            "6+": 0.0144
+          },
+          "scored3Plus": 0.2228,
+          "scored4Plus": 0.0721,
+          "scored5Plus": 0.0337,
+          "scored6Plus": 0.0144
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.2546,
+          "awayScored4Plus": 0.0899,
+          "awayScored5Plus": 0.0441,
+          "homeScored3Plus": 0.3644,
+          "homeScored4Plus": 0.1932,
+          "homeScored5Plus": 0.0596
+        },
+        "home": {
+          "conceded3Plus": 0.0483,
+          "conceded4Plus": 0.0048,
+          "distribution": {
+            "0": 0.1385,
+            "1": 0.2448,
+            "2": 0.2802,
+            "3": 0.1771,
+            "4": 0.1079,
+            "5": 0.0386,
+            "6+": 0.0129
+          },
+          "scored3Plus": 0.3366,
+          "scored4Plus": 0.1594,
+          "scored5Plus": 0.0515,
+          "scored6Plus": 0.0129
+        }
+      },
       "goalVariance": 1.9851,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.8002,
@@ -41495,11 +42958,23 @@
         "under25": 0.4602
       },
       "recentScoringTrend": 1.1429,
+      "streaks": {
+        "longestCleanSheetRunAway": 6,
+        "longestCleanSheetRunHome": 9,
+        "longestScoringRunAway": 26,
+        "longestScoringRunHome": 42
+      },
       "totalMatches": 1245
     },
     "Luton": {
       "awayGoalsConceded": 2.5263,
       "awayGoalsScored": 1.2632,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.2105,
+        "homeBy3Plus": 0.0526,
+        "homeLossBy3Plus": 0.0526
+      },
       "bttsRate": 0.8158,
       "cleanSheetRateAway": 0.0,
       "cleanSheetRateHome": 0.1053,
@@ -41511,6 +42986,50 @@
       },
       "failedToScoreRateAway": 0.2105,
       "failedToScoreRateHome": 0.0526,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.4737,
+          "conceded4Plus": 0.2632,
+          "distribution": {
+            "0": 0.2105,
+            "1": 0.5263,
+            "2": 0.1053,
+            "3": 0.1053,
+            "4": 0.0526,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1579,
+          "scored4Plus": 0.0526,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1579,
+          "awayScored4Plus": 0.0526,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1053,
+          "homeScored4Plus": 0.0526,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.3158,
+          "conceded4Plus": 0.1579,
+          "distribution": {
+            "0": 0.0526,
+            "1": 0.5789,
+            "2": 0.2632,
+            "3": 0.0526,
+            "4": 0.0526,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1053,
+          "scored4Plus": 0.0526,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9695,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5263,
@@ -41539,11 +43058,23 @@
         "under25": 0.2895
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 0,
+        "longestCleanSheetRunHome": 1,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 15
+      },
       "totalMatches": 38
     },
     "Man City": {
       "awayGoalsConceded": 1.2367,
       "awayGoalsScored": 1.5208,
+      "bigWin": {
+        "awayBy3Plus": 0.1098,
+        "awayLossBy3Plus": 0.0473,
+        "homeBy3Plus": 0.2391,
+        "homeLossBy3Plus": 0.0247
+      },
       "bttsRate": 0.4948,
       "cleanSheetRateAway": 0.3087,
       "cleanSheetRateHome": 0.3966,
@@ -41591,6 +43122,50 @@
       },
       "failedToScoreRateAway": 0.2614,
       "failedToScoreRateHome": 0.1727,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1212,
+          "conceded4Plus": 0.0511,
+          "distribution": {
+            "0": 0.2614,
+            "1": 0.3011,
+            "2": 0.2254,
+            "3": 0.1212,
+            "4": 0.0606,
+            "5": 0.0189,
+            "6+": 0.0114
+          },
+          "scored3Plus": 0.2121,
+          "scored4Plus": 0.0909,
+          "scored5Plus": 0.0303,
+          "scored6Plus": 0.0114
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.2972,
+          "awayScored4Plus": 0.1446,
+          "awayScored5Plus": 0.0442,
+          "homeScored3Plus": 0.4805,
+          "homeScored4Plus": 0.2433,
+          "homeScored5Plus": 0.1382
+        },
+        "home": {
+          "conceded3Plus": 0.0854,
+          "conceded4Plus": 0.0133,
+          "distribution": {
+            "0": 0.1727,
+            "1": 0.2353,
+            "2": 0.2258,
+            "3": 0.1879,
+            "4": 0.0873,
+            "5": 0.0588,
+            "6+": 0.0323
+          },
+          "scored3Plus": 0.3662,
+          "scored4Plus": 0.1784,
+          "scored5Plus": 0.0911,
+          "scored6Plus": 0.0323
+        }
+      },
       "goalVariance": 2.2932,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.8702,
@@ -41619,11 +43194,23 @@
         "under25": 0.4512
       },
       "recentScoringTrend": 1.1722,
+      "streaks": {
+        "longestCleanSheetRunAway": 5,
+        "longestCleanSheetRunHome": 6,
+        "longestScoringRunAway": 23,
+        "longestScoringRunHome": 61
+      },
       "totalMatches": 1055
     },
     "Man United": {
       "awayGoalsConceded": 1.1752,
       "awayGoalsScored": 1.6495,
+      "bigWin": {
+        "awayBy3Plus": 0.1013,
+        "awayLossBy3Plus": 0.0434,
+        "homeBy3Plus": 0.2151,
+        "homeLossBy3Plus": 0.0209
+      },
       "bttsRate": 0.4948,
       "cleanSheetRateAway": 0.3312,
       "cleanSheetRateHome": 0.4687,
@@ -41671,6 +43258,50 @@
       },
       "failedToScoreRateAway": 0.1961,
       "failedToScoreRateHome": 0.138,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1222,
+          "conceded4Plus": 0.0402,
+          "distribution": {
+            "0": 0.1961,
+            "1": 0.3167,
+            "2": 0.2476,
+            "3": 0.1559,
+            "4": 0.0579,
+            "5": 0.0193,
+            "6+": 0.0064
+          },
+          "scored3Plus": 0.2395,
+          "scored4Plus": 0.0836,
+          "scored5Plus": 0.0257,
+          "scored6Plus": 0.0064
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1886,
+          "awayScored4Plus": 0.0467,
+          "awayScored5Plus": 0.0086,
+          "homeScored3Plus": 0.2973,
+          "homeScored4Plus": 0.1093,
+          "homeScored5Plus": 0.023
+        },
+        "home": {
+          "conceded3Plus": 0.0546,
+          "conceded4Plus": 0.0112,
+          "distribution": {
+            "0": 0.138,
+            "1": 0.2408,
+            "2": 0.2761,
+            "3": 0.191,
+            "4": 0.1027,
+            "5": 0.0321,
+            "6+": 0.0193
+          },
+          "scored3Plus": 0.3451,
+          "scored4Plus": 0.1541,
+          "scored5Plus": 0.0514,
+          "scored6Plus": 0.0193
+        }
+      },
       "goalVariance": 1.966,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.8165,
@@ -41699,11 +43330,23 @@
         "under25": 0.4667
       },
       "recentScoringTrend": 0.7956,
+      "streaks": {
+        "longestCleanSheetRunAway": 7,
+        "longestCleanSheetRunHome": 12,
+        "longestScoringRunAway": 24,
+        "longestScoringRunHome": 66
+      },
       "totalMatches": 1245
     },
     "Middlesbrough": {
       "awayGoalsConceded": 1.4713,
       "awayGoalsScored": 0.8851,
+      "bigWin": {
+        "awayBy3Plus": 0.0307,
+        "awayLossBy3Plus": 0.0881,
+        "homeBy3Plus": 0.0684,
+        "homeLossBy3Plus": 0.0684
+      },
       "bttsRate": 0.4828,
       "cleanSheetRateAway": 0.2107,
       "cleanSheetRateHome": 0.3042,
@@ -41751,6 +43394,50 @@
       },
       "failedToScoreRateAway": 0.4291,
       "failedToScoreRateHome": 0.2928,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.1648,
+          "conceded4Plus": 0.0613,
+          "distribution": {
+            "0": 0.4291,
+            "1": 0.364,
+            "2": 0.1073,
+            "3": 0.092,
+            "4": 0.0077,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0996,
+          "scored4Plus": 0.0077,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0524,
+          "awayScored4Plus": 0.0059,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1024,
+          "homeScored4Plus": 0.0341,
+          "homeScored5Plus": 0.016
+        },
+        "home": {
+          "conceded3Plus": 0.1407,
+          "conceded4Plus": 0.0456,
+          "distribution": {
+            "0": 0.2928,
+            "1": 0.3232,
+            "2": 0.2395,
+            "3": 0.0798,
+            "4": 0.0418,
+            "5": 0.0152,
+            "6+": 0.0076
+          },
+          "scored3Plus": 0.1445,
+          "scored4Plus": 0.0646,
+          "scored5Plus": 0.0228,
+          "scored6Plus": 0.0076
+        }
+      },
       "goalVariance": 1.3518,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5038,
@@ -41779,11 +43466,23 @@
         "under25": 0.5573
       },
       "recentScoringTrend": 0.773,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 12,
+        "longestScoringRunHome": 17
+      },
       "totalMatches": 524
     },
     "Newcastle": {
       "awayGoalsConceded": 1.5788,
       "awayGoalsScored": 1.1113,
+      "bigWin": {
+        "awayBy3Plus": 0.0428,
+        "awayLossBy3Plus": 0.1147,
+        "homeBy3Plus": 0.1216,
+        "homeLossBy3Plus": 0.0462
+      },
       "bttsRate": 0.5283,
       "cleanSheetRateAway": 0.2123,
       "cleanSheetRateHome": 0.3168,
@@ -41831,6 +43530,50 @@
       },
       "failedToScoreRateAway": 0.3596,
       "failedToScoreRateHome": 0.1935,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2089,
+          "conceded4Plus": 0.0925,
+          "distribution": {
+            "0": 0.3596,
+            "1": 0.3322,
+            "2": 0.1935,
+            "3": 0.0771,
+            "4": 0.0325,
+            "5": 0.0034,
+            "6+": 0.0017
+          },
+          "scored3Plus": 0.1147,
+          "scored4Plus": 0.0377,
+          "scored5Plus": 0.0051,
+          "scored6Plus": 0.0017
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1404,
+          "awayScored4Plus": 0.0687,
+          "awayScored5Plus": 0.0116,
+          "homeScored3Plus": 0.2357,
+          "homeScored4Plus": 0.1152,
+          "homeScored5Plus": 0.0383
+        },
+        "home": {
+          "conceded3Plus": 0.1199,
+          "conceded4Plus": 0.0274,
+          "distribution": {
+            "0": 0.1935,
+            "1": 0.3202,
+            "2": 0.2483,
+            "3": 0.1455,
+            "4": 0.0548,
+            "5": 0.024,
+            "6+": 0.0137
+          },
+          "scored3Plus": 0.238,
+          "scored4Plus": 0.0925,
+          "scored5Plus": 0.0377,
+          "scored6Plus": 0.0137
+        }
+      },
       "goalVariance": 1.6502,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.631,
@@ -41859,11 +43602,23 @@
         "under25": 0.4752
       },
       "recentScoringTrend": 1.289,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 24
+      },
       "totalMatches": 1168
     },
     "Norwich": {
       "awayGoalsConceded": 1.9306,
       "awayGoalsScored": 0.815,
+      "bigWin": {
+        "awayBy3Plus": 0.0173,
+        "awayLossBy3Plus": 0.2139,
+        "homeBy3Plus": 0.0231,
+        "homeLossBy3Plus": 0.0867
+      },
       "bttsRate": 0.5058,
       "cleanSheetRateAway": 0.1329,
       "cleanSheetRateHome": 0.2428,
@@ -41911,6 +43666,50 @@
       },
       "failedToScoreRateAway": 0.4913,
       "failedToScoreRateHome": 0.3064,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2948,
+          "conceded4Plus": 0.1329,
+          "distribution": {
+            "0": 0.4913,
+            "1": 0.3064,
+            "2": 0.1214,
+            "3": 0.0636,
+            "4": 0.0116,
+            "5": 0.0058,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0809,
+          "scored4Plus": 0.0173,
+          "scored5Plus": 0.0058,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0433,
+          "awayScored4Plus": 0.0046,
+          "awayScored5Plus": 0.0002,
+          "homeScored3Plus": 0.0829,
+          "homeScored4Plus": 0.0232,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.185,
+          "conceded4Plus": 0.0809,
+          "distribution": {
+            "0": 0.3064,
+            "1": 0.3526,
+            "2": 0.2197,
+            "3": 0.0809,
+            "4": 0.0405,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1214,
+          "scored4Plus": 0.0405,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1387,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.3931,
@@ -41939,11 +43738,23 @@
         "under25": 0.4798
       },
       "recentScoringTrend": 0.7059,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 13
+      },
       "totalMatches": 346
     },
     "Nott'm Forest": {
       "awayGoalsConceded": 1.78,
       "awayGoalsScored": 1.1333,
+      "bigWin": {
+        "awayBy3Plus": 0.0333,
+        "awayLossBy3Plus": 0.14,
+        "homeBy3Plus": 0.0667,
+        "homeLossBy3Plus": 0.0467
+      },
       "bttsRate": 0.5267,
       "cleanSheetRateAway": 0.16,
       "cleanSheetRateHome": 0.2933,
@@ -41991,6 +43802,50 @@
       },
       "failedToScoreRateAway": 0.3333,
       "failedToScoreRateHome": 0.2667,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2667,
+          "conceded4Plus": 0.1067,
+          "distribution": {
+            "0": 0.3333,
+            "1": 0.3667,
+            "2": 0.1867,
+            "3": 0.08,
+            "4": 0.0267,
+            "5": 0.0,
+            "6+": 0.0067
+          },
+          "scored3Plus": 0.1133,
+          "scored4Plus": 0.0333,
+          "scored5Plus": 0.0067,
+          "scored6Plus": 0.0067
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1182,
+          "awayScored4Plus": 0.0153,
+          "awayScored5Plus": 0.0001,
+          "homeScored3Plus": 0.1324,
+          "homeScored4Plus": 0.0259,
+          "homeScored5Plus": 0.0149
+        },
+        "home": {
+          "conceded3Plus": 0.1133,
+          "conceded4Plus": 0.0267,
+          "distribution": {
+            "0": 0.2667,
+            "1": 0.38,
+            "2": 0.22,
+            "3": 0.1,
+            "4": 0.0267,
+            "5": 0.0,
+            "6+": 0.0067
+          },
+          "scored3Plus": 0.1333,
+          "scored4Plus": 0.0333,
+          "scored5Plus": 0.0067,
+          "scored6Plus": 0.0067
+        }
+      },
       "goalVariance": 1.302,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5426,
@@ -42019,11 +43874,23 @@
         "under25": 0.5267
       },
       "recentScoringTrend": 1.0637,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 12,
+        "longestScoringRunHome": 13
+      },
       "totalMatches": 300
     },
     "Oldham": {
       "awayGoalsConceded": 1.6667,
       "awayGoalsScored": 0.8571,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.1429,
+        "homeBy3Plus": 0.0476,
+        "homeLossBy3Plus": 0.1429
+      },
       "bttsRate": 0.5952,
       "cleanSheetRateAway": 0.1429,
       "cleanSheetRateHome": 0.1429,
@@ -42071,6 +43938,50 @@
       },
       "failedToScoreRateAway": 0.381,
       "failedToScoreRateHome": 0.3333,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2381,
+          "conceded4Plus": 0.0476,
+          "distribution": {
+            "0": 0.381,
+            "1": 0.4286,
+            "2": 0.1429,
+            "3": 0.0476,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0476,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0476,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0952,
+          "homeScored4Plus": 0.0476,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2381,
+          "conceded4Plus": 0.0476,
+          "distribution": {
+            "0": 0.3333,
+            "1": 0.3333,
+            "2": 0.2381,
+            "3": 0.0476,
+            "4": 0.0476,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0952,
+          "scored4Plus": 0.0476,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9524,
       "homeAdvantage": {
         "awayWinRate": 0.1905,
@@ -42091,11 +44002,23 @@
         "under25": 0.4762
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 1,
+        "longestCleanSheetRunHome": 1,
+        "longestScoringRunAway": 7,
+        "longestScoringRunHome": 5
+      },
       "totalMatches": 42
     },
     "Portsmouth": {
       "awayGoalsConceded": 1.6615,
       "awayGoalsScored": 0.8231,
+      "bigWin": {
+        "awayBy3Plus": 0.0308,
+        "awayLossBy3Plus": 0.1615,
+        "homeBy3Plus": 0.0391,
+        "homeLossBy3Plus": 0.0469
+      },
       "bttsRate": 0.4845,
       "cleanSheetRateAway": 0.2077,
       "cleanSheetRateHome": 0.2578,
@@ -42143,6 +44066,50 @@
       },
       "failedToScoreRateAway": 0.4615,
       "failedToScoreRateHome": 0.2891,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2538,
+          "conceded4Plus": 0.0769,
+          "distribution": {
+            "0": 0.4615,
+            "1": 0.3462,
+            "2": 0.1308,
+            "3": 0.0308,
+            "4": 0.0308,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0615,
+          "scored4Plus": 0.0308,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0572,
+          "awayScored4Plus": 0.0281,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1468,
+          "homeScored4Plus": 0.0531,
+          "homeScored5Plus": 0.0131
+        },
+        "home": {
+          "conceded3Plus": 0.1016,
+          "conceded4Plus": 0.0391,
+          "distribution": {
+            "0": 0.2891,
+            "1": 0.3438,
+            "2": 0.2188,
+            "3": 0.0859,
+            "4": 0.0469,
+            "5": 0.0,
+            "6+": 0.0156
+          },
+          "scored3Plus": 0.1484,
+          "scored4Plus": 0.0625,
+          "scored5Plus": 0.0156,
+          "scored6Plus": 0.0156
+        }
+      },
       "goalVariance": 1.3628,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4419,
@@ -42171,11 +44138,23 @@
         "under25": 0.531
       },
       "recentScoringTrend": 0.8848,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 258
     },
     "QPR": {
       "awayGoalsConceded": 1.8475,
       "awayGoalsScored": 1.0424,
+      "bigWin": {
+        "awayBy3Plus": 0.0339,
+        "awayLossBy3Plus": 0.1186,
+        "homeBy3Plus": 0.0508,
+        "homeLossBy3Plus": 0.0508
+      },
       "bttsRate": 0.5763,
       "cleanSheetRateAway": 0.1441,
       "cleanSheetRateHome": 0.2373,
@@ -42223,6 +44202,50 @@
       },
       "failedToScoreRateAway": 0.3475,
       "failedToScoreRateHome": 0.2288,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2797,
+          "conceded4Plus": 0.1102,
+          "distribution": {
+            "0": 0.3475,
+            "1": 0.3983,
+            "2": 0.1441,
+            "3": 0.0847,
+            "4": 0.0254,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1102,
+          "scored4Plus": 0.0254,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0763,
+          "awayScored4Plus": 0.0228,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1053,
+          "homeScored4Plus": 0.0007,
+          "homeScored5Plus": 0.0007
+        },
+        "home": {
+          "conceded3Plus": 0.1441,
+          "conceded4Plus": 0.0254,
+          "distribution": {
+            "0": 0.2288,
+            "1": 0.3898,
+            "2": 0.2542,
+            "3": 0.1186,
+            "4": 0.0,
+            "5": 0.0085,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1271,
+          "scored4Plus": 0.0085,
+          "scored5Plus": 0.0085,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.0475,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4145,
@@ -42251,11 +44274,23 @@
         "under25": 0.4534
       },
       "recentScoringTrend": 0.8551,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 15
+      },
       "totalMatches": 236
     },
     "Reading": {
       "awayGoalsConceded": 1.8947,
       "awayGoalsScored": 1.1404,
+      "bigWin": {
+        "awayBy3Plus": 0.0175,
+        "awayLossBy3Plus": 0.0877,
+        "homeBy3Plus": 0.0175,
+        "homeLossBy3Plus": 0.0702
+      },
       "bttsRate": 0.5263,
       "cleanSheetRateAway": 0.1579,
       "cleanSheetRateHome": 0.2982,
@@ -42303,6 +44338,50 @@
       },
       "failedToScoreRateAway": 0.3333,
       "failedToScoreRateHome": 0.3333,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3158,
+          "conceded4Plus": 0.1053,
+          "distribution": {
+            "0": 0.3333,
+            "1": 0.3684,
+            "2": 0.193,
+            "3": 0.0351,
+            "4": 0.0702,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1053,
+          "scored4Plus": 0.0702,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0892,
+          "awayScored4Plus": 0.0674,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.154,
+          "homeScored4Plus": 0.0109,
+          "homeScored5Plus": 0.0109
+        },
+        "home": {
+          "conceded3Plus": 0.1404,
+          "conceded4Plus": 0.0526,
+          "distribution": {
+            "0": 0.3333,
+            "1": 0.2982,
+            "2": 0.2105,
+            "3": 0.1404,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0175
+          },
+          "scored3Plus": 0.1579,
+          "scored4Plus": 0.0175,
+          "scored5Plus": 0.0175,
+          "scored6Plus": 0.0175
+        }
+      },
       "goalVariance": 1.3838,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4474,
@@ -42331,11 +44410,23 @@
         "under25": 0.4649
       },
       "recentScoringTrend": 1.0059,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 7
+      },
       "totalMatches": 114
     },
     "Sheffield United": {
       "awayGoalsConceded": 1.8351,
       "awayGoalsScored": 0.6701,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.1753,
+        "homeBy3Plus": 0.0309,
+        "homeLossBy3Plus": 0.0825
+      },
       "bttsRate": 0.4588,
       "cleanSheetRateAway": 0.1649,
       "cleanSheetRateHome": 0.2474,
@@ -42383,6 +44474,50 @@
       },
       "failedToScoreRateAway": 0.4948,
       "failedToScoreRateHome": 0.3093,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.3093,
+          "conceded4Plus": 0.1031,
+          "distribution": {
+            "0": 0.4948,
+            "1": 0.3608,
+            "2": 0.1237,
+            "3": 0.0206,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0206,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.024,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0755,
+          "homeScored4Plus": 0.0,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.1546,
+          "conceded4Plus": 0.0515,
+          "distribution": {
+            "0": 0.3093,
+            "1": 0.4021,
+            "2": 0.2062,
+            "3": 0.0825,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0825,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.7552,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.3553,
@@ -42411,11 +44546,23 @@
         "under25": 0.5206
       },
       "recentScoringTrend": 0.8892,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 6,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 194
     },
     "Sheffield Weds": {
       "awayGoalsConceded": 1.7591,
       "awayGoalsScored": 1.1241,
+      "bigWin": {
+        "awayBy3Plus": 0.0511,
+        "awayLossBy3Plus": 0.1387,
+        "homeBy3Plus": 0.0876,
+        "homeLossBy3Plus": 0.0365
+      },
       "bttsRate": 0.5255,
       "cleanSheetRateAway": 0.1825,
       "cleanSheetRateHome": 0.3212,
@@ -42463,6 +44610,50 @@
       },
       "failedToScoreRateAway": 0.3285,
       "failedToScoreRateHome": 0.292,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2482,
+          "conceded4Plus": 0.1314,
+          "distribution": {
+            "0": 0.3285,
+            "1": 0.3577,
+            "2": 0.2044,
+            "3": 0.0803,
+            "4": 0.0292,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1095,
+          "scored4Plus": 0.0292,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1177,
+          "awayScored4Plus": 0.0287,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.2068,
+          "homeScored4Plus": 0.0719,
+          "homeScored5Plus": 0.0436
+        },
+        "home": {
+          "conceded3Plus": 0.1314,
+          "conceded4Plus": 0.0365,
+          "distribution": {
+            "0": 0.292,
+            "1": 0.3212,
+            "2": 0.1606,
+            "3": 0.146,
+            "4": 0.0292,
+            "5": 0.0438,
+            "6+": 0.0073
+          },
+          "scored3Plus": 0.2263,
+          "scored4Plus": 0.0803,
+          "scored5Plus": 0.0511,
+          "scored6Plus": 0.0073
+        }
+      },
       "goalVariance": 1.5644,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4842,
@@ -42491,11 +44682,23 @@
         "under25": 0.5146
       },
       "recentScoringTrend": 0.8359,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 274
     },
     "Southampton": {
       "awayGoalsConceded": 1.6784,
       "awayGoalsScored": 0.978,
+      "bigWin": {
+        "awayBy3Plus": 0.0132,
+        "awayLossBy3Plus": 0.1256,
+        "homeBy3Plus": 0.0547,
+        "homeLossBy3Plus": 0.0569
+      },
       "bttsRate": 0.5126,
       "cleanSheetRateAway": 0.207,
       "cleanSheetRateHome": 0.2976,
@@ -42543,6 +44746,50 @@
       },
       "failedToScoreRateAway": 0.3656,
       "failedToScoreRateHome": 0.2648,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2489,
+          "conceded4Plus": 0.0837,
+          "distribution": {
+            "0": 0.3656,
+            "1": 0.3987,
+            "2": 0.1476,
+            "3": 0.0705,
+            "4": 0.0154,
+            "5": 0.0022,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0881,
+          "scored4Plus": 0.0176,
+          "scored5Plus": 0.0022,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0866,
+          "awayScored4Plus": 0.0138,
+          "awayScored5Plus": 0.0001,
+          "homeScored3Plus": 0.1148,
+          "homeScored4Plus": 0.0372,
+          "homeScored5Plus": 0.0041
+        },
+        "home": {
+          "conceded3Plus": 0.1597,
+          "conceded4Plus": 0.035,
+          "distribution": {
+            "0": 0.2648,
+            "1": 0.3392,
+            "2": 0.2341,
+            "3": 0.1138,
+            "4": 0.0394,
+            "5": 0.0022,
+            "6+": 0.0066
+          },
+          "scored3Plus": 0.1619,
+          "scored4Plus": 0.0481,
+          "scored5Plus": 0.0088,
+          "scored6Plus": 0.0066
+        }
+      },
       "goalVariance": 1.2367,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5115,
@@ -42571,11 +44818,23 @@
         "under25": 0.5159
       },
       "recentScoringTrend": 0.7862,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 7,
+        "longestScoringRunAway": 14,
+        "longestScoringRunHome": 18
+      },
       "totalMatches": 911
     },
     "Stoke": {
       "awayGoalsConceded": 1.6421,
       "awayGoalsScored": 0.7895,
+      "bigWin": {
+        "awayBy3Plus": 0.0105,
+        "awayLossBy3Plus": 0.1632,
+        "homeBy3Plus": 0.0316,
+        "homeLossBy3Plus": 0.0526
+      },
       "bttsRate": 0.4895,
       "cleanSheetRateAway": 0.2053,
       "cleanSheetRateHome": 0.3263,
@@ -42623,6 +44882,50 @@
       },
       "failedToScoreRateAway": 0.4316,
       "failedToScoreRateHome": 0.2368,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2368,
+          "conceded4Plus": 0.1,
+          "distribution": {
+            "0": 0.4316,
+            "1": 0.3895,
+            "2": 0.1474,
+            "3": 0.0211,
+            "4": 0.0105,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0316,
+          "scored4Plus": 0.0105,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.036,
+          "awayScored4Plus": 0.0122,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1141,
+          "homeScored4Plus": 0.0143,
+          "homeScored5Plus": 0.006
+        },
+        "home": {
+          "conceded3Plus": 0.0895,
+          "conceded4Plus": 0.0421,
+          "distribution": {
+            "0": 0.2368,
+            "1": 0.3684,
+            "2": 0.2737,
+            "3": 0.1053,
+            "4": 0.0105,
+            "5": 0.0,
+            "6+": 0.0053
+          },
+          "scored3Plus": 0.1211,
+          "scored4Plus": 0.0158,
+          "scored5Plus": 0.0053,
+          "scored6Plus": 0.0053
+        }
+      },
       "goalVariance": 0.9557,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4816,
@@ -42651,11 +44954,23 @@
         "under25": 0.5526
       },
       "recentScoringTrend": 1.0121,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 9,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 380
     },
     "Sunderland": {
       "awayGoalsConceded": 1.7367,
       "awayGoalsScored": 0.8903,
+      "bigWin": {
+        "awayBy3Plus": 0.0439,
+        "awayLossBy3Plus": 0.1536,
+        "homeBy3Plus": 0.0596,
+        "homeLossBy3Plus": 0.0596
+      },
       "bttsRate": 0.4608,
       "cleanSheetRateAway": 0.1912,
       "cleanSheetRateHome": 0.3072,
@@ -42703,6 +45018,50 @@
       },
       "failedToScoreRateAway": 0.4514,
       "failedToScoreRateHome": 0.3041,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.232,
+          "conceded4Plus": 0.0972,
+          "distribution": {
+            "0": 0.4514,
+            "1": 0.3197,
+            "2": 0.1505,
+            "3": 0.047,
+            "4": 0.0282,
+            "5": 0.0031,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0784,
+          "scored4Plus": 0.0313,
+          "scored5Plus": 0.0031,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0545,
+          "awayScored4Plus": 0.0198,
+          "awayScored5Plus": 0.0004,
+          "homeScored3Plus": 0.1419,
+          "homeScored4Plus": 0.0159,
+          "homeScored5Plus": 0.0018
+        },
+        "home": {
+          "conceded3Plus": 0.1348,
+          "conceded4Plus": 0.0439,
+          "distribution": {
+            "0": 0.3041,
+            "1": 0.3981,
+            "2": 0.2006,
+            "3": 0.069,
+            "4": 0.0251,
+            "5": 0.0031,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0972,
+          "scored4Plus": 0.0282,
+          "scored5Plus": 0.0031,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.0752,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4389,
@@ -42731,11 +45090,23 @@
         "under25": 0.547
       },
       "recentScoringTrend": 1.0037,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 638
     },
     "Swansea": {
       "awayGoalsConceded": 1.6015,
       "awayGoalsScored": 0.9549,
+      "bigWin": {
+        "awayBy3Plus": 0.0226,
+        "awayLossBy3Plus": 0.0977,
+        "homeBy3Plus": 0.0902,
+        "homeLossBy3Plus": 0.0827
+      },
       "bttsRate": 0.4774,
       "cleanSheetRateAway": 0.1955,
       "cleanSheetRateHome": 0.3383,
@@ -42783,6 +45154,50 @@
       },
       "failedToScoreRateAway": 0.406,
       "failedToScoreRateHome": 0.2782,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2105,
+          "conceded4Plus": 0.0902,
+          "distribution": {
+            "0": 0.406,
+            "1": 0.3158,
+            "2": 0.218,
+            "3": 0.0451,
+            "4": 0.0075,
+            "5": 0.0075,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0602,
+          "scored4Plus": 0.015,
+          "scored5Plus": 0.0075,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0522,
+          "awayScored4Plus": 0.0136,
+          "awayScored5Plus": 0.0052,
+          "homeScored3Plus": 0.1596,
+          "homeScored4Plus": 0.0432,
+          "homeScored5Plus": 0.0099
+        },
+        "home": {
+          "conceded3Plus": 0.1729,
+          "conceded4Plus": 0.0827,
+          "distribution": {
+            "0": 0.2782,
+            "1": 0.3308,
+            "2": 0.2105,
+            "3": 0.1353,
+            "4": 0.0376,
+            "5": 0.0075,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1805,
+          "scored4Plus": 0.0451,
+          "scored5Plus": 0.0075,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.218,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4662,
@@ -42811,11 +45226,23 @@
         "under25": 0.515
       },
       "recentScoringTrend": 0.878,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 7,
+        "longestScoringRunHome": 11
+      },
       "totalMatches": 266
     },
     "Swindon": {
       "awayGoalsConceded": 2.619,
       "awayGoalsScored": 1.0476,
+      "bigWin": {
+        "awayBy3Plus": 0.0,
+        "awayLossBy3Plus": 0.2857,
+        "homeBy3Plus": 0.0,
+        "homeLossBy3Plus": 0.1429
+      },
       "bttsRate": 0.6905,
       "cleanSheetRateAway": 0.0952,
       "cleanSheetRateHome": 0.0952,
@@ -42863,6 +45290,50 @@
       },
       "failedToScoreRateAway": 0.2857,
       "failedToScoreRateHome": 0.2857,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.4762,
+          "conceded4Plus": 0.2381,
+          "distribution": {
+            "0": 0.2857,
+            "1": 0.4762,
+            "2": 0.1429,
+            "3": 0.0952,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0952,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0952,
+          "awayScored4Plus": 0.0,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0952,
+          "homeScored4Plus": 0.0,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.381,
+          "conceded4Plus": 0.1905,
+          "distribution": {
+            "0": 0.2857,
+            "1": 0.3333,
+            "2": 0.2857,
+            "3": 0.0952,
+            "4": 0.0,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0952,
+          "scored4Plus": 0.0,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.8668,
       "homeAdvantage": {
         "awayWinRate": 0.0476,
@@ -42883,11 +45354,23 @@
         "under25": 0.3095
       },
       "recentScoringTrend": 1.0,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 2,
+        "longestScoringRunAway": 5,
+        "longestScoringRunHome": 7
+      },
       "totalMatches": 42
     },
     "Tottenham": {
       "awayGoalsConceded": 1.4405,
       "awayGoalsScored": 1.3617,
+      "bigWin": {
+        "awayBy3Plus": 0.0723,
+        "awayLossBy3Plus": 0.0691,
+        "homeBy3Plus": 0.1156,
+        "homeLossBy3Plus": 0.0353
+      },
       "bttsRate": 0.5631,
       "cleanSheetRateAway": 0.2315,
       "cleanSheetRateHome": 0.3274,
@@ -42935,6 +45418,50 @@
       },
       "failedToScoreRateAway": 0.2605,
       "failedToScoreRateHome": 0.1766,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.164,
+          "conceded4Plus": 0.0643,
+          "distribution": {
+            "0": 0.2605,
+            "1": 0.3601,
+            "2": 0.2203,
+            "3": 0.1029,
+            "4": 0.0386,
+            "5": 0.0096,
+            "6+": 0.008
+          },
+          "scored3Plus": 0.1592,
+          "scored4Plus": 0.0563,
+          "scored5Plus": 0.0177,
+          "scored6Plus": 0.008
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.2074,
+          "awayScored4Plus": 0.0915,
+          "awayScored5Plus": 0.0332,
+          "homeScored3Plus": 0.2624,
+          "homeScored4Plus": 0.1145,
+          "homeScored5Plus": 0.0347
+        },
+        "home": {
+          "conceded3Plus": 0.1156,
+          "conceded4Plus": 0.0385,
+          "distribution": {
+            "0": 0.1766,
+            "1": 0.321,
+            "2": 0.252,
+            "3": 0.1461,
+            "4": 0.069,
+            "5": 0.0289,
+            "6+": 0.0064
+          },
+          "scored3Plus": 0.2504,
+          "scored4Plus": 0.1043,
+          "scored5Plus": 0.0353,
+          "scored6Plus": 0.0064
+        }
+      },
       "goalVariance": 1.6777,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.6813,
@@ -42963,11 +45490,23 @@
         "under25": 0.461
       },
       "recentScoringTrend": 1.0548,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 6,
+        "longestScoringRunAway": 19,
+        "longestScoringRunHome": 29
+      },
       "totalMatches": 1245
     },
     "Watford": {
       "awayGoalsConceded": 1.8553,
       "awayGoalsScored": 0.8553,
+      "bigWin": {
+        "awayBy3Plus": 0.0263,
+        "awayLossBy3Plus": 0.1447,
+        "homeBy3Plus": 0.0461,
+        "homeLossBy3Plus": 0.125
+      },
       "bttsRate": 0.4901,
       "cleanSheetRateAway": 0.1513,
       "cleanSheetRateHome": 0.2566,
@@ -43015,6 +45554,50 @@
       },
       "failedToScoreRateAway": 0.4868,
       "failedToScoreRateHome": 0.2895,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2566,
+          "conceded4Plus": 0.1382,
+          "distribution": {
+            "0": 0.4868,
+            "1": 0.2697,
+            "2": 0.1776,
+            "3": 0.0461,
+            "4": 0.0066,
+            "5": 0.0132,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0658,
+          "scored4Plus": 0.0197,
+          "scored5Plus": 0.0132,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0881,
+          "awayScored4Plus": 0.0285,
+          "awayScored5Plus": 0.0224,
+          "homeScored3Plus": 0.1195,
+          "homeScored4Plus": 0.0308,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2368,
+          "conceded4Plus": 0.0855,
+          "distribution": {
+            "0": 0.2895,
+            "1": 0.375,
+            "2": 0.2237,
+            "3": 0.0855,
+            "4": 0.0263,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1118,
+          "scored4Plus": 0.0263,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1049,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4276,
@@ -43043,11 +45626,23 @@
         "under25": 0.4737
       },
       "recentScoringTrend": 1.0297,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 12
+      },
       "totalMatches": 304
     },
     "West Brom": {
       "awayGoalsConceded": 1.6571,
       "awayGoalsScored": 0.8735,
+      "bigWin": {
+        "awayBy3Plus": 0.0204,
+        "awayLossBy3Plus": 0.1306,
+        "homeBy3Plus": 0.0451,
+        "homeLossBy3Plus": 0.0943
+      },
       "bttsRate": 0.5051,
       "cleanSheetRateAway": 0.1592,
       "cleanSheetRateHome": 0.2746,
@@ -43095,6 +45690,50 @@
       },
       "failedToScoreRateAway": 0.4245,
       "failedToScoreRateHome": 0.2869,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2163,
+          "conceded4Plus": 0.0612,
+          "distribution": {
+            "0": 0.4245,
+            "1": 0.3633,
+            "2": 0.1551,
+            "3": 0.0367,
+            "4": 0.0122,
+            "5": 0.0082,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0571,
+          "scored4Plus": 0.0204,
+          "scored5Plus": 0.0082,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0572,
+          "awayScored4Plus": 0.0216,
+          "awayScored5Plus": 0.015,
+          "homeScored3Plus": 0.1219,
+          "homeScored4Plus": 0.0245,
+          "homeScored5Plus": 0.0033
+        },
+        "home": {
+          "conceded3Plus": 0.2008,
+          "conceded4Plus": 0.0533,
+          "distribution": {
+            "0": 0.2869,
+            "1": 0.373,
+            "2": 0.2254,
+            "3": 0.0902,
+            "4": 0.0205,
+            "5": 0.0041,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1148,
+          "scored4Plus": 0.0246,
+          "scored5Plus": 0.0041,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.0438,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4294,
@@ -43123,11 +45762,23 @@
         "under25": 0.4969
       },
       "recentScoringTrend": 0.8601,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 13
+      },
       "totalMatches": 489
     },
     "West Ham": {
       "awayGoalsConceded": 1.6246,
       "awayGoalsScored": 1.0368,
+      "bigWin": {
+        "awayBy3Plus": 0.0421,
+        "awayLossBy3Plus": 0.1333,
+        "homeBy3Plus": 0.0667,
+        "homeLossBy3Plus": 0.0561
+      },
       "bttsRate": 0.5193,
       "cleanSheetRateAway": 0.2053,
       "cleanSheetRateHome": 0.293,
@@ -43175,6 +45826,50 @@
       },
       "failedToScoreRateAway": 0.3772,
       "failedToScoreRateHome": 0.2298,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2316,
+          "conceded4Plus": 0.0895,
+          "distribution": {
+            "0": 0.3772,
+            "1": 0.3351,
+            "2": 0.186,
+            "3": 0.0789,
+            "4": 0.0211,
+            "5": 0.0018,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1018,
+          "scored4Plus": 0.0228,
+          "scored5Plus": 0.0018,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1342,
+          "awayScored4Plus": 0.034,
+          "awayScored5Plus": 0.0005,
+          "homeScored3Plus": 0.1907,
+          "homeScored4Plus": 0.0401,
+          "homeScored5Plus": 0.0013
+        },
+        "home": {
+          "conceded3Plus": 0.1579,
+          "conceded4Plus": 0.0614,
+          "distribution": {
+            "0": 0.2298,
+            "1": 0.3333,
+            "2": 0.2526,
+            "3": 0.1368,
+            "4": 0.0351,
+            "5": 0.0105,
+            "6+": 0.0018
+          },
+          "scored3Plus": 0.1842,
+          "scored4Plus": 0.0474,
+          "scored5Plus": 0.0123,
+          "scored6Plus": 0.0018
+        }
+      },
       "goalVariance": 1.2673,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5672,
@@ -43203,11 +45898,23 @@
         "under25": 0.486
       },
       "recentScoringTrend": 1.0524,
+      "streaks": {
+        "longestCleanSheetRunAway": 4,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 11,
+        "longestScoringRunHome": 20
+      },
       "totalMatches": 1140
     },
     "Wigan": {
       "awayGoalsConceded": 1.7566,
       "awayGoalsScored": 0.9671,
+      "bigWin": {
+        "awayBy3Plus": 0.0197,
+        "awayLossBy3Plus": 0.1447,
+        "homeBy3Plus": 0.0329,
+        "homeLossBy3Plus": 0.0987
+      },
       "bttsRate": 0.4868,
       "cleanSheetRateAway": 0.1974,
       "cleanSheetRateHome": 0.2829,
@@ -43255,6 +45962,50 @@
       },
       "failedToScoreRateAway": 0.3487,
       "failedToScoreRateHome": 0.3224,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.25,
+          "conceded4Plus": 0.1184,
+          "distribution": {
+            "0": 0.3487,
+            "1": 0.3947,
+            "2": 0.2105,
+            "3": 0.0395,
+            "4": 0.0,
+            "5": 0.0066,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0461,
+          "scored4Plus": 0.0066,
+          "scored5Plus": 0.0066,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0562,
+          "awayScored4Plus": 0.0057,
+          "awayScored5Plus": 0.0057,
+          "homeScored3Plus": 0.1055,
+          "homeScored4Plus": 0.0295,
+          "homeScored5Plus": 0.0048
+        },
+        "home": {
+          "conceded3Plus": 0.1842,
+          "conceded4Plus": 0.0724,
+          "distribution": {
+            "0": 0.3224,
+            "1": 0.3947,
+            "2": 0.1711,
+            "3": 0.0789,
+            "4": 0.0263,
+            "5": 0.0066,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1118,
+          "scored4Plus": 0.0329,
+          "scored5Plus": 0.0066,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9853,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4704,
@@ -43283,11 +46034,23 @@
         "under25": 0.5099
       },
       "recentScoringTrend": 1.1448,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 5,
+        "longestScoringRunAway": 11,
+        "longestScoringRunHome": 10
+      },
       "totalMatches": 304
     },
     "Wimbledon": {
       "awayGoalsConceded": 1.7664,
       "awayGoalsScored": 1.0365,
+      "bigWin": {
+        "awayBy3Plus": 0.0146,
+        "awayLossBy3Plus": 0.146,
+        "homeBy3Plus": 0.0511,
+        "homeLossBy3Plus": 0.0511
+      },
       "bttsRate": 0.562,
       "cleanSheetRateAway": 0.2044,
       "cleanSheetRateHome": 0.2774,
@@ -43335,6 +46098,50 @@
       },
       "failedToScoreRateAway": 0.3358,
       "failedToScoreRateHome": 0.2263,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.292,
+          "conceded4Plus": 0.0949,
+          "distribution": {
+            "0": 0.3358,
+            "1": 0.438,
+            "2": 0.1168,
+            "3": 0.073,
+            "4": 0.0365,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1095,
+          "scored4Plus": 0.0365,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.1082,
+          "awayScored4Plus": 0.032,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.1172,
+          "homeScored4Plus": 0.0473,
+          "homeScored5Plus": 0.0114
+        },
+        "home": {
+          "conceded3Plus": 0.1387,
+          "conceded4Plus": 0.0292,
+          "distribution": {
+            "0": 0.2263,
+            "1": 0.3796,
+            "2": 0.2628,
+            "3": 0.0803,
+            "4": 0.0438,
+            "5": 0.0073,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.1314,
+          "scored4Plus": 0.0511,
+          "scored5Plus": 0.0073,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 1.1582,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.5053,
@@ -43363,11 +46170,23 @@
         "under25": 0.4964
       },
       "recentScoringTrend": 0.8688,
+      "streaks": {
+        "longestCleanSheetRunAway": 3,
+        "longestCleanSheetRunHome": 3,
+        "longestScoringRunAway": 10,
+        "longestScoringRunHome": 13
+      },
       "totalMatches": 274
     },
     "Wolves": {
       "awayGoalsConceded": 1.6712,
       "awayGoalsScored": 0.9595,
+      "bigWin": {
+        "awayBy3Plus": 0.0135,
+        "awayLossBy3Plus": 0.1306,
+        "homeBy3Plus": 0.0405,
+        "homeLossBy3Plus": 0.1036
+      },
       "bttsRate": 0.5135,
       "cleanSheetRateAway": 0.1622,
       "cleanSheetRateHome": 0.2658,
@@ -43415,6 +46234,50 @@
       },
       "failedToScoreRateAway": 0.3784,
       "failedToScoreRateHome": 0.2883,
+      "goalFrequency": {
+        "away": {
+          "conceded3Plus": 0.2117,
+          "conceded4Plus": 0.0901,
+          "distribution": {
+            "0": 0.3784,
+            "1": 0.3694,
+            "2": 0.1847,
+            "3": 0.0495,
+            "4": 0.018,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0676,
+          "scored4Plus": 0.018,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        },
+        "eraWeighted": {
+          "awayScored3Plus": 0.0716,
+          "awayScored4Plus": 0.0256,
+          "awayScored5Plus": 0.0,
+          "homeScored3Plus": 0.0888,
+          "homeScored4Plus": 0.0191,
+          "homeScored5Plus": 0.0
+        },
+        "home": {
+          "conceded3Plus": 0.2072,
+          "conceded4Plus": 0.0766,
+          "distribution": {
+            "0": 0.2883,
+            "1": 0.3333,
+            "2": 0.2838,
+            "3": 0.0721,
+            "4": 0.0225,
+            "5": 0.0,
+            "6+": 0.0
+          },
+          "scored3Plus": 0.0946,
+          "scored4Plus": 0.0225,
+          "scored5Plus": 0.0,
+          "scored6Plus": 0.0
+        }
+      },
       "goalVariance": 0.9863,
       "halfTime": {
         "avgFirstHalfGoalsScored": 0.4527,
@@ -43443,6 +46306,12 @@
         "under25": 0.5113
       },
       "recentScoringTrend": 1.1077,
+      "streaks": {
+        "longestCleanSheetRunAway": 2,
+        "longestCleanSheetRunHome": 4,
+        "longestScoringRunAway": 8,
+        "longestScoringRunHome": 18
+      },
       "totalMatches": 444
     }
   },

@@ -557,6 +557,178 @@ def compute_referee_stats(df) -> dict[str, Any]:
     return refs
 
 
+def augment_team_goal_frequency(df, teams: dict[str, Any]) -> None:
+    """Extend team profiles with goal-frequency tail data.
+
+    The headline reason this exists: when Man City / Arsenal / Liverpool host
+    a bottom-half side, P(score ≥ 3) is genuinely ~35-40% historically. Poisson
+    at current-form λ_h ≈ 2.3 only gives ≈ 32%. Exposing the observed frequency
+    lets the ensemble lift λ for teams who demonstrably over-score by this
+    tail-probability standard.
+
+    Fields added to each `teams[name]` entry:
+      - `goalFrequency.home.scored3Plus / 4Plus / 5Plus / 6Plus` — rate of
+        scoring at least N at home. Equivalents for away.
+      - `goalFrequency.home.conceded3Plus / 4Plus` — defensive tail.
+      - `goalFrequency.home.distribution` — histogram {"0": pct, "1": pct, ...,
+        "5": pct, "6+": pct}. Directly comparable to Poisson PMF.
+      - Era-weighted variants for the three thresholds 3+/4+/5+. Older seasons
+        decay at 0.85 per year so "current Arsenal" dominates "1994 Arsenal".
+      - `bigWin.homeBy3Plus / awayBy3Plus` — margin-of-victory frequency.
+      - `bigWin.homeLossBy3Plus / awayLossBy3Plus` — capitulation frequency.
+      - `streaks.longestScoringRunHome / Away` — consecutive games scoring.
+      - `streaks.longestCleanSheetRunHome / Away` — consecutive clean sheets.
+    """
+    def _rate(arr, threshold: int) -> float:
+        if len(arr) == 0:
+            return 0.0
+        return round(float((arr >= threshold).sum()) / len(arr), 4)
+
+    def _distribution(arr) -> dict[str, float]:
+        total = len(arr)
+        if total == 0:
+            return {}
+        dist: dict[str, float] = {}
+        for i in range(6):
+            dist[str(i)] = round(float((arr == i).sum()) / total, 4)
+        dist['6+'] = round(float((arr >= 6).sum()) / total, 4)
+        return dist
+
+    def _era_weighted_rate(goals, seasons, threshold: int) -> float:
+        weights = [era_weight(s) for s in seasons]
+        wsum = sum(weights)
+        if wsum == 0 or len(goals) == 0:
+            return 0.0
+        hits = sum(w for g, w in zip(goals, weights) if g >= threshold)
+        return round(hits / wsum, 4)
+
+    def _longest_run(bool_series) -> int:
+        """Longest consecutive True run in a boolean iterable."""
+        best = current = 0
+        for v in bool_series:
+            if v:
+                current += 1
+                if current > best:
+                    best = current
+            else:
+                current = 0
+        return int(best)
+
+    for team, profile in teams.items():
+        home_rows = df[df['home_team'] == team].sort_values('date')
+        away_rows = df[df['away_team'] == team].sort_values('date')
+
+        home_scored = home_rows['home_goals'].to_numpy(dtype=float)
+        home_conc = home_rows['away_goals'].to_numpy(dtype=float)
+        away_scored = away_rows['away_goals'].to_numpy(dtype=float)
+        away_conc = away_rows['home_goals'].to_numpy(dtype=float)
+
+        # Goal-frequency tail (home side)
+        home_freq = {
+            'scored3Plus': _rate(home_scored, 3),
+            'scored4Plus': _rate(home_scored, 4),
+            'scored5Plus': _rate(home_scored, 5),
+            'scored6Plus': _rate(home_scored, 6),
+            'conceded3Plus': _rate(home_conc, 3),
+            'conceded4Plus': _rate(home_conc, 4),
+            'distribution': _distribution(home_scored),
+        }
+        away_freq = {
+            'scored3Plus': _rate(away_scored, 3),
+            'scored4Plus': _rate(away_scored, 4),
+            'scored5Plus': _rate(away_scored, 5),
+            'scored6Plus': _rate(away_scored, 6),
+            'conceded3Plus': _rate(away_conc, 3),
+            'conceded4Plus': _rate(away_conc, 4),
+            'distribution': _distribution(away_scored),
+        }
+
+        # Era-weighted versions — recent-form bias for current prediction use
+        era_weighted_freq = {
+            'homeScored3Plus': _era_weighted_rate(home_scored.tolist(), home_rows['season'], 3),
+            'homeScored4Plus': _era_weighted_rate(home_scored.tolist(), home_rows['season'], 4),
+            'homeScored5Plus': _era_weighted_rate(home_scored.tolist(), home_rows['season'], 5),
+            'awayScored3Plus': _era_weighted_rate(away_scored.tolist(), away_rows['season'], 3),
+            'awayScored4Plus': _era_weighted_rate(away_scored.tolist(), away_rows['season'], 4),
+            'awayScored5Plus': _era_weighted_rate(away_scored.tolist(), away_rows['season'], 5),
+        }
+
+        profile['goalFrequency'] = {
+            'home': home_freq,
+            'away': away_freq,
+            'eraWeighted': era_weighted_freq,
+        }
+
+        # Big-win / capitulation margins — a side winning/losing by 3+ goals
+        if len(home_rows):
+            hg = home_rows['home_goals'].to_numpy(dtype=float)
+            ha = home_rows['away_goals'].to_numpy(dtype=float)
+            home_by_3_plus = int(((hg - ha) >= 3).sum())
+            home_loss_by_3_plus = int(((ha - hg) >= 3).sum())
+            home_by_3_rate = round(home_by_3_plus / len(home_rows), 4)
+            home_loss_3_rate = round(home_loss_by_3_plus / len(home_rows), 4)
+        else:
+            home_by_3_rate = 0.0
+            home_loss_3_rate = 0.0
+
+        if len(away_rows):
+            ag_scored = away_rows['away_goals'].to_numpy(dtype=float)
+            ag_conc = away_rows['home_goals'].to_numpy(dtype=float)
+            away_by_3_plus = int(((ag_scored - ag_conc) >= 3).sum())
+            away_loss_by_3_plus = int(((ag_conc - ag_scored) >= 3).sum())
+            away_by_3_rate = round(away_by_3_plus / len(away_rows), 4)
+            away_loss_3_rate = round(away_loss_by_3_plus / len(away_rows), 4)
+        else:
+            away_by_3_rate = 0.0
+            away_loss_3_rate = 0.0
+
+        profile['bigWin'] = {
+            'homeBy3Plus': home_by_3_rate,
+            'awayBy3Plus': away_by_3_rate,
+            'homeLossBy3Plus': home_loss_3_rate,
+            'awayLossBy3Plus': away_loss_3_rate,
+        }
+
+        # Scoring / clean-sheet streaks at each venue
+        profile['streaks'] = {
+            'longestScoringRunHome': _longest_run(home_scored >= 1),
+            'longestScoringRunAway': _longest_run(away_scored >= 1),
+            'longestCleanSheetRunHome': _longest_run(home_conc == 0),
+            'longestCleanSheetRunAway': _longest_run(away_conc == 0),
+        }
+
+
+def compute_league_goal_frequency(df) -> dict[str, Any]:
+    """League-wide high-scoring context. Useful as a normaliser: a team scoring
+    3+ goals 25% of the time at home is only "exceptional" if the league
+    average is ~13%.
+    """
+    if len(df) == 0:
+        return {}
+    hg = df['home_goals'].to_numpy(dtype=float)
+    ag = df['away_goals'].to_numpy(dtype=float)
+    total = hg + ag
+    n = len(df)
+
+    # Home / away scored ≥N rates (averaged across ALL fixtures — how often
+    # does the AVERAGE PL home/away team hit the threshold?)
+    return {
+        'homeScored3PlusRate': round(float((hg >= 3).sum()) / n, 4),
+        'homeScored4PlusRate': round(float((hg >= 4).sum()) / n, 4),
+        'homeScored5PlusRate': round(float((hg >= 5).sum()) / n, 4),
+        'awayScored3PlusRate': round(float((ag >= 3).sum()) / n, 4),
+        'awayScored4PlusRate': round(float((ag >= 4).sum()) / n, 4),
+        'awayScored5PlusRate': round(float((ag >= 5).sum()) / n, 4),
+        # Either side scoring ≥N (blowout match) — rarer
+        'match3PlusGoalsEitherRate': round(float(((hg >= 3) | (ag >= 3)).sum()) / n, 4),
+        'match4PlusGoalsEitherRate': round(float(((hg >= 4) | (ag >= 4)).sum()) / n, 4),
+        'match5PlusTotalRate': round(float((total >= 5).sum()) / n, 4),
+        'match6PlusTotalRate': round(float((total >= 6).sum()) / n, 4),
+        # Largest single-match goal total in the whole 33-season archive
+        'highestScoringMatch': int(total.max()) if n else 0,
+    }
+
+
 def compute_matchday_stats(df) -> dict[str, Any]:
     """Per-matchday league aggregates.
 
@@ -757,6 +929,10 @@ def main():
     with_ht = sum(1 for t in teams.values() if 'halfTime' in t)
     print(f'  → {with_ht}/{len(teams)} teams have half-time data')
 
+    print('Adding goal-frequency tail + big-win rates + streaks to team profiles…')
+    augment_team_goal_frequency(df, teams)
+    print(f'  → {len(teams)}/{len(teams)} teams augmented with tail-frequency data')
+
     print('Computing pair stats…')
     pairs = compute_pair_stats(df)
     print(f'  → {len(pairs)} ordered (home, away) pairs')
@@ -778,6 +954,11 @@ def main():
     matchday_stats = compute_matchday_stats(df)
     print(f'  → {len(matchday_stats)} matchday entries')
 
+    print('Computing league-wide goal-frequency summary…')
+    league_goal_frequency = compute_league_goal_frequency(df)
+    print(f'  → league home 3+ rate: {league_goal_frequency.get("homeScored3PlusRate")}, '
+          f'highest match: {league_goal_frequency.get("highestScoringMatch")}')
+
     pack = {
         'generatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         'eraDecay': ERA_DECAY,
@@ -792,6 +973,7 @@ def main():
         'teams': teams,
         'pairs': pairs,
         'matchdayStats': matchday_stats,
+        'leagueGoalFrequency': league_goal_frequency,
     }
 
     pack = sort_dict_recursive(pack)
