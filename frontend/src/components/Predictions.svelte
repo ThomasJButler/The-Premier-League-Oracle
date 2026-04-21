@@ -4,13 +4,12 @@
   import { predictionTracker } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
   import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
-  import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
+  import { PREMIER_LEAGUE_GAMEWEEKS, VALUE_ODDS_MARGIN } from '../lib/constants';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
   import { getTeamLogo, getTeamColor } from '../utils/teamLogos';
   import { getMatchStatusLabel, isMatchLive } from '$lib/utils';
-  import { PoissonPredictor } from '../lib/advancedPredictions';
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
@@ -305,12 +304,16 @@
           topScorelines: optimizedPrediction.topScorelines
         };
         
-        // Calculate Poisson probabilities for additional analysis
-        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
-          prediction.predictedHomeGoals,
-          prediction.predictedAwayGoals
-        );
-        const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+        // Recover ensemble outcome probabilities from the valueOdds the predictor returned.
+        // calculateValueOdds builds odds as (1 / P(X)) * VALUE_ODDS_MARGIN, so inverting
+        // gives back the true ensemble probability for each outcome. Avoids the earlier bug
+        // of re-deriving a degenerate Poisson from the integer predicted goals.
+        const vo = optimizedPrediction.valueOdds ?? { home: 3.0, draw: 3.3, away: 3.0 };
+        const outcomeProbabilities = {
+          homeWin: VALUE_ODDS_MARGIN / vo.home,
+          draw:    VALUE_ODDS_MARGIN / vo.draw,
+          awayWin: VALUE_ODDS_MARGIN / vo.away,
+        };
 
         // Calculate recommended stake using Kelly Criterion
         // Uses the top outcome probability as our edge estimate against typical bookmaker odds
