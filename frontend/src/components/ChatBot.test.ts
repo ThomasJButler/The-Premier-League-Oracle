@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ChatBot from './ChatBot.svelte';
+import { invalidateBackendHealth } from '../services/chatBackendHealth';
 
 // Mock DOMPurify — use a spy so we can verify sanitize() is actually called.
 // Returns input unchanged (sufficient for rendering tests) but allows assertion
@@ -68,6 +69,9 @@ describe('ChatBot Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSanitize.mockClear();
+    // Reset the session-level chat backend health cache so each test's
+    // /health probe starts fresh.
+    invalidateBackendHealth();
     // Re-apply localStorage mock defaults (setup.ts mocks are cleared by clearAllMocks)
     vi.mocked(localStorage.getItem).mockReturnValue(null);
     // Default: server key probe (POST with empty messages) returns "no key" response.
@@ -458,6 +462,70 @@ describe('ChatBot Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Fallback response from proxy.')).toBeInTheDocument();
     });
+  });
+
+  it('P13b: reuses the cached /health result across remounts within a session', async () => {
+    // First render: primes the session cache with a successful /health probe.
+    const { unmount } = await renderWithBackendRAG();
+
+    const healthCallsAfterFirst = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+    expect(healthCallsAfterFirst).toBe(1);
+
+    unmount();
+
+    // Second render: same session, no invalidation — cache should short-circuit.
+    const { component } = render(ChatBot);
+    await act(async () => {
+      await (component as any).checkBackendRAG();
+    });
+
+    const healthCallsAfterSecond = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+    // Still exactly one — the second mount must not re-probe.
+    expect(healthCallsAfterSecond).toBe(1);
+  });
+
+  it('P13b: re-probes /health after a RAG 5xx failure invalidates the cache', async () => {
+    // Prime cache with successful probe, then simulate RAG server error.
+    const { component } = await renderWithBackendRAG(async (url, opts) => {
+      if (typeof url === 'string' && url === '/health') {
+        return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
+      }
+      if (typeof url === 'string' && url === '/api/oracle/chat/rag' && (opts as RequestInit)?.method === 'POST') {
+        return { ok: false, status: 502, json: () => Promise.resolve({ detail: 'Bad gateway' }) } as Response;
+      }
+      // Fallback proxy returns something so sendMessage completes cleanly.
+      if (typeof url === 'string' && url === '/api/chat' && (opts as RequestInit)?.method === 'POST') {
+        return { ok: true, json: () => Promise.resolve({ choices: [{ message: { content: 'Fallback' } }] }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    // Trigger a RAG request that will 502 → invalidates health cache.
+    await typeMessage('Trigger RAG failure');
+    await act(async () => {
+      await (component as any).sendMessage();
+    });
+
+    // Now call checkBackendRAG again — the cache was invalidated by the 502,
+    // so this must re-probe /health.
+    const healthCallsBefore = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+
+    await act(async () => {
+      await (component as any).checkBackendRAG();
+    });
+
+    const healthCallsAfter = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+
+    expect(healthCallsAfter).toBeGreaterThan(healthCallsBefore);
   });
 
   it('should not show security banner when using backend RAG', async () => {

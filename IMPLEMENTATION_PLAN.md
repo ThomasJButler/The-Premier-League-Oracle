@@ -1,13 +1,13 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P13 IN PROGRESS — deferred followups from P12
+## Status: P13 COMPLETE — deferred followups shipped
 
-> **Ralph loop note:** P12 closed out 21 April 2026 (clean 5-task run, all boxes `[x]`, 666 tests green — see `### P12 Completion Report`). P13 kicked off same day to pick up the two `DEFERRED-P13` followups logged in that report: conditional timeline threshold lines (don't stretch the y-axis early season) + session-cached Oracle Chat health probe (stop fetching `/health` on every mount). Scope is frontend-only; everything shipped in P12 is FROZEN beyond the two specific behaviours being tuned.
+> **Ralph loop note:** P13 closed out 21 April 2026 (2-task run, all boxes `[x]`, 675 tests green — see `### P13 Completion Report`). Both `DEFERRED-P13` followups logged in the P12 report are now shipped: conditional timeline threshold lines (P13a) and session-cached Oracle Chat health probe (P13b). Scope held firmly to frontend-only — nothing in the FROZEN P12 shipping envelope was disturbed.
 
-## P13 Tasks (active — autonomous via Ralph loop)
+## P13 Tasks (complete)
 
 - [x] **P13a** — Conditional timeline threshold lines (gate on matchday >= 10 OR leader ≥ 50% of threshold)
-- [ ] **P13b** — Session-cache Oracle Chat backend health check + P13 closeout
+- [x] **P13b** — Session-cache Oracle Chat backend health check + P13 closeout
 
 ## P12 Tasks (complete)
 
@@ -520,8 +520,51 @@ Closed out 21 April 2026 on branch `v3.0-MVP_Enhancements`. All five P12 tasks s
 
 **Followup deferred (logged here, not active work):**
 
-- `DEFERRED-P13`: If the 86-pt title-floor line stretches the y-axis uncomfortably at the very start of the season (when the leader is ~6 pts), consider conditionally hiding the threshold until the leader passes some fraction of it. Low priority — the "teaser" framing is arguably the point.
-- `DEFERRED-P13`: The Oracle Chat health check currently does a 5-second timeout fetch on every session (see `ChatBot.svelte`). A longer-term fix would be to cache the `useBackendRAG` result for the session's lifetime rather than probing on each mount.
+- `DEFERRED-P13` (SHIPPED in P13a): If the 86-pt title-floor line stretches the y-axis uncomfortably at the very start of the season (when the leader is ~6 pts), consider conditionally hiding the threshold until the leader passes some fraction of it. Low priority — the "teaser" framing is arguably the point.
+- `DEFERRED-P13` (SHIPPED in P13b): The Oracle Chat health check currently does a 5-second timeout fetch on every session (see `ChatBot.svelte`). A longer-term fix would be to cache the `useBackendRAG` result for the session's lifetime rather than probing on each mount.
+
+---
+
+### P13 Completion Report
+
+Closed out 21 April 2026 on branch `v3.0-MVP_Enhancements`. Both P13 tasks shipped. Scope stayed squarely on the two `DEFERRED-P13` followups from P12 — no prediction-scoreline, `MODEL_VERSION`, fatigue, Historical Context, multi-year Season Stats, or timeline base-layer code was touched.
+
+**Per-task summary:**
+
+| Task | Summary | Commit |
+|------|---------|--------|
+| **P13a** | Conditional timeline threshold lines — dashed reference lines on both title (86 pts) and relegation (40 pts) charts are now gated behind `matchday >= 10 OR leader ≥ 50% of threshold`. Early in the season when the leader sits on ~6 pts, the 86-pt line no longer squashes every team's trajectory into the bottom third of the chart; the y-axis auto-scales to actual data range until either gate fires. Two new unit tests lock both sides of the gate. | `00f37a5` |
+| **P13b** | Session-cached Oracle Chat backend health check — new `services/chatBackendHealth.ts` exposes `isBackendAvailable()` with a session-lifetime cache + dedup of in-flight probes. `ChatBot.svelte` now calls it in place of the inline `/health` fetch; `sendViaBackendRAG()` invalidates the cache on network error or 5xx (4xx left alone — that's client-side). 5 unit tests for the new service + 2 new `ChatBot.test.ts` tests (one proving remounts don't re-probe, one proving a RAG 502 forces the next probe). Closeout: this report + status flip. | *this commit* |
+
+**Manual verification checklist:**
+
+- [x] Season Timeline at matchday 4 with leader on ~9 pts → no dashed 86-pt line on the title chart, no 40-pt line on the relegation chart, y-axis auto-scales tightly around actual data (P13a).
+- [x] Scrub the timeline viewport forward past matchday 10 → dashed thresholds fade in at their correct y-positions with their caption labels attached; Chart.js default animation handles the transition cleanly (P13a).
+- [x] Open Oracle Chat twice in the same SPA session (navigate away, navigate back) → DevTools Network tab shows exactly one `/health` request across both mounts (P13b).
+- [x] With backend offline, send a chat message that tries RAG → `console.warn` logs the fallback; the next reopen of the chat triggers a fresh `/health` probe (cache correctly invalidated on 5xx / network error) (P13b).
+
+**Files changed in P13:**
+
+| File | P13 task(s) |
+|------|-------------|
+| `frontend/src/components/SeasonTimeline.svelte` | P13a |
+| `frontend/src/components/SeasonTimeline.test.ts` | P13a |
+| `frontend/src/services/chatBackendHealth.ts` (new) | P13b |
+| `frontend/src/services/chatBackendHealth.test.ts` (new) | P13b |
+| `frontend/src/components/ChatBot.svelte` | P13b |
+| `frontend/src/components/ChatBot.test.ts` | P13b |
+| `IMPLEMENTATION_PLAN.md` | P13b closeout |
+
+**Gate status at closeout:**
+
+- `cd frontend && npm run check` → 0 errors, 0 warnings
+- `cd frontend && npm run test:run` → 675 tests passing across 41 files (baseline entering P13b was 668 tests / 40 files after P13a added 2; P13b adds 7 tests and 1 new file)
+- Both P13 boxes `[x]`; no deferred work bumped to a future phase.
+
+**Followup deferred (logged here, not active work):**
+
+- `DEFERRED-P14`: Consider persisting the backend-availability flag to `sessionStorage` so a page refresh doesn't re-probe. Current implementation is module-level only (survives SPA nav, lost on reload). Low priority — `/health` is cheap and the probe has a 5s AbortController timeout.
+- `DEFERRED-P14`: The timeline threshold gate uses `matchday >= 10` as a fixed floor. For non-standard seasons (pandemic-shortened, mid-season restarts) the 10-MD constant may want to become a fraction of the season length. Low priority.
 
 ---
 

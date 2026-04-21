@@ -6,6 +6,7 @@
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
+  import { isBackendAvailable, invalidateBackendHealth } from '../services/chatBackendHealth';
   import { getSavedAiModel, ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey } from '$lib/constants';
 
   // Run the legacy openai_api_key → anthropic_api_key migration once on load.
@@ -94,26 +95,20 @@
   /** Check backend RAG availability first, then fall back to the Vercel chat proxy.
    *
    * Priority:
-   * 1. Backend RAG (/health) — data-grounded, server-side API key
+   * 1. Backend RAG (/health) — data-grounded, server-side API key. Probed
+   *    ONCE per session via `isBackendAvailable()` — subsequent mounts reuse
+   *    the cached flag; the cache is invalidated if a RAG request later fails.
    * 2. Vercel chat proxy (/api/chat) — server-side API key, shallow context
    * 3. User-provided API key — client sends key through proxy
    */
   export async function checkBackendRAG() {
-    // 1. Try backend RAG endpoint. Probes the canonical /health path the
-    // FastAPI backend actually serves (main.py:269). In dev, the Vite
-    // proxy forwards /health → http://localhost:8000/health.
-    try {
-      const res = await fetch('/health');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'healthy') {
-          useBackendRAG = true;
-          hasApiKey = true;
-          return;
-        }
-      }
-    } catch {
-      // Backend not available — try fallback
+    // 1. Try backend RAG via the session-cached health probe. The cache
+    // layer handles the canonical /health path and timeout; see
+    // `services/chatBackendHealth.ts`.
+    if (await isBackendAvailable()) {
+      useBackendRAG = true;
+      hasApiKey = true;
+      return;
     }
 
     // 2. Try Vercel chat proxy server key
@@ -340,14 +335,22 @@ Current-week snapshot:\n`;
       });
 
       if (!response.ok) {
-        // Let the caller fall back to the proxy
+        // Server-side failure — invalidate the session cache so the next
+        // probe re-checks backend health. 4xx (client-side) is not a health
+        // signal, so leave the cache alone.
+        if (response.status >= 500) {
+          invalidateBackendHealth();
+          console.warn(`[ChatBot] Backend RAG returned ${response.status}; falling back to proxy and invalidating health cache.`);
+        }
         return null;
       }
 
       const data = await response.json();
       return data.reply || null;
     } catch {
-      // Backend unreachable — fall back silently
+      // Backend unreachable — invalidate and fall back.
+      invalidateBackendHealth();
+      console.warn('[ChatBot] Backend RAG unreachable; falling back to proxy and invalidating health cache.');
       return null;
     }
   }
