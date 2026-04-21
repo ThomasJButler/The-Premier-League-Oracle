@@ -55,10 +55,17 @@
       statusMessage = `Gameweek ${match.matchday ?? '?'} — ${match.home_team} vs ${match.away_team}`;
 
       try {
+        // Pass the pre-fetched season matches as historicalMatches.
+        // This activates the ensemble's backtest-mode data path which skips
+        // every internal dataService.* call (getStandings, getMatches,
+        // getTeamForm, etc.) and uses the provided array for form, H2H, and
+        // fatigue calculations. One API fetch on mount, zero during the loop.
+        // Trade-off: standings positions come from ELO-derived ranking instead
+        // of the live PL table — acceptable for season-wide browsing.
         const result = await OptimizedPredictor.predictMatch(
           match.home_team,
           match.away_team,
-          undefined,
+          matches,
           match.referee ?? null,
           match.date,
         );
