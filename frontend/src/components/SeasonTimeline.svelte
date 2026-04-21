@@ -59,6 +59,14 @@
   const TITLE_FLOOR_POINTS = 86;
   const SAFETY_POINTS = 40;
   const THRESHOLD_DATASET_PREFIX = '__threshold__';
+  // Dashed thresholds only render once they're narratively relevant — otherwise
+  // the 86-pt line stretches the y-axis and squashes the actual race.
+  // Gate: matchday >= 10 OR relevant team already past 50 % of the threshold.
+  const THRESHOLD_MATCHDAY_GATE = 10;
+  const THRESHOLD_PROXIMITY_FRACTION = 0.5;
+
+  let showTitleThreshold = false;
+  let showSafetyThreshold = false;
 
   interface MatchdayPoints {
     [team: string]: number[];
@@ -276,8 +284,16 @@
       tension: 0.3
     }));
 
-    // Title-floor benchmark (historical PL average winning total)
-    datasets.push(makeThresholdDataset(matchdayLabels.length, TITLE_FLOOR_POINTS, 'title-floor'));
+    // Title-floor benchmark (historical PL average winning total) — only render
+    // once it's contextually meaningful to avoid stretching the y-axis early.
+    const leaderSeries = sorted[0]?.[1];
+    const leaderPoints = leaderSeries ? leaderSeries[leaderSeries.length - 1] ?? 0 : 0;
+    showTitleThreshold =
+      currentMatchday >= THRESHOLD_MATCHDAY_GATE ||
+      leaderPoints >= TITLE_FLOOR_POINTS * THRESHOLD_PROXIMITY_FRACTION;
+    if (showTitleThreshold) {
+      datasets.push(makeThresholdDataset(matchdayLabels.length, TITLE_FLOOR_POINTS, 'title-floor'));
+    }
 
     return { labels: matchdayLabels, datasets };
   }
@@ -320,8 +336,16 @@
       });
     }
 
-    // Historical 40-point safety benchmark (static)
-    datasets.push(makeThresholdDataset(matchdayLabels.length, SAFETY_POINTS, 'safety-floor'));
+    // Historical 40-point safety benchmark (static) — gated the same way as
+    // the title-floor line. Relevant team here is the worst-placed side (sorted[0]).
+    const bottomSeries = sorted[0]?.[1];
+    const bottomPoints = bottomSeries ? bottomSeries[bottomSeries.length - 1] ?? 0 : 0;
+    showSafetyThreshold =
+      currentMatchday >= THRESHOLD_MATCHDAY_GATE ||
+      bottomPoints >= SAFETY_POINTS * THRESHOLD_PROXIMITY_FRACTION;
+    if (showSafetyThreshold) {
+      datasets.push(makeThresholdDataset(matchdayLabels.length, SAFETY_POINTS, 'safety-floor'));
+    }
 
     return {
       labels: matchdayLabels,
@@ -655,10 +679,12 @@
         <div class="h-64 sm:h-80" role="img" aria-label="Line chart showing cumulative points for the title race">
           <Line data={titleRaceData} options={titleChartOptions} />
         </div>
-        <p class="text-[11px] text-muted-foreground/80 mt-2 flex items-center gap-2">
-          <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
-          <span>{TITLE_FLOOR_POINTS} pts — historical title floor</span>
-        </p>
+        {#if showTitleThreshold}
+          <p class="text-[11px] text-muted-foreground/80 mt-2 flex items-center gap-2">
+            <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
+            <span>{TITLE_FLOOR_POINTS} pts — historical title floor</span>
+          </p>
+        {/if}
       </Card>
     {/if}
 
@@ -685,10 +711,12 @@
         <p class="text-xs text-muted-foreground mt-2">
           Dashed line shows the team just above the relegation zone (live benchmark)
         </p>
-        <p class="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-2">
-          <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
-          <span>{SAFETY_POINTS} pts — historical safety benchmark</span>
-        </p>
+        {#if showSafetyThreshold}
+          <p class="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-2">
+            <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
+            <span>{SAFETY_POINTS} pts — historical safety benchmark</span>
+          </p>
+        {/if}
       </Card>
     {/if}
 

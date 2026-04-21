@@ -1,10 +1,15 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P12 COMPLETE — chat + season UX + card enrichment shipped
+## Status: P13 IN PROGRESS — deferred followups from P12
 
-> **Ralph loop note:** P11 closed out manually on 21 April 2026 (Decision 2 fired — isotonic won the calibrator comparison; see `### P11 Completion Report` below). P12 kicked off on 2026-04-21 to address five user-reported issues after the v3.5 scoreline/fatigue ship: Oracle Chat RAG fallback bug, remove pointless Season Predictions feature, enrich Predictions card back panel, multi-year Season Stats, Season Timeline polish. Scope is frontend-only; prediction model logic is FROZEN at v3.5.
+> **Ralph loop note:** P12 closed out 21 April 2026 (clean 5-task run, all boxes `[x]`, 666 tests green — see `### P12 Completion Report`). P13 kicked off same day to pick up the two `DEFERRED-P13` followups logged in that report: conditional timeline threshold lines (don't stretch the y-axis early season) + session-cached Oracle Chat health probe (stop fetching `/health` on every mount). Scope is frontend-only; everything shipped in P12 is FROZEN beyond the two specific behaviours being tuned.
 
-## P12 Tasks (active — autonomous via Ralph loop)
+## P13 Tasks (active — autonomous via Ralph loop)
+
+- [x] **P13a** — Conditional timeline threshold lines (gate on matchday >= 10 OR leader ≥ 50% of threshold)
+- [ ] **P13b** — Session-cache Oracle Chat backend health check + P13 closeout
+
+## P12 Tasks (complete)
 
 - [x] **P12a** — Oracle Chat RAG fallback fix (health URL + fallback prompt)
 - [x] **P12b** — Remove Season Predictions entirely
