@@ -324,11 +324,15 @@
         const estimatedBookmakerOdds = (1 / topProb) * 1.05; // Assume 5% edge over fair value
         const kellyResult = calculateKelly(topProb, estimatedBookmakerOdds, 100, prediction.confidence);
 
-        // Generate bet builder predictions
+        // Generate bet builder predictions — pass the main-card prediction so
+        // BetBuilder reuses the same fatigue-adjusted Poisson grid (Bug 0.2/0.4).
         const betBuilder = await BetBuilderPredictor.generateBetBuilder(
           match.home_team,
           match.away_team,
-          match.id
+          match.id,
+          optimizedPrediction,
+          match.date,
+          match.referee
         );
 
         predictions[matchIndex] = {

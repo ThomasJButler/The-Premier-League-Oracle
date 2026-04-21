@@ -69,6 +69,13 @@ export interface EnhancedPredictionModel {
    * Surfaces the shape of the distribution instead of collapsing it to one score.
    */
   topScorelines?: Array<{ score: string; probability: number }>;
+  /**
+   * The full fatigue-adjusted Poisson score grid used to derive the main card's
+   * probabilities. Exposed so downstream consumers (BetBuilder, value scanner)
+   * can reuse the same grid instead of re-deriving a degenerate one from the
+   * integer predictedHomeGoals/predictedAwayGoals fields. Keyed as "H-A": prob.
+   */
+  scoreProbabilities?: { [score: string]: number };
 }
 
 /** Number of top scorelines to surface on the Predictions card. */
@@ -707,7 +714,8 @@ export class OptimizedPredictor {
         insights,
         valueOdds,
         modelOutputs,
-        topScorelines: getTopScorelines(scoreProbabilities)
+        topScorelines: getTopScorelines(scoreProbabilities),
+        scoreProbabilities
       };
 
     } catch (error) {

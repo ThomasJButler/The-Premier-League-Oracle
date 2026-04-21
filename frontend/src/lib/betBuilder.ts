@@ -62,16 +62,34 @@ export interface BetBuilderCombo {
 
 export class BetBuilderPredictor {
   /**
-   * Generate comprehensive bet builder predictions for a match
+   * Generate comprehensive bet builder predictions for a match.
+   *
+   * Accepts an optional `basePrediction` from the caller so we consume the
+   * SAME fatigue-adjusted Poisson grid the main Predictions card uses. This
+   * prevents the regression where BetBuilder re-fed integer modal scorelines
+   * (e.g. `predictedHomeGoals=1, predictedAwayGoals=0`) into Poisson, which
+   * collapsed all mass onto away-goals-zero cells and produced BTTS No = 100%
+   * on every card. See Bug 0.2 / 0.4 in the MVP plan.
+   *
+   * If `basePrediction` is not provided, we fall back to fetching it ourselves
+   * with matchDate passed through so the fatigue fix from OptimizedPredictor
+   * propagates here too.
    */
   static async generateBetBuilder(
-    homeTeam: string, 
+    homeTeam: string,
     awayTeam: string,
-    matchId?: string
+    matchId?: string,
+    basePrediction?: Awaited<ReturnType<typeof OptimizedPredictor.predictMatch>>,
+    matchDate?: string,
+    referee?: string | null
   ): Promise<BetBuilderPrediction> {
-    // Get base prediction from optimized predictor
-    const basePrediction = await OptimizedPredictor.predictMatch(homeTeam, awayTeam);
-    
+    // Reuse the caller's prediction when available — this is the happy path
+    // and guarantees one source of truth for the Poisson grid. Otherwise fetch
+    // one ourselves, passing matchDate so fatigue is measured from kickoff
+    // (not "now"), and referee for parity with the main prediction.
+    const prediction = basePrediction
+      ?? await OptimizedPredictor.predictMatch(homeTeam, awayTeam, undefined, referee, matchDate);
+
     // Get team stats and match data for league averages
     const [homeStats, awayStats, matches] = await Promise.all([
       dataService.getTeamStats(homeTeam),
@@ -80,17 +98,21 @@ export class BetBuilderPredictor {
     ]);
 
     const leagueAvgs = this.computeLeagueAverages(matches);
-    
-    // Calculate average goals for Poisson distribution
-    const homeGoalsExpected = basePrediction.predictedHomeGoals ?? 1.3;
-    const awayGoalsExpected = basePrediction.predictedAwayGoals ?? 1.1;
-    
-    // Generate score probabilities
-    const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
-      homeGoalsExpected,
-      awayGoalsExpected,
-      7
-    );
+
+    // Prefer the main-card's fatigue-adjusted Poisson grid when available —
+    // it's already λ-correct. Only fall back to rebuilding a grid locally when
+    // the predictor didn't expose one (shouldn't happen in production).
+    // NEVER re-feed the integer predictedHomeGoals/predictedAwayGoals into
+    // Poisson: those are modal scorelines (e.g. 1 or 2), not expected-goal λ
+    // values, and passing a 0 integer (common for clean-sheet modes like 1-0
+    // or 0-1) collapses the grid to BTTS No = 100%.
+    const scoreProbabilities = prediction.scoreProbabilities
+      ?? PoissonPredictor.predictScoreProbabilities(
+        // Safe numeric fallbacks if neither the grid nor sensible λ are available
+        Math.max(0.1, prediction.predictedHomeGoals ?? 1.3),
+        Math.max(0.1, prediction.predictedAwayGoals ?? 1.1),
+        7
+      );
     
     // Calculate match result probabilities
     const matchResult = this.calculateMatchResult(scoreProbabilities);

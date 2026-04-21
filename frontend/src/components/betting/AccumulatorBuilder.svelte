@@ -61,10 +61,16 @@
 
       for (const match of matchesToProcess) {
         try {
+          // Pass matchDate + referee so the internal predictMatch measures
+          // fatigue from kickoff (not "now") — prevents the degenerate grid
+          // that caused BTTS No = 100% on every card (Bug 0.2/0.4).
           const betBuilder = await BetBuilderPredictor.generateBetBuilder(
             match.home_team,
             match.away_team,
-            match.id
+            match.id,
+            undefined,
+            match.date,
+            match.referee
           );
           if (betBuilder.suggestedCombos.length > 0) {
             results.push({ match, betBuilder, expanded: false });
