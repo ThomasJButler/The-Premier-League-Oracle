@@ -643,16 +643,18 @@ def apply_calibrators(
     Apply fitted calibrators to raw probabilities, dispatching on method.
 
     - 'dirichlet': single DirichletCalibrator (joint calibration of the simplex).
+    - 'dirichlet_reg': DirichletCalibrator fitted at the best λ from a grid
+      search (see calibrate_probabilities). Same runtime API as 'dirichlet'.
     - 'temperature': single TemperatureCalibrator (softmax with fitted scalar T).
     - 'beta': single BetaCalibrator (per-class beta, internally renormalised).
     - 'platt': list of 3 LogisticRegression objects (predict_proba on 2D).
     - 'isotonic' (or legacy): list of 3 IsotonicRegression objects (predict on 1D).
 
-    Returns probabilities (n_samples, 3). Joint methods (dirichlet, temperature,
-    beta) already sum to 1 by construction; per-class methods are re-normalised
-    row-wise.
+    Returns probabilities (n_samples, 3). Joint methods (dirichlet,
+    dirichlet_reg, temperature, beta) already sum to 1 by construction;
+    per-class methods are re-normalised row-wise.
     """
-    if method in ('dirichlet', 'temperature', 'beta'):
+    if method in ('dirichlet', 'dirichlet_reg', 'temperature', 'beta'):
         return calibrators.predict_proba(raw_probs)
 
     if method == 'platt':
@@ -684,6 +686,8 @@ def calibrate_probabilities(
     - 'dirichlet' (default): joint calibration of the full H/D/A simplex.
       Preserves the sum-to-1 constraint natively and avoids the draw-class
       suppression seen with independent per-class calibration.
+    - 'dirichlet_reg': Dirichlet calibration with a grid search over the
+      matrix-scaling L2 strength λ ∈ {1e-3, 1e-2, 1e-1, 1, 10}.
     - 'temperature': single scalar T fitted on val log-loss; softmax(log(p)/T).
       Cannot re-rank classes, only rescales sharpness.
     - 'isotonic': piecewise-constant per-class mapping; flexible but hungry
@@ -712,6 +716,41 @@ def calibrate_probabilities(
             'calibration_method': 'dirichlet',
             'raw_log_loss': raw_ll,
             'calibrated_log_loss': dir_ll,
+        }
+
+    if method == 'dirichlet_reg':
+        # Grid search λ ∈ {1e-3, 1e-2, 1e-1, 1, 10} on validation log loss.
+        # Matrix scaling (existing DirichletCalibrator) penalises all
+        # coefficients uniformly via sklearn's L2 penalty — true ODIR
+        # (off-diagonal only; Kull et al. 2019) would need a bespoke LBFGS,
+        # so scope is narrowed to tuning the full-matrix penalty strength.
+        lambda_grid = [1e-3, 1e-2, 1e-1, 1.0, 10.0]
+        grid_results = []
+        best_cal = None
+        best_ll = float('inf')
+        best_lambda = lambda_grid[0]
+        for lam in lambda_grid:
+            cal = DirichletCalibrator(reg_lambda=lam).fit(raw_probs, y_val)
+            probs = cal.predict_proba(raw_probs)
+            ll = log_loss(y_val, probs, labels=[0, 1, 2])
+            grid_results.append((lam, ll))
+            if ll < best_ll:
+                best_ll = ll
+                best_cal = cal
+                best_lambda = lam
+        grid_str = ', '.join(f'λ={lam:g}→{ll:.4f}' for lam, ll in grid_results)
+        logger.info('Dirichlet-reg grid: %s', grid_str)
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using Dirichlet-reg (λ=%g)',
+            raw_ll, best_ll, best_ll - raw_ll, best_lambda,
+        )
+        return {
+            'calibrators': best_cal,
+            'calibration_method': 'dirichlet_reg',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': best_ll,
+            'best_lambda': best_lambda,
+            'lambda_grid': grid_results,
         }
 
     if method == 'temperature':
@@ -1695,13 +1734,21 @@ def main():
     )
     parser.add_argument(
         '--calibrator',
-        choices=['dirichlet', 'temperature', 'beta', 'isotonic', 'platt', 'auto'],
-        default='dirichlet',
+        choices=[
+            'dirichlet', 'dirichlet_reg', 'temperature', 'beta',
+            'isotonic', 'platt', 'auto',
+        ],
+        default='isotonic',
         help=(
-            'Probability calibration method (default: dirichlet — joint simplex '
-            'calibration). "temperature" fits a single scalar T via softmax. '
-            '"beta" fits per-class Kull et al. (2017) 3-parameter logistic on '
-            '[log p, log(1-p)]. "auto" picks the best of isotonic/platt.'
+            'Probability calibration method (default: isotonic — best performer '
+            'per P11 investigation; preserves draws better than Dirichlet/beta '
+            'on this feature set). "dirichlet" / "dirichlet_reg" / "temperature" '
+            '/ "beta" remain available for experimentation. "dirichlet_reg" '
+            'grid-searches λ ∈ {1e-3, 1e-2, 1e-1, 1, 10} on matrix-scaling L2 '
+            'strength. "temperature" fits a single '
+            'scalar T via softmax. "beta" fits per-class Kull et al. (2017) '
+            '3-parameter logistic on [log p, log(1-p)]. "auto" picks the best '
+            'of isotonic/platt.'
         ),
     )
     args = parser.parse_args()

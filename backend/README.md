@@ -5,9 +5,9 @@
 | Component | Status |
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
-| Free-tier XGBoost model | **Trained** — 53.3% accuracy with draw features + dual calibration (retrained 20 March 2026) |
-| Dedicated draw classifier | **Active cascade** — trained binary draw-vs-not-draw model overrides the main argmax when P(draw) > tuned threshold (set `ORACLE_DRAW_CASCADE=0` to force-disable) |
-| Free-tier feature engineering | 114 features (incl. 13 draw indicators, 10 bookmaker odds, 5 Elo), standalone, no heavy deps |
+| Free-tier XGBoost model | **Trained** — 53.4% calibrated accuracy (isotonic), log-loss 0.9679, draw AUC 0.5724 on 33-season dataset (retrained 21 April 2026 after P11 calibrator investigation) |
+| Dedicated draw classifier | **Trained, cascade disabled at inference** — P11 retrains confirmed cascade at threshold 0.54 gives 34.4% draw recall but only 48.1% overall accuracy vs 53.4% for straight isotonic; classifier still saved in model file, cascade auto-disables in training when it reduces overall accuracy |
+| Free-tier feature engineering | 114 features (112 after selection): 6 draw indicators (post-P10b restoration), 10 bookmaker odds, 5 Elo + interactions, plus base form/H2H/context, standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
 | Backend tests | **194 tests across 5 files — all non-skip tests passing** |
 | AI chat provider | Anthropic Claude only (Haiku 4.5 default, Sonnet 4.6 / Opus 4.6 / Opus 4.7 selectable) — OpenAI removed April 2026 |

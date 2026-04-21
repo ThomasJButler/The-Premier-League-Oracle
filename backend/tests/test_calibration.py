@@ -123,3 +123,30 @@ def test_apply_calibrators_platt_renormalises():
     cals, _ = _calibrate_with_method(raw, y, 'platt')
     out = apply_calibrators(raw, cals, 'platt')
     assert np.allclose(out.sum(axis=1), 1.0, atol=SIMPLEX_TOL)
+
+
+# ---------------------------------------------------------------------------
+# Dirichlet λ grid — different reg strengths produce valid simplex
+# ---------------------------------------------------------------------------
+
+def test_dirichlet_reg_lambda_grid_simplex():
+    """Every λ in the P11d grid must still yield a valid simplex."""
+    rng = np.random.default_rng(6)
+    raw = _random_simplex(150, rng=rng)
+    y = _balanced_labels(150, rng=rng)
+    for lam in (1e-3, 1e-2, 1e-1, 1.0, 10.0):
+        cal = DirichletCalibrator(reg_lambda=lam).fit(raw, y)
+        out = cal.predict_proba(raw)
+        assert np.allclose(out.sum(axis=1), 1.0, atol=SIMPLEX_TOL)
+        assert (out >= 0).all() and (out <= 1).all()
+
+
+def test_apply_calibrators_dirichlet_reg_dispatch():
+    """'dirichlet_reg' dispatch must delegate to the calibrator's predict_proba."""
+    rng = np.random.default_rng(7)
+    raw = _random_simplex(100, rng=rng)
+    y = _balanced_labels(100, rng=rng)
+    cal = DirichletCalibrator(reg_lambda=1e-2).fit(raw, y)
+    out = apply_calibrators(raw, cal, 'dirichlet_reg')
+    assert out.shape == raw.shape
+    assert np.allclose(out.sum(axis=1), 1.0, atol=SIMPLEX_TOL)
