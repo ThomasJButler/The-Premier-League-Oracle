@@ -351,6 +351,25 @@ describe('SeasonTimeline', () => {
     expect(screen.getByText(/No match data available/)).toBeTruthy();
   });
 
+  it('renders compact team strip legend and threshold benchmark labels', async () => {
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatches());
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    // Threshold benchmark labels (dashed reference lines — 86 pts title floor, 40 pts safety)
+    expect(screen.getByText(/86 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical title floor/)).toBeTruthy();
+    expect(screen.getByText(/40 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
+
+    // Team strip legend: compact colour-keyed lists replacing the default Chart.js legend
+    expect(screen.getByLabelText('Teams in title race')).toBeTruthy();
+    expect(screen.getByLabelText('Teams in relegation battle')).toBeTruthy();
+  });
+
   it('matchday 1 gets special narrative treatment', async () => {
     // Just one matchday
     const matches: Match[] = [];

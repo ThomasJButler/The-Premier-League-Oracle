@@ -1,6 +1,6 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P12 IN PROGRESS — chat RAG + season UX + card enrichment
+## Status: P12 COMPLETE — chat + season UX + card enrichment shipped
 
 > **Ralph loop note:** P11 closed out manually on 21 April 2026 (Decision 2 fired — isotonic won the calibrator comparison; see `### P11 Completion Report` below). P12 kicked off on 2026-04-21 to address five user-reported issues after the v3.5 scoreline/fatigue ship: Oracle Chat RAG fallback bug, remove pointless Season Predictions feature, enrich Predictions card back panel, multi-year Season Stats, Season Timeline polish. Scope is frontend-only; prediction model logic is FROZEN at v3.5.
 
@@ -10,7 +10,7 @@
 - [x] **P12b** — Remove Season Predictions entirely
 - [x] **P12c** — Expand Predictions card back panel with Historical Context block
 - [x] **P12d** — Season Stats multi-year browser (year-filter dropdown, last 5 seasons)
-- [ ] **P12e** — Season Timeline chart polish + P12 closeout
+- [x] **P12e** — Season Timeline chart polish + P12 closeout
 
 Last updated: 21 April 2026
 Active branch: `v3.0-MVP-Backend_Enhancements`
@@ -461,6 +461,62 @@ Closed out 21 April 2026 on branch `v3.0-MVP-Backend_Enhancements`. Decision 2 a
 **Followup deferred (for future phases if revisited):**
 - `DEFERRED-P12`: investigate why raw XGBoost draw AUC is 0.557 on 33-season data when the same split from pre-Phase-2 (smaller 6-season dataset) reported 0.601 raw draw AUC — is this a feature loss or dataset-difficulty artefact?
 - Re-enable draw cascade at inference (currently auto-disabled because cascade accuracy 48.1% < main model 53.4%). Would require retuning threshold + re-evaluating trade-off between overall accuracy and draw recall.
+
+---
+
+### P12 Completion Report
+
+Closed out 21 April 2026 on branch `v3.0-MVP_Enhancements`. All five P12 tasks shipped. Scope was frontend-only — prediction scoreline logic, `MODEL_VERSION`, and fatigue calibration remain frozen at v3.5.
+
+**Per-task summary:**
+
+| Task | Summary | Commit |
+|------|---------|--------|
+| **P12a** | Oracle Chat RAG fallback fix — ChatBot health probe now targets the canonical `/health` endpoint (was `/api/oracle/health`, which 404s). Fallback edge-proxy system prompt hardened against confabulating specific season exclusions. New unit test locks the URL. | `89c307d` |
+| **P12b** | Season Predictions removed entirely — component deleted, route + nav items stripped from `App.svelte`, `SidebarNav.svelte`, `MobileNav.svelte`. Tests adjusted (10 → 9 nav items). | `fae8ed2` |
+| **P12c** | Predictions card back panel — new Historical Context block renders up to 5 rows (home venue record, away venue record, H2H fixture profile, referee style, matchday tempo). Rows skip gracefully when underlying data is absent. 2 new tests. | `0538d42` |
+| **P12d** | Season Stats multi-year browser — new year-dropdown with the last 5 seasons + current live season as default. Historical seasons pull from `statsPack.seasonStats`; current season keeps the live path. Unknown fields render as "— not recorded". 1 new test locks the COVID-era anomaly flag. | `842d944` |
+| **P12e** | Season Timeline chart polish — default Chart.js legend hidden, replaced with a compact colour-keyed team-name strip above each chart. Tooltip enriched to show `team · points · goal difference · position` with threshold datasets filtered out. Two historical benchmarks added as dashed reference lines: 86 pts (title floor) on the title chart, 40 pts (safety) on the relegation chart, each with labelled footer captions. 1 new test locks the strip + threshold labels. Closeout: this report + status flip. | *this commit* |
+
+**Manual verification checklist:**
+
+- [x] Oracle Chat — with backend running (`uvicorn app.api.main:app --reload --port 8000`), `/health` responds 200 → `useBackendRAG=true` → chat answers "Liverpool away wins in 2022/23" with real match data (P12a).
+- [x] Oracle Chat fallback — with backend offline, edge proxy is used and the new fallback prompt prevents confabulating specific-season exclusions (P12a).
+- [x] Nav — "Season Predictions" no longer appears in the desktop sidebar or mobile overflow menu; no dead route reachable (P12b).
+- [x] Predictions card — flipping a card with full pair history (e.g. Arsenal vs Chelsea, matchday 38, known referee) shows all five Historical Context rows; flipping a card for a newly-promoted team shows only the rows whose data exists (P12c).
+- [x] Season Stats — year dropdown at the top offers the last 5 seasons + current; selecting 2020/21 surfaces the COVID-era anomaly indicator (P12d).
+- [x] Season Timeline — default Chart.js legend is gone, replaced by compact strip of team names with colour dots above each chart; hovering a line shows team/points/GD/position; dashed benchmark lines at 40 pts (relegation chart) and 86 pts (title chart) are visible and labelled (P12e).
+
+**Files changed in P12:**
+
+| File | P12 task(s) |
+|------|-------------|
+| `frontend/src/components/ChatBot.svelte` | P12a |
+| `frontend/src/components/ChatBot.test.ts` | P12a |
+| `api/chat.ts` | P12a |
+| `frontend/src/components/SeasonPredictions.svelte` (deleted) | P12b |
+| `frontend/src/App.svelte` | P12b |
+| `frontend/src/components/SidebarNav.svelte` | P12b |
+| `frontend/src/components/MobileNav.svelte` | P12b |
+| `frontend/src/components/SidebarNav.test.ts` | P12b |
+| `frontend/src/components/Predictions.svelte` | P12c |
+| `frontend/src/components/Predictions.test.ts` | P12c |
+| `frontend/src/components/SeasonStats.svelte` | P12d |
+| `frontend/src/components/SeasonStats.test.ts` | P12d |
+| `frontend/src/components/SeasonTimeline.svelte` | P12e |
+| `frontend/src/components/SeasonTimeline.test.ts` | P12e |
+| `IMPLEMENTATION_PLAN.md` | P12e closeout |
+
+**Gate status at closeout:**
+
+- `cd frontend && npm run check` → 0 errors, 0 warnings
+- `cd frontend && npm run test:run` → 666 tests passing across 40 files (baseline entering P12e was 665; P12e added 1 test)
+- All P12 boxes `[x]`; no deferred work moved to a future phase from P12e's acceptance.
+
+**Followup deferred (logged here, not active work):**
+
+- `DEFERRED-P13`: If the 86-pt title-floor line stretches the y-axis uncomfortably at the very start of the season (when the leader is ~6 pts), consider conditionally hiding the threshold until the leader passes some fraction of it. Low priority — the "teaser" framing is arguably the point.
+- `DEFERRED-P13`: The Oracle Chat health check currently does a 5-second timeout fetch on every session (see `ChatBot.svelte`). A longer-term fix would be to cache the `useBackendRAG` result for the session's lifetime rather than probing on each mount.
 
 ---
 

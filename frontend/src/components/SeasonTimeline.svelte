@@ -41,6 +41,8 @@
   // Computed data
   let titleRaceData: ChartData<'line', number[], string> | null = null;
   let relegationData: ChartData<'line', number[], string> | null = null;
+  let titleStripLegend: Array<{ name: string; colour: string }> = [];
+  let relegationStripLegend: Array<{ name: string; colour: string }> = [];
   let keyResults: KeyResult[] = [];
   let narrativeEntries: NarrativeEntry[] = [];
   let currentMatchday = 0;
@@ -53,9 +55,23 @@
   const RELEGATION_COUNT = 6;
   const KEY_RESULTS_PREVIEW = 8;
 
+  // Historical Premier League benchmarks (38-game era)
+  const TITLE_FLOOR_POINTS = 86;
+  const SAFETY_POINTS = 40;
+  const THRESHOLD_DATASET_PREFIX = '__threshold__';
+
   interface MatchdayPoints {
     [team: string]: number[];
   }
+
+  interface TeamTimelineStats {
+    points: number[];
+    goalsFor: number[];
+    goalsAgainst: number[];
+  }
+
+  // Per-team cumulative points / goals-for / goals-against — used by tooltip callbacks
+  let teamStats: Record<string, TeamTimelineStats> = {};
 
   interface KeyResult {
     matchday: number;
@@ -118,6 +134,8 @@
 
       titleRaceData = buildTitleRaceChart(cumulativePoints);
       relegationData = buildRelegationChart(cumulativePoints);
+      titleStripLegend = buildStripLegend(titleRaceData);
+      relegationStripLegend = buildStripLegend(relegationData);
       keyResults = detectKeyResults(completedMatches);
       narrativeEntries = buildNarrative(completedMatches, cumulativePoints);
     } catch (err) {
@@ -130,6 +148,7 @@
 
   function buildCumulativePoints(completedMatches: Match[]): MatchdayPoints {
     const points: MatchdayPoints = {};
+    const stats: Record<string, TeamTimelineStats> = {};
     const allTeams = new Set<string>();
 
     completedMatches.forEach(m => {
@@ -137,9 +156,9 @@
       allTeams.add(m.away_team);
     });
 
-    // Initialise each team with empty arrays
     allTeams.forEach(team => {
       points[team] = [];
+      stats[team] = { points: [], goalsFor: [], goalsAgainst: [] };
     });
 
     // Group matches by matchday
@@ -152,12 +171,25 @@
 
     const matchdays = Object.keys(matchesByDay).map(Number).sort((a, b) => a - b);
 
-    // Build cumulative points matchday by matchday
+    // Build cumulative points + goals matchday by matchday
     const runningTotal: Record<string, number> = {};
-    allTeams.forEach(team => { runningTotal[team] = 0; });
+    const runningGF: Record<string, number> = {};
+    const runningGA: Record<string, number> = {};
+    allTeams.forEach(team => {
+      runningTotal[team] = 0;
+      runningGF[team] = 0;
+      runningGA[team] = 0;
+    });
 
     matchdays.forEach(md => {
       matchesByDay[md].forEach(m => {
+        const hg = m.home_goals ?? 0;
+        const ag = m.away_goals ?? 0;
+        runningGF[m.home_team] += hg;
+        runningGA[m.home_team] += ag;
+        runningGF[m.away_team] += ag;
+        runningGA[m.away_team] += hg;
+
         if (m.result === 'H') {
           runningTotal[m.home_team] += 3;
         } else if (m.result === 'A') {
@@ -168,13 +200,61 @@
         }
       });
 
-      // Snapshot cumulative points for all teams at this matchday
+      // Snapshot cumulative values for all teams at this matchday
       allTeams.forEach(team => {
         points[team].push(runningTotal[team]);
+        stats[team].points.push(runningTotal[team]);
+        stats[team].goalsFor.push(runningGF[team]);
+        stats[team].goalsAgainst.push(runningGA[team]);
       });
     });
 
+    teamStats = stats;
     return points;
+  }
+
+  function buildStripLegend(
+    data: ChartData<'line', number[], string> | null
+  ): Array<{ name: string; colour: string }> {
+    if (!data) return [];
+    return data.datasets
+      .filter(d => !(d.label ?? '').startsWith(THRESHOLD_DATASET_PREFIX))
+      .map(d => ({
+        name: (d.label ?? '').replace(/ \(safety\)$/, ''),
+        colour: (d.borderColor as string) ?? 'hsl(var(--muted-foreground))'
+      }));
+  }
+
+  function makeThresholdDataset(mdCount: number, value: number, label: string) {
+    return {
+      label: `${THRESHOLD_DATASET_PREFIX}${label}`,
+      data: Array(mdCount).fill(value),
+      borderColor: 'hsl(var(--muted-foreground) / 0.45)',
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0,
+      borderDash: [2, 4]
+    };
+  }
+
+  function positionAtMatchday(team: string, mdIdx: number): number {
+    const entries = Object.entries(teamStats).map(([t, s]) => ({
+      t,
+      p: s.points[mdIdx] ?? 0,
+      gd: (s.goalsFor[mdIdx] ?? 0) - (s.goalsAgainst[mdIdx] ?? 0)
+    }));
+    // Sort by points desc, then by goal difference desc (PL tiebreaker)
+    entries.sort((a, b) => b.p - a.p || b.gd - a.gd);
+    const idx = entries.findIndex(e => e.t === team);
+    return idx >= 0 ? idx + 1 : 0;
+  }
+
+  function goalDifferenceAtMatchday(team: string, mdIdx: number): number {
+    const s = teamStats[team];
+    if (!s) return 0;
+    return (s.goalsFor[mdIdx] ?? 0) - (s.goalsAgainst[mdIdx] ?? 0);
   }
 
   function buildTitleRaceChart(cumulativePoints: MatchdayPoints): ChartData<'line', number[], string> {
@@ -185,19 +265,21 @@
     const teamsToShow = showAllTitleTeams ? sorted : sorted.slice(0, TITLE_RACE_COUNT);
     const matchdayLabels = teamsToShow[0]?.[1].map((_, i) => `MD ${i + 1}`) || [];
 
-    return {
-      labels: matchdayLabels,
-      datasets: teamsToShow.map(([team, points], i) => ({
-        label: team,
-        data: points,
-        borderColor: getTeamColor(team),
-        backgroundColor: 'transparent',
-        borderWidth: i < 2 ? 3 : 2,
-        pointRadius: 0,
-        pointHoverRadius: 5,
-        tension: 0.3
-      }))
-    };
+    const datasets: any[] = teamsToShow.map(([team, points], i) => ({
+      label: team,
+      data: points,
+      borderColor: getTeamColor(team),
+      backgroundColor: 'transparent',
+      borderWidth: i < 2 ? 3 : 2,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      tension: 0.3
+    }));
+
+    // Title-floor benchmark (historical PL average winning total)
+    datasets.push(makeThresholdDataset(matchdayLabels.length, TITLE_FLOOR_POINTS, 'title-floor'));
+
+    return { labels: matchdayLabels, datasets };
   }
 
   function buildRelegationChart(cumulativePoints: MatchdayPoints): ChartData<'line', number[], string> {
@@ -223,7 +305,7 @@
       borderDash: [] as number[]
     }));
 
-    // Safety line (17th place)
+    // Safety line (17th place — dynamic benchmark for the current season)
     if (safetyTeam) {
       datasets.push({
         label: `${safetyTeam[0]} (safety)`,
@@ -237,6 +319,9 @@
         borderDash: [6, 4]
       });
     }
+
+    // Historical 40-point safety benchmark (static)
+    datasets.push(makeThresholdDataset(matchdayLabels.length, SAFETY_POINTS, 'safety-floor'));
 
     return {
       labels: matchdayLabels,
@@ -432,28 +517,40 @@
   }
 
   // Chart options
+  // Tooltip callbacks read teamStats/positionAtMatchday via closure — no reactive rebuild needed.
+  function richTooltipLabel(item: any): string {
+    const rawLabel = String(item.dataset.label ?? '');
+    if (rawLabel.startsWith(THRESHOLD_DATASET_PREFIX)) return '';
+    const team = rawLabel.replace(/ \(safety\)$/, '');
+    const mdIdx = item.dataIndex;
+    const pts = item.parsed.y;
+    if (!teamStats[team]) {
+      // Safety-line team has stats; unknown labels fall back to bare points
+      return `${rawLabel}: ${pts} pts`;
+    }
+    const gd = goalDifferenceAtMatchday(team, mdIdx);
+    const gdLabel = gd >= 0 ? `+${gd}` : `${gd}`;
+    const pos = positionAtMatchday(team, mdIdx);
+    return `${rawLabel}: ${pts} pts · GD ${gdLabel} · P${pos}`;
+  }
+
+  const sharedTooltip = {
+    mode: 'index' as const,
+    intersect: false,
+    filter: (item: any) => !String(item.dataset.label ?? '').startsWith(THRESHOLD_DATASET_PREFIX),
+    callbacks: {
+      title: (items: any[]) => items[0]?.label || '',
+      label: richTooltipLabel
+    }
+  };
+
   const titleChartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     scales: themeScaleOptions,
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: 'hsl(var(--muted-foreground))',
-          boxWidth: 12,
-          padding: 12,
-          font: { size: 11 }
-        }
-      },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          title: (items) => items[0]?.label || '',
-          label: (item) => `${item.dataset.label}: ${item.parsed.y} pts`
-        }
-      }
+      legend: { display: false },
+      tooltip: sharedTooltip
     },
     interaction: {
       mode: 'nearest',
@@ -466,14 +563,7 @@
     ...titleChartOptions,
     plugins: {
       ...titleChartOptions.plugins,
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          title: (items) => items[0]?.label || '',
-          label: (item) => `${item.dataset.label}: ${item.parsed.y} pts`
-        }
-      }
+      tooltip: sharedTooltip
     }
   };
 
@@ -483,6 +573,7 @@
     if (completedMatches.length > 0) {
       const cp = buildCumulativePoints(completedMatches);
       titleRaceData = buildTitleRaceChart(cp);
+      titleStripLegend = buildStripLegend(titleRaceData);
     }
   }
 </script>
@@ -551,9 +642,23 @@
             {/if}
           </button>
         </div>
+        {#if titleStripLegend.length > 0}
+          <ul class="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs list-none p-0" aria-label="Teams in title race">
+            {#each titleStripLegend as team}
+              <li class="inline-flex items-center gap-1.5 text-muted-foreground">
+                <span class="w-3 h-0.5 rounded" style="background-color: {team.colour}" aria-hidden="true"></span>
+                <span>{team.name}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         <div class="h-64 sm:h-80" role="img" aria-label="Line chart showing cumulative points for the title race">
           <Line data={titleRaceData} options={titleChartOptions} />
         </div>
+        <p class="text-[11px] text-muted-foreground/80 mt-2 flex items-center gap-2">
+          <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
+          <span>{TITLE_FLOOR_POINTS} pts — historical title floor</span>
+        </p>
       </Card>
     {/if}
 
@@ -564,11 +669,25 @@
           <AlertTriangle class="w-5 h-5 text-red-500" />
           Relegation Battle
         </h2>
+        {#if relegationStripLegend.length > 0}
+          <ul class="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs list-none p-0" aria-label="Teams in relegation battle">
+            {#each relegationStripLegend as team}
+              <li class="inline-flex items-center gap-1.5 text-muted-foreground">
+                <span class="w-3 h-0.5 rounded" style="background-color: {team.colour}" aria-hidden="true"></span>
+                <span>{team.name}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         <div class="h-64 sm:h-80" role="img" aria-label="Line chart showing cumulative points for the relegation battle">
           <Line data={relegationData} options={relegationChartOptions} />
         </div>
         <p class="text-xs text-muted-foreground mt-2">
-          Dashed line shows the team just above the relegation zone (safety benchmark)
+          Dashed line shows the team just above the relegation zone (live benchmark)
+        </p>
+        <p class="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-2">
+          <span class="inline-block w-4 border-t border-dashed border-muted-foreground/60" aria-hidden="true"></span>
+          <span>{SAFETY_POINTS} pts — historical safety benchmark</span>
         </p>
       </Card>
     {/if}
