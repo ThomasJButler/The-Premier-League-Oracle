@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { dataService } from '../services/dataService';
-  import { predictionTracker } from '../services/predictionTracker';
+  import { predictionTracker, MODEL_VERSION } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
   import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
   import { PREMIER_LEAGUE_GAMEWEEKS, VALUE_ODDS_MARGIN } from '../lib/constants';
@@ -203,8 +203,19 @@
           ? storedPreds.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
           : null;
 
-        if (stored) {
-          // Reconstruct prediction card data from the stored prediction
+        // Version-aware staleness check: a stored prediction made before the
+        // current pipeline version is unreliable (its scoreline can disagree
+        // with the H/D/A bar that today's model would produce). For UNFINISHED
+        // fixtures we drop to 'pending' so the user gets a fresh forecast on
+        // click. COMPLETED fixtures keep their stored card regardless — that
+        // historical record matters for accuracy tracking.
+        const hasActualResult = stored?.actualResult !== undefined;
+        const isStale = stored !== null && !hasActualResult && stored.modelVersion !== MODEL_VERSION;
+
+        if (stored && !isStale) {
+          // Reconstruct prediction card data from the stored prediction.
+          // Use persisted extras (form / factors / poissonProbs) when present;
+          // fall back to placeholders only for legacy entries without them.
           return {
             ...match,
             prediction: {
@@ -219,12 +230,12 @@
             },
             detailedAnalysis: {
               predictedScore: `${stored.predictedHomeGoals}-${stored.predictedAwayGoals}`,
-              keyFactors: [] as string[],
+              keyFactors: stored.keyFactors ?? ([] as string[]),
               confidence: stored.confidence * 100,
-              homeForm: '-',
-              awayForm: '-',
-              h2hRecord: '-',
-              poissonProbs: { homeWin: 0, draw: 0, awayWin: 0 },
+              homeForm: stored.homeForm ?? '-',
+              awayForm: stored.awayForm ?? '-',
+              h2hRecord: stored.keyFactors?.find(f => f.includes('H2H')) ?? '-',
+              poissonProbs: stored.poissonProbs ?? { homeWin: 0, draw: 0, awayWin: 0 },
               recommendedStake: 0
             },
             predictionStatus: 'complete' as const,
@@ -236,7 +247,8 @@
           };
         }
 
-        // No stored prediction — show as pending (ready for prediction generation)
+        // No stored prediction, or stored prediction is stale and the fixture
+        // hasn't been played yet — show as pending (ready for re-prediction).
         return {
           ...match,
           predictionStatus: 'pending' as const
@@ -373,7 +385,10 @@
           predictionStatus: 'complete'
         };
         
-        // Store in tracker (local storage) with gameweek for per-matchday accuracy
+        // Store in tracker (local storage) with gameweek for per-matchday accuracy.
+        // Extras (form / factors / poissonProbs / modelVersion) let the detailed
+        // analysis view stay populated after reload, and let stale-model cards
+        // be detected and re-predicted for consistency.
         predictionTracker.storePrediction(
           match.id,
           match.home_team,
@@ -385,7 +400,14 @@
             confidence: prediction.confidence
           },
           match.date,
-          selectedGameweek
+          selectedGameweek,
+          {
+            modelVersion: MODEL_VERSION,
+            homeForm: optimizedPrediction.homeForm,
+            awayForm: optimizedPrediction.awayForm,
+            keyFactors: prediction.insights,
+            poissonProbs: outcomeProbabilities
+          }
         );
         
         // Auto-fetch AI analysis in the background (don't block the loop)
@@ -944,13 +966,14 @@
                         </div>
                       {/if}
                     {:else}
-                      <!-- Upcoming match: show predicted score -->
-                      <span class="text-xl font-bold text-muted-foreground">vs</span>
-                      {#if prediction.detailedAnalysis}
-                        <div class="text-2xl font-bold text-primary mt-1 animate-score-pop">
-                          {prediction.detailedAnalysis.predictedScore}
-                        </div>
-                      {/if}
+                      <!-- Upcoming match: "vs" is the only visual in the centre.
+                           The exact scoreline is demoted to a tiny "if forced to
+                           pick" line beneath the H/D/A bar (see below), because
+                           even the modal cell only carries ~9-14% probability —
+                           showing it in big type implies confidence the grid
+                           can't support. H/D/A (which aggregates probability and
+                           IS trustworthy) becomes the headline. -->
+                      <span class="text-2xl font-bold text-muted-foreground">vs</span>
                     {/if}
                   </div>
                   <div class="flex flex-col items-center w-1/3">
@@ -972,7 +995,7 @@
               </div>
 
               {#if prediction.prediction}
-                <div class="mb-4">
+                <div class="mb-3">
                   <div class="flex rounded-lg overflow-hidden h-8 bg-muted" role="img" aria-label="Outcome probabilities: Home {prediction.detailedAnalysis?.poissonProbs.homeWin ? (prediction.detailedAnalysis.poissonProbs.homeWin * 100).toFixed(0) : '-'}%, Draw {prediction.detailedAnalysis?.poissonProbs.draw ? (prediction.detailedAnalysis.poissonProbs.draw * 100).toFixed(0) : '-'}%, Away {prediction.detailedAnalysis?.poissonProbs.awayWin ? (prediction.detailedAnalysis.poissonProbs.awayWin * 100).toFixed(0) : '-'}%">
                     {#each [
                       { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, color: getTeamColor(prediction.home_team) },
@@ -989,6 +1012,21 @@
                       </div>
                     {/each}
                   </div>
+                  <!-- "If forced to pick" line: the modal cell is shown small and
+                       italic with its probability always inline, so the user can
+                       see how thinly the single-score prediction sits against
+                       the H/D/A headline above. Only rendered for upcoming
+                       fixtures (finished matches already show actual + predicted
+                       in the team row). -->
+                  {#if !prediction.result && prediction.detailedAnalysis}
+                    <div class="mt-1.5 text-[11px] text-center text-muted-foreground italic">
+                      If forced to pick:
+                      <span class="font-mono tabular-nums not-italic font-medium text-foreground/70">{prediction.detailedAnalysis.predictedScore}</span>
+                      {#if prediction.detailedAnalysis.predictedScoreProb !== undefined && prediction.detailedAnalysis.predictedScoreProb > 0}
+                        <span class="text-muted-foreground/70">· {(prediction.detailedAnalysis.predictedScoreProb * 100).toFixed(0)}% chance</span>
+                      {/if}
+                    </div>
+                  {/if}
                 </div>
               {/if}
 

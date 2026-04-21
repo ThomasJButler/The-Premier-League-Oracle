@@ -17,8 +17,13 @@ vi.mock('../services/dataService', () => ({
   }
 }));
 
-// Mock predictionTracker
+// Mock predictionTracker. MODEL_VERSION is intentionally left undefined here so
+// pre-existing fixtures (which don't set modelVersion on their stored prediction)
+// compare equal — undefined !== undefined is false, so they're not treated as
+// stale. Staleness is instead tested by setting a distinct modelVersion string
+// (e.g. 'v2.0-OLD') on the stored prediction fixture.
 vi.mock('../services/predictionTracker', () => ({
+  MODEL_VERSION: undefined,
   predictionTracker: {
     getAccuracyStats: vi.fn(() => ({
       accuracy: 0,
@@ -396,6 +401,134 @@ describe('Predictions Component', () => {
     expect(screen.getByTestId('result-incorrect')).toBeInTheDocument();
     expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Incorrect/);
     expect(screen.getByTestId('result-verdict')).toHaveTextContent(/Away Win/);
+  });
+
+  it('treats stored predictions with mismatched modelVersion as pending on unfinished fixtures', async () => {
+    // Regression: Tom reported cards where the stored scoreline ("Burnley 2-1")
+    // disagreed with the live H/D/A bar ("A 68%") — stale stored data from an
+    // older model version. Fix: if the stored prediction predates the current
+    // MODEL_VERSION and the fixture hasn't been played yet, drop to 'pending'
+    // so a fresh forecast is generated on click.
+    const upcomingMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() + 86400000).toISOString(),
+      status: 'SCHEDULED',
+      result: null,
+      home_goals: undefined,
+      away_goals: undefined
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([upcomingMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_stale',
+      matchId: upcomingMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.70,
+      modelVersion: 'v2.0-OLD', // stale
+      timestamp: new Date().toISOString(),
+      matchDate: upcomingMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    // Stale card should NOT render the stored scoreline — it should show the
+    // pending prompt instead.
+    expect(screen.getByText(/Predict Gameweek.+to generate predictions/i)).toBeInTheDocument();
+    expect(screen.queryByText('2-1')).not.toBeInTheDocument();
+  });
+
+  it('keeps stored prediction (even stale) when fixture has an actual result — preserves accuracy history', async () => {
+    // Completed matches are historical record. Even if the stored prediction
+    // predates the current model, we keep it so accuracy tracking remains stable.
+    const pastMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() - 86400000).toISOString(),
+      status: 'FINISHED',
+      result: 'H',
+      home_goals: 2,
+      away_goals: 1
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([pastMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_stale_completed',
+      matchId: pastMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.70,
+      modelVersion: 'v2.0-OLD', // stale — but match is FINISHED
+      actualResult: 'H',
+      actualHomeGoals: 2,
+      actualAwayGoals: 1,
+      isCorrect: true,
+      timestamp: new Date().toISOString(),
+      matchDate: pastMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    // Historical card must still show the verdict — staleness doesn't evict it.
+    expect(screen.getByTestId('result-verdict')).toBeInTheDocument();
+  });
+
+  it('populates detailedAnalysis homeForm/keyFactors from stored extras when modelVersion matches', async () => {
+    // Regression for "Recent Form: Not available" in the detailed analysis view.
+    // Previously the load path hardcoded '-' for form; now it reads from stored
+    // extras when present.
+    const upcomingMatch = makeMatch({
+      matchday: 20,
+      date: new Date(Date.now() + 86400000).toISOString(),
+      status: 'SCHEDULED',
+      result: null,
+      home_goals: undefined,
+      away_goals: undefined
+    });
+    const { MODEL_VERSION } = await import('../services/predictionTracker');
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([upcomingMatch]);
+    vi.mocked(predictionTracker.getMatchPredictions).mockReturnValue([{
+      id: 'pred_with_extras',
+      matchId: upcomingMatch.id,
+      homeTeam: 'Arsenal',
+      awayTeam: 'Liverpool',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      confidence: 0.70,
+      modelVersion: MODEL_VERSION,
+      homeForm: 'WWDWL',
+      awayForm: 'LLDLW',
+      keyFactors: ['Arsenal dominant at home', 'Liverpool poor away form'],
+      poissonProbs: { homeWin: 0.62, draw: 0.22, awayWin: 0.16 },
+      timestamp: new Date().toISOString(),
+      matchDate: upcomingMatch.date,
+      matchday: 20
+    }]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+
+    // Form is rendered as coloured dots (not literal text) — check that the
+    // home team's "recent form" aria-labelled container contains the expected
+    // 5 result dots (WWDWL → 5 spans with title Win/Draw/Loss). If form were
+    // '-' (the fallback), parseFormString returns [] and no dots render.
+    const homeFormGroup = document.querySelector('[aria-label="Arsenal recent form"]');
+    expect(homeFormGroup).not.toBeNull();
+    expect(homeFormGroup!.querySelectorAll('span[title]').length).toBe(5);
+
+    // keyFactors are rendered as <li> text in the detail panel.
+    expect(screen.getByText(/Arsenal dominant at home/)).toBeInTheDocument();
   });
 
   it('shows live score with "Live {minute}\'" label and no verdict for in-play matches', async () => {

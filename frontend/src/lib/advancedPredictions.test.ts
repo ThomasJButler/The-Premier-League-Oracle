@@ -288,17 +288,23 @@ describe('Advanced Predictions Module', () => {
         expect(FatigueAnalyzer.getFatigueMultiplier(10)).toBe(1);
       });
 
-      it('should scale linearly with rest days', () => {
-        // 4 days rest → 4/7 ≈ 0.571
-        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBeCloseTo(4 / 7, 3);
-        // 2 days rest → 2/7 ≈ 0.286
-        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 7, 3);
+      it('should treat PL-normal rest (3.5+ days) as full match-fitness', () => {
+        // Recalibrated: 3.5+ days = no fatigue penalty. Previously used 7 days
+        // as optimal, which shrunk lambdas by 40-50% on every PL fixture
+        // because teams never actually get 7 days rest in-season. That
+        // compressed the Poisson grid onto 0-0 / 1-0 / 0-1 modal cells.
+        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBe(1);
+        expect(FatigueAnalyzer.getFatigueMultiplier(3.5)).toBe(1);
+        // 3 days rest → 3/3.5 ≈ 0.857
+        expect(FatigueAnalyzer.getFatigueMultiplier(3)).toBeCloseTo(3 / 3.5, 3);
+        // 2 days rest → 2/3.5 ≈ 0.571 (genuine congestion penalty)
+        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 3.5, 3);
       });
 
       it('should floor at 0.5 days to prevent NaN in Poisson', () => {
-        // 0 days rest → clamped to 0.5/7 ≈ 0.071
-        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 7, 3);
-        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 7, 3);
+        // 0 days rest → clamped to 0.5/3.5 ≈ 0.143
+        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 3.5, 3);
+        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 3.5, 3);
       });
     });
   });

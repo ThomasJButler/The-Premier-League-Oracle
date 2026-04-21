@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PredictionTracker, type StoredPrediction, type AccuracyStats, type CalibrationFactors } from './predictionTracker';
+import { PredictionTracker, MODEL_VERSION, type StoredPrediction, type AccuracyStats, type CalibrationFactors } from './predictionTracker';
 
 describe('PredictionTracker Service', () => {
   let tracker: PredictionTracker;
@@ -111,6 +111,65 @@ describe('PredictionTracker Service', () => {
       const predictions = tracker.getMatchPredictions('match789');
       expect(predictions).toHaveLength(2);
       expect(predictions[0].id).not.toBe(predictions[1].id);
+    });
+
+    it('should persist optional extras (modelVersion, form, keyFactors, poissonProbs)', () => {
+      tracker.storePrediction(
+        'match_extras',
+        'Arsenal',
+        'Burnley',
+        {
+          predictedResult: 'H',
+          predictedHomeGoals: 3,
+          predictedAwayGoals: 0,
+          confidence: 0.74
+        },
+        '2025-08-15',
+        5,
+        {
+          modelVersion: MODEL_VERSION,
+          homeForm: 'WWDWL',
+          awayForm: 'LLDLL',
+          keyFactors: ['Arsenal strong at home', 'Burnley poor away form'],
+          poissonProbs: { homeWin: 0.72, draw: 0.18, awayWin: 0.10 }
+        }
+      );
+
+      const stored = tracker.getMatchPredictions('match_extras')[0];
+      expect(stored.modelVersion).toBe(MODEL_VERSION);
+      expect(stored.homeForm).toBe('WWDWL');
+      expect(stored.awayForm).toBe('LLDLL');
+      expect(stored.keyFactors).toEqual([
+        'Arsenal strong at home',
+        'Burnley poor away form'
+      ]);
+      expect(stored.poissonProbs).toEqual({ homeWin: 0.72, draw: 0.18, awayWin: 0.10 });
+    });
+
+    it('should omit extras from storage when not provided (legacy compatibility)', () => {
+      tracker.storePrediction(
+        'match_no_extras',
+        'Liverpool',
+        'Everton',
+        {
+          predictedResult: 'H',
+          predictedHomeGoals: 2,
+          predictedAwayGoals: 1,
+          confidence: 0.65
+        },
+        '2025-09-01'
+      );
+
+      const stored = tracker.getMatchPredictions('match_no_extras')[0];
+      expect(stored.modelVersion).toBeUndefined();
+      expect(stored.homeForm).toBeUndefined();
+      expect(stored.keyFactors).toBeUndefined();
+      expect(stored.poissonProbs).toBeUndefined();
+    });
+
+    it('should export a non-empty MODEL_VERSION string', () => {
+      expect(typeof MODEL_VERSION).toBe('string');
+      expect(MODEL_VERSION.length).toBeGreaterThan(0);
     });
   });
 

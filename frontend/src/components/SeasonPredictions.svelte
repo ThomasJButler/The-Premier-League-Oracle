@@ -2,8 +2,9 @@
   import { onMount } from 'svelte';
   import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
   import { dataService } from '../services/dataService';
-  import { predictionTracker } from '../services/predictionTracker';
+  import { predictionTracker, MODEL_VERSION } from '../services/predictionTracker';
   import { OptimizedPredictor } from '../lib/optimizedPredictions';
+  import { VALUE_ODDS_MARGIN } from '../lib/constants';
   import type { Match } from '../types';
   import { Card } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
@@ -70,6 +71,15 @@
           match.date,
         );
 
+        // Derive H/D/A probabilities the same way the card view does (valueOdds
+        // reciprocals minus overround) so stored + displayed probabilities agree.
+        const vo = result.valueOdds ?? { home: 3.0, draw: 3.3, away: 3.0 };
+        const poissonProbs = {
+          homeWin: VALUE_ODDS_MARGIN / vo.home,
+          draw: VALUE_ODDS_MARGIN / vo.draw,
+          awayWin: VALUE_ODDS_MARGIN / vo.away,
+        };
+
         predictionTracker.storePrediction(
           match.id,
           match.home_team,
@@ -82,6 +92,13 @@
           },
           match.date,
           match.matchday ?? 0,
+          {
+            modelVersion: MODEL_VERSION,
+            homeForm: result.homeForm,
+            awayForm: result.awayForm,
+            keyFactors: result.insights,
+            poissonProbs,
+          },
         );
       } catch (err) {
         console.warn(`Prediction failed for match ${match.id}:`, err);

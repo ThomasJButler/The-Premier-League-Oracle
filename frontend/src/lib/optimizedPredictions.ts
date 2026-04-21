@@ -716,8 +716,13 @@ export class OptimizedPredictor {
         insights.push(`${awayTeam} struggling with form (last 5: ${formAnalysis.awayFormString})`);
       }
 
-      // Add H2H insights
-      if (h2hAnalysis.totalMatches > 0) {
+      // Add H2H insights. Require at least 3 completed H2H meetings before
+      // claiming dominance — with 1 match (1W) the rate is trivially 100% and
+      // the insight keeps firing as "dominates H2H (1W in last 1)" on every
+      // rare pairing. Three matches is the minimum before the winRate is
+      // meaningful at all.
+      const H2H_DOMINATION_MIN_MATCHES = 3;
+      if (h2hAnalysis.totalMatches >= H2H_DOMINATION_MIN_MATCHES) {
         if (h2hAnalysis.homeWinRate > 0.6) {
           insights.push(`${homeTeam} dominates H2H (${h2hAnalysis.homeWins}W in last ${h2hAnalysis.totalMatches})`);
         } else if (h2hAnalysis.awayWinRate > 0.6) {
@@ -1155,70 +1160,53 @@ export class OptimizedPredictor {
   private static predictGoals(
     scoreProbabilities: { [score: string]: number },
     predictedResult: 'H' | 'D' | 'A',
-    formAnalysis: FormAnalysis,
-    h2hAnalysis: H2HAnalysis
+    _formAnalysis: FormAnalysis,
+    _h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    // Start from the rounded expected-goals from the grid. Argmax-of-H-wins
-    // was ~honest but systematically under-surfaced 3+ goal scorelines: at
-    // PL-typical λ≈2.3 for strong favourites, P(2-0) narrowly beats P(3-0)
-    // every time, so Arsenal/City vs-weak-team predictions never showed 3-1.
-    // Rounded expected goals reflects blowout favouritism naturally (λ_h=2.5
-    // → 3 goals displayed) AND matches how users reason about predictions.
-    // Fatigue + stats-pack lambdas are now healthy enough that Math.round
-    // doesn't overshoot the way it did pre-fatigue-fix (λ≈0.3 days).
-    let expectedHomeGoals = 0;
-    let expectedAwayGoals = 0;
+    // The displayed scoreline is the argmax of grid cells matching
+    // predictedResult. That's it — no rounded means, no tempo nudges.
+    //
+    // Earlier versions layered a rounded-expected-goals path and an H2H
+    // tempo nudge on top. Both double-counted information that's already in
+    // the Poisson lambdas (stats-pack blend + fatigue + referee + form), and
+    // the nudge in particular manufactured artefact 2-1 / 1-2 scorelines on
+    // every high-historical-tempo fixture (Arsenal-*, City-*, Liverpool-*),
+    // sitting 2-3× below the grid's actual modal outcome-consistent cell.
+    //
+    // Invariant: the returned cell has probability EQUAL to the maximum
+    // probability of any cell in scoreProbabilities that matches predictedResult.
+    const predicate =
+      predictedResult === 'H' ? (h: number, a: number) => h > a :
+      predictedResult === 'A' ? (h: number, a: number) => a > h :
+                                (h: number, a: number) => h === a;
+
+    let bestProb = -1;
+    let bestHome = 0;
+    let bestAway = 0;
     for (const [score, prob] of Object.entries(scoreProbabilities)) {
-      const parts = score.split('-');
-      const h = Number(parts[0]);
-      const a = Number(parts[1]);
+      const [h, a] = score.split('-').map(Number);
       if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
-      expectedHomeGoals += h * prob;
-      expectedAwayGoals += a * prob;
-    }
-    let homeGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(expectedHomeGoals));
-    let awayGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(expectedAwayGoals));
-
-    // Enforce predictedResult: rounded means can produce a draw scoreline
-    // even when the ensemble's H/D/A says "Home wins" (e.g. λ_h=1.5, λ_a=1.2
-    // rounds to 2-1 which happens to be H already; but λ_h=1.3, λ_a=1.4
-    // rounds to 1-1 while ensemble may have called A). If the rounded pick
-    // disagrees with predictedResult, bump the favoured team by +1. This is
-    // a valid Poisson cell — real grid mass always exists at (roundHome+1,
-    // roundAway) when λ_h > 0.
-    if (predictedResult === 'H' && homeGoals <= awayGoals) {
-      homeGoals = Math.min(MAX_PREDICTED_GOALS, awayGoals + 1);
-    } else if (predictedResult === 'A' && awayGoals <= homeGoals) {
-      awayGoals = Math.min(MAX_PREDICTED_GOALS, homeGoals + 1);
-    } else if (predictedResult === 'D' && homeGoals !== awayGoals) {
-      // Make it a draw — use the higher of the two rounded means so we don't
-      // collapse high-scoring draws (e.g. 2-3 expected) down to 1-1.
-      const target = Math.max(homeGoals, awayGoals);
-      homeGoals = target;
-      awayGoals = target;
-    }
-
-    // H2H fixture-type nudge: keep or lightly adjust the result-consistent
-    // modal by the historical goal tempo of this fixture. Only nudges by at
-    // most one goal per side, and only when the unadjusted score is out of
-    // character with the fixture's known tendency.
-    if (h2hAnalysis.totalMatches > 0 && h2hAnalysis.avgHomeGoals !== undefined && h2hAnalysis.avgAwayGoals !== undefined) {
-      const h2hTotal = h2hAnalysis.avgHomeGoals + h2hAnalysis.avgAwayGoals;
-      if (h2hTotal < 2.0) {
-        homeGoals = Math.min(homeGoals, 2);
-        awayGoals = Math.min(awayGoals, 2);
-      } else if (h2hTotal > 3.5) {
-        if (homeGoals + awayGoals < 3) {
-          homeGoals = Math.max(homeGoals, 2);
-          awayGoals = Math.max(awayGoals, 1);
-        }
+      if (!predicate(h, a)) continue;
+      if (prob > bestProb) {
+        bestProb = prob;
+        bestHome = h;
+        bestAway = a;
       }
     }
 
-    return {
-      home: Math.max(0, homeGoals),
-      away: Math.max(0, awayGoals)
-    };
+    if (bestProb > 0) {
+      return {
+        home: Math.min(MAX_PREDICTED_GOALS, bestHome),
+        away: Math.min(MAX_PREDICTED_GOALS, bestAway)
+      };
+    }
+
+    // Fallback: grid contained no outcome-consistent cell (vanishingly rare
+    // — e.g. an empty or entirely-wrong-side grid). Produce a minimal valid
+    // scoreline rather than a contradiction.
+    if (predictedResult === 'H') return { home: 1, away: 0 };
+    if (predictedResult === 'A') return { home: 0, away: 1 };
+    return { home: 0, away: 0 };
   }
 
   private static calculateValueOdds(probabilities: { homeWin: number; draw: number; awayWin: number }) {

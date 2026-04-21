@@ -372,10 +372,20 @@ export class FatigueAnalyzer {
   }
 
   static getFatigueMultiplier(restDays: number): number {
-    // Less rest = more fatigue = worse performance
-    // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
-    // Optimal rest is 7+ days → multiplier of 1.0
-    return Math.min(Math.max(restDays, 0.5) / 7, 1);
+    // PL teams play every 3-6 days in-season and are conditioned for that
+    // cycle — treating 7 days as "optimal" (the previous calibration) forced
+    // every fixture through a 0.55-0.70× lambda shrink that compressed the
+    // Poisson grid onto 0-0 / 1-0 / 0-1 modal cells. Recalibrated so 3.5
+    // days is normal (multiplier 1.0) and penalties only apply to genuine
+    // congestion (2-day / 1-day turnarounds). Floor at 0.5 days for safety.
+    //
+    // Curve:
+    //   7+ days → 1.0  (long break, no fatigue)
+    //   4-5 days → 1.0  (normal PL rotation)
+    //   3 days  → 0.86
+    //   2 days  → 0.57
+    //   1 day   → 0.29
+    return Math.min(Math.max(restDays, 0.5) / 3.5, 1);
   }
 }
 
