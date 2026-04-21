@@ -1199,7 +1199,9 @@
                           <span class="text-muted-foreground">O/U 2.5:</span>
                           <span class="font-bold ml-1 {prediction.betBuilder.totalGoals.over25.prediction ? 'text-green-600' : 'text-red-600'}">
                             {prediction.betBuilder.totalGoals.over25.prediction ? 'Over' : 'Under'}
-                            ({(prediction.betBuilder.totalGoals.over25.probability * 100).toFixed(0)}%)
+                            ({((prediction.betBuilder.totalGoals.over25.prediction
+                                ? prediction.betBuilder.totalGoals.over25.probability
+                                : 1 - prediction.betBuilder.totalGoals.over25.probability) * 100).toFixed(0)}%)
                           </span>
                         </div>
                         <div class="bg-muted p-2 rounded">
