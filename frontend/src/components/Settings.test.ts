@@ -168,6 +168,20 @@ describe('Settings Component', () => {
       expect(screen.getByRole('switch', { name: 'Use ML backend' })).toBeInTheDocument();
     });
 
+    it('should describe the backend accurately (XGBoost + Oracle Chat, no Pro-tier LSTM/Transformer claims)', () => {
+      // The description must reflect the shipped backend: XGBoost free-tier predictions
+      // + Oracle Chat (DataFrame RAG). Pro-tier LSTM/Transformer code was archived to the
+      // pro-tier-archive branch and is NOT in the v3.5 backend.
+      render(Settings);
+
+      const description = screen.getByText(/Connect to the Python backend/i);
+      expect(description).toBeInTheDocument();
+      expect(description.textContent).toMatch(/XGBoost/);
+      expect(description.textContent).toMatch(/Oracle Chat/);
+      expect(description.textContent).not.toMatch(/LSTM/i);
+      expect(description.textContent).not.toMatch(/Transformer/i);
+    });
+
     it('should toggle useBackend and persist to localStorage', async () => {
       render(Settings);
 

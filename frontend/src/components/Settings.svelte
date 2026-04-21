@@ -151,7 +151,8 @@
     backendService.invalidateCache();
     try {
       backendAvailable = await backendService.isAvailable();
-    } catch {
+    } catch (err) {
+      console.warn('[Settings] ML backend health check failed:', err);
       backendAvailable = false;
     } finally {
       checkingBackend = false;
@@ -244,6 +245,7 @@
         message: 'Data synchronised successfully'
       };
     } catch (error) {
+      console.warn('[Settings] Data sync failed:', error);
       testResult = {
         success: false,
         message: 'Sync failed. Please try again.'
@@ -269,7 +271,8 @@
       footballDataAPI.testConnection().then(ok => {
         apiConnected = ok;
         verifying = false;
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[Settings] Football-Data.org verification failed:', err);
         apiConnected = false;
         verifying = false;
       });
@@ -300,7 +303,8 @@
     }
     aiAnalysisService.hasApiKey().then(available => {
       aiKeyAvailable = available;
-    }).catch(() => {
+    }).catch(err => {
+      console.warn('[Settings] AI key status check failed:', err);
       aiKeyAvailable = false;
     });
 
@@ -324,7 +328,8 @@
           const totalMB = usage / (1024 * 1024);
           cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
         }
-      } catch {
+      } catch (err) {
+        console.warn('[Settings] storage.estimate() failed:', err);
         cacheSize = 'Unknown';
       }
     } else {
@@ -509,7 +514,7 @@
       <span>ML Backend</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Connect to the Python ML backend for enhanced predictions using XGBoost, LSTM, and Transformer models. When disabled, predictions use the built-in TypeScript ensemble.
+      Connect to the Python backend for XGBoost predictions and Oracle Chat (DataFrame RAG). When disabled or unreachable, predictions fall back to the built-in TypeScript ensemble and chat is unavailable.
     </p>
 
     <!-- Toggle -->
@@ -629,7 +634,7 @@
     {#if aiAnalysisEnabled}
       <!-- AI API Key -->
       <div class="p-3 bg-muted rounded-lg mb-4" transition:fade>
-        <p class="text-sm font-medium text-foreground mb-2">AI API Key</p>
+        <label for="ai-api-key" class="block text-sm font-medium text-foreground mb-2">AI API Key</label>
         {#if aiKeySaved && !aiApiKeyEditing}
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -656,6 +661,7 @@
         {:else}
           <div class="flex gap-2">
             <input
+              id="ai-api-key"
               type="password"
               bind:value={aiApiKey}
               placeholder="sk-ant-..."
