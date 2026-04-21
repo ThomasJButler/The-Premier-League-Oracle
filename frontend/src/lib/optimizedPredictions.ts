@@ -15,6 +15,20 @@ const STATS_PACK_BLEND_WEIGHT = 0.3;
 // through to the raw current-form signal.
 const STATS_PACK_PAIR_MIN_MATCHES = 5;
 const STATS_PACK_TEAM_MIN_MATCHES = 20;
+
+// Opposition-tier blend: when ELO gap identifies a strong favourite, blend
+// the favourite's lambda toward their historical average goals scored vs
+// bottom-6 opposition, and blend the underdog's lambda toward their
+// historical average vs top-6 opposition. This surfaces 3+ goal scorelines
+// for "Arsenal vs Burnley"-style fixtures where the aggregated Poisson at
+// fitted λ ≈ 2.3 narrowly prefers 2-0 over 3-0 (11% vs 8%) and the modal
+// display always picks 2-0.
+const ELO_TIER_THRESHOLD = 150;
+// Blend weight for the tier-specific anchor. 0.3 is conservative enough
+// not to distort tight fixtures while enough to shift blowouts into the
+// 3-x display range. Only fires when the tier has ≥30 historical matches.
+const TIER_BLEND_WEIGHT = 0.3;
+const TIER_MIN_MATCHES = 30;
 import {
   VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE,
   POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX, POISSON_FALLBACK_HOME_GOALS,
@@ -365,6 +379,7 @@ export class OptimizedPredictor {
     homeStats: { avgGoalsScored: number; avgGoalsConceded: number },
     awayStats: { avgGoalsScored: number; avgGoalsConceded: number },
     useHistoricalPack: boolean = true,
+    eloGap: number = 0,
   ): { lambdaHome: number; lambdaAway: number } {
     const homeStrengths = leagueAvgs.teamStrengths.get(homeTeam);
     const awayStrengths = leagueAvgs.teamStrengths.get(awayTeam);
@@ -392,6 +407,39 @@ export class OptimizedPredictor {
       if (pair && pair.totalMatches >= STATS_PACK_PAIR_MIN_MATCHES) {
         lambdaHome = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaHome + STATS_PACK_BLEND_WEIGHT * pair.avgHomeGoals;
         lambdaAway = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaAway + STATS_PACK_BLEND_WEIGHT * pair.avgAwayGoals;
+      }
+
+      // Opposition-tier blend for mismatched fixtures. The ELO gap is the
+      // cleanest live signal of who's favoured; when it exceeds 150 points,
+      // we treat the fixture as "strong vs weak" and pull the favoured
+      // team's lambda toward their 33-season avg-goals-scored vs bottom-6
+      // opposition, while dragging the underdog's lambda toward their
+      // avg-goals vs top-6. This surfaces the "top-four crush bottom-half"
+      // 3+ goal scorelines that aggregated Poisson otherwise flattens.
+      if (eloGap > ELO_TIER_THRESHOLD) {
+        // Home is strong favourite
+        const homeProfile = getTeamProfile(homeTeam);
+        const awayProfile = getTeamProfile(awayTeam);
+        const homeVsWeak = homeProfile?.oppositionTier?.bottom6;
+        const awayVsStrong = awayProfile?.oppositionTier?.top6;
+        if (homeVsWeak && homeVsWeak.matches >= TIER_MIN_MATCHES) {
+          lambdaHome = (1 - TIER_BLEND_WEIGHT) * lambdaHome + TIER_BLEND_WEIGHT * homeVsWeak.avgGoalsScored;
+        }
+        if (awayVsStrong && awayVsStrong.matches >= TIER_MIN_MATCHES) {
+          lambdaAway = (1 - TIER_BLEND_WEIGHT) * lambdaAway + TIER_BLEND_WEIGHT * awayVsStrong.avgGoalsScored;
+        }
+      } else if (eloGap < -ELO_TIER_THRESHOLD) {
+        // Away is strong favourite (mirror)
+        const homeProfile = getTeamProfile(homeTeam);
+        const awayProfile = getTeamProfile(awayTeam);
+        const awayVsWeak = awayProfile?.oppositionTier?.bottom6;
+        const homeVsStrong = homeProfile?.oppositionTier?.top6;
+        if (awayVsWeak && awayVsWeak.matches >= TIER_MIN_MATCHES) {
+          lambdaAway = (1 - TIER_BLEND_WEIGHT) * lambdaAway + TIER_BLEND_WEIGHT * awayVsWeak.avgGoalsScored;
+        }
+        if (homeVsStrong && homeVsStrong.matches >= TIER_MIN_MATCHES) {
+          lambdaHome = (1 - TIER_BLEND_WEIGHT) * lambdaHome + TIER_BLEND_WEIGHT * homeVsStrong.avgGoalsScored;
+        }
       }
     }
 
@@ -490,10 +538,13 @@ export class OptimizedPredictor {
 
       // 6. Calculate Poisson predictions using Dixon-Coles lambdas.
       // In live mode, blend with 33-season pair history for goal-tempo
-      // context; in backtest mode, stick to current-form only.
+      // context; in backtest mode, stick to current-form only. Pass the ELO
+      // gap so the function can apply the opposition-tier blend when the
+      // fixture is a "strong vs weak" mismatch.
       const leagueAvgs = this.computeLeagueAverages(allMatches);
+      const eloGap = homeElo - awayElo;
       const rawLambdas =
-        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats, useHistoricalPack);
+        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats, useHistoricalPack, eloGap);
 
       // Apply fatigue: tired teams score fewer goals (lambda × fatigue).
       // Multipliers are in (0, 1.0] so the adjustment only reduces lambda.
