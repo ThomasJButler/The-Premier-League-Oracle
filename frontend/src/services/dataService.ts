@@ -116,8 +116,9 @@ class DataService {
       if (this.apiSource.available) {
         this.loadAllHistoricalSeasons();
       }
-    } catch (_error) {
-      // Error checking API availability
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('[dataService] checkDataSources failed:', msg);
       this.apiSource.available = false;
     }
   }
@@ -190,11 +191,12 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, season);
           return season;
         }
-      } catch (_error) {
-        // Error fetching season from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getCurrentSeason failed:', msg);
       }
     }
-    
+
     throw new Error('No data source available for current season');
   }
   
@@ -242,8 +244,9 @@ class DataService {
 
           return matches;
         }
-      } catch (_error) {
-        // Error fetching matches from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getMatches failed:', msg);
       }
     }
 
@@ -281,11 +284,12 @@ class DataService {
           this.cacheCrests(standings);
           return standings;
         }
-      } catch (_error) {
-        // Error fetching standings from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getStandings failed:', msg);
       }
     }
-    
+
     throw new Error('No data source available for standings');
   }
 
@@ -318,11 +322,12 @@ class DataService {
           this.lastFetchedTimestamps.set('scorers', Date.now());
           return scorers;
         }
-      } catch (_error) {
-        // Error fetching top scorers from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getTopScorers failed:', msg);
       }
     }
-    
+
     throw new Error('No data source available for top scorers');
   }
   
@@ -406,11 +411,12 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, stats);
           return stats;
         }
-      } catch (_error) {
-        // Error fetching team stats from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getTeamStats failed:', msg);
       }
     }
-    
+
     return null;
   }
   
@@ -435,11 +441,12 @@ class DataService {
           await this.setCachedData('teamStats', cacheKey, teamForm);
           return teamForm;
         }
-      } catch (_error) {
-        // Error fetching team form from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getTeamForm failed:', msg);
       }
     }
-    
+
     // Return empty array if no data available
     return [];
   }
@@ -462,11 +469,12 @@ class DataService {
           await this.setCachedData('matches', cacheKey, seasons);
           return seasons;
         }
-      } catch (_error) {
-        // Error fetching seasons from API
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getAllSeasons failed:', msg);
       }
     }
-    
+
     return [];
   }
 
@@ -619,8 +627,9 @@ class DataService {
           this.lastFetchedTimestamps.set('matches', Date.now());
         }
         return matches;
-      } catch (_error) {
-        // Error fetching historical matches
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getHistoricalMatches failed:', msg);
       }
     }
 
