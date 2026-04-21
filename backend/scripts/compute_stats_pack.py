@@ -35,7 +35,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -50,6 +49,44 @@ from app.features.free_tier_features import FreeTierFeatureEngineer  # noqa: E40
 # dominate the era-weighted means without silencing the older data entirely.
 ERA_DECAY = 0.85
 CURRENT_YEAR = 2026  # match the user's reference year for era weighting
+
+# Derby fixtures flagged with `isDerby=True` in pair stats. Uses CSV canonical
+# names (no "FC" suffix). Both direction orderings are treated as derbies.
+# Extend this list for newly promoted rivalries — pair stats pick it up on
+# the next regeneration run.
+DERBY_PAIRS: list[tuple[str, str]] = [
+    # North London
+    ('Arsenal', 'Tottenham'),
+    # Merseyside
+    ('Liverpool', 'Everton'),
+    # Manchester
+    ('Man United', 'Man City'),
+    # Tyne-Wear
+    ('Newcastle', 'Sunderland'),
+    # West London
+    ('Chelsea', 'Fulham'),
+    ('Chelsea', 'QPR'),
+    ('Fulham', 'QPR'),
+    # North West rivalry
+    ('Liverpool', 'Man United'),
+    # East Midlands
+    ("Nott'm Forest", 'Leicester'),
+    ("Nott'm Forest", 'Derby'),
+    ('Leicester', 'Derby'),
+    # South Coast / M23
+    ('Brighton', 'Crystal Palace'),
+    # Yorkshire
+    ('Leeds', 'Sheffield United'),
+    # Lancashire
+    ('Burnley', 'Blackburn'),
+]
+
+# Build a directional lookup set so both orderings register as derbies.
+DERBY_LOOKUP: set[tuple[str, str]] = {
+    (a, b) for a, b in DERBY_PAIRS
+} | {
+    (b, a) for a, b in DERBY_PAIRS
+}
 
 OUTPUT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -115,18 +152,9 @@ def compute_team_stats(df) -> dict[str, Any]:
         all_rows = df[(df['home_team'] == team) | (df['away_team'] == team)]
         total_matches = len(all_rows)
 
-        def _match_goals(r):
-            return r['home_goals'] if r['home_team'] == team else r['away_goals']
-
-        def _match_conceded(r):
-            return r['away_goals'] if r['home_team'] == team else r['home_goals']
-
         if total_matches:
             goals_series = all_rows['home_goals'].where(
                 all_rows['home_team'] == team, all_rows['away_goals']
-            )
-            conc_series = all_rows['away_goals'].where(
-                all_rows['home_team'] == team, all_rows['home_goals']
             )
             total_goals_per_match = all_rows['home_goals'] + all_rows['away_goals']
             over_25 = int((total_goals_per_match >= 3).sum())
@@ -144,10 +172,68 @@ def compute_team_stats(df) -> dict[str, Any]:
                 if all_time_avg_scored
                 else 1.0
             )
+            # Goal variance — spread of goals scored per match across all appearances
+            goals_scored_array = goals_series.to_numpy(dtype=float)
+            goal_variance = float(goals_scored_array.var()) if len(goals_scored_array) > 1 else 0.0
+            # Over/under rates on total match goals
+            over15 = int((total_goals_per_match >= 2).sum())
+            over35 = int((total_goals_per_match >= 4).sum())
+            over45 = int((total_goals_per_match >= 5).sum())
+            under15 = int((total_goals_per_match <= 1).sum())
+            under25 = int((total_goals_per_match <= 2).sum())
+            over_rates = {
+                'over15': round(safe_div(over15, total_matches), 4),
+                'over25': round(safe_div(over_25, total_matches), 4),
+                'over35': round(safe_div(over35, total_matches), 4),
+                'over45': round(safe_div(over45, total_matches), 4),
+                'under15': round(safe_div(under15, total_matches), 4),
+                'under25': round(safe_div(under25, total_matches), 4),
+            }
         else:
             over_25 = 0
             btts = 0
             recent_scoring_trend = 1.0
+            goal_variance = 0.0
+            over_rates = {
+                'over15': 0.0, 'over25': 0.0, 'over35': 0.0, 'over45': 0.0,
+                'under15': 0.0, 'under25': 0.0,
+            }
+
+        # Home advantage — venue split comparisons. Skip deltas if either side
+        # has no matches (lower-division throwbacks or misspelled names).
+        if home_n and away_n:
+            home_wins = int((home_rows['result'] == 'H').sum())
+            away_wins_on_road = int((away_rows['result'] == 'A').sum())
+            home_win_rate = safe_div(home_wins, home_n)
+            away_win_rate = safe_div(away_wins_on_road, away_n)
+            home_advantage = {
+                'homeWinRate': round(home_win_rate, 4),
+                'awayWinRate': round(away_win_rate, 4),
+                'homeAwayWinDelta': round(home_win_rate - away_win_rate, 4),
+                'homeAwayGoalsScoredDelta': round(
+                    float(home_goals.mean()) - float(away_goals.mean()), 4
+                ),
+                'homeAwayGoalsConcededDelta': round(
+                    float(home_conc.mean()) - float(away_conc.mean()), 4
+                ),
+            }
+        else:
+            home_advantage = None
+
+        # Common final scorelines by venue (home-goals-first notation in both)
+        common_scorelines: dict[str, Any] = {}
+        if home_n >= 20:
+            home_scores = list(zip(
+                home_rows['home_goals'].astype(int).tolist(),
+                home_rows['away_goals'].astype(int).tolist(),
+            ))
+            common_scorelines['atHome'] = _top_scorelines(home_scores, home_n)
+        if away_n >= 20:
+            away_scores = list(zip(
+                away_rows['home_goals'].astype(int).tolist(),
+                away_rows['away_goals'].astype(int).tolist(),
+            ))
+            common_scorelines['awayFrom'] = _top_scorelines(away_scores, away_n)
 
         teams[team] = {
             'totalMatches': int(total_matches),
@@ -162,6 +248,8 @@ def compute_team_stats(df) -> dict[str, Any]:
             'over25Rate': safe_div(over_25, total_matches),
             'bttsRate': safe_div(btts, total_matches),
             'recentScoringTrend': round(float(recent_scoring_trend), 4),
+            'goalVariance': round(goal_variance, 4),
+            'overRates': over_rates,
             'eraWeighted': {
                 'homeGoalsScored': round(
                     weighted_mean(home_goals.tolist(), home_weights), 4
@@ -178,6 +266,11 @@ def compute_team_stats(df) -> dict[str, Any]:
             },
         }
 
+        if home_advantage is not None:
+            teams[team]['homeAdvantage'] = home_advantage
+        if common_scorelines:
+            teams[team]['commonScorelines'] = common_scorelines
+
         # Round top-level floats for JSON compactness
         for k in (
             'homeGoalsScored', 'homeGoalsConceded',
@@ -189,6 +282,21 @@ def compute_team_stats(df) -> dict[str, Any]:
             teams[team][k] = round(teams[team][k], 4)
 
     return teams
+
+
+def _top_scorelines(scores: list[tuple[int, int]], total: int, top_n: int = 3) -> list[dict[str, Any]]:
+    """Top-N most-frequent scorelines with count + rate. Scores in (home, away) order."""
+    from collections import Counter
+    counter = Counter(scores)
+    top = counter.most_common(top_n)
+    return [
+        {
+            'score': f'{h}-{a}',
+            'count': int(c),
+            'rate': round(safe_div(c, total), 4),
+        }
+        for (h, a), c in top
+    ]
 
 
 def compute_pair_stats(df) -> dict[str, Any]:
@@ -225,7 +333,7 @@ def compute_pair_stats(df) -> dict[str, Any]:
         else:
             variance = 0.0
 
-        pairs[key] = {
+        entry: dict[str, Any] = {
             'totalMatches': total,
             'homeWins': home_wins,
             'draws': draws,
@@ -238,9 +346,49 @@ def compute_pair_stats(df) -> dict[str, Any]:
             'bttsRate': round(safe_div(btts, total), 4),
             'recentTenAvgTotal': round(recent_avg_total, 4),
             'historicalVariance': round(variance, 4),
+            'isDerby': (home, away) in DERBY_LOOKUP,
         }
 
+        # HT × FT outcome matrix — only populated when the pair has ≥5 meetings
+        # and half-time columns are available (post-~1995 seasons).
+        ht_ft = _ht_ft_matrix(rows)
+        if ht_ft is not None:
+            entry['htFtMatrix'] = ht_ft
+
+        pairs[key] = entry
+
     return pairs
+
+
+def _ht_ft_matrix(rows) -> dict[str, int] | None:
+    """9-key matrix counting HT×FT outcomes. Keys: HH, HD, HA, DH, DD, DA, AH, AD, AA.
+
+    Returns None when:
+      - the pair has fewer than 5 meetings with HT data, or
+      - the CSV lacks half-time goal columns.
+    """
+    if 'half_time_home_goals' not in rows.columns or 'half_time_away_goals' not in rows.columns:
+        return None
+    ht_rows = rows.dropna(subset=['half_time_home_goals', 'half_time_away_goals', 'result'])
+    if len(ht_rows) < 5:
+        return None
+
+    keys = ['HH', 'HD', 'HA', 'DH', 'DD', 'DA', 'AH', 'AD', 'AA']
+    matrix = {k: 0 for k in keys}
+    hthg = ht_rows['half_time_home_goals'].to_numpy(dtype=float)
+    htag = ht_rows['half_time_away_goals'].to_numpy(dtype=float)
+    ftr = ht_rows['result'].tolist()
+    for hh, ha, ft in zip(hthg, htag, ftr):
+        if hh > ha:
+            ht = 'H'
+        elif hh < ha:
+            ht = 'A'
+        else:
+            ht = 'D'
+        if ft not in ('H', 'D', 'A'):
+            continue
+        matrix[ht + ft] += 1
+    return matrix
 
 
 def compute_season_stats(df) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -370,7 +518,7 @@ def compute_referee_stats(df) -> dict[str, Any]:
         btts = int(((hg >= 1) & (ag >= 1)).sum())
 
         avg_total = float(total.mean())
-        refs[str(referee)] = {
+        entry: dict[str, Any] = {
             'matches': int(n),
             'avgGoalsPerMatch': round(avg_total, 4),
             'goalsVsLeagueAvg': round(avg_total - league_avg, 4),
@@ -380,7 +528,101 @@ def compute_referee_stats(df) -> dict[str, Any]:
             'over25Rate': round(safe_div(over_25, n), 4),
             'bttsRate': round(safe_div(btts, n), 4),
         }
+
+        # Discipline / set-piece averages — populated only where the CSV
+        # supplies the columns and they aren't all NaN (older seasons may lack
+        # any of them). `pd.to_numeric` coerces stray strings to NaN.
+        import pandas as pd
+        discipline_mapping = [
+            ('avgYellowsPerMatch', ['home_yellows', 'away_yellows']),
+            ('avgRedsPerMatch', ['home_reds', 'away_reds']),
+            ('avgFoulsPerMatch', ['home_fouls', 'away_fouls']),
+            ('avgCornersPerMatch', ['home_corners', 'away_corners']),
+        ]
+        for out_key, source_cols in discipline_mapping:
+            if not all(c in group.columns for c in source_cols):
+                continue
+            series_sum = None
+            for c in source_cols:
+                coerced = pd.to_numeric(group[c], errors='coerce')
+                series_sum = coerced if series_sum is None else series_sum + coerced
+            if series_sum is None:
+                continue
+            mean_val = series_sum.mean()
+            if pd.isna(mean_val):
+                continue
+            entry[out_key] = round(float(mean_val), 4)
+
+        refs[str(referee)] = entry
     return refs
+
+
+def compute_matchday_stats(df) -> dict[str, Any]:
+    """Per-matchday league aggregates.
+
+    Matchday is inferred as the Nth chronological league match each team plays
+    within a season — we group by season + team, number fixtures 1..38, then
+    take the max number across the two sides of each fixture to assign a
+    canonical matchday. This handles rescheduled matches where the two clubs'
+    counts temporarily diverge.
+
+    Returns `{matchday: {matches, avgTotalGoals, homeWinRate, drawRate,
+    awayWinRate, over25Rate}}` keyed by the matchday integer as a string.
+    Empty dict if the input lacks required columns.
+    """
+    import pandas as pd
+
+    required = {'season', 'home_team', 'away_team', 'date', 'home_goals', 'away_goals', 'result'}
+    if not required.issubset(df.columns):
+        return {}
+
+    work = df.dropna(subset=['season', 'home_team', 'away_team', 'date']).copy()
+    if len(work) == 0:
+        return {}
+
+    work = work.sort_values('date').reset_index(drop=True)
+    work['row_id'] = work.index
+
+    # Build per-(season, team) ordinal: each club's Nth league match of the
+    # season. Then the fixture's matchday = max(home ordinal, away ordinal).
+    home_long = work[['row_id', 'season', 'home_team', 'date']].rename(
+        columns={'home_team': 'team'}
+    )
+    away_long = work[['row_id', 'season', 'away_team', 'date']].rename(
+        columns={'away_team': 'team'}
+    )
+    long = pd.concat([home_long, away_long], ignore_index=True)
+    long = long.sort_values(['season', 'team', 'date', 'row_id'])
+    long['ordinal'] = long.groupby(['season', 'team']).cumcount() + 1
+    md_per_row = long.groupby('row_id')['ordinal'].max()
+    work['matchday'] = work['row_id'].map(md_per_row)
+
+    out: dict[str, Any] = {}
+    # Cap at 38 — some seasons contain a handful of rows beyond that when
+    # replays/rescheduling push a team above 38 league fixtures in the data.
+    for md, group in work.groupby('matchday'):
+        md_int = int(md)
+        if md_int < 1 or md_int > 38:
+            continue
+        n = len(group)
+        if n == 0:
+            continue
+        hg = group['home_goals'].to_numpy(dtype=float)
+        ag = group['away_goals'].to_numpy(dtype=float)
+        total = hg + ag
+        home_wins = int((group['result'] == 'H').sum())
+        draws = int((group['result'] == 'D').sum())
+        away_wins = int((group['result'] == 'A').sum())
+        over_25 = int((total >= 3).sum())
+        out[str(md_int)] = {
+            'matches': int(n),
+            'avgTotalGoals': round(float(total.mean()), 4),
+            'homeWinRate': round(safe_div(home_wins, n), 4),
+            'drawRate': round(safe_div(draws, n), 4),
+            'awayWinRate': round(safe_div(away_wins, n), 4),
+            'over25Rate': round(safe_div(over_25, n), 4),
+        }
+    return out
 
 
 def augment_team_half_time(df, teams: dict[str, Any]) -> None:
@@ -532,6 +774,10 @@ def main():
     print('Computing league-era aggregates…')
     league_era = compute_league_era(df)
 
+    print('Computing per-matchday league aggregates…')
+    matchday_stats = compute_matchday_stats(df)
+    print(f'  → {len(matchday_stats)} matchday entries')
+
     pack = {
         'generatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         'eraDecay': ERA_DECAY,
@@ -545,6 +791,7 @@ def main():
         'referees': referees,
         'teams': teams,
         'pairs': pairs,
+        'matchdayStats': matchday_stats,
     }
 
     pack = sort_dict_recursive(pack)

@@ -19,6 +19,34 @@ export interface HalfTimeTempo {
   capitulationLossRate: number; // rate of losses despite leading at HT
 }
 
+export interface OverRates {
+  over15: number;
+  over25: number;
+  over35: number;
+  over45: number;
+  under15: number;
+  under25: number;
+}
+
+export interface HomeAdvantage {
+  homeWinRate: number;
+  awayWinRate: number;
+  homeAwayWinDelta: number; // home win rate − away win rate
+  homeAwayGoalsScoredDelta: number; // home avg scored − away avg scored
+  homeAwayGoalsConcededDelta: number; // home avg conceded − away avg conceded
+}
+
+export interface CommonScoreline {
+  score: string; // home-goals-first notation, e.g. "2-1"
+  count: number;
+  rate: number;
+}
+
+export interface CommonScorelines {
+  atHome?: CommonScoreline[]; // top-3 when team plays at home, ≥20 matches
+  awayFrom?: CommonScoreline[]; // top-3 when team plays away, ≥20 matches
+}
+
 export interface TeamProfile {
   totalMatches: number;
   homeGoalsScored: number;
@@ -32,6 +60,12 @@ export interface TeamProfile {
   over25Rate: number;
   bttsRate: number;
   recentScoringTrend: number;
+  // Population variance of goals scored per match across all appearances —
+  // high = swingy team, low = consistent scorer.
+  goalVariance: number;
+  // Rates of total match goals crossing over/under thresholds across all
+  // appearances (home + away pooled).
+  overRates: OverRates;
   eraWeighted: {
     homeGoalsScored: number;
     homeGoalsConceded: number;
@@ -40,6 +74,12 @@ export interface TeamProfile {
   };
   // Optional — absent for pre-1995 teams whose CSVs lack HT goal columns
   halfTime?: HalfTimeTempo;
+  // Optional — absent when the team has no fixtures on one side of the venue
+  // split (e.g. recently promoted sides with <1 season of PL data).
+  homeAdvantage?: HomeAdvantage;
+  // Optional — generator skips a side of the split with <20 matches, and
+  // omits the whole field if both sides are too thin.
+  commonScorelines?: CommonScorelines;
 }
 
 export interface SeasonStats {
@@ -70,6 +110,29 @@ export interface RefereeStats {
   awayWinRate: number;
   over25Rate: number;
   bttsRate: number;
+  // Discipline / set-piece averages — only populated where the CSV supplies
+  // the columns and they aren't all NaN (older seasons may omit any of them).
+  avgYellowsPerMatch?: number;
+  avgRedsPerMatch?: number;
+  avgFoulsPerMatch?: number;
+  avgCornersPerMatch?: number;
+}
+
+/**
+ * 9-key HT × FT outcome matrix. Keys are `<HT><FT>` where each outcome letter
+ * is H (home), D (draw) or A (away). Populated only when the pair has ≥5
+ * meetings with half-time data available — undefined otherwise.
+ */
+export interface HtFtMatrix {
+  HH: number;
+  HD: number;
+  HA: number;
+  DH: number;
+  DD: number;
+  DA: number;
+  AH: number;
+  AD: number;
+  AA: number;
 }
 
 export interface PairStats {
@@ -85,6 +148,21 @@ export interface PairStats {
   bttsRate: number;
   recentTenAvgTotal: number;
   historicalVariance: number;
+  // True when the (home, away) pair is one of the hardcoded derby fixtures
+  // in the generator (both direction orderings count — see DERBY_PAIRS in
+  // backend/scripts/compute_stats_pack.py).
+  isDerby: boolean;
+  // Optional — generator omits when the pair has <5 meetings with HT data.
+  htFtMatrix?: HtFtMatrix;
+}
+
+export interface MatchdayStats {
+  matches: number;
+  avgTotalGoals: number;
+  homeWinRate: number;
+  drawRate: number;
+  awayWinRate: number;
+  over25Rate: number;
 }
 
 export interface LeagueEra {
@@ -124,6 +202,14 @@ export interface StatsPack {
   referees: Record<string, RefereeStats>;
   teams: Record<string, TeamProfile>;
   pairs: Record<string, PairStats>;
+  /**
+   * Per-matchday league aggregates keyed by matchday number as a string
+   * ("1".."38"). Matchday is inferred as the Nth chronological league match
+   * each team plays within a season — for the rare rescheduled fixture where
+   * the two clubs' counts diverge, the fixture takes the higher ordinal.
+   * Optional because older generator runs may predate this section.
+   */
+  matchdayStats?: Record<string, MatchdayStats>;
 }
 
 export const statsPack = rawStatsPack as unknown as StatsPack;
@@ -221,4 +307,13 @@ export function getAnomalies(): Anomaly[] {
  */
 export function getRefereeStats(refereeName: string): RefereeStats | undefined {
   return statsPack.referees?.[refereeName];
+}
+
+/**
+ * League aggregates for a given matchday (1-38). Returns undefined if the
+ * matchday is out of range or the pack predates the matchdayStats section.
+ */
+export function getMatchdayStats(matchday: number): MatchdayStats | undefined {
+  if (!Number.isFinite(matchday) || matchday < 1 || matchday > 38) return undefined;
+  return statsPack.matchdayStats?.[String(Math.trunc(matchday))];
 }
