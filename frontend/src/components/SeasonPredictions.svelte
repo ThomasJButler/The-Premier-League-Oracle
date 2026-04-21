@@ -60,6 +60,7 @@
           match.away_team,
           undefined,
           match.referee ?? null,
+          match.date,
         );
 
         predictionTracker.storePrediction(

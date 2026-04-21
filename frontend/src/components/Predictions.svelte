@@ -291,7 +291,8 @@
           match.home_team,
           match.away_team,
           undefined,
-          match.referee
+          match.referee,
+          match.date
         );
         
         const prediction = {

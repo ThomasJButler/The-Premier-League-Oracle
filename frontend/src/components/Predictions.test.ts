@@ -509,7 +509,7 @@ describe('Predictions Component', () => {
     await act();
 
     expect(OptimizedPredictor.predictMatch).toHaveBeenCalledWith(
-      'Arsenal', 'Liverpool', undefined, null
+      'Arsenal', 'Liverpool', undefined, null, match.date
     );
   });
 

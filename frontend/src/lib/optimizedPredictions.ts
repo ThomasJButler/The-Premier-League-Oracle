@@ -444,13 +444,17 @@ export class OptimizedPredictor {
         }
       }
 
-      // 5. Calculate fatigue factor (needed before Poisson lambdas)
+      // 5. Calculate fatigue factor (needed before Poisson lambdas).
+      // Rest days MUST be measured against the match's kickoff, not "now" —
+      // otherwise a team that played three days ago looks fatigued for a fixture
+      // four weeks in the future, which crushes Poisson lambdas through the
+      // restDays/7 multiplier and collapses the grid onto 0-0 / 1-0.
       // When backtesting with pre-fetched data, derive rest days locally
       // to avoid hitting dataService on every iteration.
       const asOfDate = matchDate ? new Date(matchDate) : undefined;
       const fatigueFactor = historicalMatches
         ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches, asOfDate)
-        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches);
+        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches, asOfDate);
 
       // 6. Calculate Poisson predictions using Dixon-Coles lambdas
       const leagueAvgs = this.computeLeagueAverages(allMatches);
