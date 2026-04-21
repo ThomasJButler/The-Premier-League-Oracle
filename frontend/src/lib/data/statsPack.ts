@@ -10,6 +10,15 @@
 
 import rawStatsPack from './statsPack.json';
 
+export interface HalfTimeTempo {
+  matches: number;
+  avgFirstHalfGoalsScored: number;
+  avgSecondHalfGoalsScored: number;
+  firstHalfShare: number; // proportion of total goals scored in the first half
+  comebackWinRate: number; // rate of wins despite trailing at HT
+  capitulationLossRate: number; // rate of losses despite leading at HT
+}
+
 export interface TeamProfile {
   totalMatches: number;
   homeGoalsScored: number;
@@ -29,6 +38,38 @@ export interface TeamProfile {
     awayGoalsScored: number;
     awayGoalsConceded: number;
   };
+  // Optional — absent for pre-1995 teams whose CSVs lack HT goal columns
+  halfTime?: HalfTimeTempo;
+}
+
+export interface SeasonStats {
+  matches: number;
+  homeWinRate: number;
+  drawRate: number;
+  awayWinRate: number;
+  avgHomeGoals: number;
+  avgAwayGoals: number;
+  avgTotalGoals: number;
+  over25Rate: number;
+  bttsRate: number;
+  isAnomalous: boolean;
+  anomalyReasons: string[];
+}
+
+export interface Anomaly {
+  season: string; // e.g. "2020/21"
+  reasons: string[];
+}
+
+export interface RefereeStats {
+  matches: number;
+  avgGoalsPerMatch: number;
+  goalsVsLeagueAvg: number; // + above / - below the league mean
+  homeWinRate: number;
+  drawRate: number;
+  awayWinRate: number;
+  over25Rate: number;
+  bttsRate: number;
 }
 
 export interface PairStats {
@@ -64,6 +105,23 @@ export interface StatsPack {
   totalSeasons: number;
   seasons: string[];
   leagueEra: LeagueEra;
+  /**
+   * Per-season aggregates keyed by season string ("2020/21"). Each entry
+   * includes headline rates and an `isAnomalous` flag that fires when any
+   * rate deviates >2 stdevs from the 33-season mean.
+   */
+  seasonStats: Record<string, SeasonStats>;
+  /**
+   * Pre-extracted list of seasons that `seasonStats` flagged as anomalous —
+   * the 2020/21 COVID empty-stadium shift shows up here, for example. Useful
+   * for surfacing contextual UI notes without iterating seasonStats.
+   */
+  anomalies: Anomaly[];
+  /**
+   * Per-referee goal tendency (only referees with >=50 PL matches retained).
+   * Uses CSV referee names as keys; absent in very old CSVs.
+   */
+  referees: Record<string, RefereeStats>;
   teams: Record<string, TeamProfile>;
   pairs: Record<string, PairStats>;
 }
@@ -137,4 +195,30 @@ export function getPairStats(home: string, away: string): PairStats | undefined 
  */
 export function getLeagueEra(): LeagueEra {
   return statsPack.leagueEra;
+}
+
+/**
+ * Per-season aggregates for a given season string (e.g. "2020/21"), or
+ * undefined if the season is not in the 33-season archive.
+ */
+export function getSeasonStats(season: string): SeasonStats | undefined {
+  return statsPack.seasonStats?.[season];
+}
+
+/**
+ * All seasons flagged as anomalous (e.g. COVID 2020/21 shift). Returns an
+ * empty array if the pack was generated before the anomaly-detection
+ * features were added.
+ */
+export function getAnomalies(): Anomaly[] {
+  return statsPack.anomalies ?? [];
+}
+
+/**
+ * Per-referee goal tendency. Accepts the CSV canonical referee name (e.g.
+ * "M Oliver"). Returns undefined if the referee has <50 matches or the
+ * pack's referees section is absent (very old CSVs).
+ */
+export function getRefereeStats(refereeName: string): RefereeStats | undefined {
+  return statsPack.referees?.[refereeName];
 }

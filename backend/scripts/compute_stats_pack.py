@@ -243,6 +243,217 @@ def compute_pair_stats(df) -> dict[str, Any]:
     return pairs
 
 
+def compute_season_stats(df) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Per-season aggregates + anomaly flags.
+
+    Returns a tuple of (season_stats_dict, anomalies_list). A season is flagged
+    as anomalous when any of its headline rates lies more than 2 standard
+    deviations from the 33-season mean. The 2020/21 COVID empty-stadium season
+    is the canonical example — expected to show a notable drop in home-win
+    rate that we can surface as context in the UI.
+    """
+    import math
+
+    season_raw: dict[str, dict[str, Any]] = {}
+    home_win_rates: list[float] = []
+    draw_rates: list[float] = []
+    away_win_rates: list[float] = []
+    avg_total_goals: list[float] = []
+
+    for season, group in df.groupby('season'):
+        n = len(group)
+        if n == 0:
+            continue
+
+        hg = group['home_goals'].to_numpy(dtype=float)
+        ag = group['away_goals'].to_numpy(dtype=float)
+        total = hg + ag
+
+        home_wins = int((group['result'] == 'H').sum())
+        draws = int((group['result'] == 'D').sum())
+        away_wins = int((group['result'] == 'A').sum())
+        over_25 = int((total >= 3).sum())
+        btts = int(((hg >= 1) & (ag >= 1)).sum())
+
+        hw_rate = safe_div(home_wins, n)
+        d_rate = safe_div(draws, n)
+        aw_rate = safe_div(away_wins, n)
+        avg_total = float(total.mean())
+
+        season_raw[str(season)] = {
+            'matches': int(n),
+            'homeWinRate': round(hw_rate, 4),
+            'drawRate': round(d_rate, 4),
+            'awayWinRate': round(aw_rate, 4),
+            'avgHomeGoals': round(float(hg.mean()), 4),
+            'avgAwayGoals': round(float(ag.mean()), 4),
+            'avgTotalGoals': round(avg_total, 4),
+            'over25Rate': round(safe_div(over_25, n), 4),
+            'bttsRate': round(safe_div(btts, n), 4),
+        }
+        home_win_rates.append(hw_rate)
+        draw_rates.append(d_rate)
+        away_win_rates.append(aw_rate)
+        avg_total_goals.append(avg_total)
+
+    # Compute means and stdevs across the 33 seasons, then flag outliers.
+    def _stdev(values: list[float]) -> float:
+        if len(values) < 2:
+            return 0.0
+        mean_v = sum(values) / len(values)
+        var = sum((v - mean_v) ** 2 for v in values) / len(values)
+        return math.sqrt(var)
+
+    hw_mean = sum(home_win_rates) / max(1, len(home_win_rates))
+    d_mean = sum(draw_rates) / max(1, len(draw_rates))
+    aw_mean = sum(away_win_rates) / max(1, len(away_win_rates))
+    tg_mean = sum(avg_total_goals) / max(1, len(avg_total_goals))
+    hw_sd = _stdev(home_win_rates)
+    d_sd = _stdev(draw_rates)
+    aw_sd = _stdev(away_win_rates)
+    tg_sd = _stdev(avg_total_goals)
+
+    anomalies: list[dict[str, Any]] = []
+    for season, s in sorted(season_raw.items()):
+        reasons: list[str] = []
+        if hw_sd and abs(s['homeWinRate'] - hw_mean) > 2 * hw_sd:
+            delta = s['homeWinRate'] - hw_mean
+            reasons.append(
+                f"homeWinRate {s['homeWinRate']:.1%} is {delta:+.1%} vs 33-season mean {hw_mean:.1%}"
+            )
+        if d_sd and abs(s['drawRate'] - d_mean) > 2 * d_sd:
+            delta = s['drawRate'] - d_mean
+            reasons.append(
+                f"drawRate {s['drawRate']:.1%} is {delta:+.1%} vs mean {d_mean:.1%}"
+            )
+        if aw_sd and abs(s['awayWinRate'] - aw_mean) > 2 * aw_sd:
+            delta = s['awayWinRate'] - aw_mean
+            reasons.append(
+                f"awayWinRate {s['awayWinRate']:.1%} is {delta:+.1%} vs mean {aw_mean:.1%}"
+            )
+        if tg_sd and abs(s['avgTotalGoals'] - tg_mean) > 2 * tg_sd:
+            delta = s['avgTotalGoals'] - tg_mean
+            reasons.append(
+                f"avgTotalGoals {s['avgTotalGoals']:.2f} is {delta:+.2f} vs mean {tg_mean:.2f}"
+            )
+        s['isAnomalous'] = bool(reasons)
+        s['anomalyReasons'] = reasons
+        if reasons:
+            anomalies.append({'season': season, 'reasons': reasons})
+
+    return season_raw, anomalies
+
+
+def compute_referee_stats(df) -> dict[str, Any]:
+    """Referee-level goal tendency. Only referees with >=50 matches retained."""
+    if 'referee' not in df.columns:
+        return {}
+    ref_rows = df.dropna(subset=['referee'])
+    if len(ref_rows) == 0:
+        return {}
+
+    league_avg = float((ref_rows['home_goals'] + ref_rows['away_goals']).mean())
+
+    refs: dict[str, Any] = {}
+    for referee, group in ref_rows.groupby('referee'):
+        n = len(group)
+        if n < 50:
+            continue
+        hg = group['home_goals'].to_numpy(dtype=float)
+        ag = group['away_goals'].to_numpy(dtype=float)
+        total = hg + ag
+
+        home_wins = int((group['result'] == 'H').sum())
+        draws = int((group['result'] == 'D').sum())
+        away_wins = int((group['result'] == 'A').sum())
+        over_25 = int((total >= 3).sum())
+        btts = int(((hg >= 1) & (ag >= 1)).sum())
+
+        avg_total = float(total.mean())
+        refs[str(referee)] = {
+            'matches': int(n),
+            'avgGoalsPerMatch': round(avg_total, 4),
+            'goalsVsLeagueAvg': round(avg_total - league_avg, 4),
+            'homeWinRate': round(safe_div(home_wins, n), 4),
+            'drawRate': round(safe_div(draws, n), 4),
+            'awayWinRate': round(safe_div(away_wins, n), 4),
+            'over25Rate': round(safe_div(over_25, n), 4),
+            'bttsRate': round(safe_div(btts, n), 4),
+        }
+    return refs
+
+
+def augment_team_half_time(df, teams: dict[str, Any]) -> None:
+    """Mutate the teams dict in-place to add half-time tempo + comeback rates.
+
+    Skipped for teams where the CSV data doesn't carry half-time columns (1993
+    and earlier). Most of the 33-season archive has it from ~1995 onward.
+    """
+    if 'half_time_home_goals' not in df.columns or 'half_time_away_goals' not in df.columns:
+        return
+    ht_rows = df.dropna(subset=['half_time_home_goals', 'half_time_away_goals', 'result']).copy()
+    if len(ht_rows) == 0:
+        return
+
+    # Compute half-specific goal counts once across the whole DataFrame
+    ht_rows['first_half_home'] = ht_rows['half_time_home_goals']
+    ht_rows['first_half_away'] = ht_rows['half_time_away_goals']
+    ht_rows['second_half_home'] = ht_rows['home_goals'] - ht_rows['first_half_home']
+    ht_rows['second_half_away'] = ht_rows['away_goals'] - ht_rows['first_half_away']
+
+    # Half-time result derived — defensive: handle missing half_time_result
+    def _ht_result(r):
+        if r['first_half_home'] > r['first_half_away']:
+            return 'H'
+        if r['first_half_home'] < r['first_half_away']:
+            return 'A'
+        return 'D'
+
+    ht_rows['ht_outcome'] = ht_rows.apply(_ht_result, axis=1)
+
+    for team, profile in teams.items():
+        team_rows = ht_rows[(ht_rows['home_team'] == team) | (ht_rows['away_team'] == team)]
+        if len(team_rows) < 10:
+            continue
+
+        first_half_scored = team_rows.apply(
+            lambda r: r['first_half_home'] if r['home_team'] == team else r['first_half_away'],
+            axis=1,
+        )
+        second_half_scored = team_rows.apply(
+            lambda r: r['second_half_home'] if r['home_team'] == team else r['second_half_away'],
+            axis=1,
+        )
+
+        first_half_total = float(first_half_scored.sum())
+        second_half_total = float(second_half_scored.sum())
+        total_goals = first_half_total + second_half_total
+
+        # Comeback: team was trailing at HT but won at FT
+        # Capitulation: team was leading at HT but lost at FT
+        def _comeback(r):
+            if r['home_team'] == team:
+                return (r['ht_outcome'] == 'A' and r['result'] == 'H')
+            return (r['ht_outcome'] == 'H' and r['result'] == 'A')
+
+        def _capitulation(r):
+            if r['home_team'] == team:
+                return (r['ht_outcome'] == 'H' and r['result'] == 'A')
+            return (r['ht_outcome'] == 'A' and r['result'] == 'H')
+
+        comebacks = int(team_rows.apply(_comeback, axis=1).sum())
+        capitulations = int(team_rows.apply(_capitulation, axis=1).sum())
+
+        profile['halfTime'] = {
+            'matches': int(len(team_rows)),
+            'avgFirstHalfGoalsScored': round(float(first_half_scored.mean()), 4),
+            'avgSecondHalfGoalsScored': round(float(second_half_scored.mean()), 4),
+            'firstHalfShare': round(safe_div(first_half_total, total_goals), 4) if total_goals else 0.0,
+            'comebackWinRate': round(safe_div(comebacks, len(team_rows)), 4),
+            'capitulationLossRate': round(safe_div(capitulations, len(team_rows)), 4),
+        }
+
+
 def compute_league_era(df) -> dict[str, Any]:
     """League-wide aggregates for normalisation and era-drift correction."""
     df = df.copy()
@@ -299,9 +510,24 @@ def main():
     teams = compute_team_stats(df)
     print(f'  → {len(teams)} teams')
 
+    print('Adding half-time tempo + comeback rates to team profiles…')
+    augment_team_half_time(df, teams)
+    with_ht = sum(1 for t in teams.values() if 'halfTime' in t)
+    print(f'  → {with_ht}/{len(teams)} teams have half-time data')
+
     print('Computing pair stats…')
     pairs = compute_pair_stats(df)
     print(f'  → {len(pairs)} ordered (home, away) pairs')
+
+    print('Computing per-season aggregates + anomaly detection…')
+    season_stats, anomalies = compute_season_stats(df)
+    print(f'  → {len(season_stats)} seasons, {len(anomalies)} flagged as anomalous')
+    for a in anomalies:
+        print(f'    • {a["season"]}: {"; ".join(a["reasons"])}')
+
+    print('Computing referee stats…')
+    referees = compute_referee_stats(df)
+    print(f'  → {len(referees)} referees with ≥50 matches')
 
     print('Computing league-era aggregates…')
     league_era = compute_league_era(df)
@@ -314,6 +540,9 @@ def main():
         'totalSeasons': int(df['season'].nunique()),
         'seasons': sorted(df['season'].unique().tolist()),
         'leagueEra': league_era,
+        'seasonStats': season_stats,
+        'anomalies': anomalies,
+        'referees': referees,
         'teams': teams,
         'pairs': pairs,
     }

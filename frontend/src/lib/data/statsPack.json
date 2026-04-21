@@ -1,6 +1,27 @@
 {
+  "anomalies": [
+    {
+      "reasons": [
+        "drawRate 18.7% is -6.8% vs mean 25.5%"
+      ],
+      "season": "2018/19"
+    },
+    {
+      "reasons": [
+        "homeWinRate 37.9% is -7.7% vs 33-season mean 45.6%",
+        "awayWinRate 40.3% is +11.4% vs mean 28.9%"
+      ],
+      "season": "2020/21"
+    },
+    {
+      "reasons": [
+        "avgTotalGoals 3.28 is +0.58 vs mean 2.70"
+      ],
+      "season": "2023/24"
+    }
+  ],
   "eraDecay": 0.85,
-  "generatedAt": "2026-04-21T01:49:10+00:00",
+  "generatedAt": "2026-04-21T02:19:51+00:00",
   "leagueEra": {
     "avgAwayGoalsOverall": 1.1658,
     "avgBTTSOverall": 0.5102,
@@ -26252,7 +26273,887 @@
       "totalMatches": 3
     }
   },
+  "referees": {
+    "A D'Urso": {
+      "avgGoalsPerMatch": 2.4,
+      "awayWinRate": 0.2727,
+      "bttsRate": 0.5091,
+      "drawRate": 0.3091,
+      "goalsVsLeagueAvg": -0.3181,
+      "homeWinRate": 0.4182,
+      "matches": 55,
+      "over25Rate": 0.4364
+    },
+    "A Madley": {
+      "avgGoalsPerMatch": 2.9766,
+      "awayWinRate": 0.3203,
+      "bttsRate": 0.5391,
+      "drawRate": 0.25,
+      "goalsVsLeagueAvg": 0.2585,
+      "homeWinRate": 0.4297,
+      "matches": 128,
+      "over25Rate": 0.5781
+    },
+    "A Marriner": {
+      "avgGoalsPerMatch": 2.89,
+      "awayWinRate": 0.3223,
+      "bttsRate": 0.5371,
+      "drawRate": 0.2506,
+      "goalsVsLeagueAvg": 0.172,
+      "homeWinRate": 0.4271,
+      "matches": 391,
+      "over25Rate": 0.5422
+    },
+    "A Taylor": {
+      "avgGoalsPerMatch": 2.9458,
+      "awayWinRate": 0.342,
+      "bttsRate": 0.5401,
+      "drawRate": 0.2382,
+      "goalsVsLeagueAvg": 0.2277,
+      "homeWinRate": 0.4198,
+      "matches": 424,
+      "over25Rate": 0.5637
+    },
+    "A Wiley": {
+      "avgGoalsPerMatch": 2.6238,
+      "awayWinRate": 0.302,
+      "bttsRate": 0.5,
+      "drawRate": 0.2277,
+      "goalsVsLeagueAvg": -0.0943,
+      "homeWinRate": 0.4703,
+      "matches": 202,
+      "over25Rate": 0.4901
+    },
+    "C Foy": {
+      "avgGoalsPerMatch": 2.6969,
+      "awayWinRate": 0.2795,
+      "bttsRate": 0.4961,
+      "drawRate": 0.2165,
+      "goalsVsLeagueAvg": -0.0212,
+      "homeWinRate": 0.5039,
+      "matches": 254,
+      "over25Rate": 0.5157
+    },
+    "C Kavanagh": {
+      "avgGoalsPerMatch": 2.5946,
+      "awayWinRate": 0.3243,
+      "bttsRate": 0.4811,
+      "drawRate": 0.2378,
+      "goalsVsLeagueAvg": -0.1235,
+      "homeWinRate": 0.4378,
+      "matches": 185,
+      "over25Rate": 0.4757
+    },
+    "C Pawson": {
+      "avgGoalsPerMatch": 2.6912,
+      "awayWinRate": 0.3404,
+      "bttsRate": 0.4842,
+      "drawRate": 0.2316,
+      "goalsVsLeagueAvg": -0.0268,
+      "homeWinRate": 0.4281,
+      "matches": 285,
+      "over25Rate": 0.5123
+    },
+    "D Coote": {
+      "avgGoalsPerMatch": 2.7143,
+      "awayWinRate": 0.3304,
+      "bttsRate": 0.5268,
+      "drawRate": 0.2054,
+      "goalsVsLeagueAvg": -0.0038,
+      "homeWinRate": 0.4643,
+      "matches": 112,
+      "over25Rate": 0.5357
+    },
+    "D England": {
+      "avgGoalsPerMatch": 3.0,
+      "awayWinRate": 0.3191,
+      "bttsRate": 0.5426,
+      "drawRate": 0.2553,
+      "goalsVsLeagueAvg": 0.2819,
+      "homeWinRate": 0.4255,
+      "matches": 94,
+      "over25Rate": 0.5426
+    },
+    "D Gallagher": {
+      "avgGoalsPerMatch": 2.4568,
+      "awayWinRate": 0.3086,
+      "bttsRate": 0.358,
+      "drawRate": 0.2222,
+      "goalsVsLeagueAvg": -0.2613,
+      "homeWinRate": 0.4691,
+      "matches": 81,
+      "over25Rate": 0.4444
+    },
+    "G Poll": {
+      "avgGoalsPerMatch": 2.6241,
+      "awayWinRate": 0.3158,
+      "bttsRate": 0.4962,
+      "drawRate": 0.218,
+      "goalsVsLeagueAvg": -0.094,
+      "homeWinRate": 0.4662,
+      "matches": 133,
+      "over25Rate": 0.5038
+    },
+    "G Scott": {
+      "avgGoalsPerMatch": 2.8476,
+      "awayWinRate": 0.3048,
+      "bttsRate": 0.4857,
+      "drawRate": 0.1619,
+      "goalsVsLeagueAvg": 0.1296,
+      "homeWinRate": 0.5333,
+      "matches": 105,
+      "over25Rate": 0.5714
+    },
+    "H Webb": {
+      "avgGoalsPerMatch": 2.5272,
+      "awayWinRate": 0.2721,
+      "bttsRate": 0.4932,
+      "drawRate": 0.2755,
+      "goalsVsLeagueAvg": -0.1908,
+      "homeWinRate": 0.4524,
+      "matches": 294,
+      "over25Rate": 0.4524
+    },
+    "J Brooks": {
+      "avgGoalsPerMatch": 2.6111,
+      "awayWinRate": 0.2361,
+      "bttsRate": 0.5,
+      "drawRate": 0.2361,
+      "goalsVsLeagueAvg": -0.1069,
+      "homeWinRate": 0.5278,
+      "matches": 72,
+      "over25Rate": 0.4861
+    },
+    "J Gillett": {
+      "avgGoalsPerMatch": 3.1266,
+      "awayWinRate": 0.481,
+      "bttsRate": 0.5949,
+      "drawRate": 0.2025,
+      "goalsVsLeagueAvg": 0.4085,
+      "homeWinRate": 0.3165,
+      "matches": 79,
+      "over25Rate": 0.5949
+    },
+    "J Moss": {
+      "avgGoalsPerMatch": 2.8175,
+      "awayWinRate": 0.3504,
+      "bttsRate": 0.4562,
+      "drawRate": 0.1898,
+      "goalsVsLeagueAvg": 0.0995,
+      "homeWinRate": 0.4599,
+      "matches": 274,
+      "over25Rate": 0.5292
+    },
+    "K Friend": {
+      "avgGoalsPerMatch": 2.7574,
+      "awayWinRate": 0.3088,
+      "bttsRate": 0.4926,
+      "drawRate": 0.2353,
+      "goalsVsLeagueAvg": 0.0393,
+      "homeWinRate": 0.4559,
+      "matches": 272,
+      "over25Rate": 0.5147
+    },
+    "L Mason": {
+      "avgGoalsPerMatch": 2.7282,
+      "awayWinRate": 0.2648,
+      "bttsRate": 0.4913,
+      "drawRate": 0.2334,
+      "goalsVsLeagueAvg": 0.0102,
+      "homeWinRate": 0.5017,
+      "matches": 287,
+      "over25Rate": 0.5226
+    },
+    "L Probert": {
+      "avgGoalsPerMatch": 2.6044,
+      "awayWinRate": 0.2802,
+      "bttsRate": 0.522,
+      "drawRate": 0.2363,
+      "goalsVsLeagueAvg": -0.1137,
+      "homeWinRate": 0.4835,
+      "matches": 182,
+      "over25Rate": 0.5055
+    },
+    "M Atkinson": {
+      "avgGoalsPerMatch": 2.5316,
+      "awayWinRate": 0.3137,
+      "bttsRate": 0.4641,
+      "drawRate": 0.2266,
+      "goalsVsLeagueAvg": -0.1865,
+      "homeWinRate": 0.4597,
+      "matches": 459,
+      "over25Rate": 0.4858
+    },
+    "M Clattenburg": {
+      "avgGoalsPerMatch": 2.6907,
+      "awayWinRate": 0.2715,
+      "bttsRate": 0.5533,
+      "drawRate": 0.2577,
+      "goalsVsLeagueAvg": -0.0273,
+      "homeWinRate": 0.4708,
+      "matches": 291,
+      "over25Rate": 0.543
+    },
+    "M Dean": {
+      "avgGoalsPerMatch": 2.701,
+      "awayWinRate": 0.2781,
+      "bttsRate": 0.5429,
+      "drawRate": 0.2876,
+      "goalsVsLeagueAvg": -0.0171,
+      "homeWinRate": 0.4343,
+      "matches": 525,
+      "over25Rate": 0.5048
+    },
+    "M Halsey": {
+      "avgGoalsPerMatch": 2.6937,
+      "awayWinRate": 0.3333,
+      "bttsRate": 0.509,
+      "drawRate": 0.2207,
+      "goalsVsLeagueAvg": -0.0244,
+      "homeWinRate": 0.4459,
+      "matches": 222,
+      "over25Rate": 0.527
+    },
+    "M Jones": {
+      "avgGoalsPerMatch": 2.6535,
+      "awayWinRate": 0.2624,
+      "bttsRate": 0.4406,
+      "drawRate": 0.2624,
+      "goalsVsLeagueAvg": -0.0646,
+      "homeWinRate": 0.4752,
+      "matches": 202,
+      "over25Rate": 0.5198
+    },
+    "M Oliver": {
+      "avgGoalsPerMatch": 2.9311,
+      "awayWinRate": 0.3112,
+      "bttsRate": 0.5867,
+      "drawRate": 0.2518,
+      "goalsVsLeagueAvg": 0.2131,
+      "homeWinRate": 0.4371,
+      "matches": 421,
+      "over25Rate": 0.5653
+    },
+    "M Riley": {
+      "avgGoalsPerMatch": 2.5152,
+      "awayWinRate": 0.2606,
+      "bttsRate": 0.4364,
+      "drawRate": 0.2424,
+      "goalsVsLeagueAvg": -0.2029,
+      "homeWinRate": 0.497,
+      "matches": 165,
+      "over25Rate": 0.4485
+    },
+    "M Salisbury": {
+      "avgGoalsPerMatch": 3.2982,
+      "awayWinRate": 0.3333,
+      "bttsRate": 0.6316,
+      "drawRate": 0.1754,
+      "goalsVsLeagueAvg": 0.5802,
+      "homeWinRate": 0.4912,
+      "matches": 57,
+      "over25Rate": 0.6491
+    },
+    "N Barry": {
+      "avgGoalsPerMatch": 2.7544,
+      "awayWinRate": 0.2456,
+      "bttsRate": 0.5439,
+      "drawRate": 0.3158,
+      "goalsVsLeagueAvg": 0.0363,
+      "homeWinRate": 0.4386,
+      "matches": 57,
+      "over25Rate": 0.5088
+    },
+    "N Swarbrick": {
+      "avgGoalsPerMatch": 2.8182,
+      "awayWinRate": 0.3333,
+      "bttsRate": 0.5227,
+      "drawRate": 0.25,
+      "goalsVsLeagueAvg": 0.1001,
+      "homeWinRate": 0.4167,
+      "matches": 132,
+      "over25Rate": 0.6061
+    },
+    "P Bankes": {
+      "avgGoalsPerMatch": 2.6435,
+      "awayWinRate": 0.2435,
+      "bttsRate": 0.5826,
+      "drawRate": 0.2174,
+      "goalsVsLeagueAvg": -0.0746,
+      "homeWinRate": 0.5391,
+      "matches": 115,
+      "over25Rate": 0.5217
+    },
+    "P Dowd": {
+      "avgGoalsPerMatch": 2.8221,
+      "awayWinRate": 0.2651,
+      "bttsRate": 0.5168,
+      "drawRate": 0.2483,
+      "goalsVsLeagueAvg": 0.1041,
+      "homeWinRate": 0.4866,
+      "matches": 298,
+      "over25Rate": 0.5403
+    },
+    "P Tierney": {
+      "avgGoalsPerMatch": 2.8254,
+      "awayWinRate": 0.3598,
+      "bttsRate": 0.4974,
+      "drawRate": 0.2328,
+      "goalsVsLeagueAvg": 0.1073,
+      "homeWinRate": 0.4074,
+      "matches": 189,
+      "over25Rate": 0.5714
+    },
+    "P Walton": {
+      "avgGoalsPerMatch": 2.6726,
+      "awayWinRate": 0.256,
+      "bttsRate": 0.5476,
+      "drawRate": 0.2976,
+      "goalsVsLeagueAvg": -0.0454,
+      "homeWinRate": 0.4464,
+      "matches": 168,
+      "over25Rate": 0.494
+    },
+    "R East": {
+      "avgGoalsPerMatch": 2.6044,
+      "awayWinRate": 0.2088,
+      "bttsRate": 0.5385,
+      "drawRate": 0.2747,
+      "goalsVsLeagueAvg": -0.1137,
+      "homeWinRate": 0.5165,
+      "matches": 91,
+      "over25Rate": 0.4945
+    },
+    "R Jones": {
+      "avgGoalsPerMatch": 2.8037,
+      "awayWinRate": 0.2991,
+      "bttsRate": 0.5888,
+      "drawRate": 0.243,
+      "goalsVsLeagueAvg": 0.0857,
+      "homeWinRate": 0.4579,
+      "matches": 107,
+      "over25Rate": 0.5607
+    },
+    "R Madley": {
+      "avgGoalsPerMatch": 2.6344,
+      "awayWinRate": 0.2258,
+      "bttsRate": 0.5054,
+      "drawRate": 0.3011,
+      "goalsVsLeagueAvg": -0.0836,
+      "homeWinRate": 0.4731,
+      "matches": 93,
+      "over25Rate": 0.4946
+    },
+    "R Styles": {
+      "avgGoalsPerMatch": 2.3837,
+      "awayWinRate": 0.2791,
+      "bttsRate": 0.4535,
+      "drawRate": 0.2674,
+      "goalsVsLeagueAvg": -0.3343,
+      "homeWinRate": 0.4535,
+      "matches": 172,
+      "over25Rate": 0.3895
+    },
+    "S Attwell": {
+      "avgGoalsPerMatch": 2.7899,
+      "awayWinRate": 0.2899,
+      "bttsRate": 0.5294,
+      "drawRate": 0.2689,
+      "goalsVsLeagueAvg": 0.0719,
+      "homeWinRate": 0.4412,
+      "matches": 238,
+      "over25Rate": 0.5252
+    },
+    "S Barrott": {
+      "avgGoalsPerMatch": 3.0714,
+      "awayWinRate": 0.3393,
+      "bttsRate": 0.5893,
+      "drawRate": 0.2321,
+      "goalsVsLeagueAvg": 0.3534,
+      "homeWinRate": 0.4286,
+      "matches": 56,
+      "over25Rate": 0.6429
+    },
+    "S Bennett": {
+      "avgGoalsPerMatch": 2.399,
+      "awayWinRate": 0.298,
+      "bttsRate": 0.4444,
+      "drawRate": 0.2626,
+      "goalsVsLeagueAvg": -0.3191,
+      "homeWinRate": 0.4394,
+      "matches": 198,
+      "over25Rate": 0.4293
+    },
+    "S Dunn": {
+      "avgGoalsPerMatch": 3.0714,
+      "awayWinRate": 0.3393,
+      "bttsRate": 0.4821,
+      "drawRate": 0.125,
+      "goalsVsLeagueAvg": 0.3534,
+      "homeWinRate": 0.5357,
+      "matches": 56,
+      "over25Rate": 0.5179
+    },
+    "S Hooper": {
+      "avgGoalsPerMatch": 2.9714,
+      "awayWinRate": 0.2929,
+      "bttsRate": 0.5429,
+      "drawRate": 0.2571,
+      "goalsVsLeagueAvg": 0.2534,
+      "homeWinRate": 0.45,
+      "matches": 140,
+      "over25Rate": 0.5357
+    },
+    "U Rennie": {
+      "avgGoalsPerMatch": 2.7216,
+      "awayWinRate": 0.2577,
+      "bttsRate": 0.5567,
+      "drawRate": 0.2474,
+      "goalsVsLeagueAvg": 0.0036,
+      "homeWinRate": 0.4948,
+      "matches": 97,
+      "over25Rate": 0.4948
+    }
+  },
   "referenceYear": 2026,
+  "seasonStats": {
+    "1993/94": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1515,
+      "avgHomeGoals": 1.4351,
+      "avgTotalGoals": 2.5866,
+      "awayWinRate": 0.2771,
+      "bttsRate": 0.5238,
+      "drawRate": 0.3074,
+      "homeWinRate": 0.4156,
+      "isAnomalous": false,
+      "matches": 462,
+      "over25Rate": 0.4675
+    },
+    "1994/95": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0779,
+      "avgHomeGoals": 1.5087,
+      "avgTotalGoals": 2.5866,
+      "awayWinRate": 0.2662,
+      "bttsRate": 0.5087,
+      "drawRate": 0.29,
+      "homeWinRate": 0.4437,
+      "isAnomalous": false,
+      "matches": 462,
+      "over25Rate": 0.4784
+    },
+    "1995/96": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0737,
+      "avgHomeGoals": 1.5263,
+      "avgTotalGoals": 2.6,
+      "awayWinRate": 0.2526,
+      "bttsRate": 0.5026,
+      "drawRate": 0.2579,
+      "homeWinRate": 0.4895,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4579
+    },
+    "1996/97": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0816,
+      "avgHomeGoals": 1.4711,
+      "avgTotalGoals": 2.5526,
+      "awayWinRate": 0.2605,
+      "bttsRate": 0.5079,
+      "drawRate": 0.3132,
+      "homeWinRate": 0.4263,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4553
+    },
+    "1997/98": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1237,
+      "avgHomeGoals": 1.5579,
+      "avgTotalGoals": 2.6816,
+      "awayWinRate": 0.2658,
+      "bttsRate": 0.4816,
+      "drawRate": 0.25,
+      "homeWinRate": 0.4842,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4868
+    },
+    "1998/99": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0684,
+      "avgHomeGoals": 1.4553,
+      "avgTotalGoals": 2.5237,
+      "awayWinRate": 0.2526,
+      "bttsRate": 0.5,
+      "drawRate": 0.3026,
+      "homeWinRate": 0.4447,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4789
+    },
+    "1999/00": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1184,
+      "avgHomeGoals": 1.6711,
+      "avgTotalGoals": 2.7895,
+      "awayWinRate": 0.2658,
+      "bttsRate": 0.5158,
+      "drawRate": 0.2421,
+      "homeWinRate": 0.4921,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5079
+    },
+    "2000/01": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0658,
+      "avgHomeGoals": 1.5447,
+      "avgTotalGoals": 2.6105,
+      "awayWinRate": 0.25,
+      "bttsRate": 0.5053,
+      "drawRate": 0.2658,
+      "homeWinRate": 0.4842,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4868
+    },
+    "2001/02": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1684,
+      "avgHomeGoals": 1.4658,
+      "avgTotalGoals": 2.6342,
+      "awayWinRate": 0.3,
+      "bttsRate": 0.5,
+      "drawRate": 0.2658,
+      "homeWinRate": 0.4342,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4737
+    },
+    "2002/03": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1316,
+      "avgHomeGoals": 1.5,
+      "avgTotalGoals": 2.6316,
+      "awayWinRate": 0.2711,
+      "bttsRate": 0.5132,
+      "drawRate": 0.2368,
+      "homeWinRate": 0.4921,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4895
+    },
+    "2003/04": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1433,
+      "avgHomeGoals": 1.4925,
+      "avgTotalGoals": 2.6358,
+      "awayWinRate": 0.2746,
+      "bttsRate": 0.5075,
+      "drawRate": 0.2776,
+      "homeWinRate": 0.4478,
+      "isAnomalous": false,
+      "matches": 335,
+      "over25Rate": 0.5075
+    },
+    "2004/05": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0716,
+      "avgHomeGoals": 1.4687,
+      "avgTotalGoals": 2.5403,
+      "awayWinRate": 0.2657,
+      "bttsRate": 0.4955,
+      "drawRate": 0.2866,
+      "homeWinRate": 0.4478,
+      "isAnomalous": false,
+      "matches": 335,
+      "over25Rate": 0.4507
+    },
+    "2005/06": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0237,
+      "avgHomeGoals": 1.4605,
+      "avgTotalGoals": 2.4842,
+      "awayWinRate": 0.2921,
+      "bttsRate": 0.4421,
+      "drawRate": 0.2026,
+      "homeWinRate": 0.5053,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.45
+    },
+    "2006/07": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 0.9974,
+      "avgHomeGoals": 1.4526,
+      "avgTotalGoals": 2.45,
+      "awayWinRate": 0.2632,
+      "bttsRate": 0.4763,
+      "drawRate": 0.2579,
+      "homeWinRate": 0.4789,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4684
+    },
+    "2007/08": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1079,
+      "avgHomeGoals": 1.5289,
+      "avgTotalGoals": 2.6368,
+      "awayWinRate": 0.2737,
+      "bttsRate": 0.4947,
+      "drawRate": 0.2632,
+      "homeWinRate": 0.4632,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.45
+    },
+    "2008/09": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0789,
+      "avgHomeGoals": 1.4,
+      "avgTotalGoals": 2.4789,
+      "awayWinRate": 0.2895,
+      "bttsRate": 0.4605,
+      "drawRate": 0.2553,
+      "homeWinRate": 0.4553,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4789
+    },
+    "2009/10": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0737,
+      "avgHomeGoals": 1.6974,
+      "avgTotalGoals": 2.7711,
+      "awayWinRate": 0.2395,
+      "bttsRate": 0.5026,
+      "drawRate": 0.2526,
+      "homeWinRate": 0.5079,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5263
+    },
+    "2010/11": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1737,
+      "avgHomeGoals": 1.6237,
+      "avgTotalGoals": 2.7974,
+      "awayWinRate": 0.2368,
+      "bttsRate": 0.5632,
+      "drawRate": 0.2921,
+      "homeWinRate": 0.4711,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5421
+    },
+    "2011/12": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2158,
+      "avgHomeGoals": 1.5895,
+      "avgTotalGoals": 2.8053,
+      "awayWinRate": 0.3053,
+      "bttsRate": 0.5289,
+      "drawRate": 0.2447,
+      "homeWinRate": 0.45,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5368
+    },
+    "2012/13": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2395,
+      "avgHomeGoals": 1.5579,
+      "avgTotalGoals": 2.7974,
+      "awayWinRate": 0.2789,
+      "bttsRate": 0.5658,
+      "drawRate": 0.2842,
+      "homeWinRate": 0.4368,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5579
+    },
+    "2013/14": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1947,
+      "avgHomeGoals": 1.5737,
+      "avgTotalGoals": 2.7684,
+      "awayWinRate": 0.3237,
+      "bttsRate": 0.4605,
+      "drawRate": 0.2053,
+      "homeWinRate": 0.4711,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5158
+    },
+    "2014/15": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.0921,
+      "avgHomeGoals": 1.4737,
+      "avgTotalGoals": 2.5658,
+      "awayWinRate": 0.3026,
+      "bttsRate": 0.4921,
+      "drawRate": 0.2447,
+      "homeWinRate": 0.4526,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.4842
+    },
+    "2015/16": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2079,
+      "avgHomeGoals": 1.4921,
+      "avgTotalGoals": 2.7,
+      "awayWinRate": 0.3053,
+      "bttsRate": 0.5184,
+      "drawRate": 0.2816,
+      "homeWinRate": 0.4132,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5289
+    },
+    "2016/17": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2026,
+      "avgHomeGoals": 1.5974,
+      "avgTotalGoals": 2.8,
+      "awayWinRate": 0.2868,
+      "bttsRate": 0.5079,
+      "drawRate": 0.2211,
+      "homeWinRate": 0.4921,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5421
+    },
+    "2017/18": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.1474,
+      "avgHomeGoals": 1.5316,
+      "avgTotalGoals": 2.6789,
+      "awayWinRate": 0.2842,
+      "bttsRate": 0.4895,
+      "drawRate": 0.2605,
+      "homeWinRate": 0.4553,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5105
+    },
+    "2018/19": {
+      "anomalyReasons": [
+        "drawRate 18.7% is -6.8% vs mean 25.5%"
+      ],
+      "avgAwayGoals": 1.2526,
+      "avgHomeGoals": 1.5684,
+      "avgTotalGoals": 2.8211,
+      "awayWinRate": 0.3368,
+      "bttsRate": 0.5132,
+      "drawRate": 0.1868,
+      "homeWinRate": 0.4763,
+      "isAnomalous": true,
+      "matches": 380,
+      "over25Rate": 0.5368
+    },
+    "2019/20": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2053,
+      "avgHomeGoals": 1.5158,
+      "avgTotalGoals": 2.7211,
+      "awayWinRate": 0.3053,
+      "bttsRate": 0.5105,
+      "drawRate": 0.2421,
+      "homeWinRate": 0.4526,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5211
+    },
+    "2020/21": {
+      "anomalyReasons": [
+        "homeWinRate 37.9% is -7.7% vs 33-season mean 45.6%",
+        "awayWinRate 40.3% is +11.4% vs mean 28.9%"
+      ],
+      "avgAwayGoals": 1.3421,
+      "avgHomeGoals": 1.3526,
+      "avgTotalGoals": 2.6947,
+      "awayWinRate": 0.4026,
+      "bttsRate": 0.4895,
+      "drawRate": 0.2184,
+      "homeWinRate": 0.3789,
+      "isAnomalous": true,
+      "matches": 380,
+      "over25Rate": 0.5
+    },
+    "2021/22": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.3053,
+      "avgHomeGoals": 1.5132,
+      "avgTotalGoals": 2.8184,
+      "awayWinRate": 0.3395,
+      "bttsRate": 0.5,
+      "drawRate": 0.2316,
+      "homeWinRate": 0.4289,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5395
+    },
+    "2022/23": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2184,
+      "avgHomeGoals": 1.6342,
+      "avgTotalGoals": 2.8526,
+      "awayWinRate": 0.2868,
+      "bttsRate": 0.5158,
+      "drawRate": 0.2289,
+      "homeWinRate": 0.4842,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5263
+    },
+    "2023/24": {
+      "anomalyReasons": [
+        "avgTotalGoals 3.28 is +0.58 vs mean 2.70"
+      ],
+      "avgAwayGoals": 1.4789,
+      "avgHomeGoals": 1.8,
+      "avgTotalGoals": 3.2789,
+      "awayWinRate": 0.3237,
+      "bttsRate": 0.6158,
+      "drawRate": 0.2158,
+      "homeWinRate": 0.4605,
+      "isAnomalous": true,
+      "matches": 380,
+      "over25Rate": 0.6474
+    },
+    "2024/25": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.4211,
+      "avgHomeGoals": 1.5132,
+      "avgTotalGoals": 2.9342,
+      "awayWinRate": 0.3474,
+      "bttsRate": 0.5737,
+      "drawRate": 0.2447,
+      "homeWinRate": 0.4079,
+      "isAnomalous": false,
+      "matches": 380,
+      "over25Rate": 0.5658
+    },
+    "2025/26": {
+      "anomalyReasons": [],
+      "avgAwayGoals": 1.2392,
+      "avgHomeGoals": 1.495,
+      "avgTotalGoals": 2.7342,
+      "awayWinRate": 0.3123,
+      "bttsRate": 0.5581,
+      "drawRate": 0.2724,
+      "homeWinRate": 0.4153,
+      "isAnomalous": false,
+      "matches": 301,
+      "over25Rate": 0.5282
+    }
+  },
   "seasons": [
     "1993/94",
     "1994/95",
@@ -26303,6 +27204,14 @@
       },
       "failedToScoreRateAway": 0.2196,
       "failedToScoreRateHome": 0.1288,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.8355,
+        "avgSecondHalfGoalsScored": 1.0207,
+        "capitulationLossRate": 0.0164,
+        "comebackWinRate": 0.031,
+        "firstHalfShare": 0.4501,
+        "matches": 1161
+      },
       "homeGoalsConceded": 0.8567,
       "homeGoalsScored": 2.058,
       "over25Rate": 0.5349,
@@ -26323,6 +27232,14 @@
       },
       "failedToScoreRateAway": 0.3263,
       "failedToScoreRateHome": 0.2673,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.562,
+        "avgSecondHalfGoalsScored": 0.7032,
+        "capitulationLossRate": 0.0248,
+        "comebackWinRate": 0.0219,
+        "firstHalfShare": 0.4442,
+        "matches": 1048
+      },
       "homeGoalsConceded": 1.1274,
       "homeGoalsScored": 1.377,
       "over25Rate": 0.4867,
@@ -26343,6 +27260,14 @@
       },
       "failedToScoreRateAway": 0.4211,
       "failedToScoreRateHome": 0.2632,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5789,
+        "avgSecondHalfGoalsScored": 0.3947,
+        "capitulationLossRate": 0.0789,
+        "comebackWinRate": 0.0,
+        "firstHalfShare": 0.5946,
+        "matches": 38
+      },
       "homeGoalsConceded": 1.8421,
       "homeGoalsScored": 1.3158,
       "over25Rate": 0.5789,
@@ -26363,6 +27288,14 @@
       },
       "failedToScoreRateAway": 0.3984,
       "failedToScoreRateHome": 0.3077,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4457,
+        "avgSecondHalfGoalsScored": 0.5775,
+        "capitulationLossRate": 0.0078,
+        "comebackWinRate": 0.0155,
+        "firstHalfShare": 0.4356,
+        "matches": 258
+      },
       "homeGoalsConceded": 1.0462,
       "homeGoalsScored": 1.2077,
       "over25Rate": 0.4264,
@@ -26383,6 +27316,14 @@
       },
       "failedToScoreRateAway": 0.3292,
       "failedToScoreRateHome": 0.2329,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5768,
+        "avgSecondHalfGoalsScored": 0.6839,
+        "capitulationLossRate": 0.0179,
+        "comebackWinRate": 0.0161,
+        "firstHalfShare": 0.4575,
+        "matches": 560
+      },
       "homeGoalsConceded": 1.1087,
       "homeGoalsScored": 1.5621,
       "over25Rate": 0.4969,
@@ -26403,6 +27344,14 @@
       },
       "failedToScoreRateAway": 0.3684,
       "failedToScoreRateHome": 0.0526,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.7368,
+        "avgSecondHalfGoalsScored": 0.7105,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0,
+        "firstHalfShare": 0.5091,
+        "matches": 38
+      },
       "homeGoalsConceded": 1.9474,
       "homeGoalsScored": 1.5789,
       "over25Rate": 0.7368,
@@ -26423,6 +27372,14 @@
       },
       "failedToScoreRateAway": 0.3607,
       "failedToScoreRateHome": 0.281,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5391,
+        "avgSecondHalfGoalsScored": 0.6214,
+        "capitulationLossRate": 0.0185,
+        "comebackWinRate": 0.0103,
+        "firstHalfShare": 0.4645,
+        "matches": 486
+      },
       "homeGoalsConceded": 1.2603,
       "homeGoalsScored": 1.2893,
       "over25Rate": 0.4918,
@@ -26443,6 +27400,14 @@
       },
       "failedToScoreRateAway": 0.3174,
       "failedToScoreRateHome": 0.2754,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5719,
+        "avgSecondHalfGoalsScored": 0.7275,
+        "capitulationLossRate": 0.018,
+        "comebackWinRate": 0.0359,
+        "firstHalfShare": 0.4401,
+        "matches": 334
+      },
       "homeGoalsConceded": 1.4072,
       "homeGoalsScored": 1.3593,
       "over25Rate": 0.5958,
@@ -26463,6 +27428,14 @@
       },
       "failedToScoreRateAway": 0.5789,
       "failedToScoreRateHome": 0.2895,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4474,
+        "avgSecondHalfGoalsScored": 0.4474,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0,
+        "firstHalfShare": 0.5,
+        "matches": 76
+      },
       "homeGoalsConceded": 1.5263,
       "homeGoalsScored": 1.2105,
       "over25Rate": 0.4605,
@@ -26483,6 +27456,14 @@
       },
       "failedToScoreRateAway": 0.2857,
       "failedToScoreRateHome": 0.2198,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.6593,
+        "avgSecondHalfGoalsScored": 0.8462,
+        "capitulationLossRate": 0.044,
+        "comebackWinRate": 0.033,
+        "firstHalfShare": 0.438,
+        "matches": 182
+      },
       "homeGoalsConceded": 1.3736,
       "homeGoalsScored": 1.6703,
       "over25Rate": 0.5604,
@@ -26503,6 +27484,14 @@
       },
       "failedToScoreRateAway": 0.2934,
       "failedToScoreRateHome": 0.2754,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5419,
+        "avgSecondHalfGoalsScored": 0.7216,
+        "capitulationLossRate": 0.024,
+        "comebackWinRate": 0.0299,
+        "firstHalfShare": 0.4289,
+        "matches": 334
+      },
       "homeGoalsConceded": 1.2874,
       "homeGoalsScored": 1.3353,
       "over25Rate": 0.497,
@@ -26523,6 +27512,14 @@
       },
       "failedToScoreRateAway": 0.414,
       "failedToScoreRateHome": 0.3065,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.457,
+        "avgSecondHalfGoalsScored": 0.5457,
+        "capitulationLossRate": 0.0108,
+        "comebackWinRate": 0.0161,
+        "firstHalfShare": 0.4558,
+        "matches": 372
+      },
       "homeGoalsConceded": 1.4032,
       "homeGoalsScored": 1.0484,
       "over25Rate": 0.4785,
@@ -26543,6 +27540,14 @@
       },
       "failedToScoreRateAway": 0.5526,
       "failedToScoreRateHome": 0.3947,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.2763,
+        "avgSecondHalfGoalsScored": 0.5921,
+        "capitulationLossRate": 0.0132,
+        "comebackWinRate": 0.0263,
+        "firstHalfShare": 0.3182,
+        "matches": 76
+      },
       "homeGoalsConceded": 1.9211,
       "homeGoalsScored": 1.0789,
       "over25Rate": 0.5263,
@@ -26563,6 +27568,14 @@
       },
       "failedToScoreRateAway": 0.3758,
       "failedToScoreRateHome": 0.2789,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5068,
+        "avgSecondHalfGoalsScored": 0.625,
+        "capitulationLossRate": 0.027,
+        "comebackWinRate": 0.0203,
+        "firstHalfShare": 0.4478,
+        "matches": 296
+      },
       "homeGoalsConceded": 1.2857,
       "homeGoalsScored": 1.3129,
       "over25Rate": 0.4797,
@@ -26583,6 +27596,14 @@
       },
       "failedToScoreRateAway": 0.2395,
       "failedToScoreRateHome": 0.135,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.8034,
+        "avgSecondHalfGoalsScored": 0.956,
+        "capitulationLossRate": 0.0172,
+        "comebackWinRate": 0.0284,
+        "firstHalfShare": 0.4566,
+        "matches": 1160
+      },
       "homeGoalsConceded": 0.8714,
       "homeGoalsScored": 1.9437,
       "over25Rate": 0.5113,
@@ -26603,6 +27624,14 @@
       },
       "failedToScoreRateAway": 0.4423,
       "failedToScoreRateHome": 0.2949,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4825,
+        "avgSecondHalfGoalsScored": 0.6053,
+        "capitulationLossRate": 0.0132,
+        "comebackWinRate": 0.0088,
+        "firstHalfShare": 0.4435,
+        "matches": 228
+      },
       "homeGoalsConceded": 1.0962,
       "homeGoalsScored": 1.2179,
       "over25Rate": 0.4615,
@@ -26623,6 +27652,14 @@
       },
       "failedToScoreRateAway": 0.3367,
       "failedToScoreRateHome": 0.3533,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4642,
+        "avgSecondHalfGoalsScored": 0.6846,
+        "capitulationLossRate": 0.0269,
+        "comebackWinRate": 0.0161,
+        "firstHalfShare": 0.4041,
+        "matches": 558
+      },
       "homeGoalsConceded": 1.2967,
       "homeGoalsScored": 1.1233,
       "over25Rate": 0.4633,
@@ -26643,6 +27680,14 @@
       },
       "failedToScoreRateAway": 0.4286,
       "failedToScoreRateHome": 0.3534,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4511,
+        "avgSecondHalfGoalsScored": 0.5677,
+        "capitulationLossRate": 0.0113,
+        "comebackWinRate": 0.0075,
+        "firstHalfShare": 0.4428,
+        "matches": 266
+      },
       "homeGoalsConceded": 1.3308,
       "homeGoalsScored": 1.1805,
       "over25Rate": 0.4699,
@@ -26663,6 +27708,14 @@
       },
       "failedToScoreRateAway": 0.3494,
       "failedToScoreRateHome": 0.2276,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5874,
+        "avgSecondHalfGoalsScored": 0.6977,
+        "capitulationLossRate": 0.0233,
+        "comebackWinRate": 0.0172,
+        "firstHalfShare": 0.4571,
+        "matches": 1161
+      },
       "homeGoalsConceded": 1.1186,
       "homeGoalsScored": 1.492,
       "over25Rate": 0.457,
@@ -26683,6 +27736,14 @@
       },
       "failedToScoreRateAway": 0.3778,
       "failedToScoreRateHome": 0.2585,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4844,
+        "avgSecondHalfGoalsScored": 0.6733,
+        "capitulationLossRate": 0.0199,
+        "comebackWinRate": 0.027,
+        "firstHalfShare": 0.4184,
+        "matches": 704
+      },
       "homeGoalsConceded": 1.2955,
       "homeGoalsScored": 1.3665,
       "over25Rate": 0.5071,
@@ -26703,6 +27764,14 @@
       },
       "failedToScoreRateAway": 0.6053,
       "failedToScoreRateHome": 0.4474,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.3421,
+        "avgSecondHalfGoalsScored": 0.3158,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0,
+        "firstHalfShare": 0.52,
+        "matches": 76
+      },
       "homeGoalsConceded": 1.4737,
       "homeGoalsScored": 0.6842,
       "over25Rate": 0.4079,
@@ -26723,6 +27792,14 @@
       },
       "failedToScoreRateAway": 0.4737,
       "failedToScoreRateHome": 0.3368,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4263,
+        "avgSecondHalfGoalsScored": 0.5263,
+        "capitulationLossRate": 0.0105,
+        "comebackWinRate": 0.0211,
+        "firstHalfShare": 0.4475,
+        "matches": 190
+      },
       "homeGoalsConceded": 1.5263,
       "homeGoalsScored": 1.1263,
       "over25Rate": 0.4737,
@@ -26743,6 +27820,14 @@
       },
       "failedToScoreRateAway": 0.3535,
       "failedToScoreRateHome": 0.2929,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5263,
+        "avgSecondHalfGoalsScored": 0.6491,
+        "capitulationLossRate": 0.0351,
+        "comebackWinRate": 0.0263,
+        "firstHalfShare": 0.4478,
+        "matches": 114
+      },
       "homeGoalsConceded": 1.5051,
       "homeGoalsScored": 1.1111,
       "over25Rate": 0.5202,
@@ -26763,6 +27848,14 @@
       },
       "failedToScoreRateAway": 0.3227,
       "failedToScoreRateHome": 0.2721,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.6237,
+        "avgSecondHalfGoalsScored": 0.7131,
+        "capitulationLossRate": 0.0208,
+        "comebackWinRate": 0.0229,
+        "firstHalfShare": 0.4666,
+        "matches": 481
+      },
       "homeGoalsConceded": 1.1555,
       "homeGoalsScored": 1.4417,
       "over25Rate": 0.5115,
@@ -26783,6 +27876,14 @@
       },
       "failedToScoreRateAway": 0.2853,
       "failedToScoreRateHome": 0.2711,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5835,
+        "avgSecondHalfGoalsScored": 0.752,
+        "capitulationLossRate": 0.0187,
+        "comebackWinRate": 0.0172,
+        "firstHalfShare": 0.4369,
+        "matches": 641
+      },
       "homeGoalsConceded": 1.3061,
       "homeGoalsScored": 1.379,
       "over25Rate": 0.5315,
@@ -26803,6 +27904,14 @@
       },
       "failedToScoreRateAway": 0.2484,
       "failedToScoreRateHome": 0.1385,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.8002,
+        "avgSecondHalfGoalsScored": 1.0258,
+        "capitulationLossRate": 0.006,
+        "comebackWinRate": 0.025,
+        "firstHalfShare": 0.4382,
+        "matches": 1161
+      },
       "homeGoalsConceded": 0.81,
       "homeGoalsScored": 2.0467,
       "over25Rate": 0.5398,
@@ -26823,6 +27932,14 @@
       },
       "failedToScoreRateAway": 0.2105,
       "failedToScoreRateHome": 0.0526,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5263,
+        "avgSecondHalfGoalsScored": 0.8421,
+        "capitulationLossRate": 0.1316,
+        "comebackWinRate": 0.0,
+        "firstHalfShare": 0.3846,
+        "matches": 38
+      },
       "homeGoalsConceded": 1.9474,
       "homeGoalsScored": 1.4737,
       "over25Rate": 0.7105,
@@ -26843,6 +27960,14 @@
       },
       "failedToScoreRateAway": 0.2614,
       "failedToScoreRateHome": 0.1727,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.8702,
+        "avgSecondHalfGoalsScored": 1.001,
+        "capitulationLossRate": 0.0206,
+        "comebackWinRate": 0.0175,
+        "firstHalfShare": 0.4651,
+        "matches": 971
+      },
       "homeGoalsConceded": 0.9336,
       "homeGoalsScored": 2.0968,
       "over25Rate": 0.5488,
@@ -26863,6 +27988,14 @@
       },
       "failedToScoreRateAway": 0.1961,
       "failedToScoreRateHome": 0.138,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.8165,
+        "avgSecondHalfGoalsScored": 1.0431,
+        "capitulationLossRate": 0.0043,
+        "comebackWinRate": 0.0345,
+        "firstHalfShare": 0.4391,
+        "matches": 1161
+      },
       "homeGoalsConceded": 0.7897,
       "homeGoalsScored": 2.0706,
       "over25Rate": 0.5333,
@@ -26883,6 +28016,14 @@
       },
       "failedToScoreRateAway": 0.4291,
       "failedToScoreRateHome": 0.2928,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5038,
+        "avgSecondHalfGoalsScored": 0.6088,
+        "capitulationLossRate": 0.021,
+        "comebackWinRate": 0.0095,
+        "firstHalfShare": 0.4528,
+        "matches": 524
+      },
       "homeGoalsConceded": 1.2433,
       "homeGoalsScored": 1.3384,
       "over25Rate": 0.4427,
@@ -26903,6 +28044,14 @@
       },
       "failedToScoreRateAway": 0.3596,
       "failedToScoreRateHome": 0.1935,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.631,
+        "avgSecondHalfGoalsScored": 0.7362,
+        "capitulationLossRate": 0.024,
+        "comebackWinRate": 0.0231,
+        "firstHalfShare": 0.4615,
+        "matches": 1084
+      },
       "homeGoalsConceded": 1.1455,
       "homeGoalsScored": 1.6815,
       "over25Rate": 0.5248,
@@ -26923,6 +28072,14 @@
       },
       "failedToScoreRateAway": 0.4913,
       "failedToScoreRateHome": 0.3064,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.3931,
+        "avgSecondHalfGoalsScored": 0.5458,
+        "capitulationLossRate": 0.0153,
+        "comebackWinRate": 0.0153,
+        "firstHalfShare": 0.4187,
+        "matches": 262
+      },
       "homeGoalsConceded": 1.5029,
       "homeGoalsScored": 1.1965,
       "over25Rate": 0.5202,
@@ -26943,6 +28100,14 @@
       },
       "failedToScoreRateAway": 0.3333,
       "failedToScoreRateHome": 0.2667,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5426,
+        "avgSecondHalfGoalsScored": 0.5775,
+        "capitulationLossRate": 0.0194,
+        "comebackWinRate": 0.0078,
+        "firstHalfShare": 0.4844,
+        "matches": 258
+      },
       "homeGoalsConceded": 1.2133,
       "homeGoalsScored": 1.2733,
       "over25Rate": 0.4733,
@@ -26983,6 +28148,14 @@
       },
       "failedToScoreRateAway": 0.4615,
       "failedToScoreRateHome": 0.2891,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4419,
+        "avgSecondHalfGoalsScored": 0.6318,
+        "capitulationLossRate": 0.0271,
+        "comebackWinRate": 0.0271,
+        "firstHalfShare": 0.4116,
+        "matches": 258
+      },
       "homeGoalsConceded": 1.2109,
       "homeGoalsScored": 1.3281,
       "over25Rate": 0.469,
@@ -27003,6 +28176,14 @@
       },
       "failedToScoreRateAway": 0.3475,
       "failedToScoreRateHome": 0.2288,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4145,
+        "avgSecondHalfGoalsScored": 0.5921,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0132,
+        "firstHalfShare": 0.4118,
+        "matches": 152
+      },
       "homeGoalsConceded": 1.339,
       "homeGoalsScored": 1.2966,
       "over25Rate": 0.5466,
@@ -27023,6 +28204,14 @@
       },
       "failedToScoreRateAway": 0.3333,
       "failedToScoreRateHome": 0.3333,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4474,
+        "avgSecondHalfGoalsScored": 0.7456,
+        "capitulationLossRate": 0.0439,
+        "comebackWinRate": 0.0263,
+        "firstHalfShare": 0.375,
+        "matches": 114
+      },
       "homeGoalsConceded": 1.3684,
       "homeGoalsScored": 1.2456,
       "over25Rate": 0.5351,
@@ -27043,6 +28232,14 @@
       },
       "failedToScoreRateAway": 0.4948,
       "failedToScoreRateHome": 0.3093,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.3553,
+        "avgSecondHalfGoalsScored": 0.4737,
+        "capitulationLossRate": 0.0132,
+        "comebackWinRate": 0.0197,
+        "firstHalfShare": 0.4286,
+        "matches": 152
+      },
       "homeGoalsConceded": 1.4742,
       "homeGoalsScored": 1.0619,
       "over25Rate": 0.4794,
@@ -27063,6 +28260,14 @@
       },
       "failedToScoreRateAway": 0.3285,
       "failedToScoreRateHome": 0.292,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4842,
+        "avgSecondHalfGoalsScored": 0.7211,
+        "capitulationLossRate": 0.0211,
+        "comebackWinRate": 0.0158,
+        "firstHalfShare": 0.4017,
+        "matches": 190
+      },
       "homeGoalsConceded": 1.1752,
       "homeGoalsScored": 1.4599,
       "over25Rate": 0.4854,
@@ -27083,6 +28288,14 @@
       },
       "failedToScoreRateAway": 0.3656,
       "failedToScoreRateHome": 0.2648,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5115,
+        "avgSecondHalfGoalsScored": 0.6445,
+        "capitulationLossRate": 0.0375,
+        "comebackWinRate": 0.0133,
+        "firstHalfShare": 0.4425,
+        "matches": 827
+      },
       "homeGoalsConceded": 1.3063,
       "homeGoalsScored": 1.3611,
       "over25Rate": 0.4841,
@@ -27103,6 +28316,14 @@
       },
       "failedToScoreRateAway": 0.4316,
       "failedToScoreRateHome": 0.2368,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4816,
+        "avgSecondHalfGoalsScored": 0.5658,
+        "capitulationLossRate": 0.0211,
+        "comebackWinRate": 0.0184,
+        "firstHalfShare": 0.4598,
+        "matches": 380
+      },
       "homeGoalsConceded": 1.1211,
       "homeGoalsScored": 1.3053,
       "over25Rate": 0.4474,
@@ -27123,6 +28344,14 @@
       },
       "failedToScoreRateAway": 0.4514,
       "failedToScoreRateHome": 0.3041,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4389,
+        "avgSecondHalfGoalsScored": 0.5674,
+        "capitulationLossRate": 0.0282,
+        "comebackWinRate": 0.0125,
+        "firstHalfShare": 0.4361,
+        "matches": 638
+      },
       "homeGoalsConceded": 1.2069,
       "homeGoalsScored": 1.1223,
       "over25Rate": 0.453,
@@ -27143,6 +28372,14 @@
       },
       "failedToScoreRateAway": 0.406,
       "failedToScoreRateHome": 0.2782,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4662,
+        "avgSecondHalfGoalsScored": 0.6842,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0113,
+        "firstHalfShare": 0.4052,
+        "matches": 266
+      },
       "homeGoalsConceded": 1.2782,
       "homeGoalsScored": 1.3459,
       "over25Rate": 0.485,
@@ -27183,6 +28420,14 @@
       },
       "failedToScoreRateAway": 0.2605,
       "failedToScoreRateHome": 0.1766,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.6813,
+        "avgSecondHalfGoalsScored": 0.8725,
+        "capitulationLossRate": 0.0293,
+        "comebackWinRate": 0.0336,
+        "firstHalfShare": 0.4385,
+        "matches": 1161
+      },
       "homeGoalsConceded": 1.1268,
       "homeGoalsScored": 1.7287,
       "over25Rate": 0.539,
@@ -27203,6 +28448,14 @@
       },
       "failedToScoreRateAway": 0.4868,
       "failedToScoreRateHome": 0.2895,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4276,
+        "avgSecondHalfGoalsScored": 0.5921,
+        "capitulationLossRate": 0.0263,
+        "comebackWinRate": 0.0099,
+        "firstHalfShare": 0.4194,
+        "matches": 304
+      },
       "homeGoalsConceded": 1.5526,
       "homeGoalsScored": 1.1842,
       "over25Rate": 0.5263,
@@ -27223,6 +28476,14 @@
       },
       "failedToScoreRateAway": 0.4245,
       "failedToScoreRateHome": 0.2869,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4294,
+        "avgSecondHalfGoalsScored": 0.6053,
+        "capitulationLossRate": 0.0245,
+        "comebackWinRate": 0.0123,
+        "firstHalfShare": 0.415,
+        "matches": 489
+      },
       "homeGoalsConceded": 1.4672,
       "homeGoalsScored": 1.1967,
       "over25Rate": 0.5031,
@@ -27243,6 +28504,14 @@
       },
       "failedToScoreRateAway": 0.3772,
       "failedToScoreRateHome": 0.2298,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5672,
+        "avgSecondHalfGoalsScored": 0.6903,
+        "capitulationLossRate": 0.0294,
+        "comebackWinRate": 0.0256,
+        "firstHalfShare": 0.4511,
+        "matches": 1056
+      },
       "homeGoalsConceded": 1.314,
       "homeGoalsScored": 1.4526,
       "over25Rate": 0.514,
@@ -27263,6 +28532,14 @@
       },
       "failedToScoreRateAway": 0.3487,
       "failedToScoreRateHome": 0.3224,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4704,
+        "avgSecondHalfGoalsScored": 0.5691,
+        "capitulationLossRate": 0.0362,
+        "comebackWinRate": 0.0099,
+        "firstHalfShare": 0.4525,
+        "matches": 304
+      },
       "homeGoalsConceded": 1.4145,
       "homeGoalsScored": 1.1118,
       "over25Rate": 0.4901,
@@ -27283,6 +28560,14 @@
       },
       "failedToScoreRateAway": 0.3358,
       "failedToScoreRateHome": 0.2263,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.5053,
+        "avgSecondHalfGoalsScored": 0.6737,
+        "capitulationLossRate": 0.0,
+        "comebackWinRate": 0.0158,
+        "firstHalfShare": 0.4286,
+        "matches": 190
+      },
       "homeGoalsConceded": 1.2774,
       "homeGoalsScored": 1.3577,
       "over25Rate": 0.5036,
@@ -27303,6 +28588,14 @@
       },
       "failedToScoreRateAway": 0.3784,
       "failedToScoreRateHome": 0.2883,
+      "halfTime": {
+        "avgFirstHalfGoalsScored": 0.4527,
+        "avgSecondHalfGoalsScored": 0.6306,
+        "capitulationLossRate": 0.0315,
+        "comebackWinRate": 0.0338,
+        "firstHalfShare": 0.4179,
+        "matches": 444
+      },
       "homeGoalsConceded": 1.464,
       "homeGoalsScored": 1.2072,
       "over25Rate": 0.4887,
