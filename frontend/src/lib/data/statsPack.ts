@@ -17,6 +17,9 @@ export interface HalfTimeTempo {
   firstHalfShare: number; // proportion of total goals scored in the first half
   comebackWinRate: number; // rate of wins despite trailing at HT
   capitulationLossRate: number; // rate of losses despite leading at HT
+  // Rare: rescues from ≥2 goals down at HT to at least a draw at FT.
+  comebacksFromTwoDownRate?: number;
+  comebacksFromTwoDownCount?: number;
 }
 
 /**
@@ -73,6 +76,63 @@ export interface Streaks {
   longestScoringRunAway: number;
   longestCleanSheetRunHome: number;
   longestCleanSheetRunAway: number;
+  longestWinRun?: number;
+  longestLosingRun?: number;
+  longestWinlessRun?: number;
+}
+
+/**
+ * Performance split vs a tier of opposition — the single strongest signal
+ * for "big teams score 3+ against weak teams" that the aggregated goal
+ * average blurs. `scored3PlusRate` vs bottom-6 opponents captures blowout
+ * potential directly; compare against `leagueGoalFrequency.homeScored3PlusRate`
+ * for exceptionality.
+ */
+export interface OppositionTierStats {
+  matches: number;
+  avgGoalsScored: number;
+  avgGoalsConceded: number;
+  winRate: number;
+  scored3PlusRate: number;
+}
+
+export interface OppositionTierBlock {
+  top6?: OppositionTierStats; // opponent finished 1-6 in that season
+  mid?: OppositionTierStats; // opponent finished 7-14
+  bottom6?: OppositionTierStats; // opponent finished 15-20
+}
+
+/**
+ * Shot-to-goal conversion where the underlying CSV carries shot columns
+ * (post-2000 for most teams). Captures clinical finishing vs wasteful
+ * possession sides.
+ */
+export interface ShotEfficiencyVenue {
+  matches: number;
+  avgShotsFor: number;
+  avgShotsOnTargetFor?: number;
+  goalsPerShot: number;
+  goalsPerShotOnTarget?: number;
+}
+
+export interface ShotEfficiency {
+  home?: ShotEfficiencyVenue;
+  away?: ShotEfficiencyVenue;
+}
+
+/**
+ * Biggest-margin historical fixture scores for a pair. Use for UI context
+ * like "Arsenal's biggest home win over Burnley: 5-0 in 2017/18".
+ */
+export interface BiggestMargin {
+  score: string; // home-goals-first, e.g. "5-0"
+  margin: number;
+  season: string | null;
+}
+
+export interface BiggestMargins {
+  biggestHomeWin?: BiggestMargin;
+  biggestAwayWin?: BiggestMargin;
 }
 
 export interface LeagueGoalFrequency {
@@ -157,6 +217,13 @@ export interface TeamProfile {
   bigWin?: BigWin;
   // Longest consecutive scoring / clean-sheet runs on each side of the venue.
   streaks?: Streaks;
+  // Performance splits vs top-6 / mid / bottom-6 opposition (opponent's FINAL
+  // position in the same season). Primary signal for "favourite crushes
+  // underdog" lambda lifts.
+  oppositionTier?: OppositionTierBlock;
+  // Shot-to-goal conversion per venue, where CSV shot columns were populated
+  // (post-2000 era for most teams).
+  shotEfficiency?: ShotEfficiency;
 }
 
 export interface SeasonStats {
@@ -231,6 +298,9 @@ export interface PairStats {
   isDerby: boolean;
   // Optional — generator omits when the pair has <5 meetings with HT data.
   htFtMatrix?: HtFtMatrix;
+  // Biggest recorded home / away win margin in the fixture's 33-season
+  // history. Useful for UI context and establishing the historical ceiling.
+  biggestMargins?: BiggestMargins;
 }
 
 export interface MatchdayStats {

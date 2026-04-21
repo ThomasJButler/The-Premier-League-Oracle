@@ -698,6 +698,305 @@ def augment_team_goal_frequency(df, teams: dict[str, Any]) -> None:
         }
 
 
+def compute_season_positions(df) -> dict[tuple[str, str], int]:
+    """Final league position per (season, team).
+
+    Rebuilds each season's table from match results using standard PL tiebreak
+    (points desc, then goal difference desc, then goals-for desc). Only uses
+    completed matches (result + goals populated). Returns `{(season, team):
+    position}` with position 1 = top of table.
+
+    Drives the `oppositionTier` augment below — how a team performs against
+    top-6 / mid / bottom-6 sides is the cleanest "big teams batter weak teams"
+    signal the ensemble currently misses.
+    """
+    import pandas as pd
+
+    required = {'season', 'home_team', 'away_team', 'result', 'home_goals', 'away_goals'}
+    if not required.issubset(df.columns):
+        return {}
+
+    out: dict[tuple[str, str], int] = {}
+    completed = df.dropna(subset=['season', 'result', 'home_goals', 'away_goals'])
+    for season, s_df in completed.groupby('season'):
+        all_teams: set[str] = set(s_df['home_team']) | set(s_df['away_team'])
+        pts = {t: 0 for t in all_teams}
+        gf = {t: 0 for t in all_teams}  # goals for
+        gd = {t: 0 for t in all_teams}  # goal difference
+        for _, row in s_df.iterrows():
+            h = row['home_team']
+            a = row['away_team']
+            hg = int(row['home_goals'])
+            ag = int(row['away_goals'])
+            result = row['result']
+            if result == 'H':
+                pts[h] += 3
+            elif result == 'A':
+                pts[a] += 3
+            elif result == 'D':
+                pts[h] += 1
+                pts[a] += 1
+            gf[h] += hg
+            gf[a] += ag
+            gd[h] += hg - ag
+            gd[a] += ag - hg
+        ranked = sorted(
+            all_teams,
+            key=lambda t: (-pts[t], -gd[t], -gf[t]),
+        )
+        for i, t in enumerate(ranked):
+            out[(str(season), t)] = i + 1
+    return out
+
+
+def _tier_of_position(pos: int) -> str:
+    """Bucket a final league position into top6 / mid / bottom6."""
+    if pos <= 6:
+        return 'top6'
+    if pos <= 14:
+        return 'mid'
+    return 'bottom6'
+
+
+def augment_team_opposition_tier(df, teams: dict[str, Any], positions: dict[tuple[str, str], int]) -> None:
+    """For each team, compute performance splits vs top-6 / mid / bottom-6
+    opponents (opposition's FINAL position in the same season).
+
+    This is the single most useful "big teams dominate weak teams" signal the
+    model currently doesn't have. Arsenal's all-time home record against
+    bottom-6 sides is a genuinely different distribution from their record
+    against top-6 — the aggregated averages blur it.
+
+    Fields added to each team: `oppositionTier.top6`, `.mid`, `.bottom6`.
+    Each has `{matches, avgGoalsScored, avgGoalsConceded, winRate, scored3PlusRate}`
+    across both venues (home + away pooled).
+    """
+    import pandas as pd
+
+    if not positions:
+        return
+
+    for team, profile in teams.items():
+        # All matches this team played, with opponent's season-final position
+        my_rows = df[((df['home_team'] == team) | (df['away_team'] == team))
+                     & df['result'].notna() & df['home_goals'].notna() & df['away_goals'].notna()].copy()
+        if len(my_rows) == 0:
+            continue
+
+        def _tier_for_row(row):
+            opp = row['away_team'] if row['home_team'] == team else row['home_team']
+            pos = positions.get((str(row['season']), opp))
+            return _tier_of_position(pos) if pos is not None else None
+
+        my_rows['opp_tier'] = my_rows.apply(_tier_for_row, axis=1)
+
+        def _goals_for(row):
+            return row['home_goals'] if row['home_team'] == team else row['away_goals']
+
+        def _goals_against(row):
+            return row['away_goals'] if row['home_team'] == team else row['home_goals']
+
+        def _did_win(row):
+            result = row['result']
+            if row['home_team'] == team:
+                return result == 'H'
+            return result == 'A'
+
+        my_rows['goals_for'] = my_rows.apply(_goals_for, axis=1)
+        my_rows['goals_against'] = my_rows.apply(_goals_against, axis=1)
+        my_rows['win'] = my_rows.apply(_did_win, axis=1)
+
+        tier_block: dict[str, dict[str, Any]] = {}
+        for tier in ('top6', 'mid', 'bottom6'):
+            tier_rows = my_rows[my_rows['opp_tier'] == tier]
+            n = len(tier_rows)
+            if n == 0:
+                continue
+            gf = tier_rows['goals_for'].to_numpy(dtype=float)
+            ga = tier_rows['goals_against'].to_numpy(dtype=float)
+            wins = int(tier_rows['win'].sum())
+            three_plus = int((gf >= 3).sum())
+            tier_block[tier] = {
+                'matches': int(n),
+                'avgGoalsScored': round(float(gf.mean()), 4),
+                'avgGoalsConceded': round(float(ga.mean()), 4),
+                'winRate': round(wins / n, 4),
+                'scored3PlusRate': round(three_plus / n, 4),
+            }
+
+        if tier_block:
+            profile['oppositionTier'] = tier_block
+
+
+def augment_pair_margins(df, pairs: dict[str, Any]) -> None:
+    """For each ordered (home, away) pair, find the biggest historical home
+    win and biggest away win. Surfaces the known ceiling of what a fixture
+    has produced — "Arsenal's biggest home win over Burnley: 7-0 in 2019"
+    kind of context.
+    """
+    for key, stats in pairs.items():
+        home_name, away_name = key.split('|', 1)
+        rows = df[(df['home_team'] == home_name) & (df['away_team'] == away_name)
+                  & df['result'].notna() & df['home_goals'].notna()]
+        if len(rows) == 0:
+            continue
+
+        # Biggest home win: max (home_goals - away_goals) where positive
+        home_margins = rows['home_goals'] - rows['away_goals']
+        away_margins = rows['away_goals'] - rows['home_goals']
+
+        biggest_home_margin = int(home_margins.max()) if (home_margins > 0).any() else 0
+        biggest_away_margin = int(away_margins.max()) if (away_margins > 0).any() else 0
+
+        biggest_home_row = rows.loc[home_margins.idxmax()] if biggest_home_margin > 0 else None
+        biggest_away_row = rows.loc[away_margins.idxmax()] if biggest_away_margin > 0 else None
+
+        margins: dict[str, Any] = {}
+        if biggest_home_row is not None:
+            margins['biggestHomeWin'] = {
+                'score': f"{int(biggest_home_row['home_goals'])}-{int(biggest_home_row['away_goals'])}",
+                'margin': biggest_home_margin,
+                'season': str(biggest_home_row['season']) if 'season' in biggest_home_row else None,
+            }
+        if biggest_away_row is not None:
+            margins['biggestAwayWin'] = {
+                'score': f"{int(biggest_away_row['home_goals'])}-{int(biggest_away_row['away_goals'])}",
+                'margin': biggest_away_margin,
+                'season': str(biggest_away_row['season']) if 'season' in biggest_away_row else None,
+            }
+        if margins:
+            stats['biggestMargins'] = margins
+
+
+def augment_team_streaks_extended(df, teams: dict[str, Any]) -> None:
+    """Extend existing `streaks` block with longest winless + losing runs.
+    Useful for surfacing "team X on Y-game winless run" context in the UI.
+    """
+    def _longest_run(bool_series) -> int:
+        best = current = 0
+        for v in bool_series:
+            if v:
+                current += 1
+                if current > best:
+                    best = current
+            else:
+                current = 0
+        return int(best)
+
+    for team, profile in teams.items():
+        streaks = profile.setdefault('streaks', {})
+        all_rows = df[((df['home_team'] == team) | (df['away_team'] == team))
+                      & df['result'].notna()].sort_values('date')
+        if len(all_rows) == 0:
+            continue
+
+        def _outcome(row):
+            """Was this team's outcome W / D / L?"""
+            result = row['result']
+            if row['home_team'] == team:
+                return 'W' if result == 'H' else ('L' if result == 'A' else 'D')
+            return 'W' if result == 'A' else ('L' if result == 'H' else 'D')
+
+        outcomes = all_rows.apply(_outcome, axis=1)
+        streaks['longestWinlessRun'] = _longest_run(outcomes != 'W')
+        streaks['longestLosingRun'] = _longest_run(outcomes == 'L')
+        streaks['longestWinRun'] = _longest_run(outcomes == 'W')
+
+
+def augment_team_shot_efficiency(df, teams: dict[str, Any]) -> None:
+    """Where shot data exists (post-2000 CSVs), compute per-team shot→goal
+    conversion. Captures "wasteful attacker" vs "clinical finisher" patterns
+    that pure goal averages hide.
+
+    Fields added: `shotEfficiency.home`, `.away`:
+      - `avgShotsFor`, `avgShotsOnTargetFor`
+      - `goalsPerShot`, `goalsPerShotOnTarget`
+      - `matches` (only matches with shot data)
+
+    Skipped entirely for teams with <20 matches of shot data.
+    """
+    if 'home_shots' not in df.columns or 'away_shots' not in df.columns:
+        return
+    shot_rows = df.dropna(subset=['home_shots', 'away_shots']).copy()
+    if len(shot_rows) < 100:
+        return
+
+    for team, profile in teams.items():
+        # Home
+        home_rows = shot_rows[shot_rows['home_team'] == team]
+        away_rows = shot_rows[shot_rows['away_team'] == team]
+        venues: dict[str, Any] = {}
+
+        def _shot_block(rows, goals_col: str, shots_col: str, shots_target_col: str):
+            n = len(rows)
+            if n < 20:
+                return None
+            goals = rows[goals_col].to_numpy(dtype=float)
+            shots = rows[shots_col].to_numpy(dtype=float)
+            total_shots = float(shots.sum())
+            total_goals = float(goals.sum())
+            block: dict[str, Any] = {
+                'matches': int(n),
+                'avgShotsFor': round(float(shots.mean()), 4),
+                'goalsPerShot': round(total_goals / total_shots, 4) if total_shots else 0.0,
+            }
+            if shots_target_col in rows.columns and rows[shots_target_col].notna().any():
+                sot = rows[shots_target_col].to_numpy(dtype=float)
+                total_sot = float(sot.sum())
+                block['avgShotsOnTargetFor'] = round(float(sot.mean()), 4)
+                block['goalsPerShotOnTarget'] = round(total_goals / total_sot, 4) if total_sot else 0.0
+            return block
+
+        home_block = _shot_block(home_rows, 'home_goals', 'home_shots', 'home_shots_target')
+        if home_block:
+            venues['home'] = home_block
+        away_block = _shot_block(away_rows, 'away_goals', 'away_shots', 'away_shots_target')
+        if away_block:
+            venues['away'] = away_block
+
+        if venues:
+            profile['shotEfficiency'] = venues
+
+
+def augment_team_comeback_from_two(df, teams: dict[str, Any]) -> None:
+    """Count comebacks from 2+ goals behind at HT to at least drawing at FT.
+    Augments existing halfTime block. Rare but dramatic — surfacing this lets
+    the UI say "Brighton came back from 2+ down 4 times this season".
+    """
+    if 'half_time_home_goals' not in df.columns or 'half_time_away_goals' not in df.columns:
+        return
+    ht_rows = df.dropna(subset=['half_time_home_goals', 'half_time_away_goals', 'result']).copy()
+    if len(ht_rows) == 0:
+        return
+
+    ht_rows['first_half_home'] = ht_rows['half_time_home_goals']
+    ht_rows['first_half_away'] = ht_rows['half_time_away_goals']
+
+    for team, profile in teams.items():
+        half_time_block = profile.get('halfTime')
+        if half_time_block is None:
+            continue
+        team_rows = ht_rows[(ht_rows['home_team'] == team) | (ht_rows['away_team'] == team)]
+        if len(team_rows) == 0:
+            continue
+
+        def _comeback_from_two(row):
+            """Was the team trailing by ≥2 at HT but drew or won at FT?"""
+            if row['home_team'] == team:
+                ht_deficit = row['first_half_away'] - row['first_half_home']
+                ft_result_ok = row['result'] in ('H', 'D')
+            else:
+                ht_deficit = row['first_half_home'] - row['first_half_away']
+                ft_result_ok = row['result'] in ('A', 'D')
+            return bool(ht_deficit >= 2 and ft_result_ok)
+
+        rescues = int(team_rows.apply(_comeback_from_two, axis=1).sum())
+        half_time_block['comebacksFromTwoDownRate'] = round(
+            rescues / len(team_rows), 4
+        )
+        half_time_block['comebacksFromTwoDownCount'] = rescues
+
+
 def compute_league_goal_frequency(df) -> dict[str, Any]:
     """League-wide high-scoring context. Useful as a normaliser: a team scoring
     3+ goals 25% of the time at home is only "exceptional" if the league
@@ -933,9 +1232,34 @@ def main():
     augment_team_goal_frequency(df, teams)
     print(f'  → {len(teams)}/{len(teams)} teams augmented with tail-frequency data')
 
+    print('Adding winless / losing streaks to team profiles…')
+    augment_team_streaks_extended(df, teams)
+
+    print('Adding shot efficiency to team profiles (where CSV has shot data)…')
+    augment_team_shot_efficiency(df, teams)
+    with_shots = sum(1 for t in teams.values() if 'shotEfficiency' in t)
+    print(f'  → {with_shots}/{len(teams)} teams have shot-efficiency data')
+
+    print('Adding comebacks-from-2-down rates to team profiles…')
+    augment_team_comeback_from_two(df, teams)
+
+    print('Computing per-season final positions for opposition-tier splits…')
+    positions = compute_season_positions(df)
+    print(f'  → {len(positions)} (season, team) position entries')
+
+    print('Adding opposition-tier performance (top-6 / mid / bottom-6) to team profiles…')
+    augment_team_opposition_tier(df, teams, positions)
+    with_tier = sum(1 for t in teams.values() if 'oppositionTier' in t)
+    print(f'  → {with_tier}/{len(teams)} teams have opposition-tier splits')
+
     print('Computing pair stats…')
     pairs = compute_pair_stats(df)
     print(f'  → {len(pairs)} ordered (home, away) pairs')
+
+    print('Adding biggest-margin scorelines to pair stats…')
+    augment_pair_margins(df, pairs)
+    with_margins = sum(1 for p in pairs.values() if 'biggestMargins' in p)
+    print(f'  → {with_margins}/{len(pairs)} pairs have biggest-margin data')
 
     print('Computing per-season aggregates + anomaly detection…')
     season_stats, anomalies = compute_season_stats(df)
