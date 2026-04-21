@@ -179,6 +179,16 @@ vi.mock('../utils/teamLogos', () => ({
   getTeamColor: vi.fn(() => '#666666')
 }));
 
+// Mock the stats pack helpers — returns undefined by default so the
+// Historical Context block doesn't render on unrelated tests. Individual
+// tests override with mockReturnValueOnce() to exercise the block.
+vi.mock('$lib/data/statsPack', () => ({
+  getTeamProfile: vi.fn(() => undefined),
+  getPairStats: vi.fn(() => undefined),
+  getRefereeStats: vi.fn(() => undefined),
+  getMatchdayStats: vi.fn(() => undefined),
+}));
+
 function makeMatch(overrides: Partial<Match> = {}): Match {
   const futureDate = new Date(Date.now() + 86400000 * 3).toISOString();
   return {
@@ -748,5 +758,197 @@ describe('Predictions Component', () => {
     await act();
 
     expect(screen.getByText(/Need at least 5 completed matches/)).toBeInTheDocument();
+  });
+
+  it('P12c — renders Historical Context block with all 5 rows when full pair + referee + matchday data is available', async () => {
+    const { getTeamProfile, getPairStats, getRefereeStats, getMatchdayStats } =
+      await import('$lib/data/statsPack');
+
+    // Arsenal at home: strong record. Note homeAdvantage.homeWinRate is a
+    // rate (0..1) — the component multiplies by 100 for display.
+    vi.mocked(getTeamProfile).mockImplementation((name: string) => {
+      if (name === 'Arsenal') {
+        return {
+          totalMatches: 1200,
+          homeGoalsScored: 2.4,
+          homeGoalsConceded: 1.0,
+          awayGoalsScored: 1.5,
+          awayGoalsConceded: 1.2,
+          cleanSheetRateHome: 0.35,
+          cleanSheetRateAway: 0.20,
+          failedToScoreRateHome: 0.08,
+          failedToScoreRateAway: 0.25,
+          over25Rate: 0.58,
+          bttsRate: 0.52,
+          recentScoringTrend: 0,
+          goalVariance: 1.6,
+          overRates: { over15: 0.82, over25: 0.58, over35: 0.35, over45: 0.18, under15: 0.18, under25: 0.42 },
+          eraWeighted: { homeGoalsScored: 2.4, homeGoalsConceded: 1.0, awayGoalsScored: 1.5, awayGoalsConceded: 1.2 },
+          homeAdvantage: {
+            homeWinRate: 0.68,
+            awayWinRate: 0.40,
+            homeAwayWinDelta: 0.28,
+            homeAwayGoalsScoredDelta: 0.9,
+            homeAwayGoalsConcededDelta: -0.2,
+          },
+        } as any;
+      }
+      if (name === 'Chelsea') {
+        return {
+          totalMatches: 1200,
+          homeGoalsScored: 1.9,
+          homeGoalsConceded: 1.1,
+          awayGoalsScored: 1.3,
+          awayGoalsConceded: 1.4,
+          cleanSheetRateHome: 0.30,
+          cleanSheetRateAway: 0.22,
+          failedToScoreRateHome: 0.12,
+          failedToScoreRateAway: 0.30,
+          over25Rate: 0.55,
+          bttsRate: 0.50,
+          recentScoringTrend: 0,
+          goalVariance: 1.4,
+          overRates: { over15: 0.80, over25: 0.55, over35: 0.30, over45: 0.15, under15: 0.20, under25: 0.45 },
+          eraWeighted: { homeGoalsScored: 1.9, homeGoalsConceded: 1.1, awayGoalsScored: 1.3, awayGoalsConceded: 1.4 },
+          homeAdvantage: {
+            homeWinRate: 0.60,
+            awayWinRate: 0.38,
+            homeAwayWinDelta: 0.22,
+            homeAwayGoalsScoredDelta: 0.6,
+            homeAwayGoalsConcededDelta: -0.3,
+          },
+        } as any;
+      }
+      return undefined;
+    });
+
+    vi.mocked(getPairStats).mockReturnValue({
+      totalMatches: 60,
+      homeWins: 28,
+      draws: 16,
+      awayWins: 16,
+      avgHomeGoals: 1.7,
+      avgAwayGoals: 1.1,
+      avgTotalGoals: 2.8,
+      over25Rate: 0.58,
+      over35Rate: 0.32,
+      bttsRate: 0.55,
+      recentTenAvgTotal: 2.9,
+      historicalVariance: 1.5,
+      isDerby: false,
+      biggestMargins: {
+        biggestHomeWin: { score: '5-0', margin: 5, season: '2017/18' },
+        biggestAwayWin: { score: '0-3', margin: 3, season: '2010/11' },
+      },
+    } as any);
+
+    vi.mocked(getRefereeStats).mockReturnValue({
+      matches: 220,
+      avgGoalsPerMatch: 2.8,
+      goalsVsLeagueAvg: 0.15,
+      homeWinRate: 0.46,
+      drawRate: 0.24,
+      awayWinRate: 0.30,
+      over25Rate: 0.57,
+      bttsRate: 0.52,
+      avgYellowsPerMatch: 4.1,
+    } as any);
+
+    vi.mocked(getMatchdayStats).mockReturnValue({
+      matches: 33 * 10,
+      avgTotalGoals: 2.1,
+      homeWinRate: 0.44,
+      drawRate: 0.26,
+      awayWinRate: 0.30,
+      over25Rate: 0.42,
+    } as any);
+
+    const match = makeMatch({
+      matchday: 38,
+      home_team: 'Arsenal',
+      away_team: 'Chelsea',
+      referee: 'Michael Oliver',
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(38);
+    await act();
+    await (component as any).predictGameweek();
+    await act();
+
+    const block = screen.getByTestId('historical-context');
+    expect(block).toBeInTheDocument();
+
+    // All 5 rows present with expected distinguishing values.
+    expect(block).toHaveTextContent(/Arsenal at home:.*68%.*2\.4 goals\/match.*clean sheets in 35%/);
+    expect(block).toHaveTextContent(/Chelsea away:.*38%.*1\.3 goals\/match.*clean sheets in 22%/);
+    expect(block).toHaveTextContent(/Historically:.*2\.8 goals\/game.*58% over 2\.5.*biggest Arsenal 5-0 Chelsea.*2017\/18/);
+    expect(block).toHaveTextContent(/Michael Oliver:.*2\.8 goals\/match.*4\.1 yellows.*high tempo/);
+    expect(block).toHaveTextContent(/Gameweek 38 avg:.*2\.1 goals.*42% over 2\.5/);
+  });
+
+  it('P12c — gracefully skips rows when stats pack has no data (newly promoted team)', async () => {
+    const { getTeamProfile, getPairStats, getRefereeStats, getMatchdayStats } =
+      await import('$lib/data/statsPack');
+
+    // Only Arsenal has a profile; the newly-promoted side returns undefined.
+    vi.mocked(getTeamProfile).mockImplementation((name: string) => {
+      if (name === 'Arsenal') {
+        return {
+          totalMatches: 1200,
+          homeGoalsScored: 2.4,
+          homeGoalsConceded: 1.0,
+          awayGoalsScored: 1.5,
+          awayGoalsConceded: 1.2,
+          cleanSheetRateHome: 0.35,
+          cleanSheetRateAway: 0.20,
+          failedToScoreRateHome: 0.08,
+          failedToScoreRateAway: 0.25,
+          over25Rate: 0.58,
+          bttsRate: 0.52,
+          recentScoringTrend: 0,
+          goalVariance: 1.6,
+          overRates: { over15: 0.82, over25: 0.58, over35: 0.35, over45: 0.18, under15: 0.18, under25: 0.42 },
+          eraWeighted: { homeGoalsScored: 2.4, homeGoalsConceded: 1.0, awayGoalsScored: 1.5, awayGoalsConceded: 1.2 },
+          homeAdvantage: {
+            homeWinRate: 0.68,
+            awayWinRate: 0.40,
+            homeAwayWinDelta: 0.28,
+            homeAwayGoalsScoredDelta: 0.9,
+            homeAwayGoalsConcededDelta: -0.2,
+          },
+        } as any;
+      }
+      return undefined;
+    });
+    vi.mocked(getPairStats).mockReturnValue(undefined);
+    vi.mocked(getRefereeStats).mockReturnValue(undefined);
+    vi.mocked(getMatchdayStats).mockReturnValue(undefined);
+
+    const match = makeMatch({
+      matchday: 20,
+      home_team: 'Arsenal',
+      away_team: 'Luton',
+      referee: null,
+    });
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue([match]);
+
+    const { component } = render(Predictions);
+    await (component as any).loadGameweekMatches(20);
+    await act();
+    await (component as any).predictGameweek();
+    await act();
+
+    const block = screen.getByTestId('historical-context');
+    expect(block).toBeInTheDocument();
+    // Home venue row renders; the rest are absent.
+    expect(block).toHaveTextContent(/Arsenal at home/);
+    expect(block).not.toHaveTextContent(/Luton away/);
+    expect(block).not.toHaveTextContent(/Historically/);
+    expect(block).not.toHaveTextContent(/Gameweek 20 avg/);
+    // No undefined leaks into the DOM.
+    expect(block.innerHTML).not.toContain('undefined');
+    expect(block.innerHTML).not.toContain('NaN');
   });
 });

@@ -21,6 +21,16 @@
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
   import DataFreshness from './DataFreshness.svelte';
+  import {
+    getTeamProfile,
+    getPairStats,
+    getRefereeStats,
+    getMatchdayStats,
+    type TeamProfile,
+    type PairStats,
+    type RefereeStats,
+    type MatchdayStats,
+  } from '$lib/data/statsPack';
 
   const dispatch = createEventDispatcher();
 
@@ -493,6 +503,93 @@
       case 'L': return 'bg-red-500';
       default: return 'bg-muted';
     }
+  }
+
+  // Football-Data.org referees come as "Michael Oliver" but the stats pack keys
+  // them in CSV form ("M Oliver"). Reduce the display form to first-initial +
+  // last-word so the lookup succeeds for the common case.
+  function toCsvRefereeName(apiName: string): string {
+    const parts = apiName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return apiName;
+    return `${parts[0][0]} ${parts[parts.length - 1]}`;
+  }
+
+  interface HistoricalContextRow {
+    label: string;
+    value: string;
+  }
+
+  function buildHistoricalContext(match: Match): HistoricalContextRow[] {
+    const rows: HistoricalContextRow[] = [];
+
+    const homeProfile: TeamProfile | undefined = getTeamProfile(match.home_team);
+    if (homeProfile?.homeAdvantage) {
+      const hWin = (homeProfile.homeAdvantage.homeWinRate * 100).toFixed(0);
+      const hGoals = homeProfile.homeGoalsScored.toFixed(1);
+      const hCs = (homeProfile.cleanSheetRateHome * 100).toFixed(0);
+      rows.push({
+        label: `${match.home_team} at home`,
+        value: `${hWin}% win rate · ${hGoals} goals/match · clean sheets in ${hCs}%`,
+      });
+    }
+
+    const awayProfile: TeamProfile | undefined = getTeamProfile(match.away_team);
+    if (awayProfile?.homeAdvantage) {
+      const aWin = (awayProfile.homeAdvantage.awayWinRate * 100).toFixed(0);
+      const aGoals = awayProfile.awayGoalsScored.toFixed(1);
+      const aCs = (awayProfile.cleanSheetRateAway * 100).toFixed(0);
+      rows.push({
+        label: `${match.away_team} away`,
+        value: `${aWin}% win rate · ${aGoals} goals/match · clean sheets in ${aCs}%`,
+      });
+    }
+
+    const pair: PairStats | undefined = getPairStats(match.home_team, match.away_team);
+    if (pair && pair.totalMatches > 0) {
+      const parts: string[] = [
+        `${pair.avgTotalGoals.toFixed(1)} goals/game`,
+        `${(pair.over25Rate * 100).toFixed(0)}% over 2.5`,
+      ];
+      const big = pair.biggestMargins?.biggestHomeWin;
+      if (big) {
+        const seasonTag = big.season ? ` (${big.season})` : '';
+        parts.push(`biggest ${match.home_team} ${big.score} ${match.away_team}${seasonTag}`);
+      }
+      rows.push({
+        label: pair.isDerby ? 'Derby: historically' : 'Historically',
+        value: parts.join(' · '),
+      });
+    }
+
+    if (match.referee) {
+      const refStats: RefereeStats | undefined = getRefereeStats(toCsvRefereeName(match.referee));
+      if (refStats) {
+        const goals = refStats.avgGoalsPerMatch.toFixed(1);
+        const yellows = refStats.avgYellowsPerMatch !== undefined
+          ? ` · ${refStats.avgYellowsPerMatch.toFixed(1)} yellows`
+          : '';
+        const tempo = refStats.avgGoalsPerMatch >= 2.75 ? ' (high tempo)'
+          : refStats.avgGoalsPerMatch <= 2.3 ? ' (low tempo)' : '';
+        rows.push({
+          label: match.referee,
+          value: `${goals} goals/match${yellows}${tempo}`,
+        });
+      }
+    }
+
+    if (match.matchday !== undefined) {
+      const md: MatchdayStats | undefined = getMatchdayStats(match.matchday);
+      if (md) {
+        const goals = md.avgTotalGoals.toFixed(1);
+        const over25 = (md.over25Rate * 100).toFixed(0);
+        rows.push({
+          label: `Gameweek ${match.matchday} avg`,
+          value: `${goals} goals · ${over25}% over 2.5`,
+        });
+      }
+    }
+
+    return rows;
   }
 </script>
 
@@ -1210,6 +1307,27 @@
                       {/each}
                     </ul>
                   </div>
+
+                  <!-- Historical Context (P12c) — draws on the 33-season stats pack
+                       for venue records, fixture profile, referee style and gameweek tempo.
+                       Each row renders only when its underlying data is present. The outer
+                       {#each} with a single-element array is a Svelte 4-compatible way to
+                       scope a computed value to the template without top-level reactivity. -->
+                  {#each [buildHistoricalContext(prediction)] as historicalContext}
+                    {#if historicalContext.length > 0}
+                      <div class="mb-5" data-testid="historical-context">
+                        <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Historical Context</span>
+                        <ul class="text-sm space-y-1.5 mt-2">
+                          {#each historicalContext as row}
+                            <li class="flex items-start gap-2">
+                              <span class="text-primary mt-0.5 text-xs">&#9679;</span>
+                              <span class="text-muted-foreground"><span class="font-medium text-foreground">{row.label}:</span> {row.value}</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </div>
+                    {/if}
+                  {/each}
 
                   <!-- Betting Recommendation -->
                   {#if prediction.detailedAnalysis.recommendedStake > 0}
