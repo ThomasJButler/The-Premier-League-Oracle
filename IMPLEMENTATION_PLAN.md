@@ -1,10 +1,18 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P11 COMPLETE — calibrator investigation shipped
+## Status: P12 IN PROGRESS — chat RAG + season UX + card enrichment
 
-> **Ralph loop note:** P11 closed out manually on 21 April 2026 after user ran P11d + P11a-rerun by hand (no more autonomous iterations this branch). Decision 2 fired — isotonic won the 4-calibrator comparison; `--calibrator` default reverted to `isotonic`; P9/P10/P11 stale `[ ]` tasks flipped to `[x]` with supersede notes. See `### P11 Completion Report` below.
+> **Ralph loop note:** P11 closed out manually on 21 April 2026 (Decision 2 fired — isotonic won the calibrator comparison; see `### P11 Completion Report` below). P12 kicked off on 2026-04-21 to address five user-reported issues after the v3.5 scoreline/fatigue ship: Oracle Chat RAG fallback bug, remove pointless Season Predictions feature, enrich Predictions card back panel, multi-year Season Stats, Season Timeline polish. Scope is frontend-only; prediction model logic is FROZEN at v3.5.
 
-Last updated: 19 April 2026
+## P12 Tasks (active — autonomous via Ralph loop)
+
+- [x] **P12a** — Oracle Chat RAG fallback fix (health URL + fallback prompt)
+- [ ] **P12b** — Remove Season Predictions entirely
+- [ ] **P12c** — Expand Predictions card back panel with Historical Context block
+- [ ] **P12d** — Season Stats multi-year browser (year-filter dropdown, last 5 seasons)
+- [ ] **P12e** — Season Timeline chart polish + P12 closeout
+
+Last updated: 21 April 2026
 Active branch: `v3.0-MVP-Backend_Enhancements`
 
 ---

@@ -340,7 +340,7 @@ describe('ChatBot Component', () => {
   /** Helper: set up health mock, render, and call checkBackendRAG. */
   async function renderWithBackendRAG(fetchImpl?: typeof globalThis.fetch) {
     vi.mocked(globalThis.fetch).mockImplementation(fetchImpl ?? (async (url) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -351,6 +351,22 @@ describe('ChatBot Component', () => {
     });
     return result;
   }
+
+  it('should probe the canonical /health URL (not /api/oracle/health)', async () => {
+    // P12a: the frontend must probe the exact path the FastAPI backend
+    // serves (main.py:269 → GET /health). If this regresses to a nested
+    // /api/oracle/health prefix, the probe will fail in production and
+    // the chat will silently fall back to the proxy with no RAG context.
+    const fetchSpy = vi.mocked(globalThis.fetch);
+    await renderWithBackendRAG();
+
+    const probedUrls = fetchSpy.mock.calls
+      .map(([url]) => url)
+      .filter((u): u is string => typeof u === 'string');
+
+    expect(probedUrls).toContain('/health');
+    expect(probedUrls).not.toContain('/api/oracle/health');
+  });
 
   it('should detect backend RAG and enable chat without user key', async () => {
     await renderWithBackendRAG();
@@ -374,7 +390,7 @@ describe('ChatBot Component', () => {
 
   it('should send via backend RAG when available', async () => {
     const { component } = await renderWithBackendRAG(async (url, opts) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       if (typeof url === 'string' && url === '/api/oracle/chat/rag' && (opts as RequestInit)?.method === 'POST') {
@@ -410,7 +426,7 @@ describe('ChatBot Component', () => {
 
   it('should fall back to proxy when backend RAG fails', async () => {
     const { component } = await renderWithBackendRAG(async (url, opts) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       // RAG endpoint returns 502

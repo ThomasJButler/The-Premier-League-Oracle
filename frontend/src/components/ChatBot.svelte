@@ -94,14 +94,16 @@
   /** Check backend RAG availability first, then fall back to the Vercel chat proxy.
    *
    * Priority:
-   * 1. Backend RAG (/api/oracle/health) — data-grounded, server-side API key
+   * 1. Backend RAG (/health) — data-grounded, server-side API key
    * 2. Vercel chat proxy (/api/chat) — server-side API key, shallow context
    * 3. User-provided API key — client sends key through proxy
    */
   export async function checkBackendRAG() {
-    // 1. Try backend RAG endpoint
+    // 1. Try backend RAG endpoint. Probes the canonical /health path the
+    // FastAPI backend actually serves (main.py:269). In dev, the Vite
+    // proxy forwards /health → http://localhost:8000/health.
     try {
-      const res = await fetch('/api/oracle/health');
+      const res = await fetch('/health');
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'healthy') {
@@ -176,14 +178,26 @@
 
   // --- Build Context (batched) ---
   async function buildSystemPrompt(): Promise<string> {
+    // Fallback-mode system prompt (used when backend RAG is unavailable).
+    // Claude must NOT invent reasons for data gaps — we explicitly scope
+    // its knowledge to the weekly snapshot below and require honest refusal
+    // for anything outside that window.
     let context = `You are the Premier League Oracle, an expert football analyst.
 You provide insightful predictions and analysis for Premier League matches.
 Be concise, data-driven, and confident in your analysis. Use UK English.
-Reference real statistics when available. If you're uncertain, say so.
 Never give financial advice — only discuss statistical probabilities.
 Format your responses with markdown: use **bold** for emphasis, bullet points for lists, and \`code\` for statistics.
 
-Current data:\n`;
+IMPORTANT — data scope in this mode:
+You are running in fallback mode WITHOUT match-level historical data access. The only data you have is the current-week snapshot below (current league table, upcoming fixtures for the next 7 days, results from the last 7 days). You do NOT have:
+- Historical match-by-match results from any past season
+- Player-level statistics, xG, shot data, or possession numbers
+- Head-to-head fixture histories beyond what is shown below
+- Data for any season other than the current one
+
+If a user asks for historical data (e.g. "Liverpool's away wins in 2022/23", "last five meetings between X and Y"), do NOT invent specific match results, scorelines, or "exclusions". Instead, say plainly: "I'm running in fallback mode without match-level data access — ask me general Premier League questions, or try again when the backend RAG service is running for historical queries." Then offer to reason over the current snapshot.
+
+Current-week snapshot:\n`;
 
     // Fetch all context data in parallel instead of sequentially
     const [standingsResult, upcomingResult, recentResult] = await Promise.allSettled([

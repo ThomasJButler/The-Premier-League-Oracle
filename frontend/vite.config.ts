@@ -176,6 +176,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/oracle/, '')
+      },
+      // Backend health probe — canonical path served by FastAPI directly
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   }
