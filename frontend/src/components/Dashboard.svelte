@@ -297,8 +297,13 @@
       upcomingPredictions = realMatchData.length;
       
     } catch (err) {
-      // Error loading dashboard data
-      error = "Failed to load dashboard data";
+      console.warn('Dashboard data load failed', err);
+      const message = err instanceof Error ? err.message : '';
+      // Preserve actionable API-key / connectivity messages from dataService;
+      // fall back to generic wording for anything unexpected.
+      error = message.includes('API key') || message.includes('internet connection')
+        ? message
+        : 'Failed to load dashboard data';
     } finally {
       loading = false;
     }

@@ -1,8 +1,16 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P14 COMPLETE — deferred followups shipped
+## Status: P15 IN PROGRESS — app-wide quality pass
 
-> **Ralph loop note:** P13 closed out 21 April 2026 (clean 2-task run, 675 tests green — see `### P13 Completion Report`). P14 kicked off same day to pick up both `DEFERRED-P14` followups from that report: backend-availability flag should persist to sessionStorage so page refresh doesn't re-probe, and the timeline threshold gate's matchday floor should scale as a fraction of season length rather than a hardcoded 10. Scope stayed frontend-only; the `isBackendAvailable()` / `invalidateBackendHealth()` public contract is FROZEN, only internals changed. Both tasks shipped and verified — see `### P14 Completion Report`.
+> **Ralph loop note:** P14 closed out 21 April 2026 (clean 2-task run, 681 tests green, deferred backlog hit zero — see `### P14 Completion Report`). P15 kicked off same day as a proactive quality sweep across the four main app surfaces that haven't been exercised in recent work: Dashboard, LiveMatches, Settings, BetHistory. Each sub-task audits one surface against a fixed category checklist (empty/error states, silent failures, dead code, a11y, console warnings) and fixes whatever's found. "Nothing found" is a valid completion state. Scope is frontend-only; everything shipped in P12–P14 plus the v3.5 prediction logic is FROZEN.
+
+## P15 Tasks (active — autonomous via Ralph loop)
+
+- [x] **P15a** — Dashboard quality audit + fixes
+- [ ] **P15b** — LiveMatches quality audit + fixes
+- [ ] **P15c** — Settings quality audit + fixes
+- [ ] **P15d** — BetHistory quality audit + fixes
+- [ ] **P15e** — Cross-cutting fixes + P15 closeout
 
 ## P14 Tasks (complete)
 

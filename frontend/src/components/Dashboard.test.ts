@@ -286,6 +286,33 @@ describe('Dashboard Component', () => {
     expect(retryButton).toBeInTheDocument();
   });
 
+  it('should preserve API-key-required error message from dataService', async () => {
+    const apiKeyError = 'API key required. Please set up your Football-Data.org API key in Settings or through the setup wizard.';
+    vi.mocked(dataService.getMatches).mockRejectedValue(new Error(apiKeyError));
+
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    const errorMessage = screen.queryByText(/API key required/i);
+    expect(errorMessage).toBeInTheDocument();
+    // The generic fallback must NOT be shown when a specific actionable message exists
+    expect(screen.queryByText(/Failed to load dashboard data/i)).not.toBeInTheDocument();
+  });
+
+  it('should log data load failures to console.warn instead of swallowing them', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const err = new Error('Boom');
+    vi.mocked(dataService.getMatches).mockRejectedValue(err);
+
+    const { component } = render(Dashboard);
+    await (component as any).refresh();
+    await act();
+
+    expect(warnSpy).toHaveBeenCalledWith('Dashboard data load failed', err);
+    warnSpy.mockRestore();
+  });
+
   it('should display chart containers', async () => {
     render(Dashboard);
 
