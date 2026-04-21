@@ -9,7 +9,7 @@
 - [x] **P12a** — Oracle Chat RAG fallback fix (health URL + fallback prompt)
 - [x] **P12b** — Remove Season Predictions entirely
 - [x] **P12c** — Expand Predictions card back panel with Historical Context block
-- [ ] **P12d** — Season Stats multi-year browser (year-filter dropdown, last 5 seasons)
+- [x] **P12d** — Season Stats multi-year browser (year-filter dropdown, last 5 seasons)
 - [ ] **P12e** — Season Timeline chart polish + P12 closeout
 
 Last updated: 21 April 2026
