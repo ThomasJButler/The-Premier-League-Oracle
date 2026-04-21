@@ -9,7 +9,7 @@
 - [x] **P15a** — Dashboard quality audit + fixes
 - [x] **P15b** — LiveMatches quality audit + fixes
 - [x] **P15c** — Settings quality audit + fixes
-- [ ] **P15d** — BetHistory quality audit + fixes
+- [x] **P15d** — BetHistory quality audit + fixes
 - [ ] **P15e** — Cross-cutting fixes + P15 closeout
 
 ## P14 Tasks (complete)

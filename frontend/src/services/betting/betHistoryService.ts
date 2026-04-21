@@ -52,7 +52,8 @@ class BetHistoryService {
         const parsed = JSON.parse(stored);
         this.bets = new Map(Object.entries(parsed));
       }
-    } catch {
+    } catch (err) {
+      console.warn('[betHistoryService] Failed to load bets from localStorage, starting fresh:', err);
       this.bets = new Map();
     }
   }
@@ -61,8 +62,8 @@ class BetHistoryService {
     try {
       const toStore = Object.fromEntries(this.bets);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
-    } catch {
-      // localStorage full or unavailable — silent fail
+    } catch (err) {
+      console.warn('[betHistoryService] Failed to persist bets to localStorage (quota exceeded or unavailable):', err);
     }
   }
 
