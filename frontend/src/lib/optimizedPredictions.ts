@@ -848,11 +848,20 @@ export class OptimizedPredictor {
 
   private static async analyzeHeadToHead(homeTeam: string, awayTeam: string, historicalMatches?: Match[]) {
     const matches = historicalMatches || await dataService.getMatches();
-    
-    const h2hMatches = matches.filter(m => 
-      (m.home_team === homeTeam && m.away_team === awayTeam) ||
-      (m.home_team === awayTeam && m.away_team === homeTeam)
-    ).slice(0, 10); // Last 10 H2H matches
+
+    // Only completed H2H matches — filter BEFORE slicing so we don't waste our
+    // 10-match budget on scheduled/pending fixtures. Leaving pending matches in
+    // previously caused every card to show "X dominates H2H (1W in last 2)":
+    // for a May fixture the pair typically has played the reverse leg (one
+    // result) plus the current scheduled return (no result), giving a
+    // pseudo-denominator of 2 but a completed count of 1 → spurious 100% rate.
+    const h2hMatches = matches.filter(m =>
+      ((m.home_team === homeTeam && m.away_team === awayTeam) ||
+       (m.home_team === awayTeam && m.away_team === homeTeam)) &&
+      m.result !== null &&
+      m.home_goals !== null &&
+      m.away_goals !== null
+    ).slice(0, 10); // Last 10 completed H2H matches
 
     if (h2hMatches.length === 0) {
       // No H2H data — use league-average home advantage (consistent with ensemble priors)
