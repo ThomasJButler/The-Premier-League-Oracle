@@ -1087,45 +1087,53 @@ export class OptimizedPredictor {
     formAnalysis: FormAnalysis,
     h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    // Start from the modal scoreline (argmax of the joint Poisson grid) rather
-    // than rounded expected goals — round(mean) systematically overstates goals
-    // for small λ because Poisson mean > mode.
-    const modal = argmaxScoreline(scoreProbabilities);
-    let homeGoals = Math.min(MAX_PREDICTED_GOALS, modal.home);
-    let awayGoals = Math.min(MAX_PREDICTED_GOALS, modal.away);
+    // Pick the highest-probability scoreline from the grid that is CONSISTENT
+    // with the predicted H/D/A outcome. This keeps "Predicted Score" honest:
+    // it's always a real modal cell, never an artificial bump of a draw
+    // scoreline like the old "1-1 → 2-1 because H was predicted" logic.
+    // If predictedResult is H → argmax over cells where home > away.
+    // If predictedResult is A → argmax over cells where away > home.
+    // If predictedResult is D → argmax over the diagonal.
+    let bestHome = 1;
+    let bestAway = predictedResult === 'H' ? 0 : predictedResult === 'A' ? 2 : 1;
+    let bestProb = -1;
 
-    // Adjust based on predicted result
-    if (predictedResult === 'H' && homeGoals <= awayGoals) {
-      homeGoals = Math.min(MAX_PREDICTED_GOALS, awayGoals + 1);
-    } else if (predictedResult === 'A' && awayGoals <= homeGoals) {
-      awayGoals = Math.min(MAX_PREDICTED_GOALS, homeGoals + 1);
-    } else if (predictedResult === 'D' && homeGoals !== awayGoals) {
-      // Make it a draw
-      if (Math.abs(homeGoals - awayGoals) === 1) {
-        if (homeGoals > awayGoals) awayGoals = homeGoals;
-        else homeGoals = awayGoals;
-      } else {
-        homeGoals = Math.round((homeGoals + awayGoals) / 2);
-        awayGoals = homeGoals;
+    for (const [score, prob] of Object.entries(scoreProbabilities)) {
+      const parts = score.split('-');
+      const h = Number(parts[0]);
+      const a = Number(parts[1]);
+      if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
+
+      const outcomeOfThisScore: 'H' | 'D' | 'A' = h > a ? 'H' : h < a ? 'A' : 'D';
+      if (outcomeOfThisScore !== predictedResult) continue;
+
+      if (prob > bestProb) {
+        bestProb = prob;
+        bestHome = h;
+        bestAway = a;
       }
     }
-    
-    // Consider H2H average goals
+
+    let homeGoals = Math.min(MAX_PREDICTED_GOALS, bestHome);
+    let awayGoals = Math.min(MAX_PREDICTED_GOALS, bestAway);
+
+    // H2H fixture-type nudge: keep or lightly adjust the result-consistent
+    // modal by the historical goal tempo of this fixture. Only nudges by at
+    // most one goal per side, and only when the unadjusted score is out of
+    // character with the fixture's known tendency.
     if (h2hAnalysis.totalMatches > 0 && h2hAnalysis.avgHomeGoals !== undefined && h2hAnalysis.avgAwayGoals !== undefined) {
       const h2hTotal = h2hAnalysis.avgHomeGoals + h2hAnalysis.avgAwayGoals;
       if (h2hTotal < 2.0) {
-        // Low-scoring fixture historically
         homeGoals = Math.min(homeGoals, 2);
         awayGoals = Math.min(awayGoals, 2);
       } else if (h2hTotal > 3.5) {
-        // High-scoring fixture
         if (homeGoals + awayGoals < 3) {
           homeGoals = Math.max(homeGoals, 2);
           awayGoals = Math.max(awayGoals, 1);
         }
       }
     }
-    
+
     return {
       home: Math.max(0, homeGoals),
       away: Math.max(0, awayGoals)
