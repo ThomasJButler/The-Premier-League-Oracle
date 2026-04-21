@@ -519,7 +519,10 @@ export class OptimizedPredictor {
       
       // 8. Attempt ML backend prediction (parallel — started earlier or fetched now)
       let mlPrediction: MLPrediction | null = null;
-      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') === 'true') {
+      // ML backend defaults ON: predictions are significantly better with the
+      // XGBoost model included in the ensemble, and new users won't know to
+      // toggle it on in Settings. Only skip when explicitly disabled.
+      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') !== 'false') {
         try {
           mlPrediction = await backendService.predictMatch(homeTeam, awayTeam);
           insights.push('ML backend prediction incorporated into ensemble');

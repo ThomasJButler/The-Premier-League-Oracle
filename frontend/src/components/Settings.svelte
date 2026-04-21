@@ -304,8 +304,10 @@
       aiKeyAvailable = false;
     });
 
-    // Load ML backend settings
-    useBackend = localStorage.getItem('use_backend') === 'true';
+    // Load ML backend settings. Default ON — matches the runtime default in
+    // optimizedPredictions.ts. Only reads as false when the user has explicitly
+    // disabled it.
+    useBackend = localStorage.getItem('use_backend') !== 'false';
     const savedToken = localStorage.getItem('oracle_api_token');
     if (savedToken) {
       oracleApiToken = savedToken;

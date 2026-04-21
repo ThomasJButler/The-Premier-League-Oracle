@@ -447,7 +447,11 @@ describe('OptimizedPredictor', () => {
       vi.mocked(dataService.getMatches).mockResolvedValue([]);
     }
 
-    it('should not call backendService when use_backend is not enabled', async () => {
+    it('should not call backendService when use_backend is explicitly disabled', async () => {
+      // Default is now ON — user must opt out via localStorage 'use_backend' = 'false'.
+      vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+        key === 'use_backend' ? 'false' : null
+      );
       setupDefaultMocks();
 
       await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
@@ -455,7 +459,19 @@ describe('OptimizedPredictor', () => {
       expect(backendService.predictMatch).not.toHaveBeenCalled();
     });
 
-    it('should call backendService when use_backend is enabled', async () => {
+    it('should call backendService by default (no use_backend in localStorage)', async () => {
+      // With use_backend absent from localStorage, the default is ON so the
+      // ML backend is called. Users have to explicitly set 'false' to disable.
+      vi.mocked(localStorage.getItem).mockImplementation(() => null);
+      vi.mocked(backendService.predictMatch).mockResolvedValue(mockMLPrediction);
+      setupDefaultMocks();
+
+      await OptimizedPredictor.predictMatch('Arsenal FC', 'Chelsea FC');
+
+      expect(backendService.predictMatch).toHaveBeenCalledWith('Arsenal FC', 'Chelsea FC');
+    });
+
+    it('should call backendService when use_backend is explicitly enabled', async () => {
       vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
         key === 'use_backend' ? 'true' : null
       );
@@ -609,6 +625,11 @@ describe('OptimizedPredictor', () => {
       vi.mocked(dataService.getStandings).mockResolvedValue([]);
       vi.mocked(dataService.getTeamForm).mockResolvedValue([]);
       vi.mocked(dataService.getMatches).mockResolvedValue([]);
+      // Disable ML backend (default is now ON) so the ml weight doesn't scale
+      // the other components and skew this assertion. Setting directly on the
+      // in-memory store so it routes through the block's store-backed getItem
+      // mock (which also owns oracle_model_weights below).
+      store['use_backend'] = 'false';
 
       // Save custom weights with more ELO emphasis
       const custom = { elo: 0.40, poisson: 0.20, form: 0.15, h2h: 0.10, standings: 0.15 };
