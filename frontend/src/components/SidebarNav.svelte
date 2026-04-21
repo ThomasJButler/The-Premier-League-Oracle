@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers, Calendar, CalendarCheck, Zap } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers, Calendar, Zap } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
   import { createEventDispatcher } from 'svelte';
 
@@ -18,7 +18,6 @@
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Season Timeline', icon: Calendar, view: 'Season Timeline' },
-    { name: 'Season Predictions', icon: CalendarCheck, view: 'Season Predictions' },
   ];
 
   const bettingItems = [

@@ -76,7 +76,7 @@ describe('MobileNav', () => {
     const secondaryItems = [
       'Matches', 'Oracle Chat', 'Top Scorers', 'Kelly Calculator',
       'Suggested Bets', 'Value Scanner', 'Accumulators', 'Season Stats',
-      'Timeline', 'Season Preds', 'Betting History', 'Settings', 'Help',
+      'Timeline', 'Betting History', 'Settings', 'Help',
     ];
     for (const name of secondaryItems) {
       expect(screen.getByText(name)).toBeInTheDocument();

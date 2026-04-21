@@ -69,12 +69,11 @@ describe('SidebarNav', () => {
     expect(screen.getByText('Oracle')).toBeInTheDocument();
   });
 
-  it('renders all 10 main navigation items', () => {
+  it('renders all 9 main navigation items', () => {
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
     const mainItems = [
       'Dashboard', 'Standings', 'Live Matches', 'Matches', 'Predictions',
       'Oracle Chat', 'Top Scorers', 'Season Stats', 'Season Timeline',
-      'Season Predictions',
     ];
     for (const name of mainItems) {
       expect(screen.getByTitle(name)).toBeInTheDocument();
