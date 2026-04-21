@@ -350,11 +350,14 @@
           detailedAnalysis: {
             predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
             predictedResult: prediction.predictedResult,
-            // Surface the probability of the displayed score by finding it in
-            // the grid's top-N. Makes it transparent that this is a modal cell
-            // with a real probability, not a confident point forecast.
-            predictedScoreProb: prediction.topScorelines
-              ?.find((s: { score: string; probability: number }) =>
+            // Surface the probability of the displayed score from the full
+            // score-probability grid (not just top-N). Makes it transparent
+            // that this is a real cell with a real probability, not a
+            // confident point forecast. Falls back to the top-N lookup if
+            // scoreProbabilities isn't present (legacy cached predictions).
+            predictedScoreProb: optimizedPrediction.scoreProbabilities
+              ?.[`${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`]
+              ?? prediction.topScorelines?.find((s: { score: string; probability: number }) =>
                 s.score === `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`
               )?.probability,
             keyFactors: prediction.insights,

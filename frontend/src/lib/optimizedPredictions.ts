@@ -1107,35 +1107,45 @@ export class OptimizedPredictor {
     formAnalysis: FormAnalysis,
     h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    // Pick the highest-probability scoreline from the grid that is CONSISTENT
-    // with the predicted H/D/A outcome. This keeps "Predicted Score" honest:
-    // it's always a real modal cell, never an artificial bump of a draw
-    // scoreline like the old "1-1 → 2-1 because H was predicted" logic.
-    // If predictedResult is H → argmax over cells where home > away.
-    // If predictedResult is A → argmax over cells where away > home.
-    // If predictedResult is D → argmax over the diagonal.
-    let bestHome = 1;
-    let bestAway = predictedResult === 'H' ? 0 : predictedResult === 'A' ? 2 : 1;
-    let bestProb = -1;
-
+    // Start from the rounded expected-goals from the grid. Argmax-of-H-wins
+    // was ~honest but systematically under-surfaced 3+ goal scorelines: at
+    // PL-typical λ≈2.3 for strong favourites, P(2-0) narrowly beats P(3-0)
+    // every time, so Arsenal/City vs-weak-team predictions never showed 3-1.
+    // Rounded expected goals reflects blowout favouritism naturally (λ_h=2.5
+    // → 3 goals displayed) AND matches how users reason about predictions.
+    // Fatigue + stats-pack lambdas are now healthy enough that Math.round
+    // doesn't overshoot the way it did pre-fatigue-fix (λ≈0.3 days).
+    let expectedHomeGoals = 0;
+    let expectedAwayGoals = 0;
     for (const [score, prob] of Object.entries(scoreProbabilities)) {
       const parts = score.split('-');
       const h = Number(parts[0]);
       const a = Number(parts[1]);
       if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
-
-      const outcomeOfThisScore: 'H' | 'D' | 'A' = h > a ? 'H' : h < a ? 'A' : 'D';
-      if (outcomeOfThisScore !== predictedResult) continue;
-
-      if (prob > bestProb) {
-        bestProb = prob;
-        bestHome = h;
-        bestAway = a;
-      }
+      expectedHomeGoals += h * prob;
+      expectedAwayGoals += a * prob;
     }
+    let homeGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(expectedHomeGoals));
+    let awayGoals = Math.min(MAX_PREDICTED_GOALS, Math.round(expectedAwayGoals));
 
-    let homeGoals = Math.min(MAX_PREDICTED_GOALS, bestHome);
-    let awayGoals = Math.min(MAX_PREDICTED_GOALS, bestAway);
+    // Enforce predictedResult: rounded means can produce a draw scoreline
+    // even when the ensemble's H/D/A says "Home wins" (e.g. λ_h=1.5, λ_a=1.2
+    // rounds to 2-1 which happens to be H already; but λ_h=1.3, λ_a=1.4
+    // rounds to 1-1 while ensemble may have called A). If the rounded pick
+    // disagrees with predictedResult, bump the favoured team by +1. This is
+    // a valid Poisson cell — real grid mass always exists at (roundHome+1,
+    // roundAway) when λ_h > 0.
+    if (predictedResult === 'H' && homeGoals <= awayGoals) {
+      homeGoals = Math.min(MAX_PREDICTED_GOALS, awayGoals + 1);
+    } else if (predictedResult === 'A' && awayGoals <= homeGoals) {
+      awayGoals = Math.min(MAX_PREDICTED_GOALS, homeGoals + 1);
+    } else if (predictedResult === 'D' && homeGoals !== awayGoals) {
+      // Make it a draw — use the higher of the two rounded means so we don't
+      // collapse high-scoring draws (e.g. 2-3 expected) down to 1-1.
+      const target = Math.max(homeGoals, awayGoals);
+      homeGoals = target;
+      awayGoals = target;
+    }
 
     // H2H fixture-type nudge: keep or lightly adjust the result-consistent
     // modal by the historical goal tempo of this fixture. Only nudges by at
