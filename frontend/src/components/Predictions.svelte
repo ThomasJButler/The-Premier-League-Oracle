@@ -28,6 +28,8 @@
     prediction?: Prediction;
     detailedAnalysis?: {
       predictedScore: string;
+      predictedResult?: 'H' | 'D' | 'A';
+      predictedScoreProb?: number; // probability of the predictedScore within the grid (0-1)
       keyFactors: string[];
       confidence: number;
       homeForm: string;
@@ -343,6 +345,14 @@
           },
           detailedAnalysis: {
             predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
+            predictedResult: prediction.predictedResult,
+            // Surface the probability of the displayed score by finding it in
+            // the grid's top-N. Makes it transparent that this is a modal cell
+            // with a real probability, not a confident point forecast.
+            predictedScoreProb: prediction.topScorelines
+              ?.find((s: { score: string; probability: number }) =>
+                s.score === `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`
+              )?.probability,
             keyFactors: prediction.insights,
             confidence: prediction.confidence * 100,
             homeForm: optimizedPrediction.homeForm,
@@ -1037,18 +1047,60 @@
 
                   <!-- Predicted Score Section -->
                   <div class="mb-5 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Predicted Score</span>
+                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                      {#if prediction.detailedAnalysis.predictedResult === 'H'}
+                        Most Likely Home Win Score
+                      {:else if prediction.detailedAnalysis.predictedResult === 'A'}
+                        Most Likely Away Win Score
+                      {:else if prediction.detailedAnalysis.predictedResult === 'D'}
+                        Most Likely Draw Score
+                      {:else}
+                        Predicted Score
+                      {/if}
+                    </span>
                     <div class="text-3xl font-bold text-blue-700 dark:text-blue-300 text-center mt-2">
                       {prediction.detailedAnalysis.predictedScore}
+                      {#if prediction.detailedAnalysis.predictedScoreProb !== undefined && prediction.detailedAnalysis.predictedScoreProb > 0}
+                        <span class="text-base font-medium text-blue-600/70 dark:text-blue-400/70 ml-2">
+                          ({(prediction.detailedAnalysis.predictedScoreProb * 100).toFixed(1)}%)
+                        </span>
+                      {/if}
                     </div>
                     <div class="text-sm text-center text-muted-foreground mt-1">
-                      Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
+                      Outcome confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
 
-                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length >= 5}
+                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length >= 3}
+                      <!-- Top-3 scoreline strip: probability-weighted band showing the three
+                           most-likely scores regardless of outcome. Gives users the shape of
+                           the distribution at a glance so "Predicted Score" reads as one
+                           plausible outcome among several, not a certainty. -->
                       <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
-                        <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Most Likely Scorelines</span>
-                        <ul class="mt-2 grid grid-cols-1 gap-1 text-sm" aria-label="Top scorelines by probability">
+                        <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Top 3 Most Likely Scorelines</span>
+                        <div class="mt-2 grid grid-cols-3 gap-2" aria-label="Top three most likely scorelines with probability bars">
+                          {#each prediction.detailedAnalysis.topScorelines.slice(0, 3) as entry}
+                            <div class="text-center">
+                              <div class="font-mono tabular-nums text-base font-semibold text-blue-900 dark:text-blue-100">{entry.score}</div>
+                              <div class="mt-1 h-1.5 rounded-full bg-blue-200 dark:bg-blue-800 overflow-hidden">
+                                <div
+                                  class="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-[width]"
+                                  style="width: {Math.min(100, entry.probability * 500)}%"
+                                ></div>
+                              </div>
+                              <div class="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-1 tabular-nums">{(entry.probability * 100).toFixed(1)}%</div>
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/if}
+
+                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length > 3}
+                      <!-- Full distribution collapsed by default — users who want the long tail can open it. -->
+                      <details class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                        <summary class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider cursor-pointer hover:text-blue-700 dark:hover:text-blue-300">
+                          Full scoreline distribution (top {prediction.detailedAnalysis.topScorelines.length})
+                        </summary>
+                        <ul class="mt-2 grid grid-cols-1 gap-1 text-sm" aria-label="Full scoreline distribution">
                           {#each prediction.detailedAnalysis.topScorelines as entry}
                             <li class="flex items-center justify-between gap-3 text-blue-900 dark:text-blue-100">
                               <span class="font-mono tabular-nums">{entry.score}</span>
@@ -1056,8 +1108,12 @@
                             </li>
                           {/each}
                         </ul>
-                      </div>
+                      </details>
                     {/if}
+
+                    <p class="mt-3 text-[11px] text-center text-muted-foreground italic">
+                      Modal pick — real matches vary. Top-3 shows the spread of the most likely outcomes.
+                    </p>
                   </div>
 
                   <!-- Form Section -->
