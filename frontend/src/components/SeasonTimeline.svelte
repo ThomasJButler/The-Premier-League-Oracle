@@ -61,8 +61,10 @@
   const THRESHOLD_DATASET_PREFIX = '__threshold__';
   // Dashed thresholds only render once they're narratively relevant — otherwise
   // the 86-pt line stretches the y-axis and squashes the actual race.
-  // Gate: matchday >= 10 OR relevant team already past 50 % of the threshold.
-  const THRESHOLD_MATCHDAY_GATE = 10;
+  // Gate: past the first quarter of the season OR relevant team already past 50 % of the threshold.
+  // Computed as a fraction of season length so pandemic-shortened or restarted seasons scale correctly.
+  const THRESHOLD_MATCHDAY_FRACTION = 0.25;
+  const THRESHOLD_MATCHDAY_GATE = Math.ceil(PREMIER_LEAGUE_GAMEWEEKS * THRESHOLD_MATCHDAY_FRACTION);
   const THRESHOLD_PROXIMITY_FRACTION = 0.5;
 
   let showTitleThreshold = false;

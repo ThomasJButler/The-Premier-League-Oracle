@@ -428,6 +428,40 @@ describe('SeasonTimeline', () => {
     expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
   });
 
+  it('keeps threshold benchmark lines hidden at matchday 9 when leader is below 50 % of the title floor', async () => {
+    // Boundary regression: for a 38-gameweek season, the matchday gate is
+    // Math.ceil(38 * 0.25) === 10, so matchday 9 must still be gated.
+    // Leader on 9 points is well below 43 pts (50 % of 86), so proximity stays closed too.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(9));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.queryByText(/86 pts/)).toBeNull();
+    expect(screen.queryByText(/historical title floor/)).toBeNull();
+    expect(screen.queryByText(/40 pts/)).toBeNull();
+    expect(screen.queryByText(/historical safety benchmark/)).toBeNull();
+  });
+
+  it('shows threshold benchmark lines at exactly matchday 10 even when leader is below 50 % of the title floor', async () => {
+    // Boundary regression: the matchday gate opens at Math.ceil(38 * 0.25) === 10.
+    // Leader on 10 points is still below 43 pts (50 % of 86) so the proximity gate
+    // is closed — the rendered threshold must come solely from the matchday gate.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(10));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.getByText(/86 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical title floor/)).toBeTruthy();
+    expect(screen.getByText(/40 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
+  });
+
   it('matchday 1 gets special narrative treatment', async () => {
     // Just one matchday
     const matches: Match[] = [];

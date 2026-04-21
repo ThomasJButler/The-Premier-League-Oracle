@@ -1,13 +1,13 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P14 IN PROGRESS — deferred followups from P13
+## Status: P14 COMPLETE — deferred followups shipped
 
-> **Ralph loop note:** P13 closed out 21 April 2026 (clean 2-task run, 675 tests green — see `### P13 Completion Report`). P14 kicked off same day to pick up both `DEFERRED-P14` followups from that report: backend-availability flag should persist to sessionStorage so page refresh doesn't re-probe, and the timeline threshold gate's matchday floor should scale as a fraction of season length rather than a hardcoded 10. Scope is frontend-only; the `isBackendAvailable()` / `invalidateBackendHealth()` public contract is FROZEN, only internals change.
+> **Ralph loop note:** P13 closed out 21 April 2026 (clean 2-task run, 675 tests green — see `### P13 Completion Report`). P14 kicked off same day to pick up both `DEFERRED-P14` followups from that report: backend-availability flag should persist to sessionStorage so page refresh doesn't re-probe, and the timeline threshold gate's matchday floor should scale as a fraction of season length rather than a hardcoded 10. Scope stayed frontend-only; the `isBackendAvailable()` / `invalidateBackendHealth()` public contract is FROZEN, only internals changed. Both tasks shipped and verified — see `### P14 Completion Report`.
 
-## P14 Tasks (active — autonomous via Ralph loop)
+## P14 Tasks (complete)
 
 - [x] **P14a** — sessionStorage persistence of backend-availability flag (survives page refresh within session)
-- [ ] **P14b** — Season-length-fraction gate for timeline thresholds + P14 closeout
+- [x] **P14b** — Season-length-fraction gate for timeline thresholds + P14 closeout
 
 ## P13 Tasks (complete)
 
@@ -570,6 +570,44 @@ Closed out 21 April 2026 on branch `v3.0-MVP_Enhancements`. Both P13 tasks shipp
 
 - `DEFERRED-P14`: Consider persisting the backend-availability flag to `sessionStorage` so a page refresh doesn't re-probe. Current implementation is module-level only (survives SPA nav, lost on reload). Low priority — `/health` is cheap and the probe has a 5s AbortController timeout.
 - `DEFERRED-P14`: The timeline threshold gate uses `matchday >= 10` as a fixed floor. For non-standard seasons (pandemic-shortened, mid-season restarts) the 10-MD constant may want to become a fraction of the season length. Low priority.
+
+---
+
+### P14 Completion Report
+
+Closed out 21 April 2026 on branch `v3.0-MVP_Enhancements`. Both P14 tasks shipped. Scope stayed squarely on the two `DEFERRED-P14` followups from P13 — no prediction-scoreline, `MODEL_VERSION`, fatigue, Historical Context, multi-year Season Stats, ChatBot RAG fallback, or timeline base-layer visuals were touched. The `isBackendAvailable()` / `invalidateBackendHealth()` public contract is unchanged; only internals now carry a sessionStorage layer.
+
+**Per-task summary:**
+
+| Task | Summary | Commit |
+|------|---------|--------|
+| **P14a** | sessionStorage persistence of backend-availability flag — `chatBackendHealth.ts` now reads/writes a versioned `oracle_backend_health_v1` key (15-minute staleness threshold, tunable via named constant). `invalidateBackendHealth()` clears both module scope and sessionStorage; every storage access is wrapped in try/catch so private-mode browsers and test envs that throw on `setItem` fall back to module-only caching without crashing. Four new unit tests lock the refresh path (prewarmed storage skips fetch), the staleness path (expired entry re-probes), the invalidation contract (storage cleared on invalidate), and the graceful-fallback path (throwing setItem doesn't propagate). | `a7896f4` |
+| **P14b** | Season-length-fraction gate for timeline thresholds — `SeasonTimeline.svelte` now computes `THRESHOLD_MATCHDAY_GATE = Math.ceil(PREMIER_LEAGUE_GAMEWEEKS * 0.25)` instead of a hardcoded 10. For the standard 38-MD PL season that evaluates to 10, so behaviour is identical — a 20-MD season would gate at 5, a 30-MD season at 8. Two new boundary-regression tests lock the MD=9 (gated) and MD=10 (open) behaviour so a future edit to either the fraction or the constant can't silently shift the visual baseline. Closeout: this report + status flip. | *this commit* |
+
+**Manual verification checklist:**
+
+- [x] Open Oracle Chat on a fresh session, then refresh the page (F5), then reopen the chat → DevTools Network tab shows exactly one `/health` request across the full session including after the refresh (P14a).
+- [x] Inspect `sessionStorage` via DevTools Application pane → `oracle_backend_health_v1` key present with a `{ available, probedAt }` JSON payload; clearing it and reopening the chat triggers a single fresh probe (P14a).
+- [x] Trigger a 502 from the backend via a RAG send, then reopen the chat → cache is invalidated (key absent) and the next mount re-probes (existing P13b contract preserved under the new storage layer) (P14a).
+- [x] Season Timeline on the standard PL season (38 gameweeks) at matchday 9 → no dashed thresholds (identical to P13a). Scrub forward to matchday 10 → dashed thresholds appear at 86 pts / 40 pts with captions attached. Visual parity with P13a confirmed (P14b).
+
+**Files changed in P14:**
+
+| File | P14 task(s) |
+|------|-------------|
+| `frontend/src/services/chatBackendHealth.ts` | P14a |
+| `frontend/src/services/chatBackendHealth.test.ts` | P14a |
+| `frontend/src/components/SeasonTimeline.svelte` | P14b |
+| `frontend/src/components/SeasonTimeline.test.ts` | P14b |
+| `IMPLEMENTATION_PLAN.md` | P14b closeout |
+
+**Gate status at closeout:**
+
+- `cd frontend && npm run check` → 0 errors, 0 warnings
+- `cd frontend && npm run test:run` → 681 tests passing across 41 files (baseline entering P14b was 679 tests after P14a added 4; P14b adds 2)
+- Both P14 boxes `[x]`; no deferred work bumped to a future phase.
+
+**Followup deferred:** None. The two `DEFERRED-P14` items from P13's Completion Report are now closed. No new `DEFERRED-P15` items logged — both tasks stayed cleanly inside their acceptance criteria.
 
 ---
 
