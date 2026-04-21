@@ -1,8 +1,13 @@
 # Premier League Oracle — Implementation Plan
 
-## Status: P13 COMPLETE — deferred followups shipped
+## Status: P14 IN PROGRESS — deferred followups from P13
 
-> **Ralph loop note:** P13 closed out 21 April 2026 (2-task run, all boxes `[x]`, 675 tests green — see `### P13 Completion Report`). Both `DEFERRED-P13` followups logged in the P12 report are now shipped: conditional timeline threshold lines (P13a) and session-cached Oracle Chat health probe (P13b). Scope held firmly to frontend-only — nothing in the FROZEN P12 shipping envelope was disturbed.
+> **Ralph loop note:** P13 closed out 21 April 2026 (clean 2-task run, 675 tests green — see `### P13 Completion Report`). P14 kicked off same day to pick up both `DEFERRED-P14` followups from that report: backend-availability flag should persist to sessionStorage so page refresh doesn't re-probe, and the timeline threshold gate's matchday floor should scale as a fraction of season length rather than a hardcoded 10. Scope is frontend-only; the `isBackendAvailable()` / `invalidateBackendHealth()` public contract is FROZEN, only internals change.
+
+## P14 Tasks (active — autonomous via Ralph loop)
+
+- [x] **P14a** — sessionStorage persistence of backend-availability flag (survives page refresh within session)
+- [ ] **P14b** — Season-length-fraction gate for timeline thresholds + P14 closeout
 
 ## P13 Tasks (complete)
 
