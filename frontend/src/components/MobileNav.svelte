@@ -26,7 +26,7 @@
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Timeline', icon: Calendar, view: 'Season Timeline' },
-    { name: 'Season Predict', icon: CalendarCheck, view: 'Season Predictions' },
+    { name: 'Season Preds', icon: CalendarCheck, view: 'Season Predictions' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
     { name: 'Help', icon: HelpCircle, view: 'Help' },
