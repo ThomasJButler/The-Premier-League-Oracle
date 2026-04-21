@@ -509,8 +509,12 @@ class DataService {
         }
         this.lastFetchedTimestamps.set('live', Date.now());
         return matches;
-      } catch (_error) {
-        // Error fetching live matches
+      } catch (error) {
+        // Degrade to empty per the error contract, but surface the cause so
+        // rate-limit (429/403) and auth failures are visible in dev console
+        // during live polling instead of vanishing silently.
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn('[dataService] getLiveMatches failed:', msg);
       }
     }
 
