@@ -4,6 +4,17 @@ import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
+import { getPairStats, getTeamProfile } from './data/statsPack';
+
+// Blend weight for 33-season historical stats vs current-form signal.
+// 0.3 = 30% historical influence, 70% current. Small enough to let recent
+// form and team strength dominate, large enough to lift known high-scoring
+// fixtures (Liverpool-Arsenal) and dampen defensive ones (Burnley-Palace).
+const STATS_PACK_BLEND_WEIGHT = 0.3;
+// Minimum historical sample before we trust the blend. Below this, fall
+// through to the raw current-form signal.
+const STATS_PACK_PAIR_MIN_MATCHES = 5;
+const STATS_PACK_TEAM_MIN_MATCHES = 20;
 import {
   VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE,
   POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX, POISSON_FALLBACK_HOME_GOALS,
@@ -345,26 +356,37 @@ export class OptimizedPredictor {
     awayTeam: string,
     leagueAvgs: LeagueAverages,
     homeStats: { avgGoalsScored: number; avgGoalsConceded: number },
-    awayStats: { avgGoalsScored: number; avgGoalsConceded: number }
+    awayStats: { avgGoalsScored: number; avgGoalsConceded: number },
+    useHistoricalPack: boolean = true,
   ): { lambdaHome: number; lambdaAway: number } {
     const homeStrengths = leagueAvgs.teamStrengths.get(homeTeam);
     const awayStrengths = leagueAvgs.teamStrengths.get(awayTeam);
 
+    let rawLambdaHome: number;
+    let rawLambdaAway: number;
+
     if (homeStrengths && awayStrengths) {
       // Full Dixon-Coles: team strengths are relative to league average
-      const lambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
-      const lambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
-
-      return {
-        lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
-        lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
-      };
+      rawLambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
+      rawLambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
+    } else {
+      // Fallback: derive from overall stats (no home/away split available)
+      const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
+      rawLambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
+      rawLambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
     }
 
-    // Fallback: derive from overall stats (no home/away split available)
-    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
-    const lambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
-    const lambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
+    // Blend with 33-season pair history when available. Skipped in backtest
+    // mode (useHistoricalPack=false) to keep regression tests deterministic.
+    let lambdaHome = rawLambdaHome;
+    let lambdaAway = rawLambdaAway;
+    if (useHistoricalPack) {
+      const pair = getPairStats(homeTeam, awayTeam);
+      if (pair && pair.totalMatches >= STATS_PACK_PAIR_MIN_MATCHES) {
+        lambdaHome = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaHome + STATS_PACK_BLEND_WEIGHT * pair.avgHomeGoals;
+        lambdaAway = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaAway + STATS_PACK_BLEND_WEIGHT * pair.avgAwayGoals;
+      }
+    }
 
     return {
       lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
@@ -420,10 +442,13 @@ export class OptimizedPredictor {
         }
       }
 
-      // 2. Get team statistics
+      // 2. Get team statistics. In backtest mode (historicalMatches passed)
+      // we skip the 33-season stats pack to keep regression tests
+      // deterministic; live mode uses it when standings are thin or missing.
+      const useHistoricalPack = !historicalMatches;
       const [homeStats, awayStats] = await Promise.all([
-        this.getEnhancedTeamStats(homeTeam, standings),
-        this.getEnhancedTeamStats(awayTeam, standings)
+        this.getEnhancedTeamStats(homeTeam, standings, useHistoricalPack),
+        this.getEnhancedTeamStats(awayTeam, standings, useHistoricalPack)
       ]);
 
       // 3. Calculate ELO ratings from shared system
@@ -456,10 +481,12 @@ export class OptimizedPredictor {
         ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches, asOfDate)
         : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches, asOfDate);
 
-      // 6. Calculate Poisson predictions using Dixon-Coles lambdas
+      // 6. Calculate Poisson predictions using Dixon-Coles lambdas.
+      // In live mode, blend with 33-season pair history for goal-tempo
+      // context; in backtest mode, stick to current-form only.
       const leagueAvgs = this.computeLeagueAverages(allMatches);
       const rawLambdas =
-        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
+        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats, useHistoricalPack);
 
       // Apply fatigue: tired teams score fewer goals (lambda × fatigue).
       // Multipliers are in (0, 1.0] so the adjustment only reduces lambda.
@@ -700,20 +727,41 @@ export class OptimizedPredictor {
     }
   }
 
-  private static getEnhancedTeamStats(team: string, standings: Standing[]) {
+  private static getEnhancedTeamStats(team: string, standings: Standing[], useHistoricalPack: boolean = true) {
     const standing = standings.find(s => s.team.name === team);
 
     if (!standing) {
-      // Use ELO rating to estimate stats when no standings data available
+      // Before falling back to ELO, check the 33-season stats pack — it's a
+      // much richer source than a pure ELO-derived estimate. Era-weighted so
+      // recent performance dominates.
+      if (useHistoricalPack) {
+        const profile = getTeamProfile(team);
+        if (profile && profile.totalMatches >= STATS_PACK_TEAM_MIN_MATCHES) {
+          const avgScored = (profile.eraWeighted.homeGoalsScored + profile.eraWeighted.awayGoalsScored) / 2;
+          const avgConceded = (profile.eraWeighted.homeGoalsConceded + profile.eraWeighted.awayGoalsConceded) / 2;
+          const cleanSheetRate = (profile.cleanSheetRateHome + profile.cleanSheetRateAway) / 2;
+          // Approximate pointsPerGame from goal differential — good teams have GD > 0
+          const gd = avgScored - avgConceded;
+          return {
+            avgGoalsScored: Math.max(0.5, avgScored),
+            avgGoalsConceded: Math.max(0.5, avgConceded),
+            pointsPerGame: Math.max(0.3, Math.min(3, 1.3 + gd * 0.7)),
+            cleanSheetRate: Math.max(0.1, Math.min(0.5, cleanSheetRate)),
+            winRate: Math.max(0.1, Math.min(0.8, 0.33 + gd * 0.2)),
+          };
+        }
+      }
+
+      // Fallback: ELO-derived estimate when neither standings nor stats pack help
       const teamStrength = this.eloSystem.getTeamRating(team);
       const relativeStrength = (teamStrength - 1500) / 200; // Normalise to approx -1.5 to +1.75
-      
+
       // Better teams score more and concede less
       const avgGoalsScored = 1.5 + (relativeStrength * 0.5);
       const avgGoalsConceded = 1.5 - (relativeStrength * 0.3);
       const pointsPerGame = 1.3 + (relativeStrength * 0.7);
       const winRate = 0.33 + (relativeStrength * 0.2);
-      
+
       return {
         avgGoalsScored: Math.max(0.5, avgGoalsScored),
         avgGoalsConceded: Math.max(0.5, avgGoalsConceded),
