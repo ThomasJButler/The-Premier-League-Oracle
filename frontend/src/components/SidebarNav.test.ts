@@ -29,7 +29,7 @@ vi.mock('lucide-svelte', () => {
     LayoutDashboard: stub, List: stub, BarChart2: stub, BarChart3: stub,
     History: stub, Settings: stub, Calculator: stub, HelpCircle: stub,
     Trophy: stub, Tv: stub, Table: stub, X: stub, MessageCircle: stub,
-    Search: stub, Layers: stub, Calendar: stub, Zap: stub,
+    Search: stub, Layers: stub, Calendar: stub, CalendarCheck: stub, Zap: stub,
   };
 });
 
@@ -69,11 +69,12 @@ describe('SidebarNav', () => {
     expect(screen.getByText('Oracle')).toBeInTheDocument();
   });
 
-  it('renders all 9 main navigation items', () => {
+  it('renders all 10 main navigation items', () => {
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
     const mainItems = [
       'Dashboard', 'Standings', 'Live Matches', 'Matches', 'Predictions',
       'Oracle Chat', 'Top Scorers', 'Season Stats', 'Season Timeline',
+      'Season Predictions',
     ];
     for (const name of mainItems) {
       expect(screen.getByTitle(name)).toBeInTheDocument();

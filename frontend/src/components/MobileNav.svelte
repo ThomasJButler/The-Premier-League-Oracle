@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers, Calendar, Zap } from 'lucide-svelte';
+  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers, Calendar, CalendarCheck, Zap } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
   import { focusTrap } from '$lib/utils';
 
@@ -26,6 +26,7 @@
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Timeline', icon: Calendar, view: 'Season Timeline' },
+    { name: 'Season Predict', icon: CalendarCheck, view: 'Season Predictions' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
     { name: 'Settings', icon: Settings, view: 'Settings' },
     { name: 'Help', icon: HelpCircle, view: 'Help' },
