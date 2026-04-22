@@ -15,7 +15,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from train_free_tier import (  # noqa: E402
+from train_free_tier import (
     DirichletCalibrator,
     _calibrate_with_method,
     apply_calibrators,

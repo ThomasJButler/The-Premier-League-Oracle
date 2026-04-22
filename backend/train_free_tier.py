@@ -19,6 +19,7 @@ Output:
 """
 
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -116,10 +117,8 @@ def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
         if col in row.index:
             val = row[col]
             if pd.notna(val):
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     odds[col] = float(val)
-                except (ValueError, TypeError):
-                    pass
 
     # Return None if we didn't find any meaningful odds data
     return odds if odds else None

@@ -440,29 +440,24 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            # Single XGBoost with calibration (Dirichlet, isotonic, or Platt).
+            # Single XGBoost with calibration. Delegate to the canonical
+            # `apply_calibrators` helper in `train_free_tier.py` so dispatch
+            # stays uniform across training and inference — the helper handles
+            # all six calibrator kinds (dirichlet, dirichlet_reg, temperature,
+            # beta, platt, isotonic) and was unit-tested in
+            # `tests/test_calibration.py`. The previous inline dispatch
+            # silently fell through to raw probabilities for single-object
+            # non-dirichlet calibrators (temperature/beta/dirichlet_reg).
+            from train_free_tier import apply_calibrators
+
             calibrators = free_tier_metadata.get('calibrators')
             cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
-            if cal_method == 'dirichlet' and calibrators is not None:
-                # Joint calibration: calibrators is a single DirichletCalibrator.
-                probs = calibrators.predict_proba(
-                    np.asarray(raw_probs).reshape(1, -1)
+            if calibrators is not None:
+                probs = apply_calibrators(
+                    np.asarray(raw_probs).reshape(1, -1),
+                    calibrators,
+                    cal_method,
                 )[0]
-            elif calibrators and hasattr(calibrators, '__len__') and len(calibrators) == 3:
-                if cal_method == 'platt':
-                    cal_probs = np.array([
-                        float(cal.predict_proba(
-                            np.array([[raw_probs[i]]])
-                        )[0, 1])
-                        for i, cal in enumerate(calibrators)
-                    ])
-                else:
-                    cal_probs = np.array([
-                        float(cal.predict([raw_probs[i]])[0])
-                        for i, cal in enumerate(calibrators)
-                    ])
-                total = cal_probs.sum()
-                probs = cal_probs / total if total > 0 else raw_probs
             else:
                 probs = raw_probs
 

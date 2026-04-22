@@ -16,10 +16,12 @@ test.describe('Kelly Calculator', () => {
   });
 
   test('has bankroll and odds number inputs', async ({ page }) => {
-    const calculator = page.locator('[data-testid="kelly-calculator"]');
-    const inputs = calculator.locator('input[type="number"]');
-    const count = await inputs.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+    // Use `toHaveCount` which auto-retries until the component mounts —
+    // the raw `.count()` call was racing the Svelte mount because this
+    // test (unlike the one above it) doesn't gate on any `toBeVisible`
+    // call first, so the query fires before the inputs exist.
+    const inputs = page.locator('[data-testid="kelly-calculator"] input[type="number"]');
+    await expect(inputs).toHaveCount(3);
   });
 
   test('shows recommended bet results with default values', async ({ page }) => {

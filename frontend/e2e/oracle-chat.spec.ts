@@ -54,7 +54,7 @@ test.describe('Oracle Chat', () => {
   });
 
   test('rejects very short API keys', async ({ page }) => {
-    const keyInput = page.getByPlaceholder('sk-...');
+    const keyInput = page.getByPlaceholder('sk-ant-...');
     await keyInput.fill('short');
     await page.getByRole('button', { name: 'Connect' }).click();
 
@@ -63,8 +63,8 @@ test.describe('Oracle Chat', () => {
   });
 
   test('clear chat button works', async ({ page }) => {
-    // The clear button is in the chat header
-    const clearBtn = page.locator('button[title="Clear chat"]');
+    // The clear button is in the chat header — uses aria-label, not title
+    const clearBtn = page.getByRole('button', { name: 'Clear chat' });
     await expect(clearBtn).toBeVisible();
     await clearBtn.click();
 

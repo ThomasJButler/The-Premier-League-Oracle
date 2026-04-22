@@ -694,8 +694,11 @@ export class OptimizedPredictor {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
       }
 
-      // 11. Predict goals with adjusted model — argmax over the Poisson grid
-      // (most likely single scoreline), then apply result-consistency + H2H tweaks
+      // 11. Predict goals — strict argmax over Poisson grid cells consistent
+      // with predicted outcome. No rounded-means, no H2H tempo nudge: the
+      // grid's modal outcome-consistent cell is the honest headline scoreline.
+      // Form and H2H params are threaded in for signature stability only (see
+      // `_formAnalysis` / `_h2hAnalysis` in `predictGoals`).
       const predictedGoals = this.predictGoals(
         scoreProbabilities,
         prediction.result,

@@ -22,6 +22,32 @@ export async function setupApp(page: Page, apiKey = 'test-api-key-e2e') {
   await page.goto('/');
   await page.evaluate((key) => {
     localStorage.setItem('football_data_api_key', key);
+
+    // Seed one completed + correct prediction so Dashboard renders its
+    // `stat-cards` state rather than the empty `onboarding-card` state.
+    // `hasActivity = rawTotalPredictions > 0 || rawTotalBets > 0` — one stored
+    // settled prediction flips that to true. Tests expecting specific
+    // stat-cards elements depend on this seed.
+    const seededPrediction = {
+      'seed_e2e_1': {
+        id: 'seed_e2e_1',
+        matchId: 'seed_e2e_match_1',
+        homeTeam: 'Arsenal',
+        awayTeam: 'Liverpool',
+        predictedResult: 'H',
+        predictedHomeGoals: 2,
+        predictedAwayGoals: 1,
+        confidence: 0.72,
+        actualResult: 'H',
+        actualHomeGoals: 2,
+        actualAwayGoals: 1,
+        isCorrect: true,
+        timestamp: new Date(Date.now() - 7 * 86400_000).toISOString(),
+        matchDate: new Date(Date.now() - 7 * 86400_000).toISOString(),
+        matchday: 20,
+      },
+    };
+    localStorage.setItem('pl_oracle_predictions', JSON.stringify(seededPrediction));
   }, apiKey);
   // Reload so the app reads the key from localStorage
   await page.reload();
@@ -61,7 +87,13 @@ export async function navigateTo(page: Page, viewName: string) {
       await page.locator('[data-testid="more-menu-grid"] button').filter({ hasText: viewName }).click();
     }
   } else {
-    await page.getByRole('button', { name: viewName }).click();
+    // Scope to the sidebar (role="complementary") because main-content views
+    // now host their own buttons with overlapping accessible names — e.g.
+    // the Dashboard has a "Predictions" tab button and an "Open Kelly
+    // Calculator" CTA that collide with the sidebar's nav items. Matching
+    // globally returns 2+ elements and trips Playwright's strict mode.
+    // Combine sidebar-scope with `exact: true` so only the nav item matches.
+    await page.getByRole('complementary').getByRole('button', { name: viewName, exact: true }).click();
   }
 
   await page.waitForLoadState('domcontentloaded');

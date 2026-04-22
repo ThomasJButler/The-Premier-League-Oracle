@@ -45,12 +45,6 @@ function chatApiProxy(): Plugin {
             return;
           }
 
-          if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'Messages array required.' }));
-            return;
-          }
-
           // Resolve model: request body → env var → default
           const requestedModel = parsed.model;
           const envModel = process.env.ORACLE_AI_MODEL;
@@ -59,12 +53,24 @@ function chatApiProxy(): Plugin {
             ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
             ?? DEFAULT_MODEL;
 
-          // Resolve API key: env var takes priority, then request body
+          // Resolve API key: env var takes priority, then request body.
+          // Key check runs BEFORE the messages check (mirroring api/chat.ts)
+          // so ChatBot's server-key probe (which sends empty messages) can
+          // accurately detect whether a server key is configured — without
+          // this ordering, the messages check fires first in dev, tricking
+          // the probe into setting useServerKey=true even when ANTHROPIC_API_KEY
+          // is absent, which hides the "Connect Anthropic" UI.
           const apiKey = process.env.ANTHROPIC_API_KEY || parsed.apiKey;
 
           if (!apiKey) {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: 'No API key configured. Please enter your Anthropic key.' }));
+            return;
+          }
+
+          if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Messages array required.' }));
             return;
           }
 

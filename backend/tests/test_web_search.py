@@ -20,15 +20,14 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.api.web_search import (
-    SearchResult,
     _CACHE_TTL,
+    SearchResult,
     _cache_get,
     _cache_set,
     _search_cache,
     inject_search_context,
     search_premier_league,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

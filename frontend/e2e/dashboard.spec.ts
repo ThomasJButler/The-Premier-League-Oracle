@@ -15,7 +15,7 @@ test.describe('Dashboard', () => {
 
     // Verify each card has a rendered value (not blank)
     for (let i = 0; i < 4; i++) {
-      const value = statCards.nth(i).locator('.text-2xl');
+      const value = statCards.nth(i).locator('.text-xl');
       await expect(value).toBeVisible();
       await expect(value).not.toBeEmpty();
     }
@@ -39,10 +39,13 @@ test.describe('Dashboard', () => {
     const statCards = page.locator('[data-testid="stat-card"]');
     const accuracyCard = statCards.filter({ hasText: 'Prediction Accuracy' });
     await expect(accuracyCard).toBeVisible();
-    await expect(accuracyCard.locator('.text-2xl')).toContainText('%');
+    await expect(accuracyCard.locator('.text-xl')).toContainText('%');
   });
 
   test('"View All Matches" button exists and navigates', async ({ page }) => {
+    // The "view-all-matches" CTA only renders on the Upcoming activity tab.
+    // Click the tab before asserting the button is present.
+    await page.locator('[data-testid="tab-upcoming"]').click();
     const viewBtn = page.locator('[data-testid="view-all-matches"]');
     await expect(viewBtn).toBeVisible({ timeout: 10000 });
     // Scroll into view in case bottom nav obscures the button on mobile

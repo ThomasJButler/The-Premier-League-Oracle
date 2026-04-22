@@ -1044,7 +1044,7 @@
                       </div>
                       <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{getMatchStatusLabel(prediction)}</div>
                       {#if prediction.detailedAnalysis}
-                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                        <div class="inline-block text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded mt-1" title="Predicted score">
                           Predicted: {prediction.detailedAnalysis.predictedScore}
                         </div>
                       {/if}
@@ -1058,7 +1058,7 @@
                         {getMatchStatusLabel(prediction)}
                       </div>
                       {#if prediction.detailedAnalysis}
-                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                        <div class="inline-block text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded mt-1" title="Predicted score">
                           Predicted: {prediction.detailedAnalysis.predictedScore}
                         </div>
                       {/if}
