@@ -12,6 +12,7 @@ The Premier League Oracle has two independently deployable components:
 | Variable | Component | Required? | Description |
 |----------|-----------|-----------|-------------|
 | `VITE_FOOTBALL_DATA_API_KEY` | Frontend | No | Football-Data.org API key. Users can also set this in the app's Settings UI (stored in localStorage) |
+| `VITE_BACKEND_URL` | Frontend | No | Full URL of the deployed Python backend (e.g. `https://ploracle-backend.onrender.com`). When unset, the frontend uses the `/api/oracle` Vite dev proxy |
 | `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Oracle Chat and AI match analysis. Without it, users must provide their own key in the chat UI |
 | `FOOTBALL_DATA_API_KEY` | Backend | No | Football-Data.org API key for live match data. Server starts without it but match endpoints return empty data |
 | `ORACLE_AI_MODEL` | Frontend (Edge Function) + Backend | No | Claude model for Oracle Chat and analyses. Default: `claude-haiku-4-5-20251001`. Also supports `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-7` |
@@ -167,37 +168,48 @@ The training script produces:
 
 Vercel provides automatic deploys from git, preview URLs for PRs, and edge function support. The `frontend/vercel.json` is pre-configured.
 
-### Backend: Container Hosts
+### Backend: Render (via `render.yaml` Blueprint)
 
-The Docker image can be deployed to any container hosting platform:
+The repo ships a Render Blueprint at the root — `render.yaml` — that declares a Docker-based web service pointing at `backend/Dockerfile`. This is the primary recommended path.
+
+**One-time setup:**
+
+1. Push the repo to GitHub (or GitLab).
+2. In the Render dashboard, click **New -> Blueprint** and pick this repo.
+3. Render reads `render.yaml` and provisions a free-tier web service.
+4. Open the new service and, under **Environment**, fill in the two secret env vars flagged `sync: false`:
+   - `ANTHROPIC_API_KEY` — `sk-ant-...`
+   - `FOOTBALL_DATA_API_KEY` — your Football-Data.org key
+5. Trigger an initial deploy. The first build takes ~5 min (Python + XGBoost wheels).
+6. Once the service is live, copy the public URL (e.g. `https://premier-league-oracle-backend.onrender.com`).
+
+**Wiring the frontend up:**
+
+1. In the Vercel dashboard, open the project -> **Settings** -> **Environment Variables**.
+2. Add `VITE_BACKEND_URL` set to the Render URL from step 6 above.
+3. Redeploy the frontend (Vercel does this automatically when an env var changes).
+
+The frontend reads this env var at build time (`frontend/src/services/backendService.ts`). In dev the var is unset, so the call falls through to `/api/oracle` and the Vite proxy routes it to `localhost:8000`. In production the var is set, so the frontend calls the Render URL directly as a cross-origin request. The backend's CORS allow-list already includes `*.vercel.app`, so no proxy or rewrite is needed.
+
+**Model file:** `backend/models/xgboost_free_tier.joblib` is committed to the repo (3 MB) and copied into the Docker image at build time — `/predict/free` works immediately on first deploy without retraining.
+
+**Free-tier caveat:** Render's free plan spins the dyno down after 15 minutes of inactivity. The first request after a cold start can take 30-60 seconds. Upgrade to Starter (US$7/mo) for always-on.
+
+### Other Container Hosts
+
+The same Dockerfile works on any container platform:
 
 | Platform | Notes |
 |----------|-------|
 | **Railway** | `railway up` from the `backend/` directory. Set env vars in the dashboard |
 | **Fly.io** | `fly launch` then `fly deploy`. Dockerfile is auto-detected |
-| **Render** | Connect the repo, set root directory to `backend/`, select Docker runtime |
 | **Google Cloud Run** | `gcloud run deploy` with the built Docker image |
 | **AWS ECS / Fargate** | Push image to ECR, create task definition with port 8000 |
 
 All platforms need:
 1. Port 8000 exposed
 2. `FOOTBALL_DATA_API_KEY` and `ANTHROPIC_API_KEY` set as environment variables
-3. The trained model file baked into the Docker image (or mounted as a volume)
-
-### Connecting Frontend to Backend
-
-The frontend calls `/api/oracle/*` for all backend requests. In dev, the Vite proxy routes these to `localhost:8000`. In production, you need a Vercel rewrite to forward these requests to your backend host.
-
-Add to `frontend/vercel.json`:
-
-```json
-{
-  "rewrites": [
-    { "source": "/api/oracle/:path*", "destination": "https://your-backend-host.example.com/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
+3. The deployed URL copied into `VITE_BACKEND_URL` on Vercel
 
 The backend's CORS config already allows all `*.vercel.app` origins.
 

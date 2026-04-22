@@ -19,6 +19,10 @@ frontend/coverage/
 backend/chroma_db/
 backend/models/*.pkl
 backend/models/*.joblib
+# Whitelist the production model so Render's Docker build can COPY it
+!backend/models/xgboost_free_tier.joblib
+# Keep pre-release model backups out of git
+backend/models/*.pre-*
 backend/models/*.png
 backend/cache/
 backend/logs/
