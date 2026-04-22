@@ -35,14 +35,13 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 # Add parent to path so we can import the feature engineer's CSV loader
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.features.free_tier_features import FreeTierFeatureEngineer  # noqa: E402
-
+from app.features.free_tier_features import FreeTierFeatureEngineer
 
 # Exponential decay: a fixture's weight = ERA_DECAY ** (current_year - season_year).
 # At 0.85, 2025/26 = 1.0, 2014/15 ≈ 0.17, 1993/94 ≈ 0.02 — recent seasons
@@ -710,7 +709,6 @@ def compute_season_positions(df) -> dict[tuple[str, str], int]:
     top-6 / mid / bottom-6 sides is the cleanest "big teams batter weak teams"
     signal the ensemble currently misses.
     """
-    import pandas as pd
 
     required = {'season', 'home_team', 'away_team', 'result', 'home_goals', 'away_goals'}
     if not required.issubset(df.columns):
@@ -771,7 +769,6 @@ def augment_team_opposition_tier(df, teams: dict[str, Any], positions: dict[tupl
     Each has `{matches, avgGoalsScored, avgGoalsConceded, winRate, scored3PlusRate}`
     across both venues (home + away pooled).
     """
-    import pandas as pd
 
     if not positions:
         return
@@ -783,20 +780,25 @@ def augment_team_opposition_tier(df, teams: dict[str, Any], positions: dict[tupl
         if len(my_rows) == 0:
             continue
 
-        def _tier_for_row(row):
+        # Bind `team` as a default arg in each closure so ruff's B023 doesn't
+        # flag the late-binding pattern. All four are used synchronously via
+        # `.apply()` inside this same loop iteration, so late-binding never
+        # actually bites — but the explicit bind protects against future
+        # refactors that might move the apply() out of the loop body.
+        def _tier_for_row(row, team=team):
             opp = row['away_team'] if row['home_team'] == team else row['home_team']
             pos = positions.get((str(row['season']), opp))
             return _tier_of_position(pos) if pos is not None else None
 
         my_rows['opp_tier'] = my_rows.apply(_tier_for_row, axis=1)
 
-        def _goals_for(row):
+        def _goals_for(row, team=team):
             return row['home_goals'] if row['home_team'] == team else row['away_goals']
 
-        def _goals_against(row):
+        def _goals_against(row, team=team):
             return row['away_goals'] if row['home_team'] == team else row['home_goals']
 
-        def _did_win(row):
+        def _did_win(row, team=team):
             result = row['result']
             if row['home_team'] == team:
                 return result == 'H'
@@ -890,8 +892,8 @@ def augment_team_streaks_extended(df, teams: dict[str, Any]) -> None:
         if len(all_rows) == 0:
             continue
 
-        def _outcome(row):
-            """Was this team's outcome W / D / L?"""
+        def _outcome(row, team=team):
+            """Was this team's outcome W / D / L? (team bound via default arg — see B023)"""
             result = row['result']
             if row['home_team'] == team:
                 return 'W' if result == 'H' else ('L' if result == 'A' else 'D')
@@ -980,8 +982,8 @@ def augment_team_comeback_from_two(df, teams: dict[str, Any]) -> None:
         if len(team_rows) == 0:
             continue
 
-        def _comeback_from_two(row):
-            """Was the team trailing by ≥2 at HT but drew or won at FT?"""
+        def _comeback_from_two(row, team=team):
+            """Was the team trailing by ≥2 at HT but drew or won at FT? (team bound via default arg)"""
             if row['home_team'] == team:
                 ht_deficit = row['first_half_away'] - row['first_half_home']
                 ft_result_ok = row['result'] in ('H', 'D')
@@ -1130,11 +1132,11 @@ def augment_team_half_time(df, teams: dict[str, Any]) -> None:
             continue
 
         first_half_scored = team_rows.apply(
-            lambda r: r['first_half_home'] if r['home_team'] == team else r['first_half_away'],
+            lambda r, team=team: r['first_half_home'] if r['home_team'] == team else r['first_half_away'],
             axis=1,
         )
         second_half_scored = team_rows.apply(
-            lambda r: r['second_half_home'] if r['home_team'] == team else r['second_half_away'],
+            lambda r, team=team: r['second_half_home'] if r['home_team'] == team else r['second_half_away'],
             axis=1,
         )
 
@@ -1144,12 +1146,12 @@ def augment_team_half_time(df, teams: dict[str, Any]) -> None:
 
         # Comeback: team was trailing at HT but won at FT
         # Capitulation: team was leading at HT but lost at FT
-        def _comeback(r):
+        def _comeback(r, team=team):
             if r['home_team'] == team:
                 return (r['ht_outcome'] == 'A' and r['result'] == 'H')
             return (r['ht_outcome'] == 'H' and r['result'] == 'A')
 
-        def _capitulation(r):
+        def _capitulation(r, team=team):
             if r['home_team'] == team:
                 return (r['ht_outcome'] == 'H' and r['result'] == 'A')
             return (r['ht_outcome'] == 'A' and r['result'] == 'H')
@@ -1158,7 +1160,7 @@ def augment_team_half_time(df, teams: dict[str, Any]) -> None:
         capitulations = int(team_rows.apply(_capitulation, axis=1).sum())
 
         profile['halfTime'] = {
-            'matches': int(len(team_rows)),
+            'matches': len(team_rows),
             'avgFirstHalfGoalsScored': round(float(first_half_scored.mean()), 4),
             'avgSecondHalfGoalsScored': round(float(second_half_scored.mean()), 4),
             'firstHalfShare': round(safe_div(first_half_total, total_goals), 4) if total_goals else 0.0,
@@ -1284,10 +1286,10 @@ def main():
           f'highest match: {league_goal_frequency.get("highestScoringMatch")}')
 
     pack = {
-        'generatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        'generatedAt': datetime.now(UTC).replace(microsecond=0).isoformat(),
         'eraDecay': ERA_DECAY,
         'referenceYear': CURRENT_YEAR,
-        'totalMatches': int(len(df)),
+        'totalMatches': len(df),
         'totalSeasons': int(df['season'].nunique()),
         'seasons': sorted(df['season'].unique().tolist()),
         'leagueEra': league_era,

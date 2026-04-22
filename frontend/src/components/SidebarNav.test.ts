@@ -63,10 +63,12 @@ describe('SidebarNav', () => {
     vi.clearAllMocks();
   });
 
-  it('renders header branding', () => {
+  it('renders the logo mark with an accessible label', () => {
+    // Sidebar now shows only the trophy SVG — the "The Premier League Oracle"
+    // wordmark lives in the Header, not duplicated here. The aria-label on
+    // the logo container is the accessible equivalent for screen readers.
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
-    expect(screen.getByText('The Premier League')).toBeInTheDocument();
-    expect(screen.getByText('Oracle')).toBeInTheDocument();
+    expect(screen.getByLabelText('The Premier League Oracle')).toBeInTheDocument();
   });
 
   it('renders all 9 main navigation items', () => {
