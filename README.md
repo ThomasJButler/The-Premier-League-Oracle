@@ -1,10 +1,7 @@
 # The Premier League Oracle
 
-![Version](https://img.shields.io/badge/version-3.5-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
-![Status](https://img.shields.io/badge/status-live-success)
-![Tests](https://img.shields.io/badge/tests-686%20unit%20%2B%20115%20E2E%20passing-brightgreen)
 
 A live, data-driven Premier League prediction platform. It blends five statistical models into a weighted ensemble — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings — together with a trained XGBoost model, and displays predictions with honest probability bars instead of over-confident single-scoreline claims.
 
@@ -57,8 +54,8 @@ I'm not actively accepting feature PRs — issue reports on bugs or prediction-q
 | Frontend | Svelte 4.2, TypeScript, Tailwind CSS, Vite, shadcn-svelte components |
 | Charts | Chart.js via svelte-chartjs (theme-aware CSS-var driven) |
 | Caching | Three-tier: memory → IndexedDB → Football-Data.org API |
-| Testing | 686 Vitest unit tests (41 files), 115 Playwright E2E tests (3 viewports), 208 backend pytest tests |
-| Backend | Python 3.11, FastAPI, XGBoost (free-tier model, 114 features, 53.3% accuracy, isotonic calibration) |
+| Testing | Vitest unit tests, Playwright E2E across 3 viewports, pytest for the backend |
+| Backend | Python 3.11, FastAPI, XGBoost (isotonic-calibrated free-tier model) |
 | API | Football-Data.org v4 (free tier: 10 req/min) |
 | CI/CD | GitHub Actions — type check, unit + E2E tests, coverage thresholds, ESLint, ruff, production build |
 | Hosting | Vercel edge (frontend + edge function for Anthropic API proxy) |
