@@ -1,10 +1,21 @@
 name: CI
 
 on:
+  # Push to main verifies the merged state. Feature-branch pushes are covered
+  # by pull_request runs — triggering on both push and pull_request for the
+  # same commit doubled minute consumption for every PR iteration.
   push:
-    branches: [main, 'v3.0-*']
+    branches: [main]
   pull_request:
     branches: [main, 'v3.0-*']
+
+# Cancel in-flight runs for the same ref when a new push lands — no point
+# burning Actions minutes verifying a commit that's already been superseded
+# by a follow-up push. `github.ref` is a built-in non-user-controlled context
+# (e.g. 'refs/heads/main', 'refs/pull/26/merge'), safe to interpolate here.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   frontend:
@@ -59,7 +70,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npx playwright test
+        # --project=desktop-chrome on PRs (fast, ~45 min less runtime than all
+        # 3 viewports), full 3-viewport sweep only when pushing to main.
+        run: npx playwright test ${{ github.event_name == 'pull_request' && '--project=desktop-chrome' || '' }}
 
       - name: Upload test report
         if: ${{ !cancelled() }}

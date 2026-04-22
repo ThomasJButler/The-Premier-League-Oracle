@@ -65,7 +65,7 @@ describe('SidebarNav', () => {
 
   it('renders header branding', () => {
     render(SidebarNav, { props: { currentView: 'Dashboard' } });
-    expect(screen.getByText('Premier League')).toBeInTheDocument();
+    expect(screen.getByText('The Premier League')).toBeInTheDocument();
     expect(screen.getByText('Oracle')).toBeInTheDocument();
   });
 
