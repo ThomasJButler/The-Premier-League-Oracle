@@ -283,7 +283,7 @@ Current-week snapshot:\n`;
   function buildGroundedDataBlock(rawQuery: string): string {
     if (!rawQuery || rawQuery.length < 6) return '';
     const query = rawQuery.toLowerCase();
-    const seasonMatch = query.match(/20\d{2}[\/-]?\d{2}/);
+    const seasonMatch = query.match(/20\d{2}[/-]?\d{2}/);
     const season = seasonMatch ? normaliseSeason(seasonMatch[0]) : undefined;
 
     // Catch team names by scanning known CSV teams — API names vary
