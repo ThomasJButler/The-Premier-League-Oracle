@@ -5,10 +5,31 @@ import { dataService } from '../../services/dataService';
 import { betHistoryService } from '../../services/betting/betHistoryService';
 import type { Match } from '../../types';
 
-// Mock dataService
+// Mock dataService — includes the calls used by both `loadMatches` (existing
+// manual-builder combos) and `buildAutoAccumulators` (new auto-build path).
 vi.mock('../../services/dataService', () => ({
   dataService: {
-    getMatches: vi.fn(() => Promise.resolve([]))
+    getMatches: vi.fn(() => Promise.resolve([])),
+    getCurrentSeason: vi.fn(() => Promise.resolve({ currentMatchday: 20 })),
+    getCurrentSeasonMatches: vi.fn(() => Promise.resolve([])),
+  }
+}));
+
+// Mock OptimizedPredictor — used by buildAutoAccumulators.
+// Tests override this per-case via vi.mocked(OptimizedPredictor.predictMatch).
+vi.mock('../../lib/optimizedPredictions', () => ({
+  OptimizedPredictor: {
+    predictMatch: vi.fn(() => Promise.resolve({
+      predictedResult: 'H',
+      confidence: 0.55,
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      homeForm: 'WWDLW',
+      awayForm: 'LDWWL',
+      modelWeights: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+      insights: [],
+      valueOdds: { home: 1.85, draw: 3.50, away: 4.20 },
+    }))
   }
 }));
 
@@ -92,7 +113,8 @@ vi.mock('lucide-svelte', () => {
   };
   return {
     Layers: stub, RefreshCw: stub, Trash2: stub, BookmarkPlus: stub,
-    Check: stub, AlertTriangle: stub, ChevronDown: stub, ChevronUp: stub
+    Check: stub, AlertTriangle: stub, ChevronDown: stub, ChevronUp: stub,
+    Shield: stub, TrendingUp: stub, Flame: stub
   };
 });
 
@@ -333,5 +355,91 @@ describe('AccumulatorBuilder Component', () => {
   it('should have a refresh button', () => {
     render(AccumulatorBuilder);
     expect(screen.getByLabelText('Refresh suggestions')).toBeInTheDocument();
+  });
+
+  describe('Auto-built accumulators', () => {
+    /**
+     * Helper — seed dataService + OptimizedPredictor mocks with N upcoming
+     * matches, each with a per-index confidence level (for testing the
+     * Safe / Risky / Favourites split).
+     */
+    async function renderWithAutoBuild(predictions: Array<{ confidence: number; result?: 'H' | 'D' | 'A' }>) {
+      const { OptimizedPredictor } = await import('../../lib/optimizedPredictions');
+      const matches: Match[] = predictions.map((_, i) =>
+        makeUpcomingMatch({
+          id: `auto_${i + 1}`,
+          home_team: `Home${i + 1}`,
+          away_team: `Away${i + 1}`,
+          matchday: 20,
+        })
+      );
+      vi.mocked(dataService.getCurrentSeason).mockResolvedValue({ currentMatchday: 20 } as any);
+      vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(matches);
+      vi.mocked(dataService.getMatches).mockResolvedValue(matches);
+
+      let callIndex = 0;
+      vi.mocked(OptimizedPredictor.predictMatch).mockImplementation(async () => {
+        const idx = Math.min(callIndex++, predictions.length - 1);
+        const p = predictions[idx];
+        return {
+          predictedResult: (p.result ?? 'H') as 'H' | 'D' | 'A',
+          confidence: p.confidence,
+          predictedHomeGoals: 2,
+          predictedAwayGoals: 1,
+          homeForm: 'WWDLW',
+          awayForm: 'LDWWL',
+          modelWeights: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+          insights: [],
+          valueOdds: { home: 1 / p.confidence, draw: 3.5, away: 4.2 },
+        } as any;
+      });
+
+      const { component } = render(AccumulatorBuilder);
+      await act(async () => {
+        await (component as any).buildAutoAccumulators();
+      });
+      return component;
+    }
+
+    it('builds Safe/Risky/Favourites accumulators from the gameweek predictions', async () => {
+      // 10 predictions spread across confidence bands:
+      // - 4 above 0.65 (safe picks)
+      // - 4 between 0.45 and 0.65 (risky picks)
+      // - 2 below 0.45 (still eligible for favourites)
+      await renderWithAutoBuild([
+        { confidence: 0.82 }, { confidence: 0.77 }, { confidence: 0.72 }, { confidence: 0.68 },
+        { confidence: 0.60 }, { confidence: 0.55 }, { confidence: 0.50 }, { confidence: 0.47 },
+        { confidence: 0.42 }, { confidence: 0.38 },
+      ]);
+
+      // All three preset cards should render via the accent-keyed test IDs.
+      expect(screen.getByTestId('auto-accumulator-card-emerald')).toBeInTheDocument();
+      expect(screen.getByTestId('auto-accumulator-card-amber')).toBeInTheDocument();
+      expect(screen.getByTestId('auto-accumulator-card-red')).toBeInTheDocument();
+
+      // Section headings present (each card has the builder name in emerald/amber/red text).
+      expect(screen.getByText('Safe Builder')).toBeInTheDocument();
+      expect(screen.getByText('Risky Builder')).toBeInTheDocument();
+      expect(screen.getByText('Favourites Accumulator')).toBeInTheDocument();
+
+      // Favourites Accumulator includes all 10 fixtures.
+      expect(screen.getByText(/10 games/)).toBeInTheDocument();
+    });
+
+    it('"Use this" on an auto-accumulator loads legs into the manual builder', async () => {
+      await renderWithAutoBuild([
+        { confidence: 0.80 }, { confidence: 0.75 }, { confidence: 0.70 },
+        { confidence: 0.55 }, { confidence: 0.50 },
+      ]);
+
+      // Click "Use this" on the emerald (Safe) accumulator.
+      const useBtn = screen.getByTestId('auto-accumulator-use-emerald');
+      await fireEvent.click(useBtn);
+
+      // The manual "Your Accumulator" section should now render with legs.
+      // It's gated on accumulatorLegs.length > 0, so its data-testid appears.
+      expect(screen.getByTestId('custom-accumulator')).toBeInTheDocument();
+      expect(screen.getByText('Your Accumulator')).toBeInTheDocument();
+    });
   });
 });
