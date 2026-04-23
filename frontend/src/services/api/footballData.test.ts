@@ -204,6 +204,88 @@ describe('FootballDataAPI', () => {
     });
   });
 
+  describe('transformMatch — result gating on match status', () => {
+    // Regression: Football-Data.org occasionally populates score.winner mid-match.
+    // Before this gate, live matches were rendered as "Full Time" and marked
+    // correct/incorrect before they actually ended.
+    const makeFdMatch = (overrides: Record<string, unknown> = {}) => ({
+      id: 999,
+      utcDate: '2024-08-15T15:00:00Z',
+      homeTeam: { name: 'Liverpool FC', shortName: 'Liverpool' },
+      awayTeam: { name: 'Fulham FC', shortName: 'Fulham' },
+      score: {
+        winner: 'HOME_TEAM',
+        fullTime: { home: 2, away: 1 },
+        halfTime: { home: 1, away: 0 }
+      },
+      status: 'IN_PLAY',
+      referees: [],
+      ...overrides
+    });
+
+    const fetchTransformed = async (fdMatch: Record<string, unknown>) => {
+      api.setApiKey(mockApiKey);
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ matches: [fdMatch] })
+      } as unknown as Response);
+      const [match] = await api.getMatches();
+      return match;
+    };
+
+    it('leaves result null while a match is IN_PLAY even if winner is populated', async () => {
+      const match = await fetchTransformed(makeFdMatch({ status: 'IN_PLAY' }));
+      expect(match.result).toBeNull();
+      expect(match.full_time_result).toBeNull();
+      expect(match.status).toBe('IN_PLAY');
+      // Running goals must remain so the live ticker and goal-event diff keep working
+      expect(match.home_goals).toBe(2);
+      expect(match.away_goals).toBe(1);
+    });
+
+    it.each(['PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'] as const)(
+      'leaves result null during %s',
+      async (status) => {
+        const match = await fetchTransformed(makeFdMatch({ status }));
+        expect(match.result).toBeNull();
+      }
+    );
+
+    it.each(['SUSPENDED', 'POSTPONED', 'CANCELLED', 'AWARDED'] as const)(
+      'leaves result null when match is %s',
+      async (status) => {
+        const match = await fetchTransformed(makeFdMatch({ status }));
+        expect(match.result).toBeNull();
+      }
+    );
+
+    it('sets result only once status is FINISHED', async () => {
+      const match = await fetchTransformed(
+        makeFdMatch({ status: 'FINISHED', score: {
+          winner: 'DRAW',
+          fullTime: { home: 1, away: 1 },
+          halfTime: { home: 0, away: 1 }
+        } })
+      );
+      expect(match.result).toBe('D');
+      expect(match.full_time_result).toBe('D');
+      expect(match.home_goals).toBe(1);
+      expect(match.away_goals).toBe(1);
+    });
+
+    it('still derives half_time_result mid-match so the UI can show HT scores', async () => {
+      const match = await fetchTransformed(
+        makeFdMatch({ status: 'PAUSED', score: {
+          winner: 'HOME_TEAM',
+          fullTime: { home: 1, away: 0 },
+          halfTime: { home: 1, away: 0 }
+        } })
+      );
+      expect(match.result).toBeNull();
+      expect(match.half_time_result).toBe('H');
+    });
+  });
+
   describe('getUpcomingMatches', () => {
     it('should fetch upcoming matches with date filter', async () => {
       api.setApiKey(mockApiKey);

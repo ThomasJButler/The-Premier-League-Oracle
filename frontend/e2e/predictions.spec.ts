@@ -100,20 +100,20 @@ test.describe('Predictions', () => {
     // Wait for "All predictions complete!" message
     await expect(page.getByText('All predictions complete!')).toBeVisible({ timeout: 30000 });
 
-    // Verify at least one prediction card now shows a predicted score
-    // The predicted score appears as "X-Y" in the card front
-    const predictedScores = page.locator('.flip-card-front .text-primary.text-2xl');
-    await expect(predictedScores.first()).toBeVisible({ timeout: 5000 });
-
-    // Verify "Tap for Analysis" button appears (indicates prediction data exists)
+    // v3.5 demoted the big predicted scoreline on the card front — the "Tap
+    // for Analysis" button is now the primary signal that prediction data has
+    // populated. H/D/A bar text ("H 42%" etc.) is the visible front-of-card
+    // prediction element.
     const analysisBtn = page.getByText('Tap for Analysis').first();
     await expect(analysisBtn).toBeVisible();
 
-    // Flip a card and verify analysis sections on the back
+    // Flip a card and verify analysis sections on the back. Scoreline heading
+    // is outcome-aware post-v3.5: "Most Likely Home Win Score" / "Most Likely
+    // Away Win Score" / "Most Likely Draw Score" / plain "Predicted Score".
     await analysisBtn.click();
-
-    // The back of the card should show analysis sections (wait for flip animation to complete)
-    await expect(page.getByText('Predicted Score').first()).toBeVisible({ timeout: 3000 });
+    await expect(
+      page.getByText(/Most Likely (Home Win|Away Win|Draw) Score|Predicted Score/).first()
+    ).toBeVisible({ timeout: 3000 });
     await expect(page.getByText('Recent Form').first()).toBeVisible({ timeout: 3000 });
   });
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers, Calendar } from 'lucide-svelte';
+  import { LayoutDashboard, List, BarChart2, BarChart3, History, Settings, Calculator, HelpCircle, Trophy, Tv, Table, X, MessageCircle, Search, Layers, Calendar, Zap } from 'lucide-svelte';
   import { Separator } from '$lib/components/ui/separator';
   import { createEventDispatcher } from 'svelte';
 
@@ -22,7 +22,8 @@
 
   const bettingItems = [
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
-    { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Suggested Bets', icon: Zap, view: 'Suggested Bets' },
+    { name: 'Value Scanner', icon: Search, view: 'Value Scanner' },
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Betting History', icon: History, view: 'Betting History' },
   ];
@@ -41,14 +42,28 @@
   <!-- Sidebar Header -->
   <div class="px-4 py-5" style="border-bottom: 1px solid hsl(var(--border) / 0.3);">
     <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid hsl(var(--primary) / 0.15);">
-          <span class="text-white font-bold text-sm">PL</span>
-        </div>
-        <div>
-          <h2 class="text-sm font-display font-bold text-foreground">Premier League</h2>
-          <p class="text-xs text-muted-foreground">Oracle</p>
-        </div>
+      <!-- Logo mark only — the header above the main content area already
+           shows the full "The Premier League Oracle" title, so repeating it
+           here is visual noise. The trophy alone is enough brand for the
+           sidebar chrome. -->
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm" style="border: 1px solid hsl(var(--primary) / 0.25);" aria-label="The Premier League Oracle">
+        <svg viewBox="0 0 36 36" class="w-10 h-10" aria-hidden="true" role="img" focusable="false">
+          <defs>
+            <linearGradient id="pl-logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#10b981" />
+              <stop offset="55%" stop-color="#059669" />
+              <stop offset="100%" stop-color="#064e3b" />
+            </linearGradient>
+            <linearGradient id="pl-logo-trophy" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fde68a" />
+              <stop offset="100%" stop-color="#f59e0b" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="36" height="36" rx="8" fill="url(#pl-logo-bg)" />
+          <path d="M13 10 H23 V16 Q23 20 19.5 20.8 V24 H22 V26 H14 V24 H16.5 V20.8 Q13 20 13 16 Z" fill="url(#pl-logo-trophy)" />
+          <path d="M13 12 H10 V15 Q10 17.5 13 17.5 M23 12 H26 V15 Q26 17.5 23 17.5" fill="none" stroke="url(#pl-logo-trophy)" stroke-width="1.4" stroke-linecap="round" />
+          <rect x="11.5" y="26" width="13" height="1.6" rx="0.5" fill="url(#pl-logo-trophy)" />
+        </svg>
       </div>
       {#if showCloseButton}
         <button
@@ -70,9 +85,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
 
@@ -84,9 +100,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
   </div>
@@ -99,9 +116,10 @@
         class="nav-item {currentView === item.view ? 'nav-item-active' : ''}"
         on:click={() => handleNavClick(item.view)}
         aria-current={currentView === item.view ? 'page' : undefined}
+        title={item.name}
       >
         <svelte:component this={item.icon} class="w-5 h-5 mr-3 flex-shrink-0" />
-        <span>{item.name}</span>
+        <span class="truncate">{item.name}</span>
       </button>
     {/each}
   </div>

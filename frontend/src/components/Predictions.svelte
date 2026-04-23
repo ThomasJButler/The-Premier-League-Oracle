@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { dataService } from '../services/dataService';
-  import { predictionTracker } from '../services/predictionTracker';
+  import { predictionTracker, MODEL_VERSION } from '../services/predictionTracker';
   import { calculateKelly } from '../services/betting/kelly';
   import { OptimizedPredictor, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, type ModelWeightValues } from '../lib/optimizedPredictions';
-  import { PREMIER_LEAGUE_GAMEWEEKS } from '../lib/constants';
+  import { PREMIER_LEAGUE_GAMEWEEKS, VALUE_ODDS_MARGIN } from '../lib/constants';
   import type { Match, Prediction } from '../types';
   import { format } from 'date-fns';
   import { fade } from 'svelte/transition';
-  import { getTeamLogo } from '../utils/teamLogos';
-  import { PoissonPredictor } from '../lib/advancedPredictions';
+  import { getTeamLogo, getTeamColor } from '../utils/teamLogos';
+  import { getMatchStatusLabel, isMatchLive } from '$lib/utils';
   import { BetBuilderPredictor } from '../lib/betBuilder';
   import type { BetBuilderPrediction } from '../lib/betBuilder';
   import type { AccuracyStats } from '../services/predictionTracker';
@@ -21,11 +21,25 @@
   import type { AnalysisInput } from '../services/aiAnalysis';
   import { renderMarkdown } from '$lib/renderMarkdown';
   import DataFreshness from './DataFreshness.svelte';
+  import {
+    getTeamProfile,
+    getPairStats,
+    getRefereeStats,
+    getMatchdayStats,
+    type TeamProfile,
+    type PairStats,
+    type RefereeStats,
+    type MatchdayStats,
+  } from '$lib/data/statsPack';
+
+  const dispatch = createEventDispatcher();
 
   let predictions: Array<Match & {
     prediction?: Prediction;
     detailedAnalysis?: {
       predictedScore: string;
+      predictedResult?: 'H' | 'D' | 'A';
+      predictedScoreProb?: number; // probability of the predictedScore within the grid (0-1)
       keyFactors: string[];
       confidence: number;
       homeForm: string;
@@ -33,10 +47,12 @@
       h2hRecord: string;
       poissonProbs: { homeWin: number; draw: number; awayWin: number };
       recommendedStake: number;
+      topScorelines?: Array<{ score: string; probability: number }>;
     };
     betBuilder?: BetBuilderPrediction;
     predictionStatus?: 'pending' | 'processing' | 'complete' | 'error';
-    storedResult?: boolean; // true = correct, false = incorrect, undefined = pending/unsettled
+    storedResult?: boolean; // true = correct outcome, false = incorrect, undefined = pending/unsettled
+    scoreExact?: boolean; // true when the exact scoreline was predicted correctly
   }> = [];
   let accuracyStats: AccuracyStats | null = null;
   let showAccuracyPanel = false;
@@ -82,6 +98,16 @@
     aiAnalysisLoading.add(matchData.id);
     aiAnalysisLoading = new Set(aiAnalysisLoading); // trigger reactivity
 
+    // Check key availability before calling the API
+    const keyAvailable = await aiAnalysisService.hasApiKey();
+    if (!keyAvailable) {
+      aiAnalysisErrors.set(matchData.id, 'NO_API_KEY');
+      aiAnalysisErrors = new Map(aiAnalysisErrors);
+      aiAnalysisLoading.delete(matchData.id);
+      aiAnalysisLoading = new Set(aiAnalysisLoading);
+      return;
+    }
+
     const input: AnalysisInput = {
       homeTeam: matchData.home_team,
       awayTeam: matchData.away_team,
@@ -104,6 +130,10 @@
       if (analysis) {
         aiAnalyses.set(matchData.id, analysis);
         aiAnalyses = new Map(aiAnalyses);
+      } else {
+        // getAnalysis returns null when the API call fails silently — surface an error
+        aiAnalysisErrors.set(matchData.id, 'Analysis unavailable — check your API key or try again later');
+        aiAnalysisErrors = new Map(aiAnalysisErrors);
       }
     } catch (err) {
       aiAnalysisErrors.set(matchData.id, err instanceof Error ? err.message : 'Analysis failed');
@@ -183,8 +213,19 @@
           ? storedPreds.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
           : null;
 
-        if (stored) {
-          // Reconstruct prediction card data from the stored prediction
+        // Version-aware staleness check: a stored prediction made before the
+        // current pipeline version is unreliable (its scoreline can disagree
+        // with the H/D/A bar that today's model would produce). For UNFINISHED
+        // fixtures we drop to 'pending' so the user gets a fresh forecast on
+        // click. COMPLETED fixtures keep their stored card regardless — that
+        // historical record matters for accuracy tracking.
+        const hasActualResult = stored?.actualResult !== undefined;
+        const isStale = stored !== null && !hasActualResult && stored.modelVersion !== MODEL_VERSION;
+
+        if (stored && !isStale) {
+          // Reconstruct prediction card data from the stored prediction.
+          // Use persisted extras (form / factors / poissonProbs) when present;
+          // fall back to placeholders only for legacy entries without them.
           return {
             ...match,
             prediction: {
@@ -199,20 +240,25 @@
             },
             detailedAnalysis: {
               predictedScore: `${stored.predictedHomeGoals}-${stored.predictedAwayGoals}`,
-              keyFactors: [] as string[],
+              keyFactors: stored.keyFactors ?? ([] as string[]),
               confidence: stored.confidence * 100,
-              homeForm: '-',
-              awayForm: '-',
-              h2hRecord: '-',
-              poissonProbs: { homeWin: 0, draw: 0, awayWin: 0 },
+              homeForm: stored.homeForm ?? '-',
+              awayForm: stored.awayForm ?? '-',
+              h2hRecord: stored.keyFactors?.find(f => f.includes('H2H')) ?? '-',
+              poissonProbs: stored.poissonProbs ?? { homeWin: 0, draw: 0, awayWin: 0 },
               recommendedStake: 0
             },
             predictionStatus: 'complete' as const,
-            storedResult: stored.isCorrect
+            storedResult: stored.isCorrect,
+            scoreExact: stored.actualHomeGoals !== undefined && stored.actualAwayGoals !== undefined
+              ? stored.predictedHomeGoals === stored.actualHomeGoals
+                  && stored.predictedAwayGoals === stored.actualAwayGoals
+              : undefined
           };
         }
 
-        // No stored prediction — show as pending (ready for prediction generation)
+        // No stored prediction, or stored prediction is stale and the fixture
+        // hasn't been played yet — show as pending (ready for re-prediction).
         return {
           ...match,
           predictionStatus: 'pending' as const
@@ -269,7 +315,8 @@
           match.home_team,
           match.away_team,
           undefined,
-          match.referee
+          match.referee,
+          match.date
         );
         
         const prediction = {
@@ -278,15 +325,20 @@
           predictedHomeGoals: optimizedPrediction.predictedHomeGoals,
           predictedAwayGoals: optimizedPrediction.predictedAwayGoals,
           insights: optimizedPrediction.insights,
-          eloRating: optimizedPrediction.modelWeights.elo
+          eloRating: optimizedPrediction.modelWeights.elo,
+          topScorelines: optimizedPrediction.topScorelines
         };
         
-        // Calculate Poisson probabilities for additional analysis
-        const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
-          prediction.predictedHomeGoals,
-          prediction.predictedAwayGoals
-        );
-        const outcomeProbabilities = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
+        // Recover ensemble outcome probabilities from the valueOdds the predictor returned.
+        // calculateValueOdds builds odds as (1 / P(X)) * VALUE_ODDS_MARGIN, so inverting
+        // gives back the true ensemble probability for each outcome. Avoids the earlier bug
+        // of re-deriving a degenerate Poisson from the integer predicted goals.
+        const vo = optimizedPrediction.valueOdds ?? { home: 3.0, draw: 3.3, away: 3.0 };
+        const outcomeProbabilities = {
+          homeWin: VALUE_ODDS_MARGIN / vo.home,
+          draw:    VALUE_ODDS_MARGIN / vo.draw,
+          awayWin: VALUE_ODDS_MARGIN / vo.away,
+        };
 
         // Calculate recommended stake using Kelly Criterion
         // Uses the top outcome probability as our edge estimate against typical bookmaker odds
@@ -294,11 +346,15 @@
         const estimatedBookmakerOdds = (1 / topProb) * 1.05; // Assume 5% edge over fair value
         const kellyResult = calculateKelly(topProb, estimatedBookmakerOdds, 100, prediction.confidence);
 
-        // Generate bet builder predictions
+        // Generate bet builder predictions — pass the main-card prediction so
+        // BetBuilder reuses the same fatigue-adjusted Poisson grid (Bug 0.2/0.4).
         const betBuilder = await BetBuilderPredictor.generateBetBuilder(
           match.home_team,
           match.away_team,
-          match.id
+          match.id,
+          optimizedPrediction,
+          match.date,
+          match.referee
         );
 
         predictions[matchIndex] = {
@@ -315,19 +371,34 @@
           },
           detailedAnalysis: {
             predictedScore: `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`,
+            predictedResult: prediction.predictedResult,
+            // Surface the probability of the displayed score from the full
+            // score-probability grid (not just top-N). Makes it transparent
+            // that this is a real cell with a real probability, not a
+            // confident point forecast. Falls back to the top-N lookup if
+            // scoreProbabilities isn't present (legacy cached predictions).
+            predictedScoreProb: optimizedPrediction.scoreProbabilities
+              ?.[`${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`]
+              ?? prediction.topScorelines?.find((s: { score: string; probability: number }) =>
+                s.score === `${prediction.predictedHomeGoals}-${prediction.predictedAwayGoals}`
+              )?.probability,
             keyFactors: prediction.insights,
             confidence: prediction.confidence * 100,
             homeForm: optimizedPrediction.homeForm,
             awayForm: optimizedPrediction.awayForm,
             h2hRecord: prediction.insights.find(i => i.includes('H2H')) || 'No H2H data',
             poissonProbs: outcomeProbabilities,
-            recommendedStake: kellyResult.recommendedStake
+            recommendedStake: kellyResult.recommendedStake,
+            topScorelines: prediction.topScorelines
           },
           betBuilder: betBuilder,
           predictionStatus: 'complete'
         };
         
-        // Store in tracker (local storage) with gameweek for per-matchday accuracy
+        // Store in tracker (local storage) with gameweek for per-matchday accuracy.
+        // Extras (form / factors / poissonProbs / modelVersion) let the detailed
+        // analysis view stay populated after reload, and let stale-model cards
+        // be detected and re-predicted for consistency.
         predictionTracker.storePrediction(
           match.id,
           match.home_team,
@@ -339,7 +410,14 @@
             confidence: prediction.confidence
           },
           match.date,
-          selectedGameweek
+          selectedGameweek,
+          {
+            modelVersion: MODEL_VERSION,
+            homeForm: optimizedPrediction.homeForm,
+            awayForm: optimizedPrediction.awayForm,
+            keyFactors: prediction.insights,
+            poissonProbs: outcomeProbabilities
+          }
         );
         
         // Auto-fetch AI analysis in the background (don't block the loop)
@@ -377,7 +455,20 @@
     flippedCards = new Set(flippedCards);
   }
 
+  // Listen for API key changes from Settings/ChatBot to clear NO_API_KEY errors
+  function handleApiKeyChange() {
+    let changed = false;
+    for (const [id, err] of aiAnalysisErrors) {
+      if (err === 'NO_API_KEY') {
+        aiAnalysisErrors.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) aiAnalysisErrors = new Map(aiAnalysisErrors);
+  }
+
   onMount(async () => {
+    window.addEventListener('api-key-changed', handleApiKeyChange);
     try {
       const season = await dataService.getCurrentSeason();
       if (season?.currentMatchday) {
@@ -388,7 +479,11 @@
     }
     loadGameweekMatches(selectedGameweek);
   });
-  
+
+  onDestroy(() => {
+    window.removeEventListener('api-key-changed', handleApiKeyChange);
+  });
+
   function handleGameweekChange() {
     loadGameweekMatches(selectedGameweek);
   }
@@ -408,6 +503,93 @@
       case 'L': return 'bg-red-500';
       default: return 'bg-muted';
     }
+  }
+
+  // Football-Data.org referees come as "Michael Oliver" but the stats pack keys
+  // them in CSV form ("M Oliver"). Reduce the display form to first-initial +
+  // last-word so the lookup succeeds for the common case.
+  function toCsvRefereeName(apiName: string): string {
+    const parts = apiName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return apiName;
+    return `${parts[0][0]} ${parts[parts.length - 1]}`;
+  }
+
+  interface HistoricalContextRow {
+    label: string;
+    value: string;
+  }
+
+  function buildHistoricalContext(match: Match): HistoricalContextRow[] {
+    const rows: HistoricalContextRow[] = [];
+
+    const homeProfile: TeamProfile | undefined = getTeamProfile(match.home_team);
+    if (homeProfile?.homeAdvantage) {
+      const hWin = (homeProfile.homeAdvantage.homeWinRate * 100).toFixed(0);
+      const hGoals = homeProfile.homeGoalsScored.toFixed(1);
+      const hCs = (homeProfile.cleanSheetRateHome * 100).toFixed(0);
+      rows.push({
+        label: `${match.home_team} at home`,
+        value: `${hWin}% win rate · ${hGoals} goals/match · clean sheets in ${hCs}%`,
+      });
+    }
+
+    const awayProfile: TeamProfile | undefined = getTeamProfile(match.away_team);
+    if (awayProfile?.homeAdvantage) {
+      const aWin = (awayProfile.homeAdvantage.awayWinRate * 100).toFixed(0);
+      const aGoals = awayProfile.awayGoalsScored.toFixed(1);
+      const aCs = (awayProfile.cleanSheetRateAway * 100).toFixed(0);
+      rows.push({
+        label: `${match.away_team} away`,
+        value: `${aWin}% win rate · ${aGoals} goals/match · clean sheets in ${aCs}%`,
+      });
+    }
+
+    const pair: PairStats | undefined = getPairStats(match.home_team, match.away_team);
+    if (pair && pair.totalMatches > 0) {
+      const parts: string[] = [
+        `${pair.avgTotalGoals.toFixed(1)} goals/game`,
+        `${(pair.over25Rate * 100).toFixed(0)}% over 2.5`,
+      ];
+      const big = pair.biggestMargins?.biggestHomeWin;
+      if (big) {
+        const seasonTag = big.season ? ` (${big.season})` : '';
+        parts.push(`biggest ${match.home_team} ${big.score} ${match.away_team}${seasonTag}`);
+      }
+      rows.push({
+        label: pair.isDerby ? 'Derby: historically' : 'Historically',
+        value: parts.join(' · '),
+      });
+    }
+
+    if (match.referee) {
+      const refStats: RefereeStats | undefined = getRefereeStats(toCsvRefereeName(match.referee));
+      if (refStats) {
+        const goals = refStats.avgGoalsPerMatch.toFixed(1);
+        const yellows = refStats.avgYellowsPerMatch !== undefined
+          ? ` · ${refStats.avgYellowsPerMatch.toFixed(1)} yellows`
+          : '';
+        const tempo = refStats.avgGoalsPerMatch >= 2.75 ? ' (high tempo)'
+          : refStats.avgGoalsPerMatch <= 2.3 ? ' (low tempo)' : '';
+        rows.push({
+          label: match.referee,
+          value: `${goals} goals/match${yellows}${tempo}`,
+        });
+      }
+    }
+
+    if (match.matchday !== undefined) {
+      const md: MatchdayStats | undefined = getMatchdayStats(match.matchday);
+      if (md) {
+        const goals = md.avgTotalGoals.toFixed(1);
+        const over25 = (md.over25Rate * 100).toFixed(0);
+        rows.push({
+          label: `Gameweek ${match.matchday} avg`,
+          value: `${goals} goals · ${over25}% over 2.5`,
+        });
+      }
+    }
+
+    return rows;
   }
 </script>
 
@@ -824,7 +1006,7 @@
           
           <div class="flip-card-inner {flippedCards.has(prediction.id) ? 'flipped' : ''}">
             <!-- Front of Card -->
-            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true ? 'border-green-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
+            <div class="flip-card-front rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow duration-200 p-5 {prediction.storedResult === true && prediction.scoreExact === true ? 'border-green-500/40' : prediction.storedResult === true ? 'border-amber-500/40' : prediction.storedResult === false ? 'border-red-500/40' : 'border-border'}" aria-hidden={flippedCards.has(prediction.id)}>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-sm text-muted-foreground">{format(new Date(prediction.date), 'MMM d, HH:mm')}</span>
                 {#if prediction.prediction}
@@ -846,7 +1028,7 @@
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.home_team} recent form">
                         {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
                           {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
-                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                           {/each}
                         {:else}
                           <span class="text-[10px] text-muted-foreground">No data</span>
@@ -856,24 +1038,39 @@
                   </div>
                   <div class="text-center">
                     {#if prediction.result && prediction.home_goals !== null && prediction.away_goals !== null}
-                      <!-- Completed match: show actual score prominently, predicted score smaller -->
+                      <!-- Finished match: show actual score prominently, predicted score smaller -->
                       <div class="text-2xl font-bold text-foreground" data-testid="actual-score">
                         {prediction.home_goals}-{prediction.away_goals}
                       </div>
-                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Full Time</div>
+                      <div class="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{getMatchStatusLabel(prediction)}</div>
                       {#if prediction.detailedAnalysis}
-                        <div class="text-xs text-muted-foreground mt-1" title="Predicted score">
+                        <div class="inline-block text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded mt-1" title="Predicted score">
+                          Predicted: {prediction.detailedAnalysis.predictedScore}
+                        </div>
+                      {/if}
+                    {:else if isMatchLive(prediction) && prediction.home_goals !== null && prediction.away_goals !== null}
+                      <!-- Live match: show current score + stage; verdict is deferred until FINISHED -->
+                      <div class="text-2xl font-bold text-foreground" data-testid="live-score">
+                        {prediction.home_goals}-{prediction.away_goals}
+                      </div>
+                      <div class="text-[10px] uppercase tracking-wider text-red-500 mt-0.5 flex items-center justify-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        {getMatchStatusLabel(prediction)}
+                      </div>
+                      {#if prediction.detailedAnalysis}
+                        <div class="inline-block text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded mt-1" title="Predicted score">
                           Predicted: {prediction.detailedAnalysis.predictedScore}
                         </div>
                       {/if}
                     {:else}
-                      <!-- Upcoming match: show predicted score -->
-                      <span class="text-xl font-bold text-muted-foreground">vs</span>
-                      {#if prediction.detailedAnalysis}
-                        <div class="text-2xl font-bold text-primary mt-1">
-                          {prediction.detailedAnalysis.predictedScore}
-                        </div>
-                      {/if}
+                      <!-- Upcoming match: "vs" is the only visual in the centre.
+                           The exact scoreline is demoted to a tiny "if forced to
+                           pick" line beneath the H/D/A bar (see below), because
+                           even the modal cell only carries ~9-14% probability —
+                           showing it in big type implies confidence the grid
+                           can't support. H/D/A (which aggregates probability and
+                           IS trustworthy) becomes the headline. -->
+                      <span class="text-2xl font-bold text-muted-foreground">vs</span>
                     {/if}
                   </div>
                   <div class="flex flex-col items-center w-1/3">
@@ -883,7 +1080,7 @@
                       <div class="flex gap-0.5 mt-1 justify-center" aria-label="{prediction.away_team} recent form">
                         {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
                           {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
-                            <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                            <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                           {/each}
                         {:else}
                           <span class="text-[10px] text-muted-foreground">No data</span>
@@ -895,36 +1092,55 @@
               </div>
 
               {#if prediction.prediction}
-                <div class="mb-4">
+                <div class="mb-3">
                   <div class="flex rounded-lg overflow-hidden h-8 bg-muted" role="img" aria-label="Outcome probabilities: Home {prediction.detailedAnalysis?.poissonProbs.homeWin ? (prediction.detailedAnalysis.poissonProbs.homeWin * 100).toFixed(0) : '-'}%, Draw {prediction.detailedAnalysis?.poissonProbs.draw ? (prediction.detailedAnalysis.poissonProbs.draw * 100).toFixed(0) : '-'}%, Away {prediction.detailedAnalysis?.poissonProbs.awayWin ? (prediction.detailedAnalysis.poissonProbs.awayWin * 100).toFixed(0) : '-'}%">
                     {#each [
-                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, barColor: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-200' },
-                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, barColor: 'bg-amber-400', textColor: 'text-amber-700 dark:text-amber-200' },
-                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, barColor: 'bg-emerald-500', textColor: 'text-emerald-700 dark:text-emerald-200' }
+                      { label: 'H', value: 'H', prob: prediction.detailedAnalysis?.poissonProbs.homeWin, color: getTeamColor(prediction.home_team) },
+                      { label: 'D', value: 'D', prob: prediction.detailedAnalysis?.poissonProbs.draw, color: '#d97706' },
+                      { label: 'A', value: 'A', prob: prediction.detailedAnalysis?.poissonProbs.awayWin, color: getTeamColor(prediction.away_team) }
                     ] as outcome}
                       <div
-                        class="flex items-center justify-center transition-all duration-500 {prediction.prediction.predicted_result === outcome.value ? outcome.barColor + '/30' : outcome.barColor + '/10'}"
-                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%"
+                        class="flex items-center justify-center transition-all duration-500"
+                        style="width: {outcome.prob ? Math.max(outcome.prob * 100, 10) : 33}%; background-color: {outcome.color}{prediction.prediction.predicted_result === outcome.value ? '4D' : '1A'}"
                       >
-                        <span class="text-[11px] font-semibold {prediction.prediction.predicted_result === outcome.value ? outcome.textColor : 'text-muted-foreground'}">
+                        <span class="text-[11px] font-semibold" style="color: {prediction.prediction.predicted_result === outcome.value ? outcome.color : ''};" class:text-muted-foreground={prediction.prediction.predicted_result !== outcome.value}>
                           {outcome.label} {outcome.prob ? (outcome.prob * 100).toFixed(0) + '%' : '-'}
                         </span>
                       </div>
                     {/each}
                   </div>
+                  <!-- "If forced to pick" line: the modal cell is shown small and
+                       italic with its probability always inline, so the user can
+                       see how thinly the single-score prediction sits against
+                       the H/D/A headline above. Only rendered for upcoming
+                       fixtures (finished matches already show actual + predicted
+                       in the team row). -->
+                  {#if !prediction.result && prediction.detailedAnalysis}
+                    <div class="mt-1.5 text-[11px] text-center text-muted-foreground italic">
+                      If forced to pick:
+                      <span class="font-mono tabular-nums not-italic font-medium text-foreground/70">{prediction.detailedAnalysis.predictedScore}</span>
+                      {#if prediction.detailedAnalysis.predictedScoreProb !== undefined && prediction.detailedAnalysis.predictedScoreProb > 0}
+                        <span class="text-muted-foreground/70">· {(prediction.detailedAnalysis.predictedScoreProb * 100).toFixed(0)}% chance</span>
+                      {/if}
+                    </div>
+                  {/if}
                 </div>
               {/if}
 
-              <!-- Result verdict banner for settled matches with predictions -->
+              <!-- Result verdict banner for settled matches with predictions.
+                   Four states: exact scoreline, correct outcome only, incorrect, pending. -->
               {#if prediction.result && prediction.prediction}
+                {@const actualLabel = prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
                 <div
-                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
+                  class="rounded-lg px-3 py-2 text-center text-sm font-semibold {prediction.storedResult === true && prediction.scoreExact === true ? 'bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/20' : prediction.storedResult === true ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20' : prediction.storedResult === false ? 'bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/20' : 'bg-muted text-muted-foreground border border-border'}"
                   data-testid="result-verdict"
                 >
-                  {#if prediction.storedResult === true}
-                    Correct prediction
+                  {#if prediction.storedResult === true && prediction.scoreExact === true}
+                    Exact score — {prediction.home_goals}-{prediction.away_goals}
+                  {:else if prediction.storedResult === true}
+                    Correct outcome ({actualLabel}) — actual {prediction.home_goals}-{prediction.away_goals}, predicted {prediction.prediction.predicted_home_goals}-{prediction.prediction.predicted_away_goals}
                   {:else if prediction.storedResult === false}
-                    Incorrect — actual result: {prediction.result === 'H' ? 'Home Win' : prediction.result === 'A' ? 'Away Win' : 'Draw'}
+                    Incorrect — actual result: {actualLabel}
                   {:else}
                     Awaiting result
                   {/if}
@@ -973,13 +1189,73 @@
 
                   <!-- Predicted Score Section -->
                   <div class="mb-5 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Predicted Score</span>
+                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                      {#if prediction.detailedAnalysis.predictedResult === 'H'}
+                        Most Likely Home Win Score
+                      {:else if prediction.detailedAnalysis.predictedResult === 'A'}
+                        Most Likely Away Win Score
+                      {:else if prediction.detailedAnalysis.predictedResult === 'D'}
+                        Most Likely Draw Score
+                      {:else}
+                        Predicted Score
+                      {/if}
+                    </span>
                     <div class="text-3xl font-bold text-blue-700 dark:text-blue-300 text-center mt-2">
                       {prediction.detailedAnalysis.predictedScore}
+                      {#if prediction.detailedAnalysis.predictedScoreProb !== undefined && prediction.detailedAnalysis.predictedScoreProb > 0}
+                        <span class="text-base font-medium text-blue-600/70 dark:text-blue-400/70 ml-2">
+                          ({(prediction.detailedAnalysis.predictedScoreProb * 100).toFixed(1)}%)
+                        </span>
+                      {/if}
                     </div>
                     <div class="text-sm text-center text-muted-foreground mt-1">
-                      Confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
+                      Outcome confidence: {prediction.detailedAnalysis.confidence.toFixed(1)}%
                     </div>
+
+                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length >= 3}
+                      <!-- Top-3 scoreline strip: probability-weighted band showing the three
+                           most-likely scores regardless of outcome. Gives users the shape of
+                           the distribution at a glance so "Predicted Score" reads as one
+                           plausible outcome among several, not a certainty. -->
+                      <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700">
+                        <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Top 3 Most Likely Scorelines</span>
+                        <div class="mt-2 grid grid-cols-3 gap-2" aria-label="Top three most likely scorelines with probability bars">
+                          {#each prediction.detailedAnalysis.topScorelines.slice(0, 3) as entry}
+                            <div class="text-center">
+                              <div class="font-mono tabular-nums text-base font-semibold text-blue-900 dark:text-blue-100">{entry.score}</div>
+                              <div class="mt-1 h-1.5 rounded-full bg-blue-200 dark:bg-blue-800 overflow-hidden">
+                                <div
+                                  class="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-[width]"
+                                  style="width: {Math.min(100, entry.probability * 500)}%"
+                                ></div>
+                              </div>
+                              <div class="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-1 tabular-nums">{(entry.probability * 100).toFixed(1)}%</div>
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/if}
+
+                    {#if prediction.detailedAnalysis.topScorelines && prediction.detailedAnalysis.topScorelines.length > 3}
+                      <!-- Full distribution collapsed by default — users who want the long tail can open it. -->
+                      <details class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                        <summary class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider cursor-pointer hover:text-blue-700 dark:hover:text-blue-300">
+                          Full scoreline distribution (top {prediction.detailedAnalysis.topScorelines.length})
+                        </summary>
+                        <ul class="mt-2 grid grid-cols-1 gap-1 text-sm" aria-label="Full scoreline distribution">
+                          {#each prediction.detailedAnalysis.topScorelines as entry}
+                            <li class="flex items-center justify-between gap-3 text-blue-900 dark:text-blue-100">
+                              <span class="font-mono tabular-nums">{entry.score}</span>
+                              <span class="text-xs text-blue-700/80 dark:text-blue-300/80">{(entry.probability * 100).toFixed(1)}%</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </details>
+                    {/if}
+
+                    <p class="mt-3 text-[11px] text-center text-muted-foreground italic">
+                      Modal pick — real matches vary. Top-3 shows the spread of the most likely outcomes.
+                    </p>
                   </div>
 
                   <!-- Form Section -->
@@ -994,7 +1270,7 @@
                         {#if parseFormString(prediction.detailedAnalysis.homeForm).length > 0}
                           <div class="flex gap-1">
                             {#each parseFormString(prediction.detailedAnalysis.homeForm) as result}
-                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                              <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                             {/each}
                           </div>
                         {:else}
@@ -1009,7 +1285,7 @@
                         {#if parseFormString(prediction.detailedAnalysis.awayForm).length > 0}
                           <div class="flex gap-1">
                             {#each parseFormString(prediction.detailedAnalysis.awayForm) as result}
-                              <span class="w-3 h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
+                              <span class="w-2 h-2 sm:w-3 sm:h-3 rounded-full {getFormDotClass(result)}" title="{result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'}"></span>
                             {/each}
                           </div>
                         {:else}
@@ -1031,6 +1307,27 @@
                       {/each}
                     </ul>
                   </div>
+
+                  <!-- Historical Context (P12c) — draws on the 33-season stats pack
+                       for venue records, fixture profile, referee style and gameweek tempo.
+                       Each row renders only when its underlying data is present. The outer
+                       {#each} with a single-element array is a Svelte 4-compatible way to
+                       scope a computed value to the template without top-level reactivity. -->
+                  {#each [buildHistoricalContext(prediction)] as historicalContext}
+                    {#if historicalContext.length > 0}
+                      <div class="mb-5" data-testid="historical-context">
+                        <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Historical Context</span>
+                        <ul class="text-sm space-y-1.5 mt-2">
+                          {#each historicalContext as row}
+                            <li class="flex items-start gap-2">
+                              <span class="text-primary mt-0.5 text-xs">&#9679;</span>
+                              <span class="text-muted-foreground"><span class="font-medium text-foreground">{row.label}:</span> {row.value}</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </div>
+                    {/if}
+                  {/each}
 
                   <!-- Betting Recommendation -->
                   {#if prediction.detailedAnalysis.recommendedStake > 0}
@@ -1065,7 +1362,9 @@
                           <span class="text-muted-foreground">O/U 2.5:</span>
                           <span class="font-bold ml-1 {prediction.betBuilder.totalGoals.over25.prediction ? 'text-green-600' : 'text-red-600'}">
                             {prediction.betBuilder.totalGoals.over25.prediction ? 'Over' : 'Under'}
-                            ({(prediction.betBuilder.totalGoals.over25.probability * 100).toFixed(0)}%)
+                            ({((prediction.betBuilder.totalGoals.over25.prediction
+                                ? prediction.betBuilder.totalGoals.over25.probability
+                                : 1 - prediction.betBuilder.totalGoals.over25.probability) * 100).toFixed(0)}%)
                           </span>
                         </div>
                         <div class="bg-muted p-2 rounded">
@@ -1122,7 +1421,18 @@
                           <span>Generating analysis…</span>
                         </div>
                       {:else if aiAnalysisErrors.has(prediction.id)}
-                        <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                        {#if aiAnalysisErrors.get(prediction.id) === 'NO_API_KEY'}
+                          <p class="text-xs text-amber-600 dark:text-amber-400">
+                            No AI API key configured.
+                            <button
+                              class="underline font-medium hover:text-amber-700 dark:hover:text-amber-300"
+                              on:click={() => dispatch('navigate', { view: 'Settings' })}
+                            >Add one in Settings</button>
+                            to enable analysis.
+                          </p>
+                        {:else}
+                          <p class="text-xs text-destructive">{aiAnalysisErrors.get(prediction.id)}</p>
+                        {/if}
                       {:else}
                         <p class="text-xs text-muted-foreground">Flip the card to load AI analysis</p>
                       {/if}

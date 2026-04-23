@@ -2,11 +2,22 @@
   import { MessageCircle, Send, Key, Loader2, AlertTriangle, Trash2, ShieldAlert } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { renderMarkdown } from '$lib/renderMarkdown';
   import { dataService } from '../services/dataService';
   import { aiAnalysisService } from '../services/aiAnalysis';
-  import { getSavedAiModel, getModelProvider } from '$lib/constants';
+  import { isBackendAvailable, invalidateBackendHealth } from '../services/chatBackendHealth';
+  import { getSavedAiModel, ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey } from '$lib/constants';
+  import {
+    getMatchesForTeam,
+    getHeadToHead,
+    getSeasonMatches,
+    getTeamSeasonSummary,
+    type CompletedMatch,
+  } from '../lib/data/completedMatches';
+
+  // Run the legacy openai_api_key → anthropic_api_key migration once on load.
+  migrateLegacyApiKey();
   import type { Standing, Match } from '../types';
 
   // --- Types ---
@@ -20,7 +31,7 @@
   const MIN_REQUEST_INTERVAL = 3000;
   const MAX_INPUT_LENGTH = 500;
   const STORAGE_KEY_MESSAGES = 'oracle_chat_history';
-  const STORAGE_KEY_API_KEY = 'openai_api_key';
+  const STORAGE_KEY_API_KEY = ANTHROPIC_API_KEY_STORAGE_KEY;
   const MAX_STORED_MESSAGES = 50;
 
   // --- State ---
@@ -37,7 +48,22 @@
   let lastRequestTime = 0;
 
   // --- Lifecycle ---
+
+  // Listen for API key changes from Settings
+  function handleExternalKeyChange() {
+    const savedKey = localStorage.getItem(STORAGE_KEY_API_KEY);
+    if (savedKey) {
+      apiKey = savedKey;
+      hasApiKey = true;
+    } else if (!useServerKey && !useBackendRAG) {
+      apiKey = '';
+      hasApiKey = false;
+    }
+  }
+
   onMount(() => {
+    window.addEventListener('api-key-changed', handleExternalKeyChange);
+
     const savedKey = localStorage.getItem(STORAGE_KEY_API_KEY);
     if (savedKey) {
       apiKey = savedKey;
@@ -69,27 +95,27 @@
     checkBackendRAG();
   });
 
+  onDestroy(() => {
+    window.removeEventListener('api-key-changed', handleExternalKeyChange);
+  });
+
   /** Check backend RAG availability first, then fall back to the Vercel chat proxy.
    *
    * Priority:
-   * 1. Backend RAG (/api/oracle/health) — data-grounded, server-side API key
+   * 1. Backend RAG (/health) — data-grounded, server-side API key. Probed
+   *    ONCE per session via `isBackendAvailable()` — subsequent mounts reuse
+   *    the cached flag; the cache is invalidated if a RAG request later fails.
    * 2. Vercel chat proxy (/api/chat) — server-side API key, shallow context
    * 3. User-provided API key — client sends key through proxy
    */
   export async function checkBackendRAG() {
-    // 1. Try backend RAG endpoint
-    try {
-      const res = await fetch('/api/oracle/health');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'healthy') {
-          useBackendRAG = true;
-          hasApiKey = true;
-          return;
-        }
-      }
-    } catch {
-      // Backend not available — try fallback
+    // 1. Try backend RAG via the session-cached health probe. The cache
+    // layer handles the canonical /health path and timeout; see
+    // `services/chatBackendHealth.ts`.
+    if (await isBackendAvailable()) {
+      useBackendRAG = true;
+      hasApiKey = true;
+      return;
     }
 
     // 2. Try Vercel chat proxy server key
@@ -137,6 +163,7 @@
     apiKey = trimmed;
     hasApiKey = true;
     error = null;
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
   }
 
   export function clearApiKey() {
@@ -148,18 +175,35 @@
       content: 'API key removed. Enter a new key to continue chatting.',
       timestamp: Date.now()
     }];
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
   }
 
   // --- Build Context (batched) ---
-  async function buildSystemPrompt(): Promise<string> {
+  async function buildSystemPrompt(userQuery = ''): Promise<string> {
+    // Every fallback-mode answer sits on top of the bundled 33-season match
+    // index (frontend/src/lib/data/completedMatches.json). When the user
+    // asks a historical question that matches one of the query patterns in
+    // `buildGroundedDataBlock`, we pre-resolve the answer and append a
+    // GROUNDED DATA block to the system prompt. Claude is instructed to
+    // answer ONLY from those rows when present — no confabulating scorelines
+    // or inventing "season excluded" claims.
     let context = `You are the Premier League Oracle, an expert football analyst.
 You provide insightful predictions and analysis for Premier League matches.
 Be concise, data-driven, and confident in your analysis. Use UK English.
-Reference real statistics when available. If you're uncertain, say so.
 Never give financial advice — only discuss statistical probabilities.
 Format your responses with markdown: use **bold** for emphasis, bullet points for lists, and \`code\` for statistics.
 
-Current data:\n`;
+DATA YOU HAVE ACCESS TO:
+- A bundled 33-season completed-match archive (1993/94 – 2025/26, ~12,600 matches) with date, home team, away team, full-time score, and result per match. When the user asks about a specific team + season, a head-to-head, or a past season in general, a GROUNDED DATA block will be appended below. Use ONLY those rows — do not invent scorelines, fabricate match dates, or claim any season is "excluded".
+- The current-week snapshot below (live league table, upcoming fixtures for the next 7 days, results from the last 7 days).
+
+DATA YOU DO NOT HAVE:
+- Player-level statistics, xG, shot data, possession, cards, or corners beyond what is in the current-week snapshot.
+- Tactics, manager quotes, injury news, transfer activity, or anything that isn't in the numeric archive.
+
+If the user asks for something outside these scopes, say so plainly ("I don't have player-level xG data for that fixture, only the final score") rather than refusing or inventing specifics.
+
+Current-week snapshot:\n`;
 
     // Fetch all context data in parallel instead of sequentially
     const [standingsResult, upcomingResult, recentResult] = await Promise.allSettled([
@@ -211,7 +255,185 @@ Current data:\n`;
       });
     }
 
+    // Grounded data block from the 33-season archive, if the user's query
+    // matches a known historical-data pattern. Appended LAST so Claude reads
+    // the fresh archive rows after the current-week snapshot and knows to
+    // prefer them for the specific question.
+    const grounded = buildGroundedDataBlock(userQuery);
+    if (grounded) {
+      context += '\n' + grounded;
+    }
+
     return context;
+  }
+
+  /**
+   * Pattern-match the user's raw query against a handful of common
+   * historical-data shapes and pre-resolve the answer from the bundled
+   * 33-season match index. Returns a `GROUNDED DATA (33-season archive):`
+   * markdown block ready to splice into the system prompt, or '' when no
+   * pattern matches (letting the chat fall through to general reasoning).
+   *
+   * Patterns handled:
+   *   • "<team> (home|away) wins in YYYY/YY"      → getMatchesForTeam
+   *   • "<teamA> vs <teamB>" / "head-to-head"     → getHeadToHead
+   *   • "<team> season YYYY/YY"                   → getTeamSeasonSummary + matches
+   *   • "YYYY/YY season"                          → getSeasonMatches
+   */
+  function buildGroundedDataBlock(rawQuery: string): string {
+    if (!rawQuery || rawQuery.length < 6) return '';
+    const query = rawQuery.toLowerCase();
+    const seasonMatch = query.match(/20\d{2}[/-]?\d{2}/);
+    const season = seasonMatch ? normaliseSeason(seasonMatch[0]) : undefined;
+
+    // Catch team names by scanning known CSV teams — API names vary
+    // enough that regex alone is fragile.
+    const teamNames = extractTeamNames(rawQuery);
+
+    // Pattern 1: "<teamA> vs|v|against <teamB>" — head-to-head
+    if (teamNames.length >= 2) {
+      const h2h = getHeadToHead(teamNames[0], teamNames[1], { season, limit: 20 });
+      if (h2h.length > 0) {
+        return formatMatchTable(
+          `Head-to-head: ${teamNames[0]} vs ${teamNames[1]}${season ? ` (${season})` : ''}`,
+          h2h,
+        );
+      }
+    }
+
+    // Pattern 2: "<team> home|away wins|losses|draws in YYYY/YY"
+    if (teamNames.length === 1) {
+      const team = teamNames[0];
+      const venue = /\b(at home|home (wins|results|matches|games)|home\b.*in)/.test(query)
+        ? 'home'
+        : /\b(away (wins|results|matches|games)|away\b.*in|on the road)/.test(query)
+          ? 'away'
+          : undefined;
+      const result = /\b(wins?|victories)\b/.test(query)
+        ? 'W'
+        : /\b(losses?|defeats?)\b/.test(query)
+          ? 'L'
+          : /\b(draws?)\b/.test(query)
+            ? 'D'
+            : undefined;
+
+      if (season || venue || result) {
+        const matches = getMatchesForTeam(team, { season, venue, result });
+        if (matches.length > 0) {
+          const venueLabel = venue === 'home' ? ' home' : venue === 'away' ? ' away' : '';
+          const resultLabel = result === 'W' ? ' wins' : result === 'L' ? ' losses' : result === 'D' ? ' draws' : ' matches';
+          const seasonLabel = season ? ` in ${season}` : '';
+          return formatMatchTable(
+            `${team}${venueLabel}${resultLabel}${seasonLabel}`,
+            matches,
+          );
+        }
+      }
+
+      // "<team> season YYYY/YY" → full summary + fixture list
+      if (season) {
+        const summary = getTeamSeasonSummary(team, season);
+        const matches = getMatchesForTeam(team, { season });
+        if (summary) {
+          const header = `${team} — ${season} season summary\n\n` +
+            `- **Played:** ${summary.played}  ` +
+            `**Wins:** ${summary.wins}  ` +
+            `**Draws:** ${summary.draws}  ` +
+            `**Losses:** ${summary.losses}\n` +
+            `- **Goals for:** ${summary.goalsFor}  ` +
+            `**Goals against:** ${summary.goalsAgainst}  ` +
+            `**Goal difference:** ${summary.goalsFor - summary.goalsAgainst > 0 ? '+' : ''}${summary.goalsFor - summary.goalsAgainst}\n`;
+          return formatMatchTable(header + `\n${team} fixtures (${season})`, matches);
+        }
+      }
+    }
+
+    // Pattern 3: "<YYYY/YY> season" alone — whole-season overview
+    if (season && teamNames.length === 0 && /\bseason\b/.test(query)) {
+      const matches = getSeasonMatches(season);
+      if (matches.length > 0) {
+        // Cap the injected rows — a full season is 380 lines, too much for
+        // the context window. Summarise with a sample instead.
+        const homeWins = matches.filter((m) => m.result === 'H').length;
+        const draws = matches.filter((m) => m.result === 'D').length;
+        const awayWins = matches.filter((m) => m.result === 'A').length;
+        const totalGoals = matches.reduce((sum, m) => sum + m.homeGoals + m.awayGoals, 0);
+        const header = `Premier League ${season} season overview\n\n` +
+          `- **Matches:** ${matches.length}  ` +
+          `**Home wins:** ${homeWins}  ` +
+          `**Draws:** ${draws}  ` +
+          `**Away wins:** ${awayWins}\n` +
+          `- **Total goals:** ${totalGoals}  ` +
+          `**Goals per match:** ${(totalGoals / matches.length).toFixed(2)}\n`;
+        return `GROUNDED DATA (33-season archive):\n\n${header}\n\nUse ONLY the numbers above for any season-wide claim. Do not invent specific team results unless the user asks for them — ask me for a team breakdown if they want match-by-match for a specific club.\n`;
+      }
+    }
+
+    return '';
+  }
+
+  /** 'YYYY/YY' normalisation for user inputs like '2023/24', '2023-24', '202324'. */
+  function normaliseSeason(raw: string): string {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`;
+    if (digits.length === 8) return `${digits.slice(0, 4)}/${digits.slice(6)}`;
+    return raw;
+  }
+
+  /**
+   * Find canonical team names mentioned in the query. Uses a hardcoded list
+   * of CSV-style names and a few common API aliases. Returns them in the
+   * order they appear so "Arsenal vs Chelsea" and "Chelsea vs Arsenal" both
+   * resolve correctly.
+   */
+  function extractTeamNames(rawQuery: string): string[] {
+    const knownTeams: ReadonlyArray<{ match: RegExp; canonical: string }> = [
+      { match: /\barsenal\b/i, canonical: 'Arsenal' },
+      { match: /\baston villa\b/i, canonical: 'Aston Villa' },
+      { match: /\bbournemouth\b/i, canonical: 'Bournemouth' },
+      { match: /\bbrentford\b/i, canonical: 'Brentford' },
+      { match: /\bbrighton\b/i, canonical: 'Brighton' },
+      { match: /\bburnley\b/i, canonical: 'Burnley' },
+      { match: /\bchelsea\b/i, canonical: 'Chelsea' },
+      { match: /\bcrystal palace\b|\bpalace\b/i, canonical: 'Crystal Palace' },
+      { match: /\beverton\b/i, canonical: 'Everton' },
+      { match: /\bfulham\b/i, canonical: 'Fulham' },
+      { match: /\bipswich\b/i, canonical: 'Ipswich' },
+      { match: /\bleeds\b/i, canonical: 'Leeds' },
+      { match: /\bleicester\b/i, canonical: 'Leicester' },
+      { match: /\bliverpool\b/i, canonical: 'Liverpool' },
+      { match: /\bluton\b/i, canonical: 'Luton' },
+      { match: /\bman city\b|\bmanchester city\b/i, canonical: 'Man City' },
+      { match: /\bman united\b|\bman utd\b|\bmanchester united\b|\bman u\b/i, canonical: 'Man United' },
+      { match: /\bnewcastle\b/i, canonical: 'Newcastle' },
+      { match: /\bnottingham forest\b|\bnotts forest\b|\bnot[ts]? forest\b/i, canonical: "Nott'm Forest" },
+      { match: /\bsheffield united\b|\bsheff united\b|\bsheff utd\b/i, canonical: 'Sheffield United' },
+      { match: /\bsouthampton\b/i, canonical: 'Southampton' },
+      { match: /\bsunderland\b/i, canonical: 'Sunderland' },
+      { match: /\bspurs\b|\btottenham\b/i, canonical: 'Tottenham' },
+      { match: /\bwest ham\b/i, canonical: 'West Ham' },
+      { match: /\bwolves\b|\bwolverhampton\b/i, canonical: 'Wolves' },
+    ];
+
+    const hits: { name: string; index: number }[] = [];
+    for (const { match, canonical } of knownTeams) {
+      const m = rawQuery.match(match);
+      if (m && typeof m.index === 'number') hits.push({ name: canonical, index: m.index });
+    }
+    hits.sort((a, b) => a.index - b.index);
+    // De-dupe while preserving order
+    const seen = new Set<string>();
+    return hits.filter((h) => (seen.has(h.name) ? false : (seen.add(h.name), true))).map((h) => h.name);
+  }
+
+  /** Render a compact markdown table of matches for Claude to read. */
+  function formatMatchTable(title: string, matches: CompletedMatch[]): string {
+    if (matches.length === 0) return '';
+    const rows = matches.map((m) => {
+      const resultLabel = m.result === 'H' ? 'H' : m.result === 'A' ? 'A' : 'D';
+      return `| ${m.season} | ${m.date} | ${m.home} ${m.homeGoals}-${m.awayGoals} ${m.away} | ${resultLabel} |`;
+    }).join('\n');
+    return `GROUNDED DATA (33-season archive):\n\n**${title}** — ${matches.length} match${matches.length === 1 ? '' : 'es'}\n\n| Season | Date | Match | Result |\n|---|---|---|---|\n${rows}\n\nUse ONLY these rows to answer the user's question. Do not invent scorelines, dates, or teams. If the user asks for something not in the rows (e.g. goal scorers or shot counts), explain those aren't in the archive.\n`;
   }
 
   // --- Send Message ---
@@ -287,10 +509,9 @@ Current data:\n`;
         .map(m => ({ role: m.role, content: m.content }));
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      // Pass user's API key as header if no server key is configured
+      // Pass user's Anthropic API key as header if no server key is configured
       if (apiKey && !useServerKey) {
-        const provider = getModelProvider(getSavedAiModel());
-        headers[provider === 'anthropic' ? 'X-Anthropic-Key' : 'X-OpenAI-Key'] = apiKey;
+        headers['X-Anthropic-Key'] = apiKey;
       }
 
       const response = await fetch('/api/oracle/chat/rag', {
@@ -303,21 +524,31 @@ Current data:\n`;
       });
 
       if (!response.ok) {
-        // Let the caller fall back to the proxy
+        // Server-side failure — invalidate the session cache so the next
+        // probe re-checks backend health. 4xx (client-side) is not a health
+        // signal, so leave the cache alone.
+        if (response.status >= 500) {
+          invalidateBackendHealth();
+          console.warn(`[ChatBot] Backend RAG returned ${response.status}; falling back to proxy and invalidating health cache.`);
+        }
         return null;
       }
 
       const data = await response.json();
       return data.reply || null;
     } catch {
-      // Backend unreachable — fall back silently
+      // Backend unreachable — invalidate and fall back.
+      invalidateBackendHealth();
+      console.warn('[ChatBot] Backend RAG unreachable; falling back to proxy and invalidating health cache.');
       return null;
     }
   }
 
   /** Send via Vercel chat proxy (fallback) — throws on failure. */
   async function sendViaFallbackProxy(text: string): Promise<string | null> {
-    const systemPrompt = await buildSystemPrompt();
+    // Pass the raw user query through so buildSystemPrompt's grounded-data
+    // injector can pattern-match it against the 33-season archive.
+    const systemPrompt = await buildSystemPrompt(text);
 
     const apiMessages = [
       { role: 'system' as const, content: systemPrompt },
@@ -400,8 +631,8 @@ Current data:\n`;
           </p>
           <ul class="text-xs text-muted-foreground mt-2 space-y-1">
             <li>• Your key is stored in localStorage (browser only)</li>
-            <li>• Your key is sent to our server-side proxy, which forwards it to OpenAI — it is not sent directly from your browser to OpenAI</li>
-            <li>• Use a key with spend limits set in your OpenAI dashboard</li>
+            <li>• Your key is sent to our server-side proxy, which forwards it to Anthropic — it is not sent directly from your browser</li>
+            <li>• Use a key with spend limits set in your Anthropic console</li>
             <li>• You can remove it anytime via "Change key"</li>
           </ul>
         </div>
@@ -421,7 +652,7 @@ Current data:\n`;
           <Key class="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 class="text-lg font-bold font-display text-foreground">Connect AI Provider</h2>
+          <h2 class="text-lg font-bold font-display text-foreground">Connect Anthropic</h2>
           <p class="text-xs text-muted-foreground">Your key is stored in your browser only</p>
         </div>
       </div>
@@ -430,7 +661,7 @@ Current data:\n`;
         <input
           type="password"
           bind:value={apiKey}
-          placeholder="sk-... or sk-ant-..."
+          placeholder="sk-ant-..."
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground"
           on:keydown={handleKeydown}
         />
@@ -450,8 +681,7 @@ Current data:\n`;
       {/if}
 
       <p class="text-xs text-muted-foreground mt-3">
-        Get a key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-primary hover:underline">OpenAI</a>
-        or <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic</a>.
+        Get a key from the <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic Console</a>.
         Choose the model in Settings.
       </p>
     </Card>
@@ -537,7 +767,7 @@ Current data:\n`;
           id="chatbot-input"
           type="text"
           bind:value={inputText}
-          placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your OpenAI key to start chatting'}
+          placeholder={hasApiKey ? 'Ask about predictions, form, or match analysis...' : 'Connect your Anthropic key to start chatting'}
           disabled={!hasApiKey || isLoading}
           maxlength={MAX_INPUT_LENGTH}
           class="flex-1 px-3 py-2.5 text-sm rounded-lg border border-border bg-muted text-foreground disabled:opacity-50"

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers, Calendar } from 'lucide-svelte';
+  import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers, Calendar, Zap } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
   import { focusTrap } from '$lib/utils';
 
@@ -21,7 +21,8 @@
     { name: 'Oracle Chat', icon: MessageCircle, view: 'Oracle Chat' },
     { name: 'Top Scorers', icon: Trophy, view: 'Top Scorers' },
     { name: 'Kelly Calculator', icon: Calculator, view: 'Kelly Calculator' },
-    { name: 'Value Bets', icon: Search, view: 'Value Bets' },
+    { name: 'Suggested Bets', icon: Zap, view: 'Suggested Bets' },
+    { name: 'Value Scanner', icon: Search, view: 'Value Scanner' },
     { name: 'Accumulators', icon: Layers, view: 'Accumulators' },
     { name: 'Season Stats', icon: BarChart2, view: 'Season Stats' },
     { name: 'Timeline', icon: Calendar, view: 'Season Timeline' },
@@ -66,7 +67,7 @@
           <X class="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
-      <div class="grid grid-cols-4 gap-1">
+      <div class="grid grid-cols-4 gap-1" data-testid="more-menu-grid">
         {#each moreItems as item}
           <button
             class="flex flex-col items-center justify-center py-3 px-1 rounded-lg text-xs font-medium transition-colors {currentView === item.view ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}"

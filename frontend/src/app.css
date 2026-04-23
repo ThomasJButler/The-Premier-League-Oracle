@@ -32,7 +32,7 @@
     --radius: 0.75rem;
 
     --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    --gradient-accent: linear-gradient(135deg, #00cc6a 0%, #00ff87 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent) / 0.85) 0%, hsl(var(--accent)) 100%);
   }
 
   .dark {
@@ -61,7 +61,7 @@
     --ring: 160 72% 45%;
 
     --gradient-primary: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    --gradient-accent: linear-gradient(135deg, #00cc6a 0%, #00ff87 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent) / 0.85) 0%, hsl(var(--accent)) 100%);
   }
 
   /* ─── TEAM THEMES ─── */
@@ -190,7 +190,8 @@
   }
 
   .nav-item-active {
-    @apply text-accent bg-accent/10;
+    @apply text-accent font-semibold;
+    background: linear-gradient(90deg, hsl(var(--accent) / 0.15) 0%, hsl(var(--accent) / 0.06) 100%);
     border-left: 3px solid hsl(var(--accent));
     box-shadow: -2px 0 8px hsl(var(--accent) / 0.15);
   }
@@ -220,8 +221,8 @@
   }
 
   .mobile-nav-item-active {
-    @apply text-accent;
-    background: hsl(var(--accent) / 0.1);
+    @apply text-accent font-semibold;
+    background: hsl(var(--accent) / 0.12);
   }
 }
 
@@ -274,11 +275,11 @@
     @apply relative px-6 py-3 font-bold rounded-lg;
     background: var(--gradient-accent);
     color: hsl(var(--accent-foreground));
-    box-shadow: 0 0 12px rgba(0, 255, 135, 0.2);
-    @apply transform hover:scale-[1.03] transition-all duration-200;
+    box-shadow: 0 0 12px hsl(var(--accent) / 0.2);
+    @apply transform hover:scale-[1.03] active:scale-[0.97] transition-all duration-200;
   }
   .btn-neon:hover {
-    box-shadow: 0 0 24px rgba(0, 255, 135, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 24px hsl(var(--accent) / 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -320,11 +321,11 @@
 
   @keyframes livePulse {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.6);
+      box-shadow: 0 0 0 0 hsl(var(--accent) / 0.6);
       transform: scale(1);
     }
     50% {
-      box-shadow: 0 0 0 8px rgba(0, 255, 135, 0);
+      box-shadow: 0 0 0 8px hsl(var(--accent) / 0);
       transform: scale(1.05);
     }
   }

@@ -2,14 +2,18 @@
  * AI Match Analysis Service (P3g)
  *
  * Provides natural language match analysis by sending prediction data to
- * the OpenAI chat proxy at /api/chat. This is a supplementary display
- * feature — it does NOT modify numerical prediction probabilities.
+ * the Anthropic-backed chat proxy at /api/chat. This is a supplementary
+ * display feature — it does NOT modify numerical prediction probabilities.
  *
  * Uses the same /api/chat endpoint and API key as ChatBot.svelte.
  * Analyses are cached in localStorage for 24 hours per match.
  */
 
-import { getSavedAiModel } from '$lib/constants';
+import { getSavedAiModel, ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey } from '$lib/constants';
+
+// Run the legacy openai_api_key → anthropic_api_key migration once at module
+// load, so every subsequent read sees the migrated key.
+migrateLegacyApiKey();
 
 // --- Types ---
 
@@ -42,7 +46,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const STORAGE_PREFIX = 'ai_analysis_';
 const SETTINGS_KEY = 'ai_analysis_enabled';
 const SERVER_KEY_CHECK = 'ai_analysis_server_key';
-const API_KEY_STORAGE = 'openai_api_key';
+const API_KEY_STORAGE = ANTHROPIC_API_KEY_STORAGE_KEY;
 
 // --- Service ---
 
@@ -57,6 +61,11 @@ class AIAnalysisService {
   /** Toggle AI analysis on/off */
   setEnabled(enabled: boolean): void {
     localStorage.setItem(SETTINGS_KEY, enabled ? 'true' : 'false');
+  }
+
+  /** Whether the user has a local API key stored (synchronous, no server probe) */
+  hasLocalApiKey(): boolean {
+    return !!localStorage.getItem(API_KEY_STORAGE);
   }
 
   /** Whether an API key is available (user-provided or server-side) */
@@ -118,7 +127,7 @@ class AIAnalysisService {
 
   /**
    * Get AI analysis for a match prediction.
-   * Returns cached analysis if available, otherwise fetches from OpenAI.
+   * Returns cached analysis if available, otherwise fetches from Anthropic.
    * Returns null if AI analysis is disabled or no API key is available.
    */
   async getAnalysis(input: AnalysisInput): Promise<string | null> {
@@ -132,7 +141,7 @@ class AIAnalysisService {
     const keyAvailable = await this.hasApiKey();
     if (!keyAvailable) return null;
 
-    // Fetch from OpenAI
+    // Fetch from Anthropic via the /api/chat proxy
     try {
       const analysis = await this.fetchAnalysis(input);
       if (analysis) {
@@ -262,8 +271,8 @@ Do NOT invent specific injury news, transfer rumours, or manager quotes. Only re
       model: getSavedAiModel(),
     };
 
-    // Only send user key if server doesn't have one
-    if (apiKey && !this.serverKeyAvailable) {
+    // Always send user key — server prioritises its own env var anyway
+    if (apiKey) {
       body.apiKey = apiKey;
     }
 

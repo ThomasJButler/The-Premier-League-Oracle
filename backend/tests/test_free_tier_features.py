@@ -153,7 +153,7 @@ class TestFeatureCompleteness:
         assert len(features) == len(FreeTierFeatureEngineer.FEATURE_NAMES)
 
     def test_feature_count_is_114(self):
-        """FEATURE_NAMES should have exactly 114 entries (86 original + 13 draw + 5 Elo + 10 odds)."""
+        """FEATURE_NAMES should have exactly 114 entries post-P10b restoration (86 original + 6 draw + 2 form-ELO + 5 interactions + 5 Elo + 10 odds)."""
         assert len(FreeTierFeatureEngineer.FEATURE_NAMES) == 114
 
     def test_no_duplicate_feature_names(self):
@@ -505,47 +505,78 @@ class TestDrawIndicators:
     """Draw-specific feature signals."""
 
     def test_draw_features_present(self, engineer, sample_data):
-        """All 13 draw indicator features should be present."""
+        """The 6 draw indicator features (3 retained + 3 restored in P10b) should be present."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         draw_features = [
-            'form_closeness', 'standings_closeness',
-            'home_draw_rate', 'away_draw_rate',
-            'combined_defensive_strength', 'low_scoring_indicator',
-            'h2h_draw_tendency', 'draw_streak_proximity',
-            'goal_difference_symmetry', 'season_ppg_closeness',
-            'mid_table_indicator', 'elo_draw_band',
+            'standings_closeness',
+            'h2h_draw_tendency',
             'goals_per_game_combined',
+            'form_closeness',
+            'elo_draw_band',
+            'low_scoring_indicator',
         ]
         for name in draw_features:
             assert name in features, f'Missing draw feature: {name}'
 
-    def test_closeness_features_bounded(self, engineer, sample_data):
-        """Closeness features use 1/(1+diff) so should be in (0, 1]."""
+    def test_pruned_draw_features_absent(self, engineer, sample_data):
+        """Draw indicators pruned in P9h and not restored in P10b must not be emitted."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        for name in ['form_closeness', 'standings_closeness',
-                     'goal_difference_symmetry', 'season_ppg_closeness']:
-            assert 0.0 < features[name] <= 1.0, f'{name} out of bounds: {features[name]}'
+        pruned = [
+            'home_draw_rate', 'away_draw_rate',
+            'combined_defensive_strength',
+            'draw_streak_proximity',
+            'goal_difference_symmetry', 'season_ppg_closeness',
+            'mid_table_indicator',
+        ]
+        for name in pruned:
+            assert name not in features, f'Pruned feature leaked: {name}'
 
-    def test_mid_table_indicator_binary(self, engineer, sample_data):
-        """mid_table_indicator should be 0 or 1 (product of two binary flags)."""
+    def test_standings_closeness_bounded(self, engineer, sample_data):
+        """standings_closeness uses 1/(1+diff) so should be in (0, 1]."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        assert features['mid_table_indicator'] in (0.0, 1.0)
+        assert 0.0 < features['standings_closeness'] <= 1.0, (
+            f"standings_closeness out of bounds: {features['standings_closeness']}"
+        )
 
-    def test_elo_draw_band_product(self, engineer, sample_data):
-        """elo_draw_band should be the product of form_closeness and standings_closeness."""
+    def test_h2h_draw_tendency_is_proportion(self, engineer, sample_data):
+        """h2h_draw_tendency is a rate in [0, 1]."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
-        expected = features['form_closeness'] * features['standings_closeness']
-        assert abs(features['elo_draw_band'] - expected) < 1e-10
+        assert 0.0 <= features['h2h_draw_tendency'] <= 1.0
 
     def test_goals_per_game_combined_non_negative(self, engineer, sample_data):
         """goals_per_game_combined should be non-negative."""
         match_date = sample_data['date'].max() + timedelta(days=1)
         features = engineer.create_features('Arsenal', 'Chelsea', match_date)
         assert features['goals_per_game_combined'] >= 0.0
+
+    def test_form_closeness_bounded(self, engineer, sample_data):
+        """form_closeness = 1/(1+|Δppg|) — strictly within (0, 1]."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        assert 0.0 < features['form_closeness'] <= 1.0, (
+            f"form_closeness out of bounds: {features['form_closeness']}"
+        )
+
+    def test_low_scoring_indicator_non_negative_and_capped(self, engineer, sample_data):
+        """low_scoring_indicator = max(0, 3 - avg_goals); bounded in [0, 3]."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        val = features['low_scoring_indicator']
+        assert 0.0 <= val <= 3.0, f'low_scoring_indicator out of bounds: {val}'
+
+    def test_elo_draw_band_is_product_of_closeness(self, engineer, sample_data):
+        """elo_draw_band == form_closeness × standings_closeness."""
+        match_date = sample_data['date'].max() + timedelta(days=1)
+        features = engineer.create_features('Arsenal', 'Chelsea', match_date)
+        expected = features['form_closeness'] * features['standings_closeness']
+        assert abs(features['elo_draw_band'] - expected) < 1e-9, (
+            f"elo_draw_band ({features['elo_draw_band']}) != "
+            f"form_closeness × standings_closeness ({expected})"
+        )
 
 
 # ---------------------------------------------------------------------------

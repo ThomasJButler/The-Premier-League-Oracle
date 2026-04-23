@@ -5,7 +5,13 @@
   import { dataService } from '../services/dataService';
   import { backendService } from '../services/backendService';
   import { aiAnalysisService } from '../services/aiAnalysis';
-  import { AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY } from '$lib/constants';
+  import {
+    AI_MODELS, DEFAULT_AI_MODEL, AI_MODEL_STORAGE_KEY,
+    ANTHROPIC_API_KEY_STORAGE_KEY, migrateLegacyApiKey,
+  } from '$lib/constants';
+
+  // Run the legacy openai_api_key → anthropic_api_key migration once on load.
+  migrateLegacyApiKey();
   import { onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
@@ -60,6 +66,50 @@
   let aiAnalysisEnabled = false;
   let aiKeyAvailable: boolean | null = null;
   let selectedAiModel = DEFAULT_AI_MODEL;
+  let aiApiKey = '';
+  let aiApiKeyEditing = false; // true when user wants to change/enter a new key
+  let aiKeySaved = false; // true only when a key is confirmed saved in localStorage
+
+  /** Shallow sanity check — Anthropic keys start with `sk-ant-`. */
+  function isLikelyAnthropicKey(key: string): boolean {
+    return key.startsWith('sk-ant-');
+  }
+
+  function saveAiApiKey() {
+    const trimmed = aiApiKey.trim();
+    if (!trimmed || trimmed.length < 10) return;
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, trimmed);
+    aiKeySaved = true;
+    aiKeyAvailable = true;
+    aiApiKeyEditing = false;
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
+  }
+
+  function clearAiApiKey() {
+    localStorage.removeItem(ANTHROPIC_API_KEY_STORAGE_KEY);
+    aiApiKey = '';
+    aiKeySaved = false;
+    aiKeyAvailable = false;
+    aiApiKeyEditing = false;
+    localStorage.removeItem('ai_analysis_server_key');
+    window.dispatchEvent(new CustomEvent('api-key-changed'));
+    // Re-check for server key
+    checkAiKeyStatus();
+  }
+
+  function startEditingAiKey() {
+    aiApiKeyEditing = true;
+    // Don't clear aiApiKey — the input is type="password" so it's already masked
+  }
+
+  function handleAiKeyKeydown(e: Event) {
+    if ((e as KeyboardEvent).key === 'Enter') saveAiApiKey();
+  }
+
+  async function checkAiKeyStatus() {
+    aiKeyAvailable = null;
+    aiKeyAvailable = await aiAnalysisService.hasApiKey();
+  }
 
   function saveAiModel(model: string) {
     selectedAiModel = model;
@@ -101,7 +151,8 @@
     backendService.invalidateCache();
     try {
       backendAvailable = await backendService.isAvailable();
-    } catch {
+    } catch (err) {
+      console.warn('[Settings] ML backend health check failed:', err);
       backendAvailable = false;
     } finally {
       checkingBackend = false;
@@ -194,6 +245,7 @@
         message: 'Data synchronised successfully'
       };
     } catch (error) {
+      console.warn('[Settings] Data sync failed:', error);
       testResult = {
         success: false,
         message: 'Sync failed. Please try again.'
@@ -219,7 +271,8 @@
       footballDataAPI.testConnection().then(ok => {
         apiConnected = ok;
         verifying = false;
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[Settings] Football-Data.org verification failed:', err);
         apiConnected = false;
         verifying = false;
       });
@@ -243,14 +296,22 @@
 
     // Load AI analysis settings
     aiAnalysisEnabled = aiAnalysisService.isEnabled();
+    const savedAiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY);
+    if (savedAiKey) {
+      aiApiKey = savedAiKey;
+      aiKeySaved = true;
+    }
     aiAnalysisService.hasApiKey().then(available => {
       aiKeyAvailable = available;
-    }).catch(() => {
+    }).catch(err => {
+      console.warn('[Settings] AI key status check failed:', err);
       aiKeyAvailable = false;
     });
 
-    // Load ML backend settings
-    useBackend = localStorage.getItem('use_backend') === 'true';
+    // Load ML backend settings. Default ON — matches the runtime default in
+    // optimizedPredictions.ts. Only reads as false when the user has explicitly
+    // disabled it.
+    useBackend = localStorage.getItem('use_backend') !== 'false';
     const savedToken = localStorage.getItem('oracle_api_token');
     if (savedToken) {
       oracleApiToken = savedToken;
@@ -267,7 +328,8 @@
           const totalMB = usage / (1024 * 1024);
           cacheSize = totalMB < 0.01 ? '< 0.01 MB' : `${totalMB.toFixed(2)} MB`;
         }
-      } catch {
+      } catch (err) {
+        console.warn('[Settings] storage.estimate() failed:', err);
         cacheSize = 'Unknown';
       }
     } else {
@@ -452,7 +514,7 @@
       <span>ML Backend</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Connect to the Python ML backend for enhanced predictions using XGBoost, LSTM, and Transformer models. When disabled, predictions use the built-in TypeScript ensemble.
+      Connect to the Python backend for XGBoost predictions and Oracle Chat (DataFrame RAG). When disabled or unreachable, predictions fall back to the built-in TypeScript ensemble and chat is unavailable.
     </p>
 
     <!-- Toggle -->
@@ -547,7 +609,7 @@
       <span>AI Match Analysis</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Add AI-powered qualitative analysis to match predictions. Uses the same OpenAI key as Oracle Chat. Analyses are cached for 24 hours per match.
+      Add Claude-powered qualitative analysis to match predictions. Analyses are cached for 24 hours per match.
     </p>
 
     <!-- Toggle -->
@@ -570,6 +632,58 @@
     </div>
 
     {#if aiAnalysisEnabled}
+      <!-- AI API Key -->
+      <div class="p-3 bg-muted rounded-lg mb-4" transition:fade>
+        <label for="ai-api-key" class="block text-sm font-medium text-foreground mb-2">AI API Key</label>
+        {#if aiKeySaved && !aiApiKeyEditing}
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-green-500"></span>
+              <span class="text-sm text-foreground">
+                Anthropic key configured
+                {#if !isLikelyAnthropicKey(aiApiKey)}
+                  <span class="text-amber-500 ml-1" title="Key doesn't look like an Anthropic key (expected sk-ant-…)">⚠</span>
+                {/if}
+              </span>
+              <span class="text-xs text-muted-foreground font-mono">
+                (•••{aiApiKey.slice(-4)})
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <Button on:click={startEditingAiKey} variant="secondary" size="sm">
+                Change
+              </Button>
+              <Button on:click={clearAiApiKey} variant="ghost" size="sm">
+                Remove
+              </Button>
+            </div>
+          </div>
+        {:else}
+          <div class="flex gap-2">
+            <input
+              id="ai-api-key"
+              type="password"
+              bind:value={aiApiKey}
+              placeholder="sk-ant-..."
+              class="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground"
+              on:keydown={handleAiKeyKeydown}
+            />
+            <Button on:click={saveAiApiKey} size="sm">
+              Save
+            </Button>
+            {#if aiApiKeyEditing}
+              <Button on:click={() => { aiApiKeyEditing = false; aiApiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || ''; }} variant="ghost" size="sm">
+                Cancel
+              </Button>
+            {/if}
+          </div>
+          <p class="text-xs text-muted-foreground mt-2">
+            Get a key from the <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-primary hover:underline">Anthropic Console</a>.
+            Used for Oracle Chat and AI match analysis. Stored in your browser only.
+          </p>
+        {/if}
+      </div>
+
       <!-- API Key Status -->
       <div class="flex items-center justify-between p-3 bg-muted rounded-lg mb-4" transition:fade>
         <div>
@@ -578,9 +692,9 @@
             {#if aiKeyAvailable === null}
               Checking…
             {:else if aiKeyAvailable}
-              Ready — using {localStorage.getItem('openai_api_key') ? 'your API key' : 'server-side key'}
+              Ready — using {aiApiKey ? 'your Anthropic key' : 'server-side key'}
             {:else}
-              No key available — configure one in Oracle Chat or ask the site owner to set OPENAI_API_KEY / ANTHROPIC_API_KEY
+              No key — add one above or ask the site owner to set ANTHROPIC_API_KEY
             {/if}
           </p>
         </div>
@@ -619,9 +733,9 @@
       <span>AI Model</span>
     </h2>
     <p class="text-sm text-muted-foreground mb-4">
-      Choose which model powers Oracle Chat and AI Match Analysis.
-      Supports OpenAI (GPT) and Anthropic (Claude). Larger models
-      produce richer analysis but cost more per request.
+      Choose which Claude model powers Oracle Chat and AI Match Analysis.
+      Larger models produce richer analysis but cost more per request —
+      Haiku 4.5 is the fast, cheap default.
     </p>
 
     <div class="flex items-center gap-3">

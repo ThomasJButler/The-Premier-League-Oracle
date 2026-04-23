@@ -66,9 +66,41 @@ describe('AIAnalysisService', () => {
     });
   });
 
+  describe('legacy openai_api_key migration', () => {
+    it('migrates openai_api_key → anthropic_api_key on demand and removes the old key', async () => {
+      // Legacy storage state (many users pasted sk-ant- into this key before
+      // the Anthropic-only migration).
+      store.set('openai_api_key', 'sk-ant-legacy-value');
+
+      const { migrateLegacyApiKey } = await import('$lib/constants');
+      migrateLegacyApiKey();
+
+      expect(store.get('anthropic_api_key')).toBe('sk-ant-legacy-value');
+      expect(store.has('openai_api_key')).toBe(false);
+    });
+
+    it('does not overwrite an existing anthropic_api_key', async () => {
+      store.set('anthropic_api_key', 'sk-ant-new');
+      store.set('openai_api_key', 'sk-ant-old');
+
+      const { migrateLegacyApiKey } = await import('$lib/constants');
+      migrateLegacyApiKey();
+
+      expect(store.get('anthropic_api_key')).toBe('sk-ant-new');
+      expect(store.has('openai_api_key')).toBe(false);
+    });
+
+    it('is a no-op when no legacy key is present', async () => {
+      store.set('anthropic_api_key', 'sk-ant-something');
+      const { migrateLegacyApiKey } = await import('$lib/constants');
+      migrateLegacyApiKey();
+      expect(store.get('anthropic_api_key')).toBe('sk-ant-something');
+    });
+  });
+
   describe('hasApiKey', () => {
     it('should return true when user has a localStorage key', async () => {
-      store.set('openai_api_key', 'sk-test-key');
+      store.set('anthropic_api_key', 'sk-test-key');
       const result = await aiAnalysisService.hasApiKey();
       expect(result).toBe(true);
     });
@@ -156,7 +188,7 @@ describe('AIAnalysisService', () => {
 
     it('should fetch from /api/chat and cache the result', async () => {
       aiAnalysisService.setEnabled(true);
-      store.set('openai_api_key', 'sk-test');
+      store.set('anthropic_api_key', 'sk-test');
 
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
@@ -179,7 +211,7 @@ describe('AIAnalysisService', () => {
 
     it('should send user API key when server key not available', async () => {
       aiAnalysisService.setEnabled(true);
-      store.set('openai_api_key', 'sk-user-key');
+      store.set('anthropic_api_key', 'sk-user-key');
 
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
@@ -197,7 +229,7 @@ describe('AIAnalysisService', () => {
 
     it('should return null on API error without crashing', async () => {
       aiAnalysisService.setEnabled(true);
-      store.set('openai_api_key', 'sk-test');
+      store.set('anthropic_api_key', 'sk-test');
 
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
@@ -211,7 +243,7 @@ describe('AIAnalysisService', () => {
 
     it('should return null on network error', async () => {
       aiAnalysisService.setEnabled(true);
-      store.set('openai_api_key', 'sk-test');
+      store.set('anthropic_api_key', 'sk-test');
 
       vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
 

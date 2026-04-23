@@ -2,10 +2,11 @@
   import { onMount } from 'svelte';
   import { Calendar, Target, TrendingUp, Award, Users, Zap, Shield, AlertTriangle, Percent, Activity, Timer, Home, BarChart3, Trophy, Crosshair, ArrowDownUp, Flame, Swords } from 'lucide-svelte';
   import { dataService } from '../services/dataService';
+  import { statsPack, getSeasonStats, type SeasonStats as SeasonStatsEntry } from '../lib/data/statsPack';
   import type { Match, Standing } from '../types';
 
   // Svelte 4 component constructor typing is limited — any is required for icon components
-   
+
   type IconComponent = new (...args: any[]) => any;
 
   interface SeasonStat {
@@ -16,17 +17,43 @@
     description: string;
   }
 
+  // Sentinel string for cards whose data isn't preserved per-season in the pack.
+  // The live path computes dozens of match-level stats (comebacks, streaks, cards);
+  // the archive only keeps headline rates — so historical views degrade gracefully.
+  const NOT_RECORDED = '— not recorded';
+
+  // Dropdown value: either "current" (live API path) or a season string like "2020/21"
+  // from the stats pack archive. Exported so tests can drive historical rendering.
+  export let selectedSeason: string = 'current';
+
+  // Last five archived seasons — the dropdown offers these plus the live option.
+  const historicalSeasons: string[] = statsPack.seasons.slice(-5);
+
   let loading = true;
   let error: string | null = null;
   let matches: Match[] = [];
   let stats: SeasonStat[] = [];
   let additionalStats: SeasonStat[] = [];
   let bettingStats: SeasonStat[] = [];
+  // Populated only when a historical season is selected and the pack flagged it
+  // as anomalous (e.g. 2020/21 COVID empty-stadium shift). Drives the banner.
+  let anomalyInfo: SeasonStatsEntry | null = null;
+
+  function fmtPct(v: number): string {
+    return `${(v * 100).toFixed(1)}%`;
+  }
 
   export async function loadSeasonStats() {
+    // Historical mode reads synchronously from the stats pack — skip the live API path.
+    if (selectedSeason !== 'current') {
+      applyHistoricalSeason(selectedSeason);
+      return;
+    }
+
     try {
       loading = true;
       error = null;
+      anomalyInfo = null;
 
       // Fetch matches first (required), then standings and scorers (optional extras)
       matches = await dataService.getCurrentSeasonMatches();
@@ -51,6 +78,65 @@
     } finally {
       loading = false;
     }
+  }
+
+  /**
+   * Populate the three card sections from a historical-season archive entry.
+   * The pack only retains headline rates per season, so non-rate cards degrade
+   * to NOT_RECORDED rather than being hidden — keeps the layout stable across
+   * seasons and signals the limitation honestly.
+   */
+  function buildHistoricalSections(ss: SeasonStatsEntry): void {
+    stats = [
+      { label: 'Average Goals', value: ss.avgTotalGoals.toFixed(2), icon: Target, color: 'from-teal-500 to-emerald-400', description: 'Goals per match this season' },
+      { label: 'Biggest Comeback', value: NOT_RECORDED, icon: TrendingUp, color: 'from-green-500 to-emerald-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Second-Half Turnarounds', value: NOT_RECORDED, icon: Zap, color: 'from-yellow-500 to-orange-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Most Cards', value: NOT_RECORDED, icon: AlertTriangle, color: 'from-red-500 to-pink-500', description: 'Card data unavailable on free tier' },
+      { label: 'Win Streak', value: NOT_RECORDED, icon: Award, color: 'from-slate-500 to-slate-400', description: 'Requires match-level data — not in season archive' },
+      { label: 'Home Fortress', value: NOT_RECORDED, icon: Users, color: 'from-cyan-500 to-blue-500', description: 'Requires per-team breakdown — not in season archive' },
+    ];
+
+    additionalStats = [
+      { label: 'Clean Sheets Leader', value: NOT_RECORDED, icon: Shield, color: 'from-teal-500 to-cyan-500', description: 'Requires per-team breakdown — not in season archive' },
+      { label: 'Draw Rate', value: fmtPct(ss.drawRate), icon: Percent, color: 'from-gray-500 to-slate-500', description: 'Matches ending in draws' },
+      { label: 'High-Scoring Games', value: NOT_RECORDED, icon: Activity, color: 'from-orange-500 to-red-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Away Win Rate', value: fmtPct(ss.awayWinRate), icon: Home, color: 'from-cyan-500 to-teal-500', description: 'Visitor victory percentage' },
+      { label: 'Red Cards', value: NOT_RECORDED, icon: AlertTriangle, color: 'from-red-600 to-rose-600', description: 'Card data unavailable on free tier' },
+      { label: 'Goal Fest', value: NOT_RECORDED, icon: Target, color: 'from-amber-500 to-yellow-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'BTTS Rate', value: fmtPct(ss.bttsRate), icon: Users, color: 'from-green-500 to-teal-500', description: 'Both teams score frequency' },
+      { label: 'Over 2.5 Goals', value: fmtPct(ss.over25Rate), icon: TrendingUp, color: 'from-emerald-500 to-teal-400', description: 'Matches with 3+ goals' },
+      { label: 'Second Half Goals', value: NOT_RECORDED, icon: Timer, color: 'from-slate-500 to-cyan-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Unbeaten Run', value: NOT_RECORDED, icon: Award, color: 'from-emerald-500 to-green-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Total Matches', value: ss.matches, icon: Calendar, color: 'from-slate-500 to-gray-500', description: 'Games played this season' },
+    ];
+
+    bettingStats = [
+      { label: 'Home Win Rate', value: fmtPct(ss.homeWinRate), icon: Home, color: 'from-blue-500 to-indigo-500', description: 'League-wide home advantage this season' },
+      { label: 'Draw Magnets', value: NOT_RECORDED, icon: ArrowDownUp, color: 'from-gray-500 to-zinc-500', description: 'Requires per-team breakdown — not in season archive' },
+      { label: 'BTTS Leaders', value: NOT_RECORDED, icon: Swords, color: 'from-green-500 to-emerald-500', description: 'Requires per-team breakdown — not in season archive' },
+      { label: 'Over 2.5 Leaders', value: NOT_RECORDED, icon: Flame, color: 'from-orange-500 to-amber-500', description: 'Requires per-team breakdown — not in season archive' },
+      { label: 'Biggest Win', value: NOT_RECORDED, icon: Target, color: 'from-purple-500 to-violet-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Late Equalisers', value: NOT_RECORDED, icon: Timer, color: 'from-rose-500 to-pink-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Hot Streak', value: NOT_RECORDED, icon: Flame, color: 'from-red-500 to-orange-500', description: 'Requires match-level data — not in season archive' },
+      { label: 'Cold Streak', value: NOT_RECORDED, icon: TrendingUp, color: 'from-slate-600 to-gray-600', description: 'Requires match-level data — not in season archive' },
+    ];
+  }
+
+  function applyHistoricalSeason(season: string): void {
+    const ss = getSeasonStats(season);
+    if (!ss) {
+      error = `No archive data for season ${season}.`;
+      loading = false;
+      return;
+    }
+    error = null;
+    buildHistoricalSections(ss);
+    anomalyInfo = ss.isAnomalous ? ss : null;
+    loading = false;
+  }
+
+  function handleSeasonChange(): void {
+    loadSeasonStats();
   }
 
   function calculateInterestingStats(matches: Match[]): SeasonStat[] {
@@ -659,10 +745,50 @@
 </script>
 
 <div class="season-stats">
-  <div class="mb-8">
-    <h1 class="text-2xl font-bold font-display text-foreground mb-2">Season Stats</h1>
-    <p class="text-muted-foreground">Discover unique insights from this season's data</p>
+  <div class="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold font-display text-foreground mb-2">Season Stats</h1>
+      <p class="text-muted-foreground">
+        {selectedSeason === 'current'
+          ? "Discover unique insights from this season's data"
+          : `Archive view — headline rates from ${selectedSeason}`}
+      </p>
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <span class="text-muted-foreground">Season</span>
+      <select
+        bind:value={selectedSeason}
+        on:change={handleSeasonChange}
+        class="rounded-lg border border-border bg-card text-foreground px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label="Select season"
+      >
+        <option value="current">Current (live)</option>
+        {#each [...historicalSeasons].reverse() as s (s)}
+          <option value={s}>{s}</option>
+        {/each}
+      </select>
+    </label>
   </div>
+
+  {#if anomalyInfo}
+    <div
+      class="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4"
+      role="status"
+      aria-label="anomalous season"
+    >
+      <div class="flex items-center gap-2 mb-2">
+        <AlertTriangle class="w-4 h-4 text-amber-500" />
+        <span class="font-semibold text-amber-500">Anomalous season</span>
+      </div>
+      {#if anomalyInfo.anomalyReasons.length > 0}
+        <ul class="text-sm text-muted-foreground list-disc list-inside space-y-1">
+          {#each anomalyInfo.anomalyReasons as reason}
+            <li>{reason}</li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+  {/if}
 
   {#if loading}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

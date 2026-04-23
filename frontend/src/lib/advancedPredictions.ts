@@ -1,6 +1,10 @@
 import { dataService } from '../services/dataService';
 import type { Match } from '../types';
-import { VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE } from './constants';
+import {
+  VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE,
+  ELO_HOME_ADVANTAGE, DEFAULT_REFEREE_AVG_YELLOWS, DEFAULT_REFEREE_AVG_REDS,
+  POISSON_DIXON_COLES_RHO,
+} from './constants';
 
 // Poisson distribution for goal prediction
 export class PoissonPredictor {
@@ -13,18 +17,54 @@ export class PoissonPredictor {
     return (Math.pow(lambda, k) * Math.exp(-lambda)) / this.factorial(k);
   }
 
+  /**
+   * Dixon-Coles τ factor for low-score cells. Returns 1 outside the
+   * 2×2 low-score block, so callers can multiply unconditionally.
+   */
+  private static dixonColesTau(
+    homeGoals: number,
+    awayGoals: number,
+    lambdaHome: number,
+    lambdaAway: number,
+    rho: number
+  ): number {
+    if (homeGoals === 0 && awayGoals === 0) return 1 - lambdaHome * lambdaAway * rho;
+    if (homeGoals === 1 && awayGoals === 0) return 1 + lambdaAway * rho;
+    if (homeGoals === 0 && awayGoals === 1) return 1 + lambdaHome * rho;
+    if (homeGoals === 1 && awayGoals === 1) return 1 - rho;
+    return 1;
+  }
+
   static predictScoreProbabilities(
     expectedHomeGoals: number,
     expectedAwayGoals: number,
-    maxGoals: number = 7
+    maxGoals: number = 7,
+    rho: number = POISSON_DIXON_COLES_RHO
   ): { [key: string]: number } {
     const probabilities: { [key: string]: number } = {};
+    let total = 0;
 
     for (let homeGoals = 0; homeGoals <= maxGoals; homeGoals++) {
       for (let awayGoals = 0; awayGoals <= maxGoals; awayGoals++) {
         const homeProb = this.poissonProbability(expectedHomeGoals, homeGoals);
         const awayProb = this.poissonProbability(expectedAwayGoals, awayGoals);
-        probabilities[`${homeGoals}-${awayGoals}`] = homeProb * awayProb;
+        const tau = this.dixonColesTau(
+          homeGoals, awayGoals, expectedHomeGoals, expectedAwayGoals, rho
+        );
+        // τ can theoretically go negative for extreme ρ/λ combinations.
+        // Clamp to 0 so we never emit a negative probability from the grid.
+        const cell = Math.max(0, homeProb * awayProb * tau);
+        probabilities[`${homeGoals}-${awayGoals}`] = cell;
+        total += cell;
+      }
+    }
+
+    // Re-normalise so the grid remains a proper probability distribution.
+    // τ shifts mass between cells; without this, the grid sums to slightly
+    // less than (or more than) 1 depending on ρ and truncation at maxGoals.
+    if (total > 0) {
+      for (const key of Object.keys(probabilities)) {
+        probabilities[key] /= total;
       }
     }
 
@@ -55,7 +95,7 @@ export class PoissonPredictor {
 // Ratings persist to localStorage and update dynamically from completed match results.
 export class EloRatingSystem {
   static readonly K_FACTOR = 32; // Sensitivity of rating changes
-  static readonly HOME_ADVANTAGE = 65; // Average home advantage in ELO points
+  static readonly HOME_ADVANTAGE = ELO_HOME_ADVANTAGE;
   static readonly DEFAULT_RATING = 1500; // Default ELO rating for new teams
   private static readonly STORAGE_KEY = 'elo_ratings';
   private static readonly PROCESSED_KEY = 'elo_processed_match_ids';
@@ -332,10 +372,20 @@ export class FatigueAnalyzer {
   }
 
   static getFatigueMultiplier(restDays: number): number {
-    // Less rest = more fatigue = worse performance
-    // Floor restDays at 0.5 (12 hours) to prevent zero multiplier causing division-by-zero
-    // Optimal rest is 7+ days → multiplier of 1.0
-    return Math.min(Math.max(restDays, 0.5) / 7, 1);
+    // PL teams play every 3-6 days in-season and are conditioned for that
+    // cycle — treating 7 days as "optimal" (the previous calibration) forced
+    // every fixture through a 0.55-0.70× lambda shrink that compressed the
+    // Poisson grid onto 0-0 / 1-0 / 0-1 modal cells. Recalibrated so 3.5
+    // days is normal (multiplier 1.0) and penalties only apply to genuine
+    // congestion (2-day / 1-day turnarounds). Floor at 0.5 days for safety.
+    //
+    // Curve:
+    //   7+ days → 1.0  (long break, no fatigue)
+    //   4-5 days → 1.0  (normal PL rotation)
+    //   3 days  → 0.86
+    //   2 days  → 0.57
+    //   1 day   → 0.29
+    return Math.min(Math.max(restDays, 0.5) / 3.5, 1);
   }
 }
 
@@ -486,7 +536,7 @@ export class RefereeAnalyzer {
       const refereeMatches = matches.filter(match => match.referee === refereeName);
 
       if (refereeMatches.length === 0) {
-        return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
+        return { avgYellowCards: DEFAULT_REFEREE_AVG_YELLOWS, avgRedCards: DEFAULT_REFEREE_AVG_REDS, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
       }
 
       const totalMatches = refereeMatches.length;
@@ -497,12 +547,12 @@ export class RefereeAnalyzer {
       return {
         avgYellowCards: totalYellows / totalMatches,
         avgRedCards: totalReds / totalMatches,
-        avgPenalties: 0.2, // Placeholder - would need penalty data
+        avgPenalties: 0.2, // Placeholder — no penalty data from free API tier
         homeWinRate: homeWins / totalMatches
       };
     } catch (_error) {
       // Error getting referee stats
-      return { avgYellowCards: 4, avgRedCards: 0.1, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
+      return { avgYellowCards: DEFAULT_REFEREE_AVG_YELLOWS, avgRedCards: DEFAULT_REFEREE_AVG_REDS, avgPenalties: 0.2, homeWinRate: DEFAULT_HOME_WIN_RATE };
     }
   }
 }

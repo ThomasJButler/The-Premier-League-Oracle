@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ChatBot from './ChatBot.svelte';
+import { invalidateBackendHealth } from '../services/chatBackendHealth';
 
 // Mock DOMPurify — use a spy so we can verify sanitize() is actually called.
 // Returns input unchanged (sufficient for rendering tests) but allows assertion
@@ -51,8 +52,8 @@ vi.mock('svelte/transition', () => ({
 
 /** Helper: type a valid API key into the password input and click Connect */
 async function connectApiKey() {
-  const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
-  await fireEvent.input(keyInput, { target: { value: 'sk-1234567890abcdef' } });
+  const keyInput = screen.getByPlaceholderText('sk-ant-...');
+  await fireEvent.input(keyInput, { target: { value: 'sk-ant-1234567890abcdef' } });
   const connectBtn = screen.getByText('Connect');
   await fireEvent.click(connectBtn);
   await act();
@@ -68,6 +69,9 @@ describe('ChatBot Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSanitize.mockClear();
+    // Reset the session-level chat backend health cache so each test's
+    // /health probe starts fresh.
+    invalidateBackendHealth();
     // Re-apply localStorage mock defaults (setup.ts mocks are cleared by clearAllMocks)
     vi.mocked(localStorage.getItem).mockReturnValue(null);
     // Default: server key probe (POST with empty messages) returns "no key" response.
@@ -81,7 +85,7 @@ describe('ChatBot Component', () => {
           try {
             const body = JSON.parse(reqOpts.body as string);
             if (Array.isArray(body.messages) && body.messages.length === 0) {
-              return { ok: false, status: 400, json: () => Promise.resolve({ error: 'No API key configured. Please enter your OpenAI key.' }) } as unknown as Response;
+              return { ok: false, status: 400, json: () => Promise.resolve({ error: 'No API key configured. Please enter your Anthropic key.' }) } as unknown as Response;
             }
           } catch {
             // Not JSON — fall through
@@ -110,19 +114,18 @@ describe('ChatBot Component', () => {
 
   it('should show API key setup form when no key stored', () => {
     render(ChatBot);
-    expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('sk-... or sk-ant-...')).toBeInTheDocument();
+    expect(screen.getByText('Connect Anthropic')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('sk-ant-...')).toBeInTheDocument();
     expect(screen.getByText('Connect')).toBeInTheDocument();
   });
 
-  it('should show links to OpenAI and Anthropic platforms', () => {
+  it('should link to the Anthropic console for API key creation', () => {
     render(ChatBot);
-    const openaiLink = screen.getByText('OpenAI');
-    expect(openaiLink).toBeInTheDocument();
-    expect(openaiLink.closest('a')).toHaveAttribute('href', 'https://platform.openai.com/api-keys');
-    const anthropicLink = screen.getByText('Anthropic');
+    const anthropicLink = screen.getByText('Anthropic Console');
     expect(anthropicLink).toBeInTheDocument();
     expect(anthropicLink.closest('a')).toHaveAttribute('href', 'https://console.anthropic.com/settings/keys');
+    // The old OpenAI link must be gone post-migration
+    expect(screen.queryByText('OpenAI')).not.toBeInTheDocument();
   });
 
   it('should have chat input disabled without API key', () => {
@@ -140,7 +143,7 @@ describe('ChatBot Component', () => {
   it('should show validation error for short API key', async () => {
     render(ChatBot);
 
-    const keyInput = screen.getByPlaceholderText('sk-... or sk-ant-...');
+    const keyInput = screen.getByPlaceholderText('sk-ant-...');
     await fireEvent.input(keyInput, { target: { value: 'short' } });
     const connectBtn = screen.getByText('Connect');
     await fireEvent.click(connectBtn);
@@ -160,7 +163,7 @@ describe('ChatBot Component', () => {
     });
 
     // Verify localStorage.setItem was called with the API key
-    expect(localStorage.setItem).toHaveBeenCalledWith('openai_api_key', 'sk-1234567890abcdef');
+    expect(localStorage.setItem).toHaveBeenCalledWith('anthropic_api_key', 'sk-ant-1234567890abcdef');
   });
 
   it('should show security notice banner after connecting with user key', async () => {
@@ -193,10 +196,10 @@ describe('ChatBot Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Connect AI Provider')).toBeInTheDocument();
+      expect(screen.getByText('Connect Anthropic')).toBeInTheDocument();
     });
 
-    expect(localStorage.removeItem).toHaveBeenCalledWith('openai_api_key');
+    expect(localStorage.removeItem).toHaveBeenCalledWith('anthropic_api_key');
   });
 
   it('should clear chat and show reset message', async () => {
@@ -268,7 +271,7 @@ describe('ChatBot Component', () => {
         return {
           ok: false,
           status: 401,
-          json: () => Promise.resolve({ error: 'Invalid API key. Please check your OpenAI key.' })
+          json: () => Promise.resolve({ error: 'Invalid API key. Please check your Anthropic key.' })
         } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -294,7 +297,7 @@ describe('ChatBot Component', () => {
         return {
           ok: false,
           status: 429,
-          json: () => Promise.resolve({ error: 'Rate limited by OpenAI. Please wait a moment and try again.' })
+          json: () => Promise.resolve({ error: 'Rate limited by Anthropic. Please wait a moment and try again.' })
         } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -310,7 +313,7 @@ describe('ChatBot Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Rate limited by OpenAI/)).toBeInTheDocument();
+      expect(screen.getByText(/Rate limited by Anthropic/)).toBeInTheDocument();
     });
   });
 
@@ -341,7 +344,7 @@ describe('ChatBot Component', () => {
   /** Helper: set up health mock, render, and call checkBackendRAG. */
   async function renderWithBackendRAG(fetchImpl?: typeof globalThis.fetch) {
     vi.mocked(globalThis.fetch).mockImplementation(fetchImpl ?? (async (url) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       return { ok: false, status: 500 } as Response;
@@ -352,6 +355,22 @@ describe('ChatBot Component', () => {
     });
     return result;
   }
+
+  it('should probe the canonical /health URL (not /api/oracle/health)', async () => {
+    // P12a: the frontend must probe the exact path the FastAPI backend
+    // serves (main.py:269 → GET /health). If this regresses to a nested
+    // /api/oracle/health prefix, the probe will fail in production and
+    // the chat will silently fall back to the proxy with no RAG context.
+    const fetchSpy = vi.mocked(globalThis.fetch);
+    await renderWithBackendRAG();
+
+    const probedUrls = fetchSpy.mock.calls
+      .map(([url]) => url)
+      .filter((u): u is string => typeof u === 'string');
+
+    expect(probedUrls).toContain('/health');
+    expect(probedUrls).not.toContain('/api/oracle/health');
+  });
 
   it('should detect backend RAG and enable chat without user key', async () => {
     await renderWithBackendRAG();
@@ -375,7 +394,7 @@ describe('ChatBot Component', () => {
 
   it('should send via backend RAG when available', async () => {
     const { component } = await renderWithBackendRAG(async (url, opts) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       if (typeof url === 'string' && url === '/api/oracle/chat/rag' && (opts as RequestInit)?.method === 'POST') {
@@ -411,7 +430,7 @@ describe('ChatBot Component', () => {
 
   it('should fall back to proxy when backend RAG fails', async () => {
     const { component } = await renderWithBackendRAG(async (url, opts) => {
-      if (typeof url === 'string' && url === '/api/oracle/health') {
+      if (typeof url === 'string' && url === '/health') {
         return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
       }
       // RAG endpoint returns 502
@@ -443,6 +462,70 @@ describe('ChatBot Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Fallback response from proxy.')).toBeInTheDocument();
     });
+  });
+
+  it('P13b: reuses the cached /health result across remounts within a session', async () => {
+    // First render: primes the session cache with a successful /health probe.
+    const { unmount } = await renderWithBackendRAG();
+
+    const healthCallsAfterFirst = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+    expect(healthCallsAfterFirst).toBe(1);
+
+    unmount();
+
+    // Second render: same session, no invalidation — cache should short-circuit.
+    const { component } = render(ChatBot);
+    await act(async () => {
+      await (component as any).checkBackendRAG();
+    });
+
+    const healthCallsAfterSecond = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+    // Still exactly one — the second mount must not re-probe.
+    expect(healthCallsAfterSecond).toBe(1);
+  });
+
+  it('P13b: re-probes /health after a RAG 5xx failure invalidates the cache', async () => {
+    // Prime cache with successful probe, then simulate RAG server error.
+    const { component } = await renderWithBackendRAG(async (url, opts) => {
+      if (typeof url === 'string' && url === '/health') {
+        return { ok: true, json: () => Promise.resolve({ status: 'healthy' }) } as Response;
+      }
+      if (typeof url === 'string' && url === '/api/oracle/chat/rag' && (opts as RequestInit)?.method === 'POST') {
+        return { ok: false, status: 502, json: () => Promise.resolve({ detail: 'Bad gateway' }) } as Response;
+      }
+      // Fallback proxy returns something so sendMessage completes cleanly.
+      if (typeof url === 'string' && url === '/api/chat' && (opts as RequestInit)?.method === 'POST') {
+        return { ok: true, json: () => Promise.resolve({ choices: [{ message: { content: 'Fallback' } }] }) } as Response;
+      }
+      return { ok: false, status: 500 } as Response;
+    });
+
+    await waitFor(() => {
+      const input = document.querySelector('[data-testid="chatbot-input"]') as HTMLInputElement;
+      expect(input).not.toBeDisabled();
+    });
+
+    // Trigger a RAG request that will 502 → invalidates health cache.
+    await typeMessage('Trigger RAG failure');
+    await act(async () => {
+      await (component as any).sendMessage();
+    });
+
+    // Now call checkBackendRAG again — the cache was invalidated by the 502,
+    // so this must re-probe /health.
+    const healthCallsBefore = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+
+    await act(async () => {
+      await (component as any).checkBackendRAG();
+    });
+
+    const healthCallsAfter = vi.mocked(globalThis.fetch).mock.calls
+      .filter(([url]) => typeof url === 'string' && url === '/health').length;
+
+    expect(healthCallsAfter).toBeGreaterThan(healthCallsBefore);
   });
 
   it('should not show security banner when using backend RAG', async () => {

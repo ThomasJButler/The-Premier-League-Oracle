@@ -84,7 +84,7 @@ Referee adjustments appear as text in the key factors/insights list within the P
 
 ### 5. Confidence Calculation (Priority: Medium) — DONE
 
-**Current problem:** `calculateConfidence()` in `OptimizedPredictor` uses a simple probability gap formula. It clamps to 25%–95%.
+**Current state:** `calculateConfidence()` in `OptimizedPredictor` uses a probability gap formula clamped to 25%–95%. Ensemble disagreement detection compares ELO and Poisson top outcomes — when they disagree, confidence is lowered. `getCalibrationFactors()` in `predictionTracker.ts` tracks historical accuracy by confidence band and adjusts future confidence accordingly (e.g. if 80% confidence predictions historically achieve 72% accuracy, the calibration factor is 0.9).
 
 **Required behaviour:**
 - Incorporate ensemble disagreement: if ELO and Poisson strongly disagree, lower confidence
@@ -96,13 +96,13 @@ Referee adjustments appear as text in the key factors/insights list within the P
 
 ### 6. AI-Assisted Analysis (Priority: Medium) — DONE
 
-**New requirement:** Integrate GPT-5 (OpenAI) and/or Claude (Anthropic) for qualitative match analysis to supplement the statistical models.
+**Current state:** `frontend/src/services/aiAnalysis.ts` provides an `AIAnalysisService` class supporting both OpenAI and Anthropic models. The model is configurable — the Vercel Edge Function (`api/chat.ts`) resolves from request body, then `ORACLE_AI_MODEL` env var, then defaults to `gpt-4o-mini`. Claude support is fully wired. Users configure their preferred provider and API key in Settings. Responses are cached for 24 hours per match.
 
 **Required behaviour:**
 - Create `frontend/src/services/aiAnalysis.ts` with an `AIAnalysisService` class
 - Takes a `MatchPrediction` object and returns a natural language analysis string
 - Covers: injury/suspension context, managerial factors, derby intensity, recent form narrative, weather/pitch conditions
-- Configurable in Settings: users can enable/disable AI analysis and enter their own API key (OpenAI or Anthropic)
+- Configurable in Settings: users can enable/disable AI analysis, select their preferred model (OpenAI or Anthropic), and enter their own API key
 - AI analysis is a supplementary display feature — it does NOT modify the numerical prediction probabilities
 - API key stored in localStorage as `openai_api_key` or `anthropic_api_key`
 - Rate-limit aware: cache AI analysis responses for 24 hours per match to avoid API costs
@@ -134,7 +134,7 @@ The ensemble weights should be adjustable for backtesting. Current defaults:
 | H2H | 10% | Reduce for newly-promoted teams with no H2H history |
 | Standings | 15% | Increase mid-season when table is established |
 
-Ralph should run backtests with ±5% weight variations to optimise these values empirically.
+Run backtests with ±5% weight variations to optimise these values empirically.
 
 ---
 

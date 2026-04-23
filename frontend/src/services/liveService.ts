@@ -147,8 +147,12 @@ class LiveService {
 
       recentMatchesStore.set(recent);
       upcomingMatchesStore.set(upcoming);
-    } catch {
-      // Stores retain last known values on error
+    } catch (error) {
+      // Stores retain last known values on error. Surface the cause so
+      // rate-limit throws from dataService.getMatches() are visible during
+      // polling rather than vanishing silently.
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('[liveService] poll failed:', msg);
     }
 
     // Update the poll label for UI display

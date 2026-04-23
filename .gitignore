@@ -1,15 +1,11 @@
 # Python virtual environments
-/csv
 /myenv
 /PLOracle/myenv
-/myenv/Lib
-/PLOracle/csv
 
 # Node
 node_modules
 
 # Environment files (contain API keys)
-/.env
 .env
 frontend/.env
 frontend/.env*.local
@@ -23,27 +19,25 @@ frontend/coverage/
 backend/chroma_db/
 backend/models/*.pkl
 backend/models/*.joblib
+# Whitelist the production model so Render's Docker build can COPY it
+!backend/models/xgboost_free_tier.joblib
+# Keep pre-release model backups out of git
+backend/models/*.pre-*
 backend/models/*.png
+backend/cache/
+backend/logs/
+backend/mlruns/
 
-# Stale docs (pending removal — see IMPLEMENTATION_PLAN.md Phase 0)
-oldestplan.md
-oldplan.md
-plan.md
-SAAS_OPERATION_GUIDE.md
-API_KEYS_GUIDE.md
+# Bundled-but-gitignored source data (training CSVs — too large for git)
+/spreadsheets
+backend/spreadsheets
 
 # Playwright e2e test output
 frontend/playwright-report/
 frontend/playwright-screenshots/
 frontend/test-results/
 
-# Ralph loop (embedded git repo — has its own remote)
-/how-to-ralph-wiggum
-loop.sh
-.claude-run/
-scripts/
-
-# Python
+# Python runtime
 **/__pycache__/
 *.pyc
 *.pyo
@@ -51,26 +45,8 @@ scripts/
 backend/.coverage
 backend/htmlcov/
 
-# Backend runtime
-backend/cache/
-backend/logs/
-backend/mlruns/
-/spreadsheets
-/backend/spreadsheets
-
-# OS files
+# OS / IDE
 .DS_Store
-
-# IDE
 .claude/settings.json
-
-# Playwright MCP artifacts
+.claude-run/
 .playwright-mcp/
-
-# Screenshots
-oracle-landing.png
-
-# Misc
-urgenttodo.txt
-/CoachWiggum
-/testimagesplaywright

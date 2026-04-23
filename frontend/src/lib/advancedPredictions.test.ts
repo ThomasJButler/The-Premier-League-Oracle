@@ -82,7 +82,7 @@ describe('Advanced Predictions Module', () => {
     describe('predictScoreProbabilities', () => {
       it('should generate score probability matrix', () => {
         const probs = PoissonPredictor.predictScoreProbabilities(1.8, 1.2, 5);
-        
+
         // Check structure
         expect(probs).toBeDefined();
         expect(probs['0-0']).toBeDefined();
@@ -96,6 +96,42 @@ describe('Advanced Predictions Module', () => {
         // Most likely scores for these parameters
         expect(probs['2-1']).toBeGreaterThan(probs['5-5']);
         expect(probs['1-1']).toBeGreaterThan(probs['4-4']);
+      });
+
+      it('top-5 scorelines for λ_h=1.5, λ_a=1.2 contain {1-0, 2-1, 1-1, 2-0, 0-0}', () => {
+        // A typical EPL fixture. The five modal scorelines from the joint
+        // Dixon-Coles grid should exactly be the clustered low-score block
+        // plus 2-1 — no 2-2, no 3-1, no 0-1.
+        const probs = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+        const top5 = Object.entries(probs)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([score]) => score);
+
+        expect(top5).toContain('1-0');
+        expect(top5).toContain('2-1');
+        expect(top5).toContain('1-1');
+        expect(top5).toContain('2-0');
+        expect(top5).toContain('0-0');
+      });
+
+      it('Dixon-Coles τ: P(1-1) rises and P(1-0)+P(0-1) falls vs naive Poisson', () => {
+        // Calling with rho=0 disables the τ correction, giving the plain
+        // independent-Poisson baseline. The default ρ=-0.1 (EPL-typical)
+        // should push mass onto draws at the expense of 1-0/0-1.
+        const naive = PoissonPredictor.predictScoreProbabilities(1.5, 1.2, 7, 0);
+        const corrected = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+
+        expect(corrected['1-1']).toBeGreaterThan(naive['1-1']);
+        expect(corrected['1-0'] + corrected['0-1']).toBeLessThan(
+          naive['1-0'] + naive['0-1']
+        );
+      });
+
+      it('grid sums to 1 (±1e-9) after τ correction and re-normalisation', () => {
+        const probs = PoissonPredictor.predictScoreProbabilities(1.5, 1.2);
+        const sum = Object.values(probs).reduce((a, b) => a + b, 0);
+        expect(sum).toBeCloseTo(1, 9);
       });
     });
 
@@ -252,17 +288,23 @@ describe('Advanced Predictions Module', () => {
         expect(FatigueAnalyzer.getFatigueMultiplier(10)).toBe(1);
       });
 
-      it('should scale linearly with rest days', () => {
-        // 4 days rest → 4/7 ≈ 0.571
-        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBeCloseTo(4 / 7, 3);
-        // 2 days rest → 2/7 ≈ 0.286
-        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 7, 3);
+      it('should treat PL-normal rest (3.5+ days) as full match-fitness', () => {
+        // Recalibrated: 3.5+ days = no fatigue penalty. Previously used 7 days
+        // as optimal, which shrunk lambdas by 40-50% on every PL fixture
+        // because teams never actually get 7 days rest in-season. That
+        // compressed the Poisson grid onto 0-0 / 1-0 / 0-1 modal cells.
+        expect(FatigueAnalyzer.getFatigueMultiplier(4)).toBe(1);
+        expect(FatigueAnalyzer.getFatigueMultiplier(3.5)).toBe(1);
+        // 3 days rest → 3/3.5 ≈ 0.857
+        expect(FatigueAnalyzer.getFatigueMultiplier(3)).toBeCloseTo(3 / 3.5, 3);
+        // 2 days rest → 2/3.5 ≈ 0.571 (genuine congestion penalty)
+        expect(FatigueAnalyzer.getFatigueMultiplier(2)).toBeCloseTo(2 / 3.5, 3);
       });
 
       it('should floor at 0.5 days to prevent NaN in Poisson', () => {
-        // 0 days rest → clamped to 0.5/7 ≈ 0.071
-        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 7, 3);
-        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 7, 3);
+        // 0 days rest → clamped to 0.5/3.5 ≈ 0.143
+        expect(FatigueAnalyzer.getFatigueMultiplier(0)).toBeCloseTo(0.5 / 3.5, 3);
+        expect(FatigueAnalyzer.getFatigueMultiplier(-1)).toBeCloseTo(0.5 / 3.5, 3);
       });
     });
   });
@@ -316,9 +358,9 @@ describe('Advanced Predictions Module', () => {
         vi.mocked(dataService.getMatches).mockResolvedValue([]);
 
         const stats = await RefereeAnalyzer.getRefereeStats('New Referee');
-        
-        expect(stats.avgYellowCards).toBe(4);
-        expect(stats.avgRedCards).toBe(0.1);
+
+        expect(stats.avgYellowCards).toBe(3.3);
+        expect(stats.avgRedCards).toBe(0.15);
         expect(stats.avgPenalties).toBe(0.2);
         expect(stats.homeWinRate).toBe(0.46);
       });

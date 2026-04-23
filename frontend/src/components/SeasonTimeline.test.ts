@@ -164,6 +164,30 @@ function makeSeasonMatches(): Match[] {
   return matches;
 }
 
+// Builds `finalMatchday` matchdays of home-win fixtures — one per team pair per matchday.
+// Each "home" team therefore accrues `finalMatchday` points. Used by tests that need to
+// cross the matchday >= 10 gate.
+function makeSeasonMatchesUpTo(finalMatchday: number): Match[] {
+  const matches: Match[] = [];
+  let id = 1;
+  for (let md = 1; md <= finalMatchday; md++) {
+    for (let i = 0; i < mockTeams.length; i += 2) {
+      const day = 10 + ((md - 1) % 20);
+      matches.push(makeMatch({
+        id: String(id++),
+        home_team: mockTeams[i],
+        away_team: mockTeams[i + 1],
+        matchday: md,
+        home_goals: 1,
+        away_goals: 0,
+        result: 'H',
+        date: `2025-08-${String(day).padStart(2, '0')}T15:00:00Z`,
+      }));
+    }
+  }
+  return matches;
+}
+
 describe('SeasonTimeline', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -191,8 +215,8 @@ describe('SeasonTimeline', () => {
 
     render(SeasonTimeline);
 
-    // Should show skeleton cards while loading
-    const skeletons = document.querySelectorAll('.animate-pulse');
+    // Should show skeleton cards while loading (using shared .skeleton class)
+    const skeletons = document.querySelectorAll('.skeleton');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
@@ -349,6 +373,93 @@ describe('SeasonTimeline', () => {
     await act();
 
     expect(screen.getByText(/No match data available/)).toBeTruthy();
+  });
+
+  it('renders compact team strip legend and threshold benchmark labels', async () => {
+    // 12 matchdays opens the matchday gate so threshold labels render.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(12));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    // Threshold benchmark labels (dashed reference lines — 86 pts title floor, 40 pts safety)
+    expect(screen.getByText(/86 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical title floor/)).toBeTruthy();
+    expect(screen.getByText(/40 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
+
+    // Team strip legend: compact colour-keyed lists replacing the default Chart.js legend
+    expect(screen.getByLabelText('Teams in title race')).toBeTruthy();
+    expect(screen.getByLabelText('Teams in relegation battle')).toBeTruthy();
+  });
+
+  it('hides threshold benchmark lines early-season when both gates are closed', async () => {
+    // Default dataset: 3 matchdays, leader on 9 pts. Below both the matchday gate
+    // (>= 10) and the proximity gate (leader >= 43 pts / bottom >= 20 pts), so
+    // both the dashed datasets and the explanatory labels should be suppressed.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatches());
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.queryByText(/86 pts/)).toBeNull();
+    expect(screen.queryByText(/historical title floor/)).toBeNull();
+    expect(screen.queryByText(/40 pts/)).toBeNull();
+    expect(screen.queryByText(/historical safety benchmark/)).toBeNull();
+  });
+
+  it('shows threshold benchmark lines once the matchday gate opens (>= 10)', async () => {
+    // 12 matchdays crosses the matchday gate → both charts should render their
+    // dashed reference lines and the corresponding caption labels.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(12));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.getByText(/86 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical title floor/)).toBeTruthy();
+    expect(screen.getByText(/40 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
+  });
+
+  it('keeps threshold benchmark lines hidden at matchday 9 when leader is below 50 % of the title floor', async () => {
+    // Boundary regression: for a 38-gameweek season, the matchday gate is
+    // Math.ceil(38 * 0.25) === 10, so matchday 9 must still be gated.
+    // Leader on 9 points is well below 43 pts (50 % of 86), so proximity stays closed too.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(9));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.queryByText(/86 pts/)).toBeNull();
+    expect(screen.queryByText(/historical title floor/)).toBeNull();
+    expect(screen.queryByText(/40 pts/)).toBeNull();
+    expect(screen.queryByText(/historical safety benchmark/)).toBeNull();
+  });
+
+  it('shows threshold benchmark lines at exactly matchday 10 even when leader is below 50 % of the title floor', async () => {
+    // Boundary regression: the matchday gate opens at Math.ceil(38 * 0.25) === 10.
+    // Leader on 10 points is still below 43 pts (50 % of 86) so the proximity gate
+    // is closed — the rendered threshold must come solely from the matchday gate.
+    vi.mocked(dataService.getCurrentSeasonMatches).mockResolvedValue(makeSeasonMatchesUpTo(10));
+    vi.mocked(dataService.getStandings).mockResolvedValue(makeStandings());
+
+    const { component } = render(SeasonTimeline);
+    await (component as any).loadTimeline();
+    await act();
+
+    expect(screen.getByText(/86 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical title floor/)).toBeTruthy();
+    expect(screen.getByText(/40 pts/)).toBeTruthy();
+    expect(screen.getByText(/historical safety benchmark/)).toBeTruthy();
   });
 
   it('matchday 1 gets special narrative treatment', async () => {

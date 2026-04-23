@@ -36,21 +36,14 @@ export const DEFAULT_DRAW_RATE = 0.27;
 /**
  * AI_MODELS defines the models available in the Settings dropdown.
  * The server-side allowlist in api/chat.ts and vite.config.ts must match.
- * Provider is detected from the model ID: claude-* → Anthropic, gpt-* → OpenAI.
+ * Anthropic is the sole provider — keep Haiku 4.5 first so it's the default.
  */
 export const AI_MODELS = [
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini (fastest, cheapest)' },
-  { id: 'gpt-4o', label: 'GPT-4o (balanced)' },
-  { id: 'gpt-4-turbo', label: 'GPT-4 Turbo (powerful)' },
-  { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku (fastest, cheapest)' },
-  { id: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet (balanced)' },
-  { id: 'claude-3-opus-latest', label: 'Claude 3 Opus (powerful)' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast & cheap' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — Balanced' },
+  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 — High quality' },
+  { id: 'claude-opus-4-7', label: 'Claude Opus 4.7 — Deepest analysis' },
 ] as const;
-
-/** Determine the API provider from a model ID. */
-export function getModelProvider(modelId: string): 'openai' | 'anthropic' {
-  return modelId.startsWith('claude') ? 'anthropic' : 'openai';
-}
 
 /**
  * PREMIER_LEAGUE_GAMEWEEKS — the Premier League always has 38 matchdays
@@ -107,6 +100,44 @@ export const POISSON_FALLBACK_AWAY_GOALS = 1.2;
 export const POISSON_FALLBACK_AVG_GOALS = 1.35;
 
 /**
+ * Dixon-Coles low-score correlation parameter (ρ).
+ *
+ * The naive independent-Poisson model under-predicts P(0-0) and P(1-1) and
+ * over-predicts P(1-0) and P(0-1) because real match goals are weakly
+ * correlated at low scorelines (defensive shapes, late-game closing out).
+ * Dixon & Coles (1997) correct this by multiplying the four low-score cells
+ * by a factor τ(i, j, λ_h, λ_a, ρ):
+ *
+ *   τ(0,0) = 1 − λ_h · λ_a · ρ
+ *   τ(1,0) = 1 + λ_a · ρ
+ *   τ(0,1) = 1 + λ_h · ρ
+ *   τ(1,1) = 1 − ρ
+ *   τ elsewhere = 1
+ *
+ * A negative ρ therefore boosts (0,0) and (1,1) and dampens (1,0) and (0,1),
+ * matching empirical PL scoreline frequencies. Typical fitted values for
+ * top European leagues fall in ρ ∈ [−0.2, −0.05]; we pick −0.1 as a
+ * conservative mid-point pending an empirical fit against the 2020-2025
+ * CSV goals distribution (flagged for Phase 2 under P9i).
+ *
+ * After applying τ, the grid is re-normalised so probabilities still sum to 1.
+ */
+export const POISSON_DIXON_COLES_RHO = -0.1;
+
+/**
+ * MAX_PREDICTED_GOALS — hard cap on the predicted scoreline per team.
+ *
+ * Prevents degenerate Poisson outputs from producing impossible scores
+ * (e.g. 22-0). The PL record is 9-0 (Man United vs Ipswich, 1995) but
+ * 7 is a practical ceiling for a model prediction — anything higher would
+ * be noise, not signal.
+ *
+ * Used in:
+ * - optimizedPredictions.ts (predictGoals)
+ */
+export const MAX_PREDICTED_GOALS = 7;
+
+/**
  * Form recency weights — how much weight each of the last 5 matches gets.
  *
  * Most recent match = 35%, second = 25%, third = 20%, fourth = 12%, fifth = 8%.
@@ -137,6 +168,19 @@ export const FORM_DRAW_BASE = 0.25;
 export const FORM_DRAW_SENSITIVITY = 0.3;
 export const FORM_DRAW_MIN = 0.15;
 export const FORM_DRAW_MAX = 0.35;
+
+/**
+ * Fraction of ELO's implied home-vs-away advantage that is subtracted from the
+ * Form model before it enters the ensemble. ELO already partly encodes recent
+ * form, so without this the ensemble double-counts momentum. Applied on the
+ * logit scale in optimizedPredictions.orthogonaliseFormVsElo().
+ *
+ * 0.15 = "remove 15% of the ELO-implied tilt from Form" — a conservative value
+ * that keeps most of Form's unique short-term signal (injury recoveries,
+ * tactical tweaks, schedule dynamics) while preventing the most obvious
+ * double-count.
+ */
+export const FORM_ELO_BETA = 0.15;
 
 /**
  * Standings-derived probability parameters.
@@ -191,11 +235,87 @@ export const ML_DISAGREEMENT_PENALTY_FACTOR = 0.12;
 export const REFEREE_ADJUSTMENT_MAX = 0.03;
 export const REFEREE_ADJUSTMENT_THRESHOLD = 0.005;
 
-export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
+// ─────────────────────────────────────────────────────────────────────────────
+// Data-derived constants
+//
+// Computed from 12,535 Premier League matches (1993/94–2025/26, all 33 seasons)
+// by backend/scripts/compute_constants.py. Re-run the script after adding new
+// season data to get updated values.
+// Data source: football-data.co.uk — credit to the maintainers for 30+ years
+// of freely available Premier League match data.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * ELO_HOME_ADVANTAGE — ELO points added to the home team's rating.
+ *
+ * Derived from observed home performance across all 33 PL seasons:
+ * 45.6% home wins, 25.5% draws, 28.9% away wins → home expected score
+ * 0.584 → 59 ELO points.
+ * Formula: -400 × log₁₀(1 / expectedScore - 1).
+ *
+ * Higher than the pandemic-era estimate (33) because the full dataset
+ * includes pre-2020 seasons where home advantage was stronger.
+ */
+export const ELO_HOME_ADVANTAGE = 59;
+
+/**
+ * Default referee card averages — fallback when no referee-specific data exists.
+ *
+ * Derived from 12,535 matches: mean(HY + AY) = 3.3, mean(HR + AR) = 0.15.
+ */
+export const DEFAULT_REFEREE_AVG_YELLOWS = 3.3;
+export const DEFAULT_REFEREE_AVG_REDS = 0.15;
+
+/**
+ * Half-time / full-time correlation parameters.
+ *
+ * HT_FT_CORRELATION (0.39) — weight given to full-time probabilities when
+ * predicting the half-time result. Derived from the normalised match rate
+ * between HT and FT outcomes (60.0% match rate vs 34.9% baseline).
+ *
+ * HT_PRIOR_* — observed half-time result distribution from 11,611 matches
+ * with HT data: Home leading 35%, Draw 41%, Away leading 24%.
+ * Note: draws are the most common HT result because many matches are still
+ * goalless or level at half-time.
+ */
+export const HT_FT_CORRELATION = 0.39;
+export const HT_PRIOR_HOME = 0.35;
+export const HT_PRIOR_DRAW = 0.41;
+export const HT_PRIOR_AWAY = 0.24;
+
+export const DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001';
 export const AI_MODEL_STORAGE_KEY = 'oracle_ai_model';
+
+/**
+ * Legacy storage key from the OpenAI era. Callers should prefer
+ * ANTHROPIC_API_KEY_STORAGE_KEY and migrate via migrateLegacyApiKey().
+ */
+export const ANTHROPIC_API_KEY_STORAGE_KEY = 'anthropic_api_key';
+export const LEGACY_OPENAI_API_KEY_STORAGE_KEY = 'openai_api_key';
+
+/**
+ * One-time migration: copy the legacy `openai_api_key` localStorage entry
+ * into `anthropic_api_key` and remove the original. Many users pasted an
+ * Anthropic `sk-ant-` key into the historically OpenAI-labelled field, so
+ * we preserve whatever they had. Idempotent: safe to call on every load.
+ */
+export function migrateLegacyApiKey(): void {
+  if (typeof localStorage === 'undefined') return;
+  const legacy = localStorage.getItem(LEGACY_OPENAI_API_KEY_STORAGE_KEY);
+  if (!legacy) return;
+  if (!localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY)) {
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, legacy);
+  }
+  localStorage.removeItem(LEGACY_OPENAI_API_KEY_STORAGE_KEY);
+}
 
 /** Read the user's saved model preference from localStorage. */
 export function getSavedAiModel(): string {
   if (typeof localStorage === 'undefined') return DEFAULT_AI_MODEL;
-  return localStorage.getItem(AI_MODEL_STORAGE_KEY) || DEFAULT_AI_MODEL;
+  const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
+  // Defend against stale OpenAI model IDs left over in localStorage from
+  // before the Anthropic-only migration — fall through to the new default.
+  if (!saved) return DEFAULT_AI_MODEL;
+  const known = AI_MODELS.some((m) => m.id === saved);
+  return known ? saved : DEFAULT_AI_MODEL;
 }

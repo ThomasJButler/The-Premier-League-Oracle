@@ -59,7 +59,7 @@ uvicorn app.api.main:app --reload --port 8000
   - `betting/kelly.ts` - Kelly Criterion calculator
   - `betting/value.ts` - Value bet detection engine (imports PoissonPredictor from advancedPredictions)
   - `betting/betHistoryService.ts` - Bet persistence and ROI tracking (localStorage)
-  - `aiAnalysis.ts` - AI-powered match analysis with OpenAI/Anthropic support
+  - `aiAnalysis.ts` - AI-powered match analysis (Anthropic Claude only, Haiku 4.5 default)
 - `types/index.ts` - Shared TypeScript types
 - `App.svelte` - Root component with routing
 - `app.css` - Global styles with glassmorphism theme
@@ -73,7 +73,7 @@ uvicorn app.api.main:app --reload --port 8000
 - `train_free_tier.py` - Free-tier training script (XGBoost + stacked OvR ensemble + LR baseline) — lives at `backend/` root, not inside `app/`
 
 ### Vercel Edge Functions (`api/`)
-- `api/chat.ts` - Vercel Edge Function for AI chat proxying (OpenAI + Anthropic). Resolves model from request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default. Server-side API keys take priority over user-provided keys
+- `api/chat.ts` - Vercel Edge Function for AI chat proxying (Anthropic only). Resolves model from request body → `ORACLE_AI_MODEL` env var → `claude-haiku-4-5-20251001` default. Server-side `ANTHROPIC_API_KEY` takes priority over user-provided keys. Applies ephemeral prompt caching to the system prompt
 
 ### Key Design Decisions
 - **Single data source**: Football-Data.org API v4. No Supabase.
@@ -91,7 +91,7 @@ All feature specifications live in `specs/`:
 - `05-live-data.md` - Live scores, smart polling — **100% (10/10)**
 - `06-prediction-tracking.md` - Accuracy tracking, auto-reconciliation — **100% (7/7)**
 - `07-ui-ux.md` - shadcn-svelte migration, dark mode, accessibility — **100% (17/17)**
-- `08-backend-training.md` - Backend ML training pipeline — **~95% (23/24)** Pro-tier Req 6 deferred
+- `08-backend-training.md` - Backend ML training pipeline — **100% (29/29 active)** Pro-tier Req 6 deferred (no acceptance criteria)
 
 These specs are the single source of truth for requirements. **All 99 active acceptance criteria met.**
 
@@ -103,33 +103,40 @@ These specs are the single source of truth for requirements. **All 99 active acc
 - Check types before committing: `cd frontend && npm run check`
 - Run tests before committing: `cd frontend && npm run test:run`
 
-## Current Focus — P7 Beyond MVP
+## Current Focus — P8 Prediction Engine + Betting UI
 
-**P0–P6:** ALL DONE — MVP shipped and verified by two full codebase audits (19–20 March 2026).
+**P0–P7:** MVP shipped + polished. See `IMPLEMENTATION_PLAN.md`.
 
-**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 47/49 items done):
+**P8 Phase 1 (done):** Draw calibration fix, Optuna tuning, --no-odds flag, feature interactions (119 features).
+**P8 Phase 2 (planned):** Dedicated draw model, form orthogonalisation, Value Scanner rename, Suggested Bets page. See `backend/P8_PHASE2_PLAN.md`.
+
+**P7 improvements** (see `IMPLEMENTATION_PLAN.md` for full details — 57/59 items done):
 
 | Item | Description | Priority |
 |------|-------------|----------|
 | P7a | Model accuracy — odds-as-features, draw overhaul, calibration, retraining | High |
-| P7b | AI integration — configurable model (`gpt-4o-mini` hardcoded), Claude support | Medium |
-| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases for promotion/relegation | Required annually |
+| P7b | AI integration — configurable model, Claude support | Medium |
+| P7c | Seasonal maintenance — SEED_RATINGS, teamColors, aliases | Required annually |
 | P7d | Frontend enhancements — backtest-derived weights, real odds input | Low |
-| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin `openai`/`ruff` versions | Low |
+| P7e | Infrastructure — Playwright in CI, rate-limit persistence, pin versions | Low |
 | P7f | Season Timeline — interactive visual timeline of 2025/26 key moments | New feature |
-| P7g | Frontend Polish — team theme toggle fix, FAQ, README overhaul, Dashboard weights display | Medium |
+| P7g | Frontend Polish — team theme toggle, FAQ, README, Dashboard weights | Medium |
 | P7h | RAG Intelligence — player data enrichment, web search fallback | Medium |
-| P7i | Frontend Design Uplift — empty states, richer prediction cards, standings zones, loading states | Medium |
+| P7i | Frontend Design Uplift — empty states, richer cards, standings zones | Medium |
+| P7j | Ensemble Weight Persistence — apply/save/reset backtest weights | Done |
+| P7k | Prediction Model Constants Extraction — named constants in constants.ts | Done |
+| P7l | UI Polish & Betting Fixes — form display, crests, ticker, debounce | Done |
+| P7m | Design Refinements — team-coloured bars, hero uplift, accent theming, nav, skeletons | Done |
 
-**Active branches:** `v3.0-MVP` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
+**Active branches:** `v3.0-MVP-UX` (current), `v3.0-Development` (integration), `pro-tier-archive` (archived Pro-tier code — pushed to remote)
 
 ## Current State & Gotchas
 
 ### Test Coverage
-- **Frontend:** 561 Vitest tests (34 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
+- **Frontend:** 597 Vitest tests (38 files), 43 Playwright E2E tests (6 specs, 3 viewport configurations, 123 total executions), all passing
 - **Backend:** 190 pytest tests (5 files), all passing
 - **CI:** GitHub Actions runs type check, unit tests with coverage (60/65/65/60 thresholds), ESLint, ruff, production build, Playwright E2E (Chromium, 3 viewports)
-- **Untested components (4):** Header, MobileNav, SidebarNav, Sidebar — layout/navigation only
+- **Untested components (1):** App.svelte — integration root only, covered by Playwright E2E
 
 ### Frontend Gotchas
 - `Prediction` type in `types/index.ts` is a view-model for Predictions.svelte card display — `StoredPrediction` is the persistence type used by `predictionTracker`

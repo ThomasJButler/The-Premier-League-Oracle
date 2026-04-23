@@ -287,6 +287,26 @@
                   </div>
                 </div>
               </div>
+
+              <div class="bg-muted p-6 rounded-xl mt-6">
+                <h3 class="text-lg font-semibold mb-3">How the exact scoreline is picked</h3>
+                <p class="mb-3 text-muted-foreground">
+                  The H/D/A bar (home-win / draw / away-win) comes from the ensemble directly and is calibrated — those percentages are what you should bet on. The exact scoreline below is picked from the Poisson grid via <strong>strict argmax within the predicted outcome</strong>: we look at every cell of the grid consistent with the predicted H/D/A (so all H cells if H is predicted), and display the one with the highest probability.
+                </p>
+                <p class="mb-3 text-muted-foreground">
+                  For typical mid-table fixtures, the modal outcome-consistent cell sits around 9–14% probability — that's honest. Exact-score prediction is inherently noisy because even the single most-likely exact scoreline in any Premier League fixture is usually under 15%. We used to apply rounded-means + H2H tempo nudges to surface more dramatic 3-1 / 3-2 scorelines, but those tweaks produced scorelines that didn't actually appear in the top three most-likely cells of the grid. The v3.5 strict-argmax change restores that invariant.
+                </p>
+                <p class="text-muted-foreground text-sm">
+                  <strong>Practical reading:</strong> trust the H/D/A percentages. The scoreline is "the grid's most plausible exact cell given the outcome" — a useful reference, but don't bet on the exact score unless the probability next to it is high.
+                </p>
+              </div>
+
+              <div class="bg-muted p-6 rounded-xl mt-6">
+                <h3 class="text-lg font-semibold mb-3">The "If forced to pick" line</h3>
+                <p class="mb-3 text-muted-foreground">
+                  You'll see a small italic line under each prediction card's H/D/A bar reading something like <em>"If forced to pick: 1-0 · 12% chance"</em>. That's intentionally de-emphasised typography because the exact scoreline is a long-odds prediction. The H/D/A bar above it is the headline signal — calibrated, actionable, and what the markets price against. The "if forced to pick" line exists for correct-score fans and as context for bet-builder legs, but it's not the flagship output.
+                </p>
+              </div>
             </div>
 
           {:else if selectedSection === 'maximizing'}
@@ -373,7 +393,7 @@
                 </div>
                 
                 <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-                  <h3 class="font-bold text-lg mb-3">💎 Value Bets</h3>
+                  <h3 class="font-bold text-lg mb-3">💎 Value Scanner</h3>
                   <p class="text-sm mb-3">Identify opportunities where odds exceed true probability.</p>
                   <ul class="text-sm space-y-1">
                     <li>• Automatic value detection</li>
@@ -405,6 +425,40 @@
                   </ul>
                 </div>
               </div>
+
+              <h3 class="text-xl font-semibold mb-4 mt-8">Recent additions (v3.5 / P12–P15)</h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">🧮 Accumulators</h3>
+                  <p class="text-sm mb-3">Build multi-leg accumulator bets from predicted outcomes. The upcoming <strong>Safe Builder / Risky Builder / Favourites Accumulator</strong> strip auto-generates three preset slips from the current gameweek's predictions on load — you can tweak or save them, or keep using the per-match suggested combos below.</p>
+                </div>
+
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">📜 Historical Context card</h3>
+                  <p class="text-sm mb-3">Flipping a Predictions card reveals five historical rows drawn from the 33-season stats pack: home venue record, away venue record, H2H fixture profile, referee style, and matchday tempo. Rows skip gracefully if a team is newly promoted with no prior data.</p>
+                </div>
+
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">📅 Multi-year Season Stats</h3>
+                  <p class="text-sm mb-3">The Season Stats page has a year-filter dropdown with the last 5 seasons plus the current one. Historical seasons pull from pre-computed stats-pack data (with COVID 2020/21 flagged as anomalous); the current season uses live match data.</p>
+                </div>
+
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">📈 Season Timeline polish</h3>
+                  <p class="text-sm mb-3">Chart tooltips now show team + matchday + points + goal difference + position. Threshold reference lines (40-pt safety, 86-pt title floor) fade in once the race has shape (after matchday 10 or 50% of threshold hit), rather than stretching the y-axis empty early-season.</p>
+                </div>
+
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">💬 Oracle Chat historical queries</h3>
+                  <p class="text-sm mb-3">Ask match-level questions — "Liverpool's away wins in 2023/24", "last five meetings between Arsenal and Chelsea", "2020/21 season summary". The chat now grounds answers in the full 33-season archive via bundled match data, so answers work in production without a running backend.</p>
+                </div>
+
+                <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
+                  <h3 class="font-bold text-lg mb-3">🎯 Scoreline honesty (v3.5)</h3>
+                  <p class="text-sm mb-3">Predicted scorelines are now strict argmax over the grid's outcome-consistent cells — no rounded-means, no H2H tempo nudges. The trade-off: fewer dramatic 3-1 / 3-2 predictions, but every shown scoreline genuinely lives near the peak of the grid. See "How the exact scoreline is picked" under Understanding Predictions.</p>
+                </div>
+              </div>
             </div>
 
           {:else if selectedSection === 'security'}
@@ -433,7 +487,7 @@
                     <Shield class="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <strong>Direct API Calls</strong>
-                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your OpenAI key out of the browser.</p>
+                      <p class="text-sm">Football data comes directly from Football-Data.org. The AI Assistant uses a server-side proxy to keep your Anthropic key out of the browser.</p>
                     </div>
                   </li>
                   <li class="flex items-start gap-3">
@@ -507,6 +561,21 @@
                 <div class="p-6 bg-muted rounded-xl">
                   <h3 class="font-semibold text-lg mb-2">Does it work offline?</h3>
                   <p>The app caches recent data in your browser (IndexedDB) to reduce API calls and improve loading speed, but requires an internet connection for live updates and new predictions. Previously viewed data remains available even when offline.</p>
+                </div>
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">Why are predicted scorelines usually 1-0, 2-1, or 0-1?</h3>
+                  <p>Because the Poisson grid for typical Premier League fixtures concentrates probability on low-scoring outcomes — even the single most-likely scoreline in the league sits around 10–14% probability. The shown scoreline is the grid's <strong>most-likely outcome-consistent cell</strong>, which for mid-table fixtures means 1-0 or 0-1. The Top-3 Most Likely Scorelines strip on the card back shows the spread. Blowout fixtures (Arsenal vs Burnley etc.) surface 2-0 / 3-0 naturally because the grid's modal H-cell shifts accordingly.</p>
+                </div>
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">Why are draws rarely the headline prediction?</h3>
+                  <p>Draws are genuinely the minority outcome in the Premier League (~25% of matches), and the strict-argmax approach picks the single most-likely cell for the ensemble's H/D/A choice. When H/D/A confidence tips ≥35% home-win but P(1-1 draw) is only 13% versus P(1-0 home-win) at 14%, the model shows 1-0 even though the draw aggregate is close. The H/D/A bar still shows draws at realistic 20–27% rates; only the modal-cell display prefers the winning side. This is a known trade-off between "honest modal scoreline" and "surface draws more often" — see the backend calibration note in the v3 ML model section of the main plan.</p>
+                </div>
+
+                <div class="p-6 bg-muted rounded-xl">
+                  <h3 class="font-semibold text-lg mb-2">Does the Oracle have all 33 seasons of data?</h3>
+                  <p>Yes — the frontend bundles a compact match index covering 1993/94 to the current season (~12,500 matches). When you ask Oracle Chat a specific historical question like "Liverpool's away wins in 2023/24" or "last five meetings between Arsenal and Chelsea", the chat detects the pattern, pulls the matching rows from the bundled index, and grounds the answer in those real results. This works in production without any backend running.</p>
                 </div>
 
                 <div class="p-6 bg-muted rounded-xl">

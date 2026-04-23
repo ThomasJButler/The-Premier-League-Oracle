@@ -136,7 +136,11 @@ describe('BetBuilderPredictor', () => {
       expect(result.matchId).toBe('Arsenal-Chelsea');
     });
 
-    it('should use 0 expected goals when prediction returns 0 (not treat as falsy)', async () => {
+    it('should clamp integer-zero lambdas to 0.1 to avoid degenerate grids (Bug 0.2)', async () => {
+      // When the main predictor's modal scoreline is 1-0 or 0-1, predictedAwayGoals/
+      // predictedHomeGoals is literally 0 (it's a modal scoreline, not an expected-goal λ).
+      // Feeding 0 into Poisson collapses all mass onto that dimension, producing
+      // BTTS No = 100% on every card. The fallback path now clamps to 0.1.
       vi.mocked(OptimizedPredictor.predictMatch).mockResolvedValue(
         mockPrediction({ predictedHomeGoals: 0, predictedAwayGoals: 0 })
       );
@@ -147,8 +151,7 @@ describe('BetBuilderPredictor', () => {
 
       await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
 
-      // 0 is a valid value — ?? only falls back on null/undefined
-      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(0, 0, 7);
+      expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(0.1, 0.1, 7);
     });
 
     it('should use real expected goals when prediction provides them', async () => {
@@ -163,6 +166,53 @@ describe('BetBuilderPredictor', () => {
       await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
 
       expect(PoissonPredictor.predictScoreProbabilities).toHaveBeenCalledWith(2.1, 0.8, 7);
+    });
+
+    it('should reuse caller-provided scoreProbabilities grid instead of rebuilding (Bug 0.2 fix)', async () => {
+      // When the main card passes its already-computed grid, BetBuilder must use
+      // it — no second call to PoissonPredictor.predictScoreProbabilities.
+      vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
+
+      const passedGrid = makeScoreProbs({
+        '2-1': 0.30, '1-1': 0.25, '2-2': 0.10,
+        '1-0': 0.10, '0-1': 0.10, '0-0': 0.05,
+        '3-1': 0.05, '1-2': 0.05
+      });
+
+      const prediction = mockPrediction({
+        predictedHomeGoals: 2,
+        predictedAwayGoals: 1,
+        scoreProbabilities: passedGrid
+      });
+
+      const result = await BetBuilderPredictor.generateBetBuilder(
+        'Arsenal', 'Chelsea', 'match-1', prediction
+      );
+
+      // predictMatch MUST NOT be called — the caller already passed basePrediction
+      expect(OptimizedPredictor.predictMatch).not.toHaveBeenCalled();
+      // Poisson MUST NOT be called — the grid was reused directly
+      expect(PoissonPredictor.predictScoreProbabilities).not.toHaveBeenCalled();
+
+      // BTTS Yes must include 2-1, 1-1, 2-2, 3-1, 1-2 = 0.75
+      expect(result.bothTeamsToScore.yesProb).toBeCloseTo(0.75, 2);
+      expect(result.bothTeamsToScore.noProb).toBeCloseTo(0.25, 2);
+    });
+
+    it('should pass matchDate and referee through to predictMatch fallback path', async () => {
+      vi.mocked(OptimizedPredictor.predictMatch).mockResolvedValue(mockPrediction());
+      vi.mocked(dataService.getTeamStats).mockResolvedValue(mockTeamStats());
+      vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
+        makeScoreProbs({ '2-1': 0.5, '1-1': 0.3, '0-0': 0.2 })
+      );
+
+      await BetBuilderPredictor.generateBetBuilder(
+        'Arsenal', 'Chelsea', 'match-1', undefined, '2026-05-01', 'M. Oliver'
+      );
+
+      expect(OptimizedPredictor.predictMatch).toHaveBeenCalledWith(
+        'Arsenal', 'Chelsea', undefined, 'M. Oliver', '2026-05-01'
+      );
     });
   });
 
@@ -494,18 +544,19 @@ describe('BetBuilderPredictor', () => {
       expect(sum).toBeCloseTo(1.0, 6);
     });
 
-    it('should apply 40% correlation bias to full-time probabilities with normalisation', async () => {
+    it('should apply HT-FT correlation bias to full-time probabilities with normalisation', async () => {
       vi.mocked(PoissonPredictor.predictScoreProbabilities).mockReturnValue(
         makeScoreProbs({ '2-0': 0.60, '0-0': 0.20, '0-1': 0.20 })
       );
 
       const result = await BetBuilderPredictor.generateBetBuilder('Arsenal', 'Chelsea');
-      // Priors: home=0.26, draw=0.46, away=0.28 (sum=1.0)
-      // FT homeWin=0.60: raw = 0.60*0.4 + 0.26*0.6 = 0.396
-      // FT draw=0.20:    raw = 0.20*0.4 + 0.46*0.6 = 0.356
-      // FT away=0.20:    raw = 0.20*0.4 + 0.28*0.6 = 0.248
-      // total = 1.0, homeWinProb = 0.396/1.0 = 0.396
-      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.396, 2);
+      // Constants from constants.ts (derived from 12,535 PL matches, 33 seasons):
+      //   HT_FT_CORRELATION=0.39, HT_PRIOR_HOME=0.35, HT_PRIOR_DRAW=0.41, HT_PRIOR_AWAY=0.24
+      // FT homeWin=0.60: raw = 0.60*0.39 + 0.35*0.61 = 0.4475
+      // FT draw=0.20:    raw = 0.20*0.39 + 0.41*0.61 = 0.3281
+      // FT away=0.20:    raw = 0.20*0.39 + 0.24*0.61 = 0.2244
+      // total = 1.0, homeWinProb = 0.4475/1.0 = 0.4475
+      expect(result.halfTimeResult.homeWinProb).toBeCloseTo(0.4475, 2);
       // And sum to 1
       const sum = result.halfTimeResult.homeWinProb + result.halfTimeResult.drawProb + result.halfTimeResult.awayWinProb;
       expect(sum).toBeCloseTo(1.0, 6);

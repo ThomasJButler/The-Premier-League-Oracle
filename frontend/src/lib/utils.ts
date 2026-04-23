@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { MatchStatus } from '../types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -78,4 +79,32 @@ export function getSeasonYear(date: Date = new Date()): number {
 export function getSeasonLabel(): string {
   const year = getSeasonYear();
   return `${year}/${(year + 1).toString().slice(-2)}`;
+}
+
+/** Match statuses treated as currently in-play (not scheduled, not finished). */
+const LIVE_STATUSES: readonly MatchStatus[] = ['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'];
+
+/**
+ * Human-readable label for a match's current state. Used on prediction and
+ * live-match cards. Returns an empty string for statuses that shouldn't
+ * display a stage label (SCHEDULED, TIMED, POSTPONED, etc.).
+ */
+export function getMatchStatusLabel(
+  match: { status?: MatchStatus | null; minute?: number | null }
+): string {
+  switch (match.status) {
+    case 'FINISHED':         return 'Full Time';
+    case 'PAUSED':           return 'Half Time';
+    case 'EXTRA_TIME':       return 'Extra Time';
+    case 'PENALTY_SHOOTOUT': return 'Penalties';
+    case 'IN_PLAY':          return match.minute ? `Live ${match.minute}'` : 'Live';
+    case 'SUSPENDED':        return 'Suspended';
+    case 'AWARDED':          return 'Awarded';
+    default:                 return '';
+  }
+}
+
+/** True when the match is currently in progress (any live status). */
+export function isMatchLive(match: { status?: MatchStatus | null }): boolean {
+  return match.status != null && LIVE_STATUSES.includes(match.status);
 }

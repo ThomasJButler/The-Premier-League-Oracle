@@ -19,6 +19,7 @@ Output:
 """
 
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -116,10 +117,8 @@ def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
         if col in row.index:
             val = row[col]
             if pd.notna(val):
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     odds[col] = float(val)
-                except (ValueError, TypeError):
-                    pass
 
     # Return None if we didn't find any meaningful odds data
     return odds if odds else None
@@ -128,6 +127,7 @@ def _extract_odds_from_row(row: pd.Series) -> dict[str, float] | None:
 def build_dataset(
     df: pd.DataFrame,
     engineer: FreeTierFeatureEngineer | None = None,
+    skip_odds: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
     """
     Build feature matrix from historical matches.
@@ -135,6 +135,11 @@ def build_dataset(
     Iterates chronologically. For each match, uses only prior data
     (no leakage). Skips matches where either team has < MIN_PRIOR_MATCHES.
     Extracts bookmaker odds from CSV rows to populate odds features.
+
+    Args:
+        df: Historical match DataFrame.
+        engineer: Feature engineer instance. Created from df if None.
+        skip_odds: When True, odds features are zeroed (--no-odds mode).
 
     Returns:
         X: Feature matrix (n_samples, n_features)
@@ -188,7 +193,8 @@ def build_dataset(
             odds_present_count += 1
 
         try:
-            features = engineer.create_features(ht, at, match_date, odds=odds)
+            features = engineer.create_features(ht, at, match_date, odds=odds,
+                                                   skip_odds=skip_odds)
             feature_vec = np.array([features[name] for name in feature_names])
             X_rows.append(feature_vec)
             y_rows.append(LABEL_MAP[result])
@@ -414,6 +420,168 @@ def select_features(
     return X_train_sel, X_val_sel, keep_names
 
 
+class DirichletCalibrator:
+    """
+    Joint Dirichlet calibration for multi-class probabilities (Kull et al. 2019).
+
+    Fits a multinomial logistic regression in log-probability space:
+        p_cal = softmax(W @ log(p_raw) + b)
+
+    This calibrates the full simplex jointly, unlike per-class isotonic/Platt
+    which breaks the sum-to-1 constraint and requires post-hoc renormalisation.
+
+    Uses full matrix scaling (L2 penalty on all coefficients) by default.
+    True ODIR (off-diagonal-only regularisation) would require a custom
+    optimiser — matrix scaling performs comparably in practice and uses
+    sklearn's LBFGS solver directly.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(self, reg_lambda: float = 1e-2, clip: float = 1e-8):
+        self.reg_lambda = reg_lambda
+        self.clip = clip
+        self._lr = None
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'DirichletCalibrator':
+        from sklearn.linear_model import LogisticRegression
+
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        # sklearn C = inverse regularisation strength; higher C = weaker penalty.
+        self._lr = LogisticRegression(
+            solver='lbfgs',
+            C=1.0 / self.reg_lambda,
+            max_iter=1000,
+        )
+        self._lr.fit(log_probs, y)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        if self._lr is None:
+            raise RuntimeError('DirichletCalibrator.predict_proba called before fit')
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        return self._lr.predict_proba(log_probs)
+
+
+class TemperatureCalibrator:
+    """
+    Temperature scaling for multi-class probabilities (Guo et al. 2017).
+
+    Fits a single scalar T ≥ bounds[0] by minimising validation log loss:
+        p_cal = softmax(log(p_raw) / T)
+
+    XGBoost emits probabilities rather than pre-softmax logits; log-probs act
+    as equivalent logits up to an additive constant that softmax is invariant
+    to. T > 1 softens overconfident predictions (flattens the simplex toward
+    the uniform prior), T < 1 sharpens. Because it cannot re-rank classes, it
+    preserves raw AUC exactly — only the confidence calibration changes.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(
+        self, bounds: tuple[float, float] = (0.5, 5.0), clip: float = 1e-8,
+    ):
+        self.bounds = bounds
+        self.clip = clip
+        self.temperature: float = 1.0
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'TemperatureCalibrator':
+        from scipy.optimize import minimize_scalar
+        from sklearn.metrics import log_loss
+
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+
+        def neg_log_likelihood(T: float) -> float:
+            scaled = log_probs / T
+            # Softmax with max-subtraction for numerical stability.
+            scaled = scaled - scaled.max(axis=1, keepdims=True)
+            exp_scaled = np.exp(scaled)
+            probs = exp_scaled / exp_scaled.sum(axis=1, keepdims=True)
+            return log_loss(y, probs, labels=[0, 1, 2])
+
+        result = minimize_scalar(
+            neg_log_likelihood,
+            bounds=self.bounds,
+            method='bounded',
+            options={'xatol': 1e-4},
+        )
+        self.temperature = float(result.x)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        log_probs = np.log(np.clip(raw_probs, self.clip, 1.0))
+        scaled = log_probs / self.temperature
+        scaled = scaled - scaled.max(axis=1, keepdims=True)
+        exp_scaled = np.exp(scaled)
+        return exp_scaled / exp_scaled.sum(axis=1, keepdims=True)
+
+
+class BetaCalibrator:
+    """
+    Per-class beta calibration (Kull, Filho & Flach 2017).
+
+    For each class k, fits a 3-parameter logistic model:
+        p_cal_k = sigmoid(a_k * log(p_k) + b_k * log(1 - p_k) + c_k)
+
+    The two log features (log p and log(1-p)) give the sigmoid enough
+    flexibility to correct both under- and over-confidence asymmetrically,
+    which is why the method is better behaved on minority classes than
+    Platt scaling (a single log(p) slope).
+
+    Per-class outputs are renormalised to sum to 1, restoring the simplex.
+
+    API mirrors sklearn: .fit(raw_probs, y) -> self; .predict_proba(raw_probs) -> ndarray.
+    """
+
+    def __init__(self, clip: float = 1e-8):
+        self.clip = clip
+        self._classifiers: list = []
+
+    def _features(self, raw_probs: np.ndarray) -> np.ndarray:
+        p = np.clip(raw_probs, self.clip, 1.0 - self.clip)
+        return np.stack([np.log(p), np.log(1.0 - p)], axis=-1)
+
+    def fit(self, raw_probs: np.ndarray, y: np.ndarray) -> 'BetaCalibrator':
+        from sklearn.linear_model import LogisticRegression
+
+        feats = self._features(raw_probs)
+        self._classifiers = []
+        for k in range(raw_probs.shape[1]):
+            binary_target = (y == k).astype(int)
+            lr = LogisticRegression(solver='lbfgs', max_iter=1000)
+            # Degenerate single-class slice: fall back to a constant predictor.
+            if len(np.unique(binary_target)) < 2:
+                lr = _ConstantClassifier(binary_target.mean())
+            else:
+                lr.fit(feats[:, k, :], binary_target)
+            self._classifiers.append(lr)
+        return self
+
+    def predict_proba(self, raw_probs: np.ndarray) -> np.ndarray:
+        if not self._classifiers:
+            raise RuntimeError('BetaCalibrator.predict_proba called before fit')
+        feats = self._features(raw_probs)
+        cols = []
+        for k, clf in enumerate(self._classifiers):
+            if isinstance(clf, _ConstantClassifier):
+                cols.append(np.full(raw_probs.shape[0], clf.prob))
+            else:
+                cols.append(clf.predict_proba(feats[:, k, :])[:, 1])
+        out = np.column_stack(cols)
+        row_sums = out.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        return out / row_sums
+
+
+class _ConstantClassifier:
+    """Fallback used when a class is absent from the validation set — rare, but
+    the multinomial LR cannot fit with only one class of the binary target."""
+
+    def __init__(self, prob: float):
+        self.prob = float(prob)
+
+
 def _calibrate_with_method(
     raw_probs: np.ndarray, y_val: np.ndarray, method: str,
 ) -> tuple[list, np.ndarray]:
@@ -467,17 +635,27 @@ def _calibrate_with_method(
 
 def apply_calibrators(
     raw_probs: np.ndarray,
-    calibrators: list,
+    calibrators,
     method: str,
 ) -> np.ndarray:
     """
     Apply fitted calibrators to raw probabilities, dispatching on method.
 
-    Isotonic calibrators use .predict() on 1D input.
-    Platt calibrators (LogisticRegression) use .predict_proba() on 2D input.
+    - 'dirichlet': single DirichletCalibrator (joint calibration of the simplex).
+    - 'dirichlet_reg': DirichletCalibrator fitted at the best λ from a grid
+      search (see calibrate_probabilities). Same runtime API as 'dirichlet'.
+    - 'temperature': single TemperatureCalibrator (softmax with fitted scalar T).
+    - 'beta': single BetaCalibrator (per-class beta, internally renormalised).
+    - 'platt': list of 3 LogisticRegression objects (predict_proba on 2D).
+    - 'isotonic' (or legacy): list of 3 IsotonicRegression objects (predict on 1D).
 
-    Returns re-normalised probabilities (n_samples, 3).
+    Returns probabilities (n_samples, 3). Joint methods (dirichlet,
+    dirichlet_reg, temperature, beta) already sum to 1 by construction;
+    per-class methods are re-normalised row-wise.
     """
+    if method in ('dirichlet', 'dirichlet_reg', 'temperature', 'beta'):
+        return calibrators.predict_proba(raw_probs)
+
     if method == 'platt':
         cal_probs = np.column_stack([
             cal.predict_proba(raw_probs[:, i].reshape(-1, 1))[:, 1]
@@ -495,19 +673,27 @@ def apply_calibrators(
 
 def calibrate_probabilities(
     model, X_val: np.ndarray, y_val: np.ndarray,
-    feature_names: list[str],
+    feature_names: list[str], method: str = 'dirichlet',
 ) -> dict:
     """
-    Calibrate XGBoost probabilities using the best of isotonic and Platt scaling.
+    Calibrate XGBoost probabilities using the requested method.
 
     Raw XGBoost probabilities are often overconfident. Calibration maps
     predicted probabilities to observed frequencies using a held-out set.
 
-    Both methods are tried and the one with lower log loss is selected:
-    - Isotonic regression: flexible piecewise-constant mapping, but needs
-      many samples per class to avoid overfitting.
-    - Platt scaling: logistic sigmoid with only 2 parameters per class,
-      better suited for small validation sets (e.g. 420 samples).
+    Methods:
+    - 'dirichlet' (default): joint calibration of the full H/D/A simplex.
+      Preserves the sum-to-1 constraint natively and avoids the draw-class
+      suppression seen with independent per-class calibration.
+    - 'dirichlet_reg': Dirichlet calibration with a grid search over the
+      matrix-scaling L2 strength λ ∈ {1e-3, 1e-2, 1e-1, 1, 10}.
+    - 'temperature': single scalar T fitted on val log-loss; softmax(log(p)/T).
+      Cannot re-rank classes, only rescales sharpness.
+    - 'isotonic': piecewise-constant per-class mapping; flexible but hungry
+      for samples.
+    - 'platt': logistic sigmoid per class (2 params); robust on small sets.
+    - 'auto': picks whichever of isotonic/platt gives lower log loss
+      (the pre-P9f behaviour; kept for A/B comparison).
     """
     import xgboost as xgb
     from sklearn.metrics import log_loss
@@ -516,7 +702,101 @@ def calibrate_probabilities(
     raw_probs = model.predict(dval)
     raw_ll = log_loss(y_val, raw_probs, labels=[0, 1, 2])
 
-    # Try both calibration methods, keep the one with lower log loss
+    if method == 'dirichlet':
+        dir_cal = DirichletCalibrator().fit(raw_probs, y_val)
+        dir_probs = dir_cal.predict_proba(raw_probs)
+        dir_ll = log_loss(y_val, dir_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using Dirichlet',
+            raw_ll, dir_ll, dir_ll - raw_ll,
+        )
+        return {
+            'calibrators': dir_cal,
+            'calibration_method': 'dirichlet',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': dir_ll,
+        }
+
+    if method == 'dirichlet_reg':
+        # Grid search λ ∈ {1e-3, 1e-2, 1e-1, 1, 10} on validation log loss.
+        # Matrix scaling (existing DirichletCalibrator) penalises all
+        # coefficients uniformly via sklearn's L2 penalty — true ODIR
+        # (off-diagonal only; Kull et al. 2019) would need a bespoke LBFGS,
+        # so scope is narrowed to tuning the full-matrix penalty strength.
+        lambda_grid = [1e-3, 1e-2, 1e-1, 1.0, 10.0]
+        grid_results = []
+        best_cal = None
+        best_ll = float('inf')
+        best_lambda = lambda_grid[0]
+        for lam in lambda_grid:
+            cal = DirichletCalibrator(reg_lambda=lam).fit(raw_probs, y_val)
+            probs = cal.predict_proba(raw_probs)
+            ll = log_loss(y_val, probs, labels=[0, 1, 2])
+            grid_results.append((lam, ll))
+            if ll < best_ll:
+                best_ll = ll
+                best_cal = cal
+                best_lambda = lam
+        grid_str = ', '.join(f'λ={lam:g}→{ll:.4f}' for lam, ll in grid_results)
+        logger.info('Dirichlet-reg grid: %s', grid_str)
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using Dirichlet-reg (λ=%g)',
+            raw_ll, best_ll, best_ll - raw_ll, best_lambda,
+        )
+        return {
+            'calibrators': best_cal,
+            'calibration_method': 'dirichlet_reg',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': best_ll,
+            'best_lambda': best_lambda,
+            'lambda_grid': grid_results,
+        }
+
+    if method == 'temperature':
+        temp_cal = TemperatureCalibrator().fit(raw_probs, y_val)
+        temp_probs = temp_cal.predict_proba(raw_probs)
+        temp_ll = log_loss(y_val, temp_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using temperature T=%.4f',
+            raw_ll, temp_ll, temp_ll - raw_ll, temp_cal.temperature,
+        )
+        return {
+            'calibrators': temp_cal,
+            'calibration_method': 'temperature',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': temp_ll,
+        }
+
+    if method == 'beta':
+        beta_cal = BetaCalibrator().fit(raw_probs, y_val)
+        beta_probs = beta_cal.predict_proba(raw_probs)
+        beta_ll = log_loss(y_val, beta_probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using beta (per-class)',
+            raw_ll, beta_ll, beta_ll - raw_ll,
+        )
+        return {
+            'calibrators': beta_cal,
+            'calibration_method': 'beta',
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': beta_ll,
+        }
+
+    if method in ('isotonic', 'platt'):
+        cals, probs = _calibrate_with_method(raw_probs, y_val, method)
+        ll = log_loss(y_val, probs, labels=[0, 1, 2])
+        logger.info(
+            'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling',
+            raw_ll, ll, ll - raw_ll, method,
+        )
+        return {
+            'calibrators': cals,
+            'calibration_method': method,
+            'raw_log_loss': raw_ll,
+            'calibrated_log_loss': ll,
+        }
+
+    # 'auto' — pick the best of isotonic/platt (legacy behaviour)
     iso_calibrators, iso_probs = _calibrate_with_method(raw_probs, y_val, 'isotonic')
     iso_ll = log_loss(y_val, iso_probs, labels=[0, 1, 2])
 
@@ -529,16 +809,12 @@ def calibrate_probabilities(
     )
 
     if platt_ll <= iso_ll:
-        best_method = 'platt'
-        best_calibrators = platt_calibrators
-        best_ll = platt_ll
+        best_method, best_calibrators, best_ll = 'platt', platt_calibrators, platt_ll
     else:
-        best_method = 'isotonic'
-        best_calibrators = iso_calibrators
-        best_ll = iso_ll
+        best_method, best_calibrators, best_ll = 'isotonic', iso_calibrators, iso_ll
 
     logger.info(
-        'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling',
+        'Calibration: log loss %.4f → %.4f (%+.4f) using %s scaling (auto)',
         raw_ll, best_ll, best_ll - raw_ll, best_method,
     )
 
@@ -555,54 +831,53 @@ def tune_hyperparameters(
     X_val: np.ndarray, y_val: np.ndarray,
     feature_names: list[str],
     seasons_train: np.ndarray | None = None,
-    n_trials: int = 25,
+    n_trials: int = 100,
     seed: int = 42,
 ) -> dict:
     """
-    Random search over XGBoost hyperparameters.
+    Bayesian hyperparameter optimisation using Optuna.
 
     Uses chronological train/val split (no shuffled CV) to avoid data leakage.
-    Evaluates `n_trials` random parameter combinations and returns the best.
+    Evaluates `n_trials` parameter combinations using Tree-structured Parzen
+    Estimator (TPE) — concentrates trials in promising regions of the search
+    space, typically finding better parameters than random search with the
+    same budget.
 
-    No additional dependencies required — uses numpy random sampling.
+    Falls back to random search if Optuna is not installed.
     """
     import xgboost as xgb
-
-    rng = np.random.RandomState(seed)
-
-    # Search space
-    search_space = {
-        'max_depth': [3, 4, 5, 6, 7, 8],
-        'learning_rate': [0.01, 0.02, 0.05, 0.08, 0.1],
-        'min_child_weight': [1, 2, 3, 5, 7],
-        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
-        'gamma': [0.0, 0.05, 0.1, 0.2, 0.5],
-        'reg_alpha': [0.0, 0.01, 0.05, 0.1, 0.5],
-        'reg_lambda': [0.5, 1.0, 2.0, 5.0],
-    }
 
     sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
     dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feature_names,
                          weight=sample_weights)
     dval = xgb.DMatrix(X_val, label=y_val, feature_names=feature_names)
 
-    best_score = float('inf')
+    try:
+        import optuna
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+    except ImportError:
+        logger.warning('Optuna not installed — falling back to random search')
+        return _tune_random(dtrain, dval, y_train, feature_names,
+                            seasons_train, n_trials, seed)
+
     best_params: dict = {}
-    results = []
 
-    logger.info('Hyperparameter tuning: %d trials...', n_trials)
-
-    for trial in range(n_trials):
+    def objective(trial: optuna.Trial) -> float:
         params = {
             'objective': 'multi:softprob',
             'num_class': 3,
             'eval_metric': 'mlogloss',
             'verbosity': 0,
             'seed': seed,
+            'max_depth': trial.suggest_int('max_depth', 3, 8),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+            'min_child_weight': trial.suggest_int('min_child_weight', 1, 7),
+            'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+            'gamma': trial.suggest_float('gamma', 0.0, 0.5),
+            'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 1.0, log=True),
+            'reg_lambda': trial.suggest_float('reg_lambda', 0.5, 5.0),
         }
-        for key, choices in search_space.items():
-            params[key] = choices[rng.randint(len(choices))]
 
         evals_result: dict = {}
         model = xgb.train(
@@ -615,38 +890,91 @@ def tune_hyperparameters(
             verbose_eval=False,
         )
 
+        return evals_result['val']['mlogloss'][model.best_iteration]
+
+    logger.info('Hyperparameter tuning (Optuna TPE): %d trials...', n_trials)
+    study = optuna.create_study(
+        direction='minimize',
+        sampler=optuna.samplers.TPESampler(seed=seed),
+    )
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+
+    # Log top 5 results
+    trials_sorted = sorted(study.trials, key=lambda t: t.value if t.value is not None else float('inf'))
+    logger.info('\nTop 5 parameter sets:')
+    for i, t in enumerate(trials_sorted[:5], 1):
+        logger.info(
+            '  %d. mlogloss=%.4f — depth=%d, lr=%.3f, mcw=%d, sub=%.2f, col=%.2f',
+            i, t.value, t.params['max_depth'], t.params['learning_rate'],
+            t.params['min_child_weight'], t.params['subsample'], t.params['colsample_bytree'],
+        )
+
+    # Build best params dict compatible with xgb.train()
+    best_params = {
+        'objective': 'multi:softprob',
+        'num_class': 3,
+        'eval_metric': 'mlogloss',
+        'verbosity': 0,
+        'seed': seed,
+        **study.best_params,
+    }
+    logger.info('\nBest params (mlogloss=%.4f): %s', study.best_value,
+                {k: v for k, v in study.best_params.items()})
+
+    return best_params
+
+
+def _tune_random(
+    dtrain, dval, y_train, feature_names,
+    seasons_train, n_trials, seed,
+) -> dict:
+    """Fallback random search when Optuna is not available."""
+    import xgboost as xgb
+
+    rng = np.random.RandomState(seed)
+    search_space = {
+        'max_depth': [3, 4, 5, 6, 7, 8],
+        'learning_rate': [0.01, 0.02, 0.05, 0.08, 0.1],
+        'min_child_weight': [1, 2, 3, 5, 7],
+        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'gamma': [0.0, 0.05, 0.1, 0.2, 0.5],
+        'reg_alpha': [0.0, 0.01, 0.05, 0.1, 0.5],
+        'reg_lambda': [0.5, 1.0, 2.0, 5.0],
+    }
+
+    best_score = float('inf')
+    best_params: dict = {}
+
+    logger.info('Hyperparameter tuning (random fallback): %d trials...', n_trials)
+
+    for trial_num in range(n_trials):
+        params = {
+            'objective': 'multi:softprob',
+            'num_class': 3,
+            'eval_metric': 'mlogloss',
+            'verbosity': 0,
+            'seed': seed,
+        }
+        for key, choices in search_space.items():
+            params[key] = choices[rng.randint(len(choices))]
+
+        evals_result: dict = {}
+        model = xgb.train(
+            params, dtrain, num_boost_round=500,
+            evals=[(dval, 'val')], early_stopping_rounds=30,
+            evals_result=evals_result, verbose_eval=False,
+        )
         score = evals_result['val']['mlogloss'][model.best_iteration]
-        results.append({'params': params.copy(), 'score': score, 'iterations': model.best_iteration})
 
         if score < best_score:
             best_score = score
             best_params = params.copy()
-            logger.info(
-                '  Trial %d/%d: mlogloss=%.4f (NEW BEST) — depth=%d, lr=%.3f, mcw=%d',
-                trial + 1, n_trials, score,
-                params['max_depth'], params['learning_rate'], params['min_child_weight'],
-            )
-        elif (trial + 1) % 5 == 0:
-            logger.info('  Trial %d/%d: mlogloss=%.4f (best=%.4f)', trial + 1, n_trials, score, best_score)
+            logger.info('  Trial %d/%d: mlogloss=%.4f (NEW BEST)', trial_num + 1, n_trials, score)
 
-    # Sort by score and show top 5
-    results.sort(key=lambda r: r['score'])
-    logger.info('\nTop 5 parameter sets:')
-    for i, r in enumerate(results[:5], 1):
-        p = r['params']
-        logger.info(
-            '  %d. mlogloss=%.4f — depth=%d, lr=%.3f, mcw=%d, sub=%.1f, col=%.1f, iters=%d',
-            i, r['score'], p['max_depth'], p['learning_rate'],
-            p['min_child_weight'], p['subsample'], p['colsample_bytree'],
-            r['iterations'],
-        )
-
-    # Remove non-XGBoost keys from best_params (keep only training params)
-    logger.info('\nBest params (mlogloss=%.4f): %s', best_score, {
-        k: v for k, v in best_params.items()
-        if k not in ('objective', 'num_class', 'eval_metric', 'verbosity', 'seed')
-    })
-
+    logger.info('Best params (mlogloss=%.4f): %s', best_score,
+                {k: v for k, v in best_params.items()
+                 if k not in ('objective', 'num_class', 'eval_metric', 'verbosity', 'seed')})
     return best_params
 
 
@@ -1017,17 +1345,15 @@ def rolling_cross_validation(
             dval = xgb.DMatrix(X_val_fold, feature_names=feature_names)
             raw_probs = xgb_res['model'].predict(dval)
 
-            # Calibrate
+            # Calibrate (CV path uses 'auto' — avoids Dirichlet overhead per fold
+            # and matches the historical baseline used for CV comparisons).
             cal_res = calibrate_probabilities(
                 xgb_res['model'], X_val_fold, y_val_fold, feature_names,
+                method='auto',
             )
-            cal_probs = np.column_stack([
-                cal.predict(raw_probs[:, i])
-                for i, cal in enumerate(cal_res['calibrators'])
-            ])
-            row_sums = cal_probs.sum(axis=1, keepdims=True)
-            row_sums[row_sums == 0] = 1.0
-            cal_probs = cal_probs / row_sums
+            cal_probs = apply_calibrators(
+                raw_probs, cal_res['calibrators'], cal_res['calibration_method'],
+            )
 
             xgb_preds = np.argmax(cal_probs, axis=1)
             fold_metrics['xgboost'] = {
@@ -1179,6 +1505,137 @@ def save_calibration_curve(y_true: np.ndarray, y_probs: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
+# Dedicated draw classifier
+# ---------------------------------------------------------------------------
+
+def train_draw_classifier(
+    X_train: np.ndarray, y_train: np.ndarray,
+    X_val: np.ndarray, y_val: np.ndarray,
+    feature_names: list[str],
+    seasons_train: np.ndarray | None = None,
+) -> dict:
+    """
+    Train a dedicated binary XGBoost classifier for draw vs not-draw.
+
+    Draws are the hardest class to predict — the main 3-class model achieves
+    23% raw draw accuracy but calibration suppresses it. This dedicated model
+    runs independently with conservative hyperparameters optimised for draws.
+
+    Returns the trained model, optimal cascade threshold, and validation stats.
+    """
+    import xgboost as xgb
+
+    # Binary labels: 1 = draw, 0 = not-draw
+    y_train_binary = (y_train == 1).astype(int)
+    y_val_binary = (y_val == 1).astype(int)
+
+    n_pos = y_train_binary.sum()
+    n_neg = len(y_train_binary) - n_pos
+    spw = n_neg / max(n_pos, 1)
+
+    sample_weights = compute_sample_weights(y_train, seasons=seasons_train)
+    dtrain = xgb.DMatrix(X_train, label=y_train_binary, feature_names=feature_names,
+                         weight=sample_weights)
+    dval = xgb.DMatrix(X_val, label=y_val_binary, feature_names=feature_names)
+
+    params = {
+        'objective': 'binary:logistic',
+        'eval_metric': 'logloss',
+        'verbosity': 0,
+        'seed': 42,
+        'max_depth': 4,
+        'learning_rate': 0.03,
+        'min_child_weight': 5,
+        'subsample': 0.8,
+        'colsample_bytree': 0.7,
+        'gamma': 0.2,
+        'reg_alpha': 0.1,
+        'reg_lambda': 2.0,
+        'scale_pos_weight': spw,
+    }
+
+    evals_result: dict = {}
+    model = xgb.train(
+        params, dtrain,
+        num_boost_round=500,
+        evals=[(dval, 'val')],
+        early_stopping_rounds=50,
+        evals_result=evals_result,
+        verbose_eval=False,
+    )
+
+    val_probs = model.predict(dval)
+    logger.info('Draw classifier trained: best iteration %d, val logloss %.4f, spw=%.2f',
+                model.best_iteration, evals_result['val']['logloss'][model.best_iteration], spw)
+
+    return {
+        'model': model,
+        'val_probs': val_probs,
+        'params': params,
+    }
+
+
+def find_draw_cascade_threshold(
+    draw_probs: np.ndarray,
+    main_probs: np.ndarray,
+    y_val: np.ndarray,
+) -> tuple[float, float, dict]:
+    """
+    Find the optimal threshold for cascading the draw classifier with
+    the main 3-class model.
+
+    For each candidate threshold:
+      - If draw_classifier P(draw) > threshold → predict draw
+      - Otherwise → use main model's argmax
+
+    Sweeps thresholds and selects the one that maximises overall accuracy
+    on the validation set. Also reports draw-specific accuracy at each threshold.
+
+    Returns (best_threshold, best_accuracy, stats_at_best).
+    """
+    best_threshold = 0.30
+    best_accuracy = 0.0
+    best_stats: dict = {}
+
+    for threshold in np.arange(0.20, 0.55, 0.01):
+        # Build combined predictions
+        combined_preds = np.argmax(main_probs, axis=1)
+
+        # Override with draw where draw classifier is confident
+        draw_mask = draw_probs > threshold
+        combined_preds[draw_mask] = 1  # 1 = Draw
+
+        accuracy = (combined_preds == y_val).mean()
+        n_draw_preds = draw_mask.sum()
+        draw_correct = ((combined_preds == 1) & (y_val == 1)).sum()
+        n_actual_draws = (y_val == 1).sum()
+        draw_acc = draw_correct / max(n_actual_draws, 1)
+
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_threshold = float(threshold)
+            best_stats = {
+                'threshold': float(threshold),
+                'accuracy': float(accuracy),
+                'n_draw_predictions': int(n_draw_preds),
+                'draw_correct': int(draw_correct),
+                'draw_accuracy': float(draw_acc),
+                'total_actual_draws': int(n_actual_draws),
+            }
+
+    logger.info(
+        'Draw cascade threshold: %.2f → accuracy %.1f%% (draw acc %.1f%%, '
+        '%d draw predictions, %d correct)',
+        best_threshold, best_accuracy * 100,
+        best_stats.get('draw_accuracy', 0) * 100,
+        best_stats.get('n_draw_predictions', 0),
+        best_stats.get('draw_correct', 0),
+    )
+
+    return best_threshold, best_accuracy, best_stats
+
+
+# ---------------------------------------------------------------------------
 # Model saving
 # ---------------------------------------------------------------------------
 
@@ -1186,6 +1643,7 @@ def save_model(xgb_result: dict, feature_names: list[str],
                metrics: dict, training_info: dict,
                ensemble_result: dict | None = None,
                ensemble_metrics: dict | None = None,
+               draw_classifier: dict | None = None,
                ) -> str:
     """Save trained model with metadata to joblib."""
     import joblib
@@ -1233,6 +1691,11 @@ def save_model(xgb_result: dict, feature_names: list[str],
                 ens_acc * 100, xgb_acc * 100,
             )
 
+    # Include dedicated draw classifier if provided
+    if draw_classifier is not None:
+        payload['draw_classifier'] = draw_classifier
+        logger.info('Draw classifier included in model file')
+
     joblib.dump(payload, MODEL_PATH)
     logger.info('Model saved to %s', MODEL_PATH)
     return MODEL_PATH
@@ -1254,15 +1717,38 @@ def main():
     )
     parser.add_argument(
         '--tune', action='store_true',
-        help='Run hyperparameter tuning before final training (random search, ~25 trials)',
+        help='Run hyperparameter tuning before final training (Optuna Bayesian optimisation)',
     )
     parser.add_argument(
-        '--tune-trials', type=int, default=25,
-        help='Number of hyperparameter search trials (default: 25)',
+        '--tune-trials', type=int, default=100,
+        help='Number of hyperparameter search trials (default: 100)',
     )
     parser.add_argument(
         '--cv', action='store_true',
         help='Run rolling (expanding-window) cross-validation across seasons',
+    )
+    parser.add_argument(
+        '--no-odds', action='store_true',
+        help='Train without bookmaker odds features (honest inference baseline)',
+    )
+    parser.add_argument(
+        '--calibrator',
+        choices=[
+            'dirichlet', 'dirichlet_reg', 'temperature', 'beta',
+            'isotonic', 'platt', 'auto',
+        ],
+        default='isotonic',
+        help=(
+            'Probability calibration method (default: isotonic — best performer '
+            'per P11 investigation; preserves draws better than Dirichlet/beta '
+            'on this feature set). "dirichlet" / "dirichlet_reg" / "temperature" '
+            '/ "beta" remain available for experimentation. "dirichlet_reg" '
+            'grid-searches λ ∈ {1e-3, 1e-2, 1e-1, 1, 10} on matrix-scaling L2 '
+            'strength. "temperature" fits a single '
+            'scalar T via softmax. "beta" fits per-class Kull et al. (2017) '
+            '3-parameter logistic on [log p, log(1-p)]. "auto" picks the best '
+            'of isotonic/platt.'
+        ),
     )
     args = parser.parse_args()
 
@@ -1271,9 +1757,12 @@ def main():
     seasons = sorted(df['season'].unique())
 
     # 2. Build feature matrix
-    logger.info('Building feature matrix...')
+    if args.no_odds:
+        logger.info('Building feature matrix (--no-odds: odds features zeroed)...')
+    else:
+        logger.info('Building feature matrix...')
     engineer = FreeTierFeatureEngineer(df)
-    X, y, feature_names, sample_seasons = build_dataset(df, engineer)
+    X, y, feature_names, sample_seasons = build_dataset(df, engineer, skip_odds=args.no_odds)
 
     if len(X) < 50:
         logger.error('Too few samples (%d) — need at least 50 to train', len(X))
@@ -1343,9 +1832,10 @@ def main():
     evaluate(y_val, xgb_probs_raw, label='XGBoost (raw)')
 
     # 7. Probability calibration
-    logger.info('Calibrating probabilities...')
+    logger.info('Calibrating probabilities (method=%s)...', args.calibrator)
     cal_result = calibrate_probabilities(
         xgb_result['model'], X_val_active, y_val, active_feature_names,
+        method=args.calibrator,
     )
 
     # Use calibrated probabilities for final evaluation
@@ -1393,6 +1883,30 @@ def main():
         x = xgb_per.get(name, 0) * 100
         logger.info('    %-10s %5.1f%% vs %5.1f%% (%+.1f%%)', name, e, x, e - x)
 
+    # 10b. Dedicated draw classifier — binary model cascading with main XGBoost
+    logger.info('\n=== Training Dedicated Draw Classifier ===')
+    draw_result = train_draw_classifier(
+        X_train_active, y_train, X_val_active, y_val,
+        active_feature_names, seasons_train=seasons_train,
+    )
+    draw_threshold, draw_cascade_acc, draw_stats = find_draw_cascade_threshold(
+        draw_result['val_probs'], cal_probs, y_val,
+    )
+
+    # Compare cascade model vs calibrated XGBoost alone
+    cascade_improvement = draw_cascade_acc - xgb_acc
+    if cascade_improvement > 0:
+        logger.info(
+            'Draw cascade IMPROVES accuracy: %.1f%% → %.1f%% (+%.1f%%)',
+            xgb_acc * 100, draw_cascade_acc * 100, cascade_improvement * 100,
+        )
+    else:
+        logger.info(
+            'Draw cascade does not improve accuracy (%.1f%% vs %.1f%%) — '
+            'model saved but cascade disabled at inference',
+            draw_cascade_acc * 100, xgb_acc * 100,
+        )
+
     # 11. Top features
     sorted_imp = sorted(
         xgb_result['importance'].items(), key=lambda x: x[1], reverse=True,
@@ -1408,10 +1922,19 @@ def main():
     }
     xgb_result['calibrators'] = cal_result['calibrators']
     xgb_result['calibration_method'] = cal_result['calibration_method']
+    # Prepare draw classifier dict for saving
+    draw_clf_payload = {
+        'model': draw_result['model'],
+        'threshold': draw_threshold,
+        'cascade_accuracy': draw_cascade_acc,
+        'stats': draw_stats,
+        'improves_accuracy': cascade_improvement > 0,
+    }
     save_model(
         xgb_result, active_feature_names, xgb_metrics, training_info,
         ensemble_result=ensemble_result,
         ensemble_metrics=ensemble_metrics,
+        draw_classifier=draw_clf_payload,
     )
 
     # 12. Calibration curve
@@ -1439,6 +1962,7 @@ def main():
                 try:
                     features = test_engineer.create_features(
                         row['home_team'], row['away_team'], match_date,
+                        skip_odds=args.no_odds,
                     )
                     vec = [features[name] for name in all_feature_names]
                     X_test_rows.append(vec)
@@ -1454,7 +1978,6 @@ def main():
                 X_test_sel = X_test[:, sel_indices]
                 dtest = xgb.DMatrix(X_test_sel, feature_names=active_feature_names)
                 test_probs_raw = xgb_result['model'].predict(dtest)
-                # Apply calibration
                 test_probs = apply_calibrators(
                     test_probs_raw, cal_result['calibrators'],
                     cal_result['calibration_method'],

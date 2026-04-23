@@ -3,23 +3,22 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 import path from 'path'
 import type { IncomingMessage, ServerResponse } from 'http'
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+// Keep in sync with api/chat.ts ALLOWED_MODELS and src/lib/constants.ts AI_MODELS.
 const ALLOWED_MODELS = [
-  'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo',
-  'claude-3-5-haiku-latest', 'claude-3-5-sonnet-latest', 'claude-3-opus-latest',
+  'claude-opus-4-7',
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5-20251001',
 ];
-
-function isAnthropicModel(model: string): boolean {
-  return model.startsWith('claude');
-}
 
 /**
  * Vite plugin that mirrors the api/chat.ts Edge Function locally.
  * In production, Vercel serves api/chat.ts as a serverless function.
  * In dev, this middleware handles /api/chat so the ChatBot works without `vercel dev`.
+ * Applies the same ephemeral prompt caching on the system prompt as prod.
  */
 function chatApiProxy(): Plugin {
   return {
@@ -46,12 +45,6 @@ function chatApiProxy(): Plugin {
             return;
           }
 
-          if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'Messages array required.' }));
-            return;
-          }
-
           // Resolve model: request body → env var → default
           const requestedModel = parsed.model;
           const envModel = process.env.ORACLE_AI_MODEL;
@@ -60,87 +53,89 @@ function chatApiProxy(): Plugin {
             ?? (envModel && ALLOWED_MODELS.includes(envModel) ? envModel : null)
             ?? DEFAULT_MODEL;
 
-          const useAnthropic = isAnthropicModel(resolvedModel);
-
-          // Resolve API key: env var takes priority, then request body
-          const apiKey = useAnthropic
-            ? (process.env.ANTHROPIC_API_KEY || parsed.apiKey)
-            : (process.env.OPENAI_API_KEY || parsed.apiKey);
+          // Resolve API key: env var takes priority, then request body.
+          // Key check runs BEFORE the messages check (mirroring api/chat.ts)
+          // so ChatBot's server-key probe (which sends empty messages) can
+          // accurately detect whether a server key is configured — without
+          // this ordering, the messages check fires first in dev, tricking
+          // the probe into setting useServerKey=true even when ANTHROPIC_API_KEY
+          // is absent, which hides the "Connect Anthropic" UI.
+          const apiKey = process.env.ANTHROPIC_API_KEY || parsed.apiKey;
 
           if (!apiKey) {
-            const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
             res.statusCode = 400;
-            res.end(JSON.stringify({ error: `No API key configured. Please enter your ${provider} key.` }));
+            res.end(JSON.stringify({ error: 'No API key configured. Please enter your Anthropic key.' }));
+            return;
+          }
+
+          if (!parsed.messages || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Messages array required.' }));
             return;
           }
 
           try {
-            if (useAnthropic) {
-              // Extract system message — Anthropic uses a separate `system` field
-              let systemPrompt = '';
-              const userMessages: Array<{ role: string; content: string }> = [];
-              for (const msg of parsed.messages) {
-                if (msg.role === 'system') {
-                  systemPrompt += (systemPrompt ? '\n' : '') + msg.content;
-                } else {
-                  userMessages.push({ role: msg.role, content: msg.content });
-                }
+            // Extract system message — Anthropic uses a separate `system` field
+            let systemPrompt = '';
+            const userMessages: Array<{ role: string; content: string }> = [];
+            for (const msg of parsed.messages) {
+              if (msg.role === 'system') {
+                systemPrompt += (systemPrompt ? '\n' : '') + msg.content;
+              } else {
+                userMessages.push({ role: msg.role, content: msg.content });
               }
-
-              const upstream = await fetch(ANTHROPIC_API_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': apiKey,
-                  'anthropic-version': ANTHROPIC_VERSION,
-                },
-                body: JSON.stringify({
-                  model: resolvedModel,
-                  max_tokens: 800,
-                  ...(systemPrompt ? { system: systemPrompt } : {}),
-                  messages: userMessages,
-                }),
-              });
-
-              if (!upstream.ok) {
-                res.statusCode = upstream.status;
-                res.end(JSON.stringify({ error: `Anthropic API error (${upstream.status}).` }));
-                return;
-              }
-
-              const data = await upstream.json() as { content?: Array<{ text?: string }>; model?: string; usage?: unknown };
-              const text = data.content?.[0]?.text || '';
-
-              // Normalise to OpenAI response shape
-              res.statusCode = 200;
-              res.end(JSON.stringify({
-                choices: [{ message: { role: 'assistant', content: text } }],
-                model: data.model,
-                usage: data.usage,
-              }));
-            } else {
-              const upstream = await fetch(OPENAI_API_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                  model: resolvedModel,
-                  messages: parsed.messages,
-                  max_tokens: 800,
-                  temperature: 0.7,
-                }),
-              });
-
-              const data = await upstream.text();
-              res.statusCode = upstream.status;
-              res.end(data);
             }
+
+            const systemField = systemPrompt
+              ? [{
+                  type: 'text' as const,
+                  text: systemPrompt,
+                  cache_control: { type: 'ephemeral' as const },
+                }]
+              : undefined;
+
+            const upstream = await fetch(ANTHROPIC_API_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': ANTHROPIC_VERSION,
+              },
+              body: JSON.stringify({
+                model: resolvedModel,
+                max_tokens: 1024,
+                ...(systemField ? { system: systemField } : {}),
+                messages: userMessages,
+              }),
+            });
+
+            if (!upstream.ok) {
+              res.statusCode = upstream.status;
+              res.end(JSON.stringify({ error: `Anthropic API error (${upstream.status}).` }));
+              return;
+            }
+
+            const data = await upstream.json() as {
+              content?: Array<{ type: string; text?: string }>;
+              model?: string;
+              usage?: unknown;
+            };
+            // Concatenate all text blocks — adaptive thinking produces thinking
+            // blocks before the text block on Opus 4.6/4.7.
+            const text = (data.content ?? [])
+              .filter((b) => b.type === 'text' && typeof b.text === 'string')
+              .map((b) => b.text as string)
+              .join('');
+
+            res.statusCode = 200;
+            res.end(JSON.stringify({
+              choices: [{ message: { role: 'assistant', content: text } }],
+              model: data.model,
+              usage: data.usage,
+            }));
           } catch {
-            const provider = useAnthropic ? 'Anthropic' : 'OpenAI';
             res.statusCode = 502;
-            res.end(JSON.stringify({ error: `Failed to connect to ${provider}.` }));
+            res.end(JSON.stringify({ error: 'Failed to connect to Anthropic.' }));
           }
         });
       });
@@ -187,6 +182,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/oracle/, '')
+      },
+      // Backend health probe — canonical path served by FastAPI directly
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   }

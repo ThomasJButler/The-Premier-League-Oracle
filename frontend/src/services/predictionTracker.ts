@@ -1,3 +1,13 @@
+/**
+ * Bumped whenever the prediction pipeline changes in a way that would make
+ * stored scoreline / result / confidence values disagree with what the current
+ * model would produce (fatigue fix, tier-blend lambdas, bet-builder grid
+ * reuse, etc). Stored predictions with a missing or different modelVersion are
+ * treated as stale for unplayed fixtures — the card reverts to "pending" so
+ * the user gets a fresh forecast. Completed-match history (those with
+ * actualResult set) is preserved regardless for accuracy tracking.
+ */
+export const MODEL_VERSION = 'v3.5-MVP';
 
 export interface StoredPrediction {
   id: string;
@@ -15,6 +25,11 @@ export interface StoredPrediction {
   timestamp: string;
   matchDate: string;
   matchday?: number; // Gameweek number (1-38)
+  modelVersion?: string; // Pipeline version at prediction time — see MODEL_VERSION
+  homeForm?: string; // Last-5 form string e.g. "WWDLL"
+  awayForm?: string;
+  keyFactors?: string[]; // Insight bullets shown in detailed analysis
+  poissonProbs?: { homeWin: number; draw: number; awayWin: number };
 }
 
 export interface GameweekAccuracy {
@@ -104,7 +119,14 @@ class PredictionTracker {
       confidence: number;
     },
     matchDate: string,
-    matchday?: number
+    matchday?: number,
+    extras?: {
+      modelVersion?: string;
+      homeForm?: string;
+      awayForm?: string;
+      keyFactors?: string[];
+      poissonProbs?: { homeWin: number; draw: number; awayWin: number };
+    }
   ): void {
     const id = `${matchId}_${crypto.randomUUID()}`;
     const storedPrediction: StoredPrediction = {
@@ -115,7 +137,12 @@ class PredictionTracker {
       ...prediction,
       timestamp: new Date().toISOString(),
       matchDate,
-      ...(matchday !== undefined ? { matchday } : {})
+      ...(matchday !== undefined ? { matchday } : {}),
+      ...(extras?.modelVersion !== undefined ? { modelVersion: extras.modelVersion } : {}),
+      ...(extras?.homeForm !== undefined ? { homeForm: extras.homeForm } : {}),
+      ...(extras?.awayForm !== undefined ? { awayForm: extras.awayForm } : {}),
+      ...(extras?.keyFactors !== undefined ? { keyFactors: extras.keyFactors } : {}),
+      ...(extras?.poissonProbs !== undefined ? { poissonProbs: extras.poissonProbs } : {})
     };
 
     this.predictions.set(id, storedPrediction);

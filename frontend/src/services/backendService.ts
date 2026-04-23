@@ -1,7 +1,12 @@
 import type { MLPrediction, MLHealthResponse } from '../types';
 import { BackendUnavailableError } from '../types';
 
-const BASE_URL = '/api/oracle';
+// In dev, BASE_URL falls through to '/api/oracle' so the Vite proxy handles it.
+// In production, set VITE_BACKEND_URL in Vercel's dashboard (e.g.
+// https://premier-league-oracle-backend.onrender.com) — the frontend then
+// calls the Render-hosted backend directly, relying on its CORS allow-list
+// for *.vercel.app.
+const BASE_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined) ?? '/api/oracle';
 const HEALTH_TIMEOUT_MS = 3000;
 const REQUEST_TIMEOUT_MS = 15000;
 
@@ -11,9 +16,6 @@ const REQUEST_TIMEOUT_MS = 15000;
  * All methods throw BackendUnavailableError when the backend is unreachable
  * or returns a non-OK response. Callers should catch this and fall back to
  * the TypeScript ensemble (optimizedPredictions.ts).
- *
- * The Vite dev proxy maps /api/oracle → http://localhost:8000.
- * In production, configure the backend URL via Vercel rewrites or environment variable.
  */
 class BackendService {
   private cachedAvailability: boolean | null = null;

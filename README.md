@@ -1,157 +1,96 @@
 # The Premier League Oracle
 
-![Version](https://img.shields.io/badge/version-3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
-![Status](https://img.shields.io/badge/status-active-success)
-![Tests](https://img.shields.io/badge/tests-561%20passing-brightgreen)
 
-A data-driven Premier League prediction platform that combines five statistical models into a weighted ensemble to predict match outcomes. Built with Svelte 4, TypeScript, and an optional Python ML backend.
+A live, data-driven Premier League prediction platform. It blends five statistical models into a weighted ensemble — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings — together with a trained XGBoost model, and displays predictions with honest probability bars instead of over-confident single-scoreline claims.
 
-## Overview
+## Try it
 
-The Premier League Oracle eliminates emotional bias from football predictions. Instead of gut feeling, it uses an ensemble of statistical models — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings — to generate objective match predictions with confidence scores.
+The app is deployed on Vercel. Open it in your browser:
 
-The prediction engine runs entirely in the browser. The optional Python backend adds a trained XGBoost model and natural language match queries via Oracle Chat.
+**→ [the-premier-league-oracle.vercel.app](https://the-premier-league-oracle.vercel.app)**
+
+No install, no setup, no CLI. You'll be asked for a free Football-Data.org API key on first load — [grab one here](https://www.football-data.org/client/register) — and your key stays in your browser's localStorage.
 
 | Desktop | Mobile |
 | ------- | ------ |
 | <img alt="Desktop" src="https://github.com/user-attachments/assets/3da3aa0e-013f-4463-807b-29767b348144" width="1450" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/7c9821d8-cc02-46b3-865a-1b0cd848ec73" width="500" /> |
 
-## Features
+## Why the code is public
 
-**Prediction Engine**
-- Weighted ensemble: ELO (25%), Poisson (30%), Form (20%), H2H (10%), Standings (15%)
-- Per-match confidence scores with colour-coded probability bars
-- Prediction tracking — automatic reconciliation against real results with correct/incorrect indicators
-- Backtesting against historical seasons to validate model accuracy
+The source is here for **transparency, not for forking**. Prediction tools can be accused of cherry-picking results or hiding bias; publishing the exact code that computes every number is the clearest way to answer that concern. If you want to understand how the ensemble weights combine, or verify there are no emotion-driven overrides in `predictGoals`, the answer is in the repo.
 
-**Live Data**
-- Real-time scores with adaptive polling (30s live, 5min matchday, 30min otherwise)
-- Live ticker and toast notifications for goals and status changes
-- Featured upcoming match in the Dashboard hero section
+I'm not actively accepting feature PRs — issue reports on bugs or prediction-quality problems are welcome though.
 
-**Betting Intelligence**
-- Kelly Criterion calculator with auto-suggestions from model probabilities
-- Value bet detection engine (identifies mathematically favourable odds)
-- Accumulator builder with multi-market combinations
-- Full bet history with ROI tracking and JSON export
+## What's inside
 
-**League Data**
-- Standings table with Champions League, Europa, Conference, and relegation zone colouring
-- Form dots (last 5 results) and position movement indicators
-- Top scorers table with medal rankings
-- Season stats with key insights and extended analytics
+**Prediction engine** — Five-model weighted ensemble with per-match confidence scores. The displayed exact scoreline is the **strict argmax of the Poisson grid** for the predicted outcome; no rounded-means tricks, no H2H tempo nudges. The Top-3 Most Likely Scorelines strip shows the surrounding cells so you can see the full distribution.
 
-**User Experience**
-- Dark/light mode with system detection fallback
-- 20 team colour themes (pick your club in Settings)
-- Content-shaped skeleton loading screens across all pages
-- Responsive design from 320px mobile to desktop
-- Accessible: ARIA labels, focus traps, `prefers-reduced-motion` support
+**Live data** — Real-time scores with adaptive polling (30s during live matches, 5min on matchdays, 30min otherwise). Live ticker + toast notifications for goals and status changes.
 
-**AI Features (Optional)**
-- Oracle Chat for natural language match queries (requires ML backend)
-- AI-powered match analysis using form data, H2H stats, and ELO differentials
+**Betting intelligence** — Kelly Criterion calculator with auto-suggestions, value bet detection engine, accumulator builder with Safe / Risky / Favourites preset slips auto-generated from the gameweek's predictions, full bet history with ROI tracking.
 
-## Quick Start
+**Oracle Chat** — Ask natural-language questions about the 33-season archive: "Liverpool's away wins in 2023/24", "last five meetings between Arsenal and Chelsea", "2020/21 season summary". Queries are grounded in bundled match data so the chat works without any backend.
 
-### Prerequisites
-- Node.js 20+ and npm
-- A free API key from [Football-Data.org](https://www.football-data.org/client/register)
+**Historical context** — Every prediction card surfaces home venue record, away venue record, H2H fixture profile, referee style, and matchday tempo drawn from a pre-computed 33-season stats pack.
 
-### Installation
+**Season stats browser** — Multi-year filter across the last 5 seasons; COVID 2020/21 flagged as anomalous.
 
-```bash
-git clone https://github.com/ThomasJButler/The-Premier-League-Oracle.git
-cd The-Premier-League-Oracle/frontend
-npm install
-npm run dev
-```
+**Season Timeline** — Cumulative-points charts for the title race and relegation battle, with rich tooltips and dashed benchmark lines at 40 pts (safety) and 86 pts (title floor) that fade in once the race has shape.
 
-Open `http://localhost:5173` — the setup wizard will guide you through adding your API key.
+**Dark/light mode** — Team colour theming across 20 current Premier League sides. Responsive from 320 px to desktop. Accessible — ARIA labels, focus traps, `prefers-reduced-motion` support.
 
-### Data Source
+## Honest limitations
 
-All match data comes from the [Football-Data.org](https://www.football-data.org/) API v4 (free tier). The platform uses a three-tier cache (memory → IndexedDB → API) to minimise API calls whilst keeping data fresh. Historical data from 2020–2024 is loaded progressively on startup to warm ELO ratings.
+- **Draw predictions** are underweighted — the backend's XGBoost model has AUC-ROC 0.601 for draws (it *can* identify draw-prone matches) but isotonic calibration compresses draw probabilities downward, so the modal-cell pick rarely surfaces a draw even when the aggregate probability is realistic (~25%). Known trade-off. The H/D/A bar still shows honest draw percentages.
+- **Exact scorelines** are inherently noisy. Even the single most-likely scoreline in a typical Premier League fixture sits under 15% probability. Trust the H/D/A bar; treat the exact-score prediction as "if forced to pick" — which is what the UI now literally says.
+- **Free Football-Data.org tier** caps at 10 requests/minute, and the free tier doesn't include xG, shots, possession, cards, or corners. The backend ML model works around this with 114 engineered features from historical results + odds.
 
-### Running Tests
+## Technology
 
-```bash
-cd frontend
-npm run check        # TypeScript + Svelte type checking (0 errors, 0 warnings)
-npm run test:run     # 561 unit tests (Vitest)
-npm run test:e2e     # 43 E2E tests x 3 viewports (Playwright)
-```
+| Layer | Stack |
+|-------|-------|
+| Frontend | Svelte 4.2, TypeScript, Tailwind CSS, Vite, shadcn-svelte components |
+| Charts | Chart.js via svelte-chartjs (theme-aware CSS-var driven) |
+| Caching | Three-tier: memory → IndexedDB → Football-Data.org API |
+| Testing | Vitest unit tests, Playwright E2E across 3 viewports, pytest for the backend |
+| Backend | Python 3.11, FastAPI, XGBoost (isotonic-calibrated free-tier model) |
+| API | Football-Data.org v4 (free tier: 10 req/min) |
+| CI/CD | GitHub Actions — type check, unit + E2E tests, coverage thresholds, ESLint, ruff, production build |
+| Hosting | Vercel edge (frontend + edge function for Anthropic API proxy) |
 
-## Technology Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Svelte 4.2, TypeScript, Tailwind CSS, Vite |
-| **Components** | shadcn-svelte (Button, Card, Badge, Dialog, Sheet, Skeleton, Separator) |
-| **Charts** | Chart.js with svelte-chartjs (theme-aware via CSS variables) |
-| **Caching** | IndexedDB three-tier: memory → IDB → API |
-| **Testing** | Vitest (561 tests, 34 files), Playwright (43 E2E tests, 6 specs) |
-| **Backend** | Python 3, FastAPI, XGBoost (optional — free-tier model, 114 features, 53.3% accuracy) |
-| **API** | Football-Data.org v4 (free tier: 10 req/min) |
-| **CI/CD** | GitHub Actions (type check, unit tests, coverage thresholds, ESLint, ruff, production build) |
-| **Deployment** | Vercel |
-
-## Architecture
+## Architecture map
 
 ```
 frontend/src/
-├── components/        # Svelte UI (Dashboard, Predictions, LiveMatches, etc.)
-│   └── betting/       # Kelly Calculator, Value Bets, Accumulator Builder
-├── lib/               # Prediction engine
-│   ├── advancedPredictions.ts   # ELO, Poisson, xG, Fatigue, Referee models
-│   ├── optimizedPredictions.ts  # Weighted ensemble orchestrator
-│   ├── betBuilder.ts            # Multi-market prediction generator
-│   └── backtest.ts              # Historical accuracy validation
-├── services/          # Data and business logic
-│   ├── api/footballData.ts      # API client with rate-limited request queue
-│   ├── dataService.ts           # Singleton data layer (cache + API + historical loader)
-│   ├── predictionTracker.ts     # Prediction persistence + accuracy tracking
-│   └── betting/                 # Kelly criterion, value detection, bet history
-├── stores/            # Svelte stores (theme, dark mode)
-├── types/             # TypeScript interfaces (Match, Standing, Prediction, etc.)
-└── utils/             # Team logos, markdown renderer, shared helpers
+├── components/                    Svelte UI
+│   ├── Predictions.svelte          Match prediction cards
+│   ├── ChatBot.svelte              Oracle Chat w/ client-side RAG
+│   └── betting/                    Kelly, Value Scanner, Accumulators
+├── lib/
+│   ├── advancedPredictions.ts      ELO, Poisson, xG, Fatigue, Referee models
+│   ├── optimizedPredictions.ts     Weighted ensemble orchestrator
+│   ├── betBuilder.ts               Multi-market grid for combos
+│   └── data/                       Bundled 33-season stats pack + match index
+├── services/
+│   ├── dataService.ts              Singleton data layer (cache + API + warm-up)
+│   ├── predictionTracker.ts        Persistence + accuracy tracking
+│   └── betting/                    Kelly, value detection, bet history
+└── types/                          Shared TypeScript interfaces
 
-backend/               # Python ML backend (optional)
-├── app/api/main.py    # FastAPI server (/predict/free, /chat, /health)
-├── app/api/rag.py     # DataFrame RAG engine for natural language queries
-├── app/features/      # 114-feature engineering pipeline (ELO, draw indicators, odds, form)
-├── app/data/          # Football-Data.org historical collector
-├── models/            # Trained XGBoost model (.joblib)
-└── train_free_tier.py # Training script (XGBoost + stacked OvR ensemble)
+backend/                            Optional ML service (dev-only)
+├── app/api/main.py                 FastAPI server (/predict, /chat, /health)
+├── app/api/rag.py                  DataFrame RAG for natural language queries
+└── train_free_tier.py              XGBoost training pipeline
 ```
 
-The frontend prediction engine runs entirely in the browser — no server required for core functionality. The Python backend is an optional enhancement that adds ML-based predictions (XGBoost with 114 engineered features, 53.3% accuracy) and Oracle Chat (natural language match queries via RAG).
+The frontend engine runs entirely in the browser — Vercel's edge functions proxy the Anthropic API for Oracle Chat but otherwise no server is involved. The Python backend is a local dev convenience (RAG over the full 33-season CSV archive when running `uvicorn` locally); the production deployment doesn't need it because the same query surface is bundled into the frontend as JSON.
 
-## Python Backend (Optional)
+## Responsible usage
 
-The ML backend provides REST API endpoints for match predictions and natural language queries. It requires the `anaconda-ml-ai` conda environment.
-
-```bash
-conda activate anaconda-ml-ai
-cd backend
-pip install -r requirements.txt
-uvicorn app.api.main:app --reload --port 8000
-```
-
-Enable the backend in Settings → ML Backend → toggle "Use ML Backend" and optionally set an API token.
-
-See [backend/README.md](backend/README.md) for full API documentation.
-
-## Responsible Usage
-
-This tool promotes responsible engagement with football predictions. It provides a structured analytical approach to understanding match outcomes — not a guarantee of results. Predictions are based on statistical models and historical data. No prediction system is infallible. If you use the betting tools, always gamble responsibly and within your means.
-
-## Contributing
-
-Contributions are welcome. Please feel free to submit issues or pull requests that align with the vision of an objective, data-driven analysis tool.
+This tool promotes responsible engagement with football predictions. Every number is statistical, grounded in historical data, and every piece of logic that shapes it is in this repository. No prediction system is infallible — statistical favourites lose regularly. If you use the betting tools, gamble responsibly and within your means.
 
 ## License
 
-MIT — see the [LICENSE](LICENSE) file for details.
+MIT — see the [LICENSE](LICENSE) file.

@@ -343,7 +343,7 @@ class FootballDataAPI {
   
   // Get team matches
   public async getTeamMatches(teamId: number, limit: number = 10): Promise<Match[]> {
-    const endpoint = `/teams/${teamId}/matches?limit=${limit}`;
+    const endpoint = `/teams/${teamId}/matches?limit=${limit}&status=FINISHED`;
     const data = await this.fetchWithCache<{ matches: FDMatch[] }>(endpoint);
     
     if (!data) return [];
@@ -370,15 +370,23 @@ class FootballDataAPI {
   
   // Transform Football-Data match to our Match type
   private transformMatch(fdMatch: FDMatch): Match {
-    const result = fdMatch.score.winner === 'HOME_TEAM' ? 'H' :
-                  fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
-                  fdMatch.score.winner === 'DRAW' ? 'D' : null;
-    
+    // `result` is only valid once the match has actually finished.
+    // Football-Data sometimes populates score.winner mid-match, which previously
+    // caused live matches to render as "Full Time" and be marked correct/incorrect
+    // before they ended. `home_goals`/`away_goals` stay populated as the running
+    // score so the live ticker and goal-event detection keep working.
+    const isFinished = fdMatch.status === 'FINISHED';
+    const result = isFinished
+      ? (fdMatch.score.winner === 'HOME_TEAM' ? 'H' :
+         fdMatch.score.winner === 'AWAY_TEAM' ? 'A' :
+         fdMatch.score.winner === 'DRAW' ? 'D' : null)
+      : null;
+
     const halfTimeResult = fdMatch.score.halfTime.home === null || fdMatch.score.halfTime.home === undefined ||
                            fdMatch.score.halfTime.away === null || fdMatch.score.halfTime.away === undefined ? null :
                            fdMatch.score.halfTime.home > fdMatch.score.halfTime.away ? 'H' :
                            fdMatch.score.halfTime.home < fdMatch.score.halfTime.away ? 'A' : 'D';
-    
+
     // Derive season year from match date (July onwards = new season)
     const matchDate = new Date(fdMatch.utcDate);
     const seasonYear = getSeasonYear(matchDate);
@@ -470,14 +478,23 @@ class FootballDataAPI {
 
   // Get team form from recent matches
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[] | null> {
-    const team = await this.getTeamByName(teamName);
-    if (!team) return null;
+    // When matches are provided, filter directly by team name — no need for
+    // the standings lookup (team ID is only required for the API fallback).
+    // This avoids rate-limited API calls when match data is already available.
+    let teamMatches: Match[];
 
-    // Use provided matches or fetch recent team matches
-    const teamMatches = matches?.filter(m => 
-      m.home_team.toLowerCase() === teamName.toLowerCase() || 
-      m.away_team.toLowerCase() === teamName.toLowerCase()
-    ).slice(0, 5) || await this.getTeamMatches(team.id, 5);
+    if (matches && matches.length > 0) {
+      teamMatches = matches.filter(m =>
+        (m.home_team.toLowerCase() === teamName.toLowerCase() ||
+         m.away_team.toLowerCase() === teamName.toLowerCase()) &&
+        m.result
+      ).slice(-5);
+      if (teamMatches.length === 0) return null;
+    } else {
+      const team = await this.getTeamByName(teamName);
+      if (!team) return null;
+      teamMatches = await this.getTeamMatches(team.id, 5);
+    }
 
     return teamMatches.map(match => {
       const isHome = match.home_team.toLowerCase() === teamName.toLowerCase();

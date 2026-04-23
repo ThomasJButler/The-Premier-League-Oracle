@@ -12,10 +12,12 @@ The Premier League Oracle has two independently deployable components:
 | Variable | Component | Required? | Description |
 |----------|-----------|-----------|-------------|
 | `VITE_FOOTBALL_DATA_API_KEY` | Frontend | No | Football-Data.org API key. Users can also set this in the app's Settings UI (stored in localStorage) |
-| `OPENAI_API_KEY` | Frontend (Edge Function) + Backend | No | OpenAI API key for the Oracle Chat. Without it, users must provide their own key in the chat UI |
-| `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Claude model support (added in P7b). Without it, the chat falls back to OpenAI or requires a user-supplied key |
+| `VITE_BACKEND_URL` | Frontend | No | Full URL of the deployed Python backend (e.g. `https://ploracle-backend.onrender.com`). When unset, the frontend uses the `/api/oracle` Vite dev proxy |
+| `ANTHROPIC_API_KEY` | Frontend (Edge Function) + Backend | No | Anthropic API key for Oracle Chat and AI match analysis. Without it, users must provide their own key in the chat UI |
 | `FOOTBALL_DATA_API_KEY` | Backend | No | Football-Data.org API key for live match data. Server starts without it but match endpoints return empty data |
-| `ORACLE_AI_MODEL` | Frontend (Edge Function) | No | AI model for Oracle Chat (optional). Default: gpt-4o-mini. Supports gpt-4o-mini, gpt-4o, gpt-4-turbo, claude-3-5-haiku-latest, claude-3-5-sonnet-latest, claude-3-opus-latest |
+| `ORACLE_AI_MODEL` | Frontend (Edge Function) + Backend | No | Claude model for Oracle Chat and analyses. Default: `claude-haiku-4-5-20251001`. Also supports `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-7` |
+| `ORACLE_DRAW_THRESHOLD` | Backend | No | Override the trained draw-classifier cascade threshold (default ~0.42) |
+| `ORACLE_DRAW_CASCADE` | Backend | No | `1` force-enables the draw classifier cascade, `0` force-disables. Defaults to the `improves_accuracy` flag saved in the trained model |
 
 ---
 
@@ -37,22 +39,23 @@ The frontend is a static Svelte SPA — no server-side rendering. Vercel deploys
    - Output directory: `dist`
    - Framework: Vite (auto-detected)
 4. **Add environment variables** (optional):
-   - `OPENAI_API_KEY` — enables server-side ChatBot without exposing the key to browsers
-   - `ANTHROPIC_API_KEY` — enables Claude model support (P7b); falls back to OpenAI if not set
+   - `ANTHROPIC_API_KEY` — enables server-side ChatBot and AI analyses without exposing the key to browsers
+   - `ORACLE_AI_MODEL` — optional override of the default `claude-haiku-4-5-20251001`
    - `VITE_FOOTBALL_DATA_API_KEY` — pre-configures the API key (users can override in Settings)
 5. **Deploy** — Vercel handles the rest. Preview deployments are created for every PR.
 
 ### Edge Function (`api/chat.ts`)
 
-The `api/chat.ts` file at the repository root is a Vercel Edge Function that proxies ChatBot requests to OpenAI. It runs on V8 isolates (not Node.js).
+The `api/chat.ts` file at the repository root is a Vercel Edge Function that proxies ChatBot requests to Anthropic. It runs on V8 isolates (not Node.js).
 
-**Important:** Vercel must be configured to deploy from the **repository root** (not `frontend/`) for the Edge Function to be picked up. If you set the root directory to `frontend/`, the `api/` directory at the repo root will be outside the deployment scope and the Edge Function will not work. In that case, users fall back to providing their own OpenAI key in the chat UI.
+**Important:** Vercel must be configured to deploy from the **repository root** (not `frontend/`) for the Edge Function to be picked up. If you set the root directory to `frontend/`, the `api/` directory at the repo root will be outside the deployment scope and the Edge Function will not work. In that case, users fall back to providing their own Anthropic key in the chat UI.
 
 **How it works:**
 - Accepts `POST /api/chat` with `{ messages: [...], apiKey?: string, model?: string }`
-- Supports both OpenAI and Anthropic (Claude) models — the active model is resolved from the request body → `ORACLE_AI_MODEL` env var → `gpt-4o-mini` default
-- Uses server-side API keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) if set, otherwise falls back to the user-provided key
-- Returns the response JSON to the frontend
+- Uses Anthropic Claude exclusively — model resolves from request body → `ORACLE_AI_MODEL` env var → `claude-haiku-4-5-20251001` default
+- Uses the server-side `ANTHROPIC_API_KEY` if set, otherwise falls back to the user-provided key
+- Applies ephemeral prompt caching to the system prompt, so repeat requests within the same gameweek hit the cache (~0.1x the normal cost on cached tokens)
+- Returns the response normalised to a `{choices:[{message:{content}}]}` shape
 
 ### Local Development
 
@@ -87,8 +90,8 @@ cd backend
 
 # Set environment variables (optional)
 export FOOTBALL_DATA_API_KEY=your_key_here
-export OPENAI_API_KEY=your_key_here
-export ANTHROPIC_API_KEY=your_key_here
+export ANTHROPIC_API_KEY=sk-ant-your_key_here
+export ORACLE_AI_MODEL=claude-haiku-4-5-20251001  # optional override
 
 # Build and run
 docker-compose up --build
@@ -165,37 +168,48 @@ The training script produces:
 
 Vercel provides automatic deploys from git, preview URLs for PRs, and edge function support. The `frontend/vercel.json` is pre-configured.
 
-### Backend: Container Hosts
+### Backend: Render (via `render.yaml` Blueprint)
 
-The Docker image can be deployed to any container hosting platform:
+The repo ships a Render Blueprint at the root — `render.yaml` — that declares a Docker-based web service pointing at `backend/Dockerfile`. This is the primary recommended path.
+
+**One-time setup:**
+
+1. Push the repo to GitHub (or GitLab).
+2. In the Render dashboard, click **New -> Blueprint** and pick this repo.
+3. Render reads `render.yaml` and provisions a free-tier web service.
+4. Open the new service and, under **Environment**, fill in the two secret env vars flagged `sync: false`:
+   - `ANTHROPIC_API_KEY` — `sk-ant-...`
+   - `FOOTBALL_DATA_API_KEY` — your Football-Data.org key
+5. Trigger an initial deploy. The first build takes ~5 min (Python + XGBoost wheels).
+6. Once the service is live, copy the public URL (e.g. `https://premier-league-oracle-backend.onrender.com`).
+
+**Wiring the frontend up:**
+
+1. In the Vercel dashboard, open the project -> **Settings** -> **Environment Variables**.
+2. Add `VITE_BACKEND_URL` set to the Render URL from step 6 above.
+3. Redeploy the frontend (Vercel does this automatically when an env var changes).
+
+The frontend reads this env var at build time (`frontend/src/services/backendService.ts`). In dev the var is unset, so the call falls through to `/api/oracle` and the Vite proxy routes it to `localhost:8000`. In production the var is set, so the frontend calls the Render URL directly as a cross-origin request. The backend's CORS allow-list already includes `*.vercel.app`, so no proxy or rewrite is needed.
+
+**Model file:** `backend/models/xgboost_free_tier.joblib` is committed to the repo (3 MB) and copied into the Docker image at build time — `/predict/free` works immediately on first deploy without retraining.
+
+**Free-tier caveat:** Render's free plan spins the dyno down after 15 minutes of inactivity. The first request after a cold start can take 30-60 seconds. Upgrade to Starter (US$7/mo) for always-on.
+
+### Other Container Hosts
+
+The same Dockerfile works on any container platform:
 
 | Platform | Notes |
 |----------|-------|
 | **Railway** | `railway up` from the `backend/` directory. Set env vars in the dashboard |
 | **Fly.io** | `fly launch` then `fly deploy`. Dockerfile is auto-detected |
-| **Render** | Connect the repo, set root directory to `backend/`, select Docker runtime |
 | **Google Cloud Run** | `gcloud run deploy` with the built Docker image |
 | **AWS ECS / Fargate** | Push image to ECR, create task definition with port 8000 |
 
 All platforms need:
 1. Port 8000 exposed
-2. `FOOTBALL_DATA_API_KEY`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` set as environment variables
-3. The trained model file baked into the Docker image (or mounted as a volume)
-
-### Connecting Frontend to Backend
-
-The frontend calls `/api/oracle/*` for all backend requests. In dev, the Vite proxy routes these to `localhost:8000`. In production, you need a Vercel rewrite to forward these requests to your backend host.
-
-Add to `frontend/vercel.json`:
-
-```json
-{
-  "rewrites": [
-    { "source": "/api/oracle/:path*", "destination": "https://your-backend-host.example.com/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
+2. `FOOTBALL_DATA_API_KEY` and `ANTHROPIC_API_KEY` set as environment variables
+3. The deployed URL copied into `VITE_BACKEND_URL` on Vercel
 
 The backend's CORS config already allows all `*.vercel.app` origins.
 
@@ -227,7 +241,7 @@ Vercel deploys automatically on push — independent of the CI pipeline.
 |-------|----------|
 | `XGBoostError: Library could not be loaded` | macOS: `brew install libomp`. Linux: `apt-get install libgomp1` |
 | `/predict/free` returns 503 | Model not loaded. Run `python train_free_tier.py` first |
-| ChatBot says "API key required" | Set `OPENAI_API_KEY` in Vercel env vars or provide a key in the chat UI |
+| ChatBot says "API key required" | Set `ANTHROPIC_API_KEY` in Vercel env vars or provide an `sk-ant-...` key in the chat UI |
 | Football data returns empty | Set `FOOTBALL_DATA_API_KEY` env var or configure in the app's Settings |
 | CORS errors from frontend | Backend CORS allows `localhost:5173`, `localhost:4173`, and `*.vercel.app`. Check your backend URL matches |
 | Docker build fails on ARM Mac | Add `platform: linux/amd64` to `docker-compose.yml` if targeting x86 images |

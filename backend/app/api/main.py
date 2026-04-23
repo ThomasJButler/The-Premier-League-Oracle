@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import anthropic
 import numpy as np
 import uvicorn
 from dotenv import load_dotenv
@@ -67,13 +68,31 @@ except ImportError as e:
 
 # Environment variables
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Supported Claude models — keep in sync with api/chat.ts ALLOWED_MODELS
+# and frontend/src/lib/constants.ts AI_MODELS.
+ALLOWED_AI_MODELS = {
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+}
+DEFAULT_AI_MODEL = "claude-haiku-4-5-20251001"
 
 # Free-tier model state
 free_tier_model = None  # xgb.Booster loaded from joblib
 free_tier_metadata: dict[str, Any] = {}  # Model metadata (version, features, etc.)
 free_tier_engineer: Any | None = None  # FreeTierFeatureEngineer for live predictions
+
+# Draw classifier cascade — a dedicated binary draw-vs-not-draw model that
+# overrides the main model when it's confident a match will be drawn. Loaded
+# from the joblib payload at startup when available and only used when training
+# confirmed it improves validation accuracy.
+draw_classifier_model = None  # xgb.Booster (binary)
+draw_classifier_threshold: float | None = None  # P(draw) threshold for cascade
+_draw_cascade_overrides = 0  # Counts of cascade overrides since startup
+_draw_cascade_total = 0
 
 # In-memory rate limiter for /predict/free
 _rate_limit_store: dict[str, list[float]] = {}
@@ -89,6 +108,7 @@ async def lifespan(app: FastAPI):
 
     # Load free-tier model if available
     global free_tier_model, free_tier_metadata, free_tier_engineer
+    global draw_classifier_model, draw_classifier_threshold
     free_tier_model_path = BACKEND_ROOT / "models" / "xgboost_free_tier.joblib"
     if free_tier_model_path.exists() and FREE_TIER_AVAILABLE:
         try:
@@ -109,6 +129,35 @@ async def lifespan(app: FastAPI):
                 logger.info("Probability calibrators loaded")
             if payload.get('stacked_ensemble'):
                 logger.info("Stacked ensemble loaded (3 OvR classifiers + meta-learner)")
+
+            # Activate the dedicated draw classifier cascade if training
+            # confirmed it improved validation accuracy. The env var
+            # ORACLE_DRAW_THRESHOLD overrides the trained threshold if set.
+            draw_clf_payload = payload.get('draw_classifier')
+            if draw_clf_payload and draw_clf_payload.get('model') is not None:
+                trained_threshold = float(draw_clf_payload.get('threshold', 0.42))
+                env_threshold = os.getenv('ORACLE_DRAW_THRESHOLD')
+                threshold = float(env_threshold) if env_threshold else trained_threshold
+                improves = bool(draw_clf_payload.get('improves_accuracy', False))
+                # Default to activating when training flagged it as beneficial;
+                # env var ORACLE_DRAW_CASCADE=1 force-enables, =0 force-disables.
+                force = os.getenv('ORACLE_DRAW_CASCADE')
+                activate = (force == '1') if force in ('0', '1') else improves
+                if activate:
+                    draw_classifier_model = draw_clf_payload['model']
+                    draw_classifier_threshold = threshold
+                    logger.info(
+                        "Draw classifier cascade active (threshold=%.3f, training flagged improves=%s)",
+                        threshold, improves,
+                    )
+                else:
+                    logger.info(
+                        "Draw classifier present but cascade disabled (improves_accuracy=%s, "
+                        "set ORACLE_DRAW_CASCADE=1 to force-enable)",
+                        improves,
+                    )
+            else:
+                logger.info("No draw classifier in payload — skipping cascade")
             logger.info(
                 "Free-tier model loaded: version %s, %d features",
                 payload.get('version', 'unknown'),
@@ -391,24 +440,24 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             ovr_scaled = stacked['meta_scaler'].transform(ovr_probs)
             probs = stacked['meta_learner'].predict_proba(ovr_scaled)[0]
         else:
-            # Single XGBoost with calibration (isotonic or Platt scaling)
+            # Single XGBoost with calibration. Delegate to the canonical
+            # `apply_calibrators` helper in `train_free_tier.py` so dispatch
+            # stays uniform across training and inference — the helper handles
+            # all six calibrator kinds (dirichlet, dirichlet_reg, temperature,
+            # beta, platt, isotonic) and was unit-tested in
+            # `tests/test_calibration.py`. The previous inline dispatch
+            # silently fell through to raw probabilities for single-object
+            # non-dirichlet calibrators (temperature/beta/dirichlet_reg).
+            from train_free_tier import apply_calibrators
+
             calibrators = free_tier_metadata.get('calibrators')
             cal_method = free_tier_metadata.get('calibration_method', 'isotonic')
-            if calibrators and len(calibrators) == 3:
-                if cal_method == 'platt':
-                    cal_probs = np.array([
-                        float(cal.predict_proba(
-                            np.array([[raw_probs[i]]])
-                        )[0, 1])
-                        for i, cal in enumerate(calibrators)
-                    ])
-                else:
-                    cal_probs = np.array([
-                        float(cal.predict([raw_probs[i]])[0])
-                        for i, cal in enumerate(calibrators)
-                    ])
-                total = cal_probs.sum()
-                probs = cal_probs / total if total > 0 else raw_probs
+            if calibrators is not None:
+                probs = apply_calibrators(
+                    np.asarray(raw_probs).reshape(1, -1),
+                    calibrators,
+                    cal_method,
+                )[0]
             else:
                 probs = raw_probs
 
@@ -425,6 +474,29 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
         # draw accuracy vs 0% after calibration, while the returned
         # probabilities still use calibrated values for better estimates.
         outcome_idx = int(np.argmax(raw_probs))
+        draw_cascade_override = False
+        draw_clf_prob: float | None = None
+
+        # Dedicated draw classifier cascade: when the binary draw model is
+        # confident a match will be drawn (P(draw) > threshold), override the
+        # main model's prediction. Recovers part of the draw signal that the
+        # calibrated 3-class model suppresses.
+        if draw_classifier_model is not None and draw_classifier_threshold is not None:
+            global _draw_cascade_overrides, _draw_cascade_total
+            _draw_cascade_total += 1
+            draw_clf_prob = float(draw_classifier_model.predict(dmatrix)[0])
+            if draw_clf_prob > draw_classifier_threshold:
+                outcome_idx = 1  # Draw
+                draw_cascade_override = True
+                _draw_cascade_overrides += 1
+                # Log override rate periodically so Tom can tune the threshold
+                if _draw_cascade_total % 20 == 0:
+                    override_rate = _draw_cascade_overrides / _draw_cascade_total
+                    logger.info(
+                        "Draw cascade override rate: %.1f%% (%d/%d since startup)",
+                        override_rate * 100, _draw_cascade_overrides, _draw_cascade_total,
+                    )
+
         outcomes = ['Home win', 'Draw', 'Away win']
         predicted = outcomes[outcome_idx]
 
@@ -434,7 +506,7 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             sorted(importance.items(), key=lambda x: x[1], reverse=True)[:10]
         )
 
-        return {
+        response: dict[str, Any] = {
             "home_team": home,
             "away_team": away,
             "probabilities": {
@@ -447,6 +519,13 @@ async def predict_free_tier(prediction_request: FreeTierPredictionRequest,
             "model_version": free_tier_metadata.get('version', 'unknown'),
             "feature_importance": top_features,
         }
+        if draw_clf_prob is not None:
+            response["draw_classifier"] = {
+                "probability": round(draw_clf_prob, 4),
+                "threshold": round(draw_classifier_threshold or 0.0, 4),
+                "overrode_main_model": draw_cascade_override,
+            }
+        return response
 
     except HTTPException:
         raise
@@ -540,8 +619,8 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
 
     Parses user intent, queries the in-memory historical match DataFrame
     (2,191+ matches), builds an augmented prompt with relevant data, and
-    calls the OpenAI API server-side. No client-side API key needed when
-    OPENAI_API_KEY is set.
+    calls the Anthropic Claude API server-side. No client-side API key
+    needed when ANTHROPIC_API_KEY is set.
     """
     # Rate limiting
     client_ip = _get_client_ip(request)
@@ -551,28 +630,21 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
             detail="Rate limit exceeded — maximum 60 requests per minute",
         )
 
-    # Determine which AI provider to use
-    ai_model = os.getenv("ORACLE_AI_MODEL", "gpt-4o-mini")
-    use_anthropic = ai_model.startswith("claude")
+    # Resolve Claude model — ORACLE_AI_MODEL overrides the default, but must
+    # be one of the allow-listed Claude models. Unknown values fall back.
+    env_model = os.getenv("ORACLE_AI_MODEL", "")
+    ai_model = env_model if env_model in ALLOWED_AI_MODELS else DEFAULT_AI_MODEL
 
     # Resolve API key: server env var takes priority, then request header
-    if use_anthropic:
-        api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
-        provider_name = "Anthropic"
-        env_var_name = "ANTHROPIC_API_KEY"
-        header_name = "X-Anthropic-Key"
-    else:
-        api_key = OPENAI_API_KEY or request.headers.get('x-openai-key', '')
-        provider_name = "OpenAI"
-        env_var_name = "OPENAI_API_KEY"
-        header_name = "X-OpenAI-Key"
+    api_key = ANTHROPIC_API_KEY or request.headers.get('x-anthropic-key', '')
 
     if not api_key:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"No {provider_name} API key configured. "
-                f"Set the {env_var_name} environment variable or pass via {header_name} header."
+                "No Anthropic API key configured. "
+                "Set the ANTHROPIC_API_KEY environment variable or pass via "
+                "X-Anthropic-Key header."
             ),
         )
 
@@ -614,36 +686,56 @@ async def chat_rag(request_body: ChatRAGRequest, request: Request):
     user_messages.append({"role": "user", "content": request_body.message})
 
     try:
-        if use_anthropic:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model=ai_model,
-                max_tokens=800,
-                system=system_prompt,
-                messages=user_messages,  # type: ignore[arg-type]
-            )
-            reply = response.content[0].text if response.content else ""
+        client = anthropic.Anthropic(api_key=api_key)
+
+        # Prompt caching: the RAG system prompt (team stats, player data,
+        # match context) is reused across turns in a session — ephemeral
+        # caching turns repeat turns into ~0.1x cost reads. Only request
+        # caching when the prompt is long enough to plausibly meet the
+        # model's minimum cacheable prefix (~2048 tokens for Sonnet 4.6,
+        # 4096 for Haiku 4.5); ~4 chars/token → 8000 char floor.
+        if len(system_prompt) >= 8000:
+            system_field = [{
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }]
         else:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
-            messages: list[dict[str, str]] = [
-                {"role": "system", "content": system_prompt},
-                *user_messages,
-            ]
-            response = client.chat.completions.create(
-                model=ai_model,
-                messages=messages,  # type: ignore[arg-type]
-                max_tokens=800,
-                temperature=0.7,
-            )
-            reply = response.choices[0].message.content or ""
+            system_field = [{"type": "text", "text": system_prompt}]
+
+        response = client.messages.create(
+            model=ai_model,
+            max_tokens=1024,
+            system=system_field,
+            messages=user_messages,  # type: ignore[arg-type]
+        )
+        # Concatenate all text blocks — adaptive thinking on Opus 4.6/4.7 can
+        # emit thinking blocks before the text block.
+        reply = "".join(
+            getattr(block, "text", "")
+            for block in (response.content or [])
+            if getattr(block, "type", None) == "text"
+        )
 
         return ChatRAGResponse(reply=reply, grounded=has_data)
     except HTTPException:
         raise
+    except anthropic.APIStatusError as e:
+        # Typed SDK exceptions carry the upstream status + Anthropic's own
+        # error message. Surface both so invalid-key and other 4xx failures
+        # are diagnosable instead of hiding behind a generic 502.
+        upstream_status = getattr(e, "status_code", 502)
+        detail = getattr(e, "message", "") or str(e)
+        logger.error(
+            "Chat RAG Anthropic call failed (status=%s): %s",
+            upstream_status, detail,
+        )
+        raise HTTPException(
+            status_code=upstream_status if 400 <= upstream_status < 600 else 502,
+            detail=f"Anthropic API error ({upstream_status}). {detail}".strip(),
+        )
     except Exception as e:
-        logger.error("Chat RAG %s call failed: %s", provider_name, e)
+        logger.error("Chat RAG Anthropic call failed: %s", e)
         raise HTTPException(
             status_code=502,
             detail="Failed to generate response — please try again",

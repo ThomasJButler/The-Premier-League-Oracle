@@ -2,6 +2,71 @@
 
 All notable changes to The Premier League Oracle are documented here.
 
+## 20 March 2026 — Housekeeping: stale file removal and doc accuracy
+
+### Removed
+- **`PROMPT_plan.md` and `PROMPT_build.md`** — previously documented as deleted but still present on disk. Now actually removed. These Ralph loop orchestration files are superseded by CLAUDE.md and AGENTS.md
+
+### Fixed
+- **Backend README test counts** — updated from 163 tests / 4 files to 190 tests / 5 files. Added missing `test_web_search.py` (22 tests) and corrected `test_free_tier_features.py` count (45 → 60) and `test_rag.py` description (added player data note). Project structure listing also updated to show all 5 test files
+
+### Test impact
+- All 561 frontend tests passing, 0 type errors, 0 svelte-check warnings
+
+---
+
+## 20 March 2026 — Code quality: ESLint violations and doc accuracy
+
+### Fixed
+- **Unused import** — removed `MODEL_WEIGHTS` from `backtest.ts` (imported but never referenced)
+- **`let` → `const`** — `totalMatchdays` in `SeasonTimeline.svelte` is assigned from a constant and never reassigned
+- **`console.info` → `console.warn`** — ELO warm-up log in `dataService.ts` now complies with ESLint `no-console` rule (only `warn`/`error` allowed)
+- **Svelte 4 reactive dependency** — added `eslint-disable-line` for comma-operator pattern in `DataFreshness.svelte`, consistent with existing pattern in `LiveMatches.svelte`
+- **Stale Spec 08 count** — updated from "~95% (23/24)" to "100% (29/29 active)" in both CLAUDE.md and IMPLEMENTATION_PLAN.md. All 29 active checkboxes in Reqs 1–5 are checked; Req 6 (Pro-tier) has no acceptance criteria
+
+### Removed
+- **`PROMPT_plan.md` and `PROMPT_build.md`** — Ralph loop orchestration files superseded by CLAUDE.md and AGENTS.md
+
+### Test impact
+- All 561 tests passing, 0 type errors, 0 svelte-check warnings
+
+---
+
+## 20 March 2026 — P7m Design Refinements: Final 3 (10/10 complete)
+
+### Changed: Skeleton consistency, responsive form dots, score animation
+- **Content-aware skeleton loaders** — SeasonTimeline migrated from raw `bg-muted animate-pulse` to shared `.skeleton` shimmer class with content-shaped placeholders (circular event icons, staggered card delays)
+- **Form dots responsive fix** — Prediction card form dots now `w-2 h-2 sm:w-3 sm:h-3` — 8px on mobile prevents crowding at 320px viewport
+- **Score pop on prediction load** — `animate-score-pop` class (scale 1.5→1.05→1 over 0.5s) triggers when predicted score first renders, not just on live score changes. `prefers-reduced-motion` guard active
+
+### Test impact
+- `SeasonTimeline.test.ts` updated to query `.skeleton` instead of `.animate-pulse` — all 561 tests passing
+
+---
+
+## 20 March 2026 — P7m Design Refinements (7/10 complete)
+
+### Changed: Team-aware colour system and UI polish
+
+**High impact:**
+- **Probability bar team colours** — Prediction card outcome bars now use actual team primary colours from `getTeamColor()` instead of generic blue/amber/emerald. Home team colour for H, away for A, neutral amber for D. Hex opacity suffixes for predicted vs non-predicted states
+- **Featured match hero uplift** — Logos enlarged from 28→48px (responsive 40→48), names bolded to `font-extrabold`, gradient background, `hover:scale-[1.02]` with shadow
+- **Hardcoded neon green → CSS vars** — All `rgba(0, 255, 135)` in `btn-neon` shadows, `livePulse` keyframes, and `--gradient-accent` replaced with `hsl(var(--accent))`. Team theming now controls all glow effects
+- **Sidebar nav truncation** — `truncate` class and `title` tooltip on all nav label spans
+
+**Medium/low impact:**
+- **Typography contrast audit** — `white/60` → `white/70` (hero subtitle), `white/50` → `white/60` (timestamp), `white/40` → `white/55` (decorative text). Zero sub-WCAG opacity text remaining
+- **Button press feedback** — `active:scale-[0.97]` on all shadcn Button variants and `.btn-neon`. Changed `transition-colors` to `transition-all`
+- **Navigation active state** — Gradient fill (`accent/15 → accent/06`) replaces flat `bg-accent/10`, added `font-semibold`. Mobile nav also enhanced
+
+### Test impact
+- `Predictions.test.ts` mock updated to export `getTeamColor` alongside `getTeamLogo` — all 561 tests passing
+
+### Why
+These 7 refinements eliminate the most impactful items from the P7m design audit. The neon green fix is particularly important — without it, team themes had no effect on glow and pulse animations, making the theming system feel incomplete. The probability bar change transforms generic bars into visual team identity markers.
+
+---
+
 ## 20 March 2026 — Documentation accuracy sweep and stale file cleanup
 
 ### Fixed: Stale numbers, misleading targets, and missing configuration

@@ -287,3 +287,126 @@ class TestGetClientIp:
         mock_request.headers = {}
         mock_request.client = None
         assert _get_client_ip(mock_request) == 'unknown'
+
+
+# ---------------------------------------------------------------------------
+# Tests: Draw classifier cascade
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason='fastapi not available')
+class TestDrawClassifierCascade:
+    """
+    The draw classifier cascade overrides the main model when its own draw
+    probability exceeds the tuned threshold. Used to recover draw signal
+    that isotonic calibration of the 3-class model suppresses.
+    """
+
+    def _mock_prediction_state(self, main_module, main_probs, draw_prob, threshold):
+        try:
+            import xgboost  # noqa: F401
+        except Exception:
+            pytest.skip('xgboost not available (libomp missing)')
+
+        from app.features.free_tier_features import FreeTierFeatureEngineer
+
+        mock_main = MagicMock()
+        mock_main.predict.return_value = np.array([main_probs])
+        mock_draw = MagicMock()
+        mock_draw.predict.return_value = np.array([draw_prob])
+
+        feature_names = FreeTierFeatureEngineer.FEATURE_NAMES
+        mock_engineer = MagicMock()
+        mock_engineer.create_features.return_value = {name: 0.5 for name in feature_names}
+
+        main_module.free_tier_model = mock_main
+        main_module.free_tier_metadata = {
+            'feature_names': feature_names,
+            'version': 'test-cascade',
+            'feature_importance': {},
+        }
+        main_module.free_tier_engineer = mock_engineer
+        main_module.draw_classifier_model = mock_draw
+        main_module.draw_classifier_threshold = threshold
+        _rate_limit_store.clear()
+
+    def test_cascade_overrides_main_model_when_draw_prob_above_threshold(self, client):
+        import app.api.main as main_module
+        originals = (
+            main_module.free_tier_model, main_module.free_tier_metadata,
+            main_module.free_tier_engineer, main_module.draw_classifier_model,
+            main_module.draw_classifier_threshold,
+        )
+        # Main says home (0.5), but draw classifier is confident it's a draw
+        self._mock_prediction_state(main_module,
+            main_probs=[0.50, 0.25, 0.25],
+            draw_prob=0.70,
+            threshold=0.42,
+        )
+        try:
+            response = client.post('/predict/free', json={
+                'home_team': 'Arsenal', 'away_team': 'Chelsea',
+            })
+            assert response.status_code == 200
+            data = response.json()
+            assert data['predicted_outcome'] == 'Draw'
+            assert data['draw_classifier']['probability'] == pytest.approx(0.70, abs=1e-3)
+            assert data['draw_classifier']['overrode_main_model'] is True
+        finally:
+            (main_module.free_tier_model, main_module.free_tier_metadata,
+             main_module.free_tier_engineer, main_module.draw_classifier_model,
+             main_module.draw_classifier_threshold) = originals
+
+    def test_cascade_does_not_fire_below_threshold(self, client):
+        import app.api.main as main_module
+        originals = (
+            main_module.free_tier_model, main_module.free_tier_metadata,
+            main_module.free_tier_engineer, main_module.draw_classifier_model,
+            main_module.draw_classifier_threshold,
+        )
+        # Main says home (0.6), draw classifier low-confidence draw (0.30)
+        self._mock_prediction_state(main_module,
+            main_probs=[0.60, 0.20, 0.20],
+            draw_prob=0.30,
+            threshold=0.42,
+        )
+        try:
+            response = client.post('/predict/free', json={
+                'home_team': 'Arsenal', 'away_team': 'Chelsea',
+            })
+            assert response.status_code == 200
+            data = response.json()
+            assert data['predicted_outcome'] == 'Home win'
+            assert data['draw_classifier']['overrode_main_model'] is False
+        finally:
+            (main_module.free_tier_model, main_module.free_tier_metadata,
+             main_module.free_tier_engineer, main_module.draw_classifier_model,
+             main_module.draw_classifier_threshold) = originals
+
+    def test_no_cascade_when_classifier_absent(self, client):
+        """When no draw classifier is loaded, response omits the draw_classifier key
+        and predicted outcome comes purely from the main model."""
+        import app.api.main as main_module
+        originals = (
+            main_module.free_tier_model, main_module.free_tier_metadata,
+            main_module.free_tier_engineer, main_module.draw_classifier_model,
+            main_module.draw_classifier_threshold,
+        )
+        self._mock_prediction_state(main_module,
+            main_probs=[0.50, 0.25, 0.25],
+            draw_prob=0.99,  # would override if classifier were active
+            threshold=0.42,
+        )
+        main_module.draw_classifier_model = None
+        main_module.draw_classifier_threshold = None
+        try:
+            response = client.post('/predict/free', json={
+                'home_team': 'Arsenal', 'away_team': 'Chelsea',
+            })
+            assert response.status_code == 200
+            data = response.json()
+            assert data['predicted_outcome'] == 'Home win'
+            assert 'draw_classifier' not in data
+        finally:
+            (main_module.free_tier_model, main_module.free_tier_metadata,
+             main_module.free_tier_engineer, main_module.draw_classifier_model,
+             main_module.draw_classifier_threshold) = originals

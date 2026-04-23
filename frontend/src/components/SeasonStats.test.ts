@@ -241,4 +241,17 @@ describe('SeasonStats', () => {
     // Footer is outside the loading/error/loaded conditional — always rendered
     expect(screen.getByText(/Did you know/)).toBeInTheDocument();
   });
+
+  it('surfaces the COVID 2020/21 anomaly when that historical season is selected', async () => {
+    // Historical mode reads synchronously from the stats pack — it must not
+    // hit the live API, and the anomaly banner proves the multi-season plumbing works.
+    const { component } = render(SeasonStats, { props: { selectedSeason: '2020/21' } });
+    await (component as any).loadSeasonStats();
+    await act();
+    expect(dataService.getCurrentSeasonMatches).not.toHaveBeenCalled();
+    expect(screen.getByRole('status', { name: /anomalous season/i })).toBeInTheDocument();
+    expect(screen.getByText('Anomalous season')).toBeInTheDocument();
+    // 2020/21 reasons reference home/away win rate shifts vs the 33-season mean
+    expect(screen.getByText(/homeWinRate .* vs 33-season mean/)).toBeInTheDocument();
+  });
 });

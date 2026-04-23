@@ -1,0 +1,31 @@
+# Render Blueprint — Premier League Oracle Backend
+#
+# Deploy with: https://render.com/deploy?repo=<this-repo-url>
+# or via the Render dashboard: New -> Blueprint -> select this repo.
+#
+# The frontend (on Vercel) reaches this service via the VITE_BACKEND_URL env
+# var set in Vercel's dashboard after the Render URL is known.
+#
+# Secrets (ANTHROPIC_API_KEY, FOOTBALL_DATA_API_KEY) use sync:false — declared
+# here, but the actual values must be entered in Render's dashboard. They
+# never land in git.
+
+services:
+  - type: web
+    name: premier-league-oracle-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FOOTBALL_DATA_API_KEY
+        sync: false
+      - key: ORACLE_AI_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: PYTHONUNBUFFERED
+        value: "1"

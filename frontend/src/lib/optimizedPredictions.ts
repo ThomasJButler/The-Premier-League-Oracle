@@ -4,6 +4,31 @@ import { BackendUnavailableError } from '../types';
 import { EloRatingSystem, PoissonPredictor, FatigueAnalyzer, RefereeAnalyzer, sharedEloSystem } from './advancedPredictions';
 import { backendService } from '../services/backendService';
 import { predictionTracker } from '../services/predictionTracker';
+import { getPairStats, getTeamProfile } from './data/statsPack';
+
+// Blend weight for 33-season historical stats vs current-form signal.
+// 0.3 = 30% historical influence, 70% current. Small enough to let recent
+// form and team strength dominate, large enough to lift known high-scoring
+// fixtures (Liverpool-Arsenal) and dampen defensive ones (Burnley-Palace).
+const STATS_PACK_BLEND_WEIGHT = 0.3;
+// Minimum historical sample before we trust the blend. Below this, fall
+// through to the raw current-form signal.
+const STATS_PACK_PAIR_MIN_MATCHES = 5;
+const STATS_PACK_TEAM_MIN_MATCHES = 20;
+
+// Opposition-tier blend: when ELO gap identifies a strong favourite, blend
+// the favourite's lambda toward their historical average goals scored vs
+// bottom-6 opposition, and blend the underdog's lambda toward their
+// historical average vs top-6 opposition. This surfaces 3+ goal scorelines
+// for "Arsenal vs Burnley"-style fixtures where the aggregated Poisson at
+// fitted λ ≈ 2.3 narrowly prefers 2-0 over 3-0 (11% vs 8%) and the modal
+// display always picks 2-0.
+const ELO_TIER_THRESHOLD = 150;
+// Blend weight for the tier-specific anchor. 0.3 is conservative enough
+// not to distort tight fixtures while enough to shift blowouts into the
+// 3-x display range. Only fires when the tier has ≥30 historical matches.
+const TIER_BLEND_WEIGHT = 0.3;
+const TIER_MIN_MATCHES = 30;
 import {
   VALUE_ODDS_MARGIN, DEFAULT_HOME_WIN_RATE, DEFAULT_DRAW_RATE,
   POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX, POISSON_FALLBACK_HOME_GOALS,
@@ -12,12 +37,14 @@ import {
   FORM_RECENCY_WEIGHTS, FORM_DRAW_WEIGHT, FORM_SCORE_MIN, FORM_SCORE_MAX,
   FORM_EXCELLENT_THRESHOLD, FORM_POOR_THRESHOLD,
   FORM_DRAW_BASE, FORM_DRAW_SENSITIVITY, FORM_DRAW_MIN, FORM_DRAW_MAX,
+  FORM_ELO_BETA,
   STANDINGS_POSITION_STEP,
   CONFIDENCE_MIN, CONFIDENCE_MAX, CONFIDENCE_BOOST_THRESHOLD, CONFIDENCE_BOOST_AMOUNT,
   CONFIDENCE_PENALTY_THRESHOLD, CONFIDENCE_PENALTY_AMOUNT, MODEL_DISAGREEMENT_PENALTY,
   ML_AGREEMENT_BOOST_MAX, ML_AGREEMENT_BOOST_FACTOR,
   ML_DISAGREEMENT_PENALTY_MAX, ML_DISAGREEMENT_PENALTY_FACTOR,
   REFEREE_ADJUSTMENT_MAX, REFEREE_ADJUSTMENT_THRESHOLD,
+  MAX_PREDICTED_GOALS,
 } from './constants';
 
 export interface ModelOutputs {
@@ -51,6 +78,54 @@ export interface EnhancedPredictionModel {
   };
   /** Raw per-model probabilities before ensemble combination (for weight optimisation) */
   modelOutputs?: ModelOutputs;
+  /**
+   * Top-N scorelines from the Poisson grid, sorted by probability descending.
+   * Surfaces the shape of the distribution instead of collapsing it to one score.
+   */
+  topScorelines?: Array<{ score: string; probability: number }>;
+  /**
+   * The full fatigue-adjusted Poisson score grid used to derive the main card's
+   * probabilities. Exposed so downstream consumers (BetBuilder, value scanner)
+   * can reuse the same grid instead of re-deriving a degenerate one from the
+   * integer predictedHomeGoals/predictedAwayGoals fields. Keyed as "H-A": prob.
+   */
+  scoreProbabilities?: { [score: string]: number };
+}
+
+/** Number of top scorelines to surface on the Predictions card. */
+const TOP_SCORELINES_COUNT = 7;
+
+/**
+ * Sort a Poisson score-probability grid descending and return the top N entries.
+ */
+function getTopScorelines(
+  scoreProbabilities: { [score: string]: number },
+  n: number = TOP_SCORELINES_COUNT
+): Array<{ score: string; probability: number }> {
+  return Object.entries(scoreProbabilities)
+    .map(([score, probability]) => ({ score, probability }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, n);
+}
+
+/**
+ * Return the single most likely (modal) scoreline from a Poisson grid.
+ * This differs from `round(E[home])-round(E[away])` because the Poisson mean
+ * exceeds the mode for small λ, so rounded means systematically overstate goals
+ * (e.g. λ=1.5 rounds to 2 but mode=1). Using argmax gives the single most likely
+ * individual scoreline rather than the score closest to the expected goals.
+ */
+export function argmaxScoreline(
+  scoreProbabilities: { [score: string]: number }
+): { home: number; away: number; probability: number } {
+  let best = { home: 0, away: 0, probability: -1 };
+  for (const [score, prob] of Object.entries(scoreProbabilities)) {
+    if (prob > best.probability) {
+      const [home, away] = score.split('-').map(Number);
+      best = { home, away, probability: prob };
+    }
+  }
+  return best;
 }
 
 // Home/away attack & defence strengths for the Poisson model
@@ -106,6 +181,51 @@ export const MODEL_WEIGHTS = {
 
 /** Mutable weight shape for user-applied weights (same keys as MODEL_WEIGHTS). */
 export type ModelWeightValues = { elo: number; poisson: number; form: number; h2h: number; standings: number };
+
+/**
+ * Residualise the Form model's H/A probabilities against ELO's implied
+ * advantage, on the logit scale, so Form contributes signal orthogonal to ELO.
+ *
+ * Both inputs are probability triples that should sum to ~1. We:
+ *   1. Compute each model's "home-over-away" log-odds (draw mass ignored).
+ *   2. Subtract β × ELO logit from Form logit (β = FORM_ELO_BETA).
+ *   3. Rebuild a Form triple that preserves Form's draw probability and
+ *      splits the non-draw mass per the residual log-odds.
+ *
+ * Exported for unit testing — the production path calls it inline in
+ * OptimizedPredictor.predictMatch().
+ */
+export function orthogonaliseFormVsElo(
+  formProbs: { home: number; draw: number; away: number },
+  eloProbs: { home: number; draw: number; away: number },
+  beta: number = FORM_ELO_BETA
+): { home: number; draw: number; away: number } {
+  // Guard: degenerate probabilities (all zero, or only draw mass) — return form unchanged
+  const formNonDraw = formProbs.home + formProbs.away;
+  const eloNonDraw = eloProbs.home + eloProbs.away;
+  if (formNonDraw <= 1e-9 || eloNonDraw <= 1e-9) return { ...formProbs };
+
+  // Clamp shares away from 0/1 so logit is finite
+  const clamp = (x: number) => Math.max(1e-4, Math.min(1 - 1e-4, x));
+  const formHomeShare = clamp(formProbs.home / formNonDraw);
+  const eloHomeShare = clamp(eloProbs.home / eloNonDraw);
+
+  const logit = (p: number) => Math.log(p / (1 - p));
+  const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+  const formLogit = logit(formHomeShare);
+  const eloLogit = logit(eloHomeShare);
+  const residualLogit = formLogit - beta * eloLogit;
+  const residualHomeShare = sigmoid(residualLogit);
+
+  const drawKeep = formProbs.draw;
+  const nonDrawMass = 1 - drawKeep;
+  return {
+    home: residualHomeShare * nonDrawMass,
+    draw: drawKeep,
+    away: (1 - residualHomeShare) * nonDrawMass
+  };
+}
 
 const WEIGHTS_STORAGE_KEY = 'oracle_model_weights';
 
@@ -257,26 +377,71 @@ export class OptimizedPredictor {
     awayTeam: string,
     leagueAvgs: LeagueAverages,
     homeStats: { avgGoalsScored: number; avgGoalsConceded: number },
-    awayStats: { avgGoalsScored: number; avgGoalsConceded: number }
+    awayStats: { avgGoalsScored: number; avgGoalsConceded: number },
+    useHistoricalPack: boolean = true,
+    eloGap: number = 0,
   ): { lambdaHome: number; lambdaAway: number } {
     const homeStrengths = leagueAvgs.teamStrengths.get(homeTeam);
     const awayStrengths = leagueAvgs.teamStrengths.get(awayTeam);
 
+    let rawLambdaHome: number;
+    let rawLambdaAway: number;
+
     if (homeStrengths && awayStrengths) {
       // Full Dixon-Coles: team strengths are relative to league average
-      const lambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
-      const lambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
-
-      return {
-        lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
-        lambdaAway: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaAway)),
-      };
+      rawLambdaHome = homeStrengths.homeAttack * awayStrengths.awayDefence * leagueAvgs.avgHomeGoals;
+      rawLambdaAway = awayStrengths.awayAttack * homeStrengths.homeDefence * leagueAvgs.avgAwayGoals;
+    } else {
+      // Fallback: derive from overall stats (no home/away split available)
+      const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
+      rawLambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
+      rawLambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
     }
 
-    // Fallback: derive from overall stats (no home/away split available)
-    const avgLeagueGoals = (leagueAvgs.avgHomeGoals + leagueAvgs.avgAwayGoals) / 2 || POISSON_FALLBACK_AVG_GOALS;
-    const lambdaHome = (homeStats.avgGoalsScored / avgLeagueGoals) * (awayStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgHomeGoals;
-    const lambdaAway = (awayStats.avgGoalsScored / avgLeagueGoals) * (homeStats.avgGoalsConceded / avgLeagueGoals) * leagueAvgs.avgAwayGoals;
+    // Blend with 33-season pair history when available. Skipped in backtest
+    // mode (useHistoricalPack=false) to keep regression tests deterministic.
+    let lambdaHome = rawLambdaHome;
+    let lambdaAway = rawLambdaAway;
+    if (useHistoricalPack) {
+      const pair = getPairStats(homeTeam, awayTeam);
+      if (pair && pair.totalMatches >= STATS_PACK_PAIR_MIN_MATCHES) {
+        lambdaHome = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaHome + STATS_PACK_BLEND_WEIGHT * pair.avgHomeGoals;
+        lambdaAway = (1 - STATS_PACK_BLEND_WEIGHT) * rawLambdaAway + STATS_PACK_BLEND_WEIGHT * pair.avgAwayGoals;
+      }
+
+      // Opposition-tier blend for mismatched fixtures. The ELO gap is the
+      // cleanest live signal of who's favoured; when it exceeds 150 points,
+      // we treat the fixture as "strong vs weak" and pull the favoured
+      // team's lambda toward their 33-season avg-goals-scored vs bottom-6
+      // opposition, while dragging the underdog's lambda toward their
+      // avg-goals vs top-6. This surfaces the "top-four crush bottom-half"
+      // 3+ goal scorelines that aggregated Poisson otherwise flattens.
+      if (eloGap > ELO_TIER_THRESHOLD) {
+        // Home is strong favourite
+        const homeProfile = getTeamProfile(homeTeam);
+        const awayProfile = getTeamProfile(awayTeam);
+        const homeVsWeak = homeProfile?.oppositionTier?.bottom6;
+        const awayVsStrong = awayProfile?.oppositionTier?.top6;
+        if (homeVsWeak && homeVsWeak.matches >= TIER_MIN_MATCHES) {
+          lambdaHome = (1 - TIER_BLEND_WEIGHT) * lambdaHome + TIER_BLEND_WEIGHT * homeVsWeak.avgGoalsScored;
+        }
+        if (awayVsStrong && awayVsStrong.matches >= TIER_MIN_MATCHES) {
+          lambdaAway = (1 - TIER_BLEND_WEIGHT) * lambdaAway + TIER_BLEND_WEIGHT * awayVsStrong.avgGoalsScored;
+        }
+      } else if (eloGap < -ELO_TIER_THRESHOLD) {
+        // Away is strong favourite (mirror)
+        const homeProfile = getTeamProfile(homeTeam);
+        const awayProfile = getTeamProfile(awayTeam);
+        const awayVsWeak = awayProfile?.oppositionTier?.bottom6;
+        const homeVsStrong = homeProfile?.oppositionTier?.top6;
+        if (awayVsWeak && awayVsWeak.matches >= TIER_MIN_MATCHES) {
+          lambdaAway = (1 - TIER_BLEND_WEIGHT) * lambdaAway + TIER_BLEND_WEIGHT * awayVsWeak.avgGoalsScored;
+        }
+        if (homeVsStrong && homeVsStrong.matches >= TIER_MIN_MATCHES) {
+          lambdaHome = (1 - TIER_BLEND_WEIGHT) * lambdaHome + TIER_BLEND_WEIGHT * homeVsStrong.avgGoalsScored;
+        }
+      }
+    }
 
     return {
       lambdaHome: Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX, lambdaHome)),
@@ -332,10 +497,13 @@ export class OptimizedPredictor {
         }
       }
 
-      // 2. Get team statistics
+      // 2. Get team statistics. In backtest mode (historicalMatches passed)
+      // we skip the 33-season stats pack to keep regression tests
+      // deterministic; live mode uses it when standings are thin or missing.
+      const useHistoricalPack = !historicalMatches;
       const [homeStats, awayStats] = await Promise.all([
-        this.getEnhancedTeamStats(homeTeam, standings),
-        this.getEnhancedTeamStats(awayTeam, standings)
+        this.getEnhancedTeamStats(homeTeam, standings, useHistoricalPack),
+        this.getEnhancedTeamStats(awayTeam, standings, useHistoricalPack)
       ]);
 
       // 3. Calculate ELO ratings from shared system
@@ -356,24 +524,36 @@ export class OptimizedPredictor {
         }
       }
 
-      // 5. Calculate fatigue factor (needed before Poisson lambdas)
+      // 5. Calculate fatigue factor (needed before Poisson lambdas).
+      // Rest days MUST be measured against the match's kickoff, not "now" —
+      // otherwise a team that played three days ago looks fatigued for a fixture
+      // four weeks in the future, which crushes Poisson lambdas through the
+      // restDays/7 multiplier and collapses the grid onto 0-0 / 1-0.
       // When backtesting with pre-fetched data, derive rest days locally
       // to avoid hitting dataService on every iteration.
       const asOfDate = matchDate ? new Date(matchDate) : undefined;
       const fatigueFactor = historicalMatches
         ? this.calculateFatigueFromMatches(homeTeam, awayTeam, historicalMatches, asOfDate)
-        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches);
+        : this.calculateFatigueFromMatches(homeTeam, awayTeam, allMatches, asOfDate);
 
-      // 6. Calculate Poisson predictions using Dixon-Coles lambdas
+      // 6. Calculate Poisson predictions using Dixon-Coles lambdas.
+      // In live mode, blend with 33-season pair history for goal-tempo
+      // context; in backtest mode, stick to current-form only. Pass the ELO
+      // gap so the function can apply the opposition-tier blend when the
+      // fixture is a "strong vs weak" mismatch.
       const leagueAvgs = this.computeLeagueAverages(allMatches);
+      const eloGap = homeElo - awayElo;
       const rawLambdas =
-        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats);
+        this.calculatePoissonLambdas(homeTeam, awayTeam, leagueAvgs, homeStats, awayStats, useHistoricalPack, eloGap);
 
-      // Apply fatigue: tired teams score less (lambda × fatigue) and concede
-      // more (opponent lambda ÷ fatigue). Multipliers are in [0.85, 1.0] so
-      // the adjustment is modest but data-driven per spec 01.
-      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaHome * fatigueFactor.homeFatigue / fatigueFactor.awayFatigue);
-      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, rawLambdas.lambdaAway * fatigueFactor.awayFatigue / fatigueFactor.homeFatigue);
+      // Apply fatigue: tired teams score fewer goals (lambda × fatigue).
+      // Multipliers are in (0, 1.0] so the adjustment only reduces lambda.
+      // Clamp to [POISSON_LAMBDA_MIN, POISSON_LAMBDA_MAX] to prevent
+      // degenerate outputs — matches advancedPredictions.ts implementation.
+      const homeGoalsExpected = Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX,
+        rawLambdas.lambdaHome * fatigueFactor.homeFatigue));
+      const awayGoalsExpected = Math.max(POISSON_LAMBDA_MIN, Math.min(POISSON_LAMBDA_MAX,
+        rawLambdas.lambdaAway * fatigueFactor.awayFatigue));
 
       const scoreProbabilities = PoissonPredictor.predictScoreProbabilities(
         homeGoalsExpected,
@@ -381,15 +561,19 @@ export class OptimizedPredictor {
       );
       const poissonProbs = PoissonPredictor.getOutcomeProbabilities(scoreProbabilities);
 
-      // 6. Analyze recent form (pass historical matches to avoid dataService calls in backtest)
-      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, historicalMatches);
+      // 6. Analyze recent form — always pass allMatches so form is computed from
+      // already-fetched data instead of making per-team rate-limited API calls
+      const formAnalysis = await this.analyzeRecentForm(homeTeam, awayTeam, allMatches);
 
       // 7. Head-to-head analysis
-      const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, historicalMatches);
+      const h2hAnalysis = await this.analyzeHeadToHead(homeTeam, awayTeam, allMatches);
       
       // 8. Attempt ML backend prediction (parallel — started earlier or fetched now)
       let mlPrediction: MLPrediction | null = null;
-      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') === 'true') {
+      // ML backend defaults ON: predictions are significantly better with the
+      // XGBoost model included in the ensemble, and new users won't know to
+      // toggle it on in Settings. Only skip when explicitly disabled.
+      if (!historicalMatches && typeof localStorage !== 'undefined' && localStorage.getItem('use_backend') !== 'false') {
         try {
           mlPrediction = await backendService.predictMatch(homeTeam, awayTeam);
           insights.push('ML backend prediction incorporated into ensemble');
@@ -411,10 +595,21 @@ export class OptimizedPredictor {
 
       const eloProbs = { home: eloHomeProb, draw: eloDrawClamped, away: eloAwayProb };
       const standingsProbs = this.getStandingsProbabilities(homePosition, awayPosition);
+
+      // Residualise form against ELO so Form contributes signal that isn't
+      // already encoded in ELO — prevents double-counting recent results.
+      const formProbsTriple = {
+        home: formAnalysis.probabilities.homeWin,
+        draw: formAnalysis.probabilities.draw,
+        away: formAnalysis.probabilities.awayWin
+      };
+      const residualForm = orthogonaliseFormVsElo(formProbsTriple, eloProbs);
+      const formOrthogonal = { homeWin: residualForm.home, draw: residualForm.draw, awayWin: residualForm.away };
+
       const modelInputs = {
         elo: eloProbs,
         poisson: poissonProbs,
-        form: formAnalysis.probabilities,
+        form: formOrthogonal,
         h2h: h2hAnalysis.probabilities,
         standings: standingsProbs
       };
@@ -499,10 +694,13 @@ export class OptimizedPredictor {
         insights.push(`Models split: ELO predicts ${eloTopOutcome}, Poisson predicts ${poissonTopOutcome} — lower confidence`);
       }
 
-      // 11. Predict goals with adjusted model
+      // 11. Predict goals — strict argmax over Poisson grid cells consistent
+      // with predicted outcome. No rounded-means, no H2H tempo nudge: the
+      // grid's modal outcome-consistent cell is the honest headline scoreline.
+      // Form and H2H params are threaded in for signature stability only (see
+      // `_formAnalysis` / `_h2hAnalysis` in `predictGoals`).
       const predictedGoals = this.predictGoals(
-        homeGoalsExpected,
-        awayGoalsExpected,
+        scoreProbabilities,
         prediction.result,
         formAnalysis,
         h2hAnalysis
@@ -521,8 +719,13 @@ export class OptimizedPredictor {
         insights.push(`${awayTeam} struggling with form (last 5: ${formAnalysis.awayFormString})`);
       }
 
-      // Add H2H insights
-      if (h2hAnalysis.totalMatches > 0) {
+      // Add H2H insights. Require at least 3 completed H2H meetings before
+      // claiming dominance — with 1 match (1W) the rate is trivially 100% and
+      // the insight keeps firing as "dominates H2H (1W in last 1)" on every
+      // rare pairing. Three matches is the minimum before the winRate is
+      // meaningful at all.
+      const H2H_DOMINATION_MIN_MATCHES = 3;
+      if (h2hAnalysis.totalMatches >= H2H_DOMINATION_MIN_MATCHES) {
         if (h2hAnalysis.homeWinRate > 0.6) {
           insights.push(`${homeTeam} dominates H2H (${h2hAnalysis.homeWins}W in last ${h2hAnalysis.totalMatches})`);
         } else if (h2hAnalysis.awayWinRate > 0.6) {
@@ -572,7 +775,9 @@ export class OptimizedPredictor {
         modelWeights: effectiveWeights,
         insights,
         valueOdds,
-        modelOutputs
+        modelOutputs,
+        topScorelines: getTopScorelines(scoreProbabilities),
+        scoreProbabilities
       };
 
     } catch (error) {
@@ -592,20 +797,41 @@ export class OptimizedPredictor {
     }
   }
 
-  private static getEnhancedTeamStats(team: string, standings: Standing[]) {
+  private static getEnhancedTeamStats(team: string, standings: Standing[], useHistoricalPack: boolean = true) {
     const standing = standings.find(s => s.team.name === team);
 
     if (!standing) {
-      // Use ELO rating to estimate stats when no standings data available
+      // Before falling back to ELO, check the 33-season stats pack — it's a
+      // much richer source than a pure ELO-derived estimate. Era-weighted so
+      // recent performance dominates.
+      if (useHistoricalPack) {
+        const profile = getTeamProfile(team);
+        if (profile && profile.totalMatches >= STATS_PACK_TEAM_MIN_MATCHES) {
+          const avgScored = (profile.eraWeighted.homeGoalsScored + profile.eraWeighted.awayGoalsScored) / 2;
+          const avgConceded = (profile.eraWeighted.homeGoalsConceded + profile.eraWeighted.awayGoalsConceded) / 2;
+          const cleanSheetRate = (profile.cleanSheetRateHome + profile.cleanSheetRateAway) / 2;
+          // Approximate pointsPerGame from goal differential — good teams have GD > 0
+          const gd = avgScored - avgConceded;
+          return {
+            avgGoalsScored: Math.max(0.5, avgScored),
+            avgGoalsConceded: Math.max(0.5, avgConceded),
+            pointsPerGame: Math.max(0.3, Math.min(3, 1.3 + gd * 0.7)),
+            cleanSheetRate: Math.max(0.1, Math.min(0.5, cleanSheetRate)),
+            winRate: Math.max(0.1, Math.min(0.8, 0.33 + gd * 0.2)),
+          };
+        }
+      }
+
+      // Fallback: ELO-derived estimate when neither standings nor stats pack help
       const teamStrength = this.eloSystem.getTeamRating(team);
       const relativeStrength = (teamStrength - 1500) / 200; // Normalise to approx -1.5 to +1.75
-      
+
       // Better teams score more and concede less
       const avgGoalsScored = 1.5 + (relativeStrength * 0.5);
       const avgGoalsConceded = 1.5 - (relativeStrength * 0.3);
       const pointsPerGame = 1.3 + (relativeStrength * 0.7);
       const winRate = 0.33 + (relativeStrength * 0.2);
-      
+
       return {
         avgGoalsScored: Math.max(0.5, avgGoalsScored),
         avgGoalsConceded: Math.max(0.5, avgGoalsConceded),
@@ -661,7 +887,7 @@ export class OptimizedPredictor {
     };
 
     // Calculate form-based probabilities — no home bias here as ELO already
-    // accounts for home advantage via HOME_ADVANTAGE (65 ELO points)
+    // accounts for home advantage via ELO_HOME_ADVANTAGE
     const homeMomentum = homeFormScore;
     const awayMomentum = awayFormScore;
     
@@ -692,11 +918,20 @@ export class OptimizedPredictor {
 
   private static async analyzeHeadToHead(homeTeam: string, awayTeam: string, historicalMatches?: Match[]) {
     const matches = historicalMatches || await dataService.getMatches();
-    
-    const h2hMatches = matches.filter(m => 
-      (m.home_team === homeTeam && m.away_team === awayTeam) ||
-      (m.home_team === awayTeam && m.away_team === homeTeam)
-    ).slice(0, 10); // Last 10 H2H matches
+
+    // Only completed H2H matches — filter BEFORE slicing so we don't waste our
+    // 10-match budget on scheduled/pending fixtures. Leaving pending matches in
+    // previously caused every card to show "X dominates H2H (1W in last 2)":
+    // for a May fixture the pair typically has played the reverse leg (one
+    // result) plus the current scheduled return (no result), giving a
+    // pseudo-denominator of 2 but a completed count of 1 → spurious 100% rate.
+    const h2hMatches = matches.filter(m =>
+      ((m.home_team === homeTeam && m.away_team === awayTeam) ||
+       (m.home_team === awayTeam && m.away_team === homeTeam)) &&
+      m.result !== null &&
+      m.home_goals !== null &&
+      m.away_goals !== null
+    ).slice(0, 10); // Last 10 completed H2H matches
 
     if (h2hMatches.length === 0) {
       // No H2H data — use league-average home advantage (consistent with ensemble priors)
@@ -926,51 +1161,55 @@ export class OptimizedPredictor {
   }
 
   private static predictGoals(
-    homeExpected: number,
-    awayExpected: number,
+    scoreProbabilities: { [score: string]: number },
     predictedResult: 'H' | 'D' | 'A',
-    formAnalysis: FormAnalysis,
-    h2hAnalysis: H2HAnalysis
+    _formAnalysis: FormAnalysis,
+    _h2hAnalysis: H2HAnalysis
   ): { home: number; away: number } {
-    let homeGoals = Math.round(homeExpected);
-    let awayGoals = Math.round(awayExpected);
-    
-    // Adjust based on predicted result
-    if (predictedResult === 'H' && homeGoals <= awayGoals) {
-      homeGoals = awayGoals + 1;
-    } else if (predictedResult === 'A' && awayGoals <= homeGoals) {
-      awayGoals = homeGoals + 1;
-    } else if (predictedResult === 'D' && homeGoals !== awayGoals) {
-      // Make it a draw
-      if (Math.abs(homeGoals - awayGoals) === 1) {
-        if (homeGoals > awayGoals) awayGoals = homeGoals;
-        else homeGoals = awayGoals;
-      } else {
-        homeGoals = Math.round((homeGoals + awayGoals) / 2);
-        awayGoals = homeGoals;
+    // The displayed scoreline is the argmax of grid cells matching
+    // predictedResult. That's it — no rounded means, no tempo nudges.
+    //
+    // Earlier versions layered a rounded-expected-goals path and an H2H
+    // tempo nudge on top. Both double-counted information that's already in
+    // the Poisson lambdas (stats-pack blend + fatigue + referee + form), and
+    // the nudge in particular manufactured artefact 2-1 / 1-2 scorelines on
+    // every high-historical-tempo fixture (Arsenal-*, City-*, Liverpool-*),
+    // sitting 2-3× below the grid's actual modal outcome-consistent cell.
+    //
+    // Invariant: the returned cell has probability EQUAL to the maximum
+    // probability of any cell in scoreProbabilities that matches predictedResult.
+    const predicate =
+      predictedResult === 'H' ? (h: number, a: number) => h > a :
+      predictedResult === 'A' ? (h: number, a: number) => a > h :
+                                (h: number, a: number) => h === a;
+
+    let bestProb = -1;
+    let bestHome = 0;
+    let bestAway = 0;
+    for (const [score, prob] of Object.entries(scoreProbabilities)) {
+      const [h, a] = score.split('-').map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
+      if (!predicate(h, a)) continue;
+      if (prob > bestProb) {
+        bestProb = prob;
+        bestHome = h;
+        bestAway = a;
       }
     }
-    
-    // Consider H2H average goals
-    if (h2hAnalysis.totalMatches > 0 && h2hAnalysis.avgHomeGoals !== undefined && h2hAnalysis.avgAwayGoals !== undefined) {
-      const h2hTotal = h2hAnalysis.avgHomeGoals + h2hAnalysis.avgAwayGoals;
-      if (h2hTotal < 2.0) {
-        // Low-scoring fixture historically
-        homeGoals = Math.min(homeGoals, 2);
-        awayGoals = Math.min(awayGoals, 2);
-      } else if (h2hTotal > 3.5) {
-        // High-scoring fixture
-        if (homeGoals + awayGoals < 3) {
-          homeGoals = Math.max(homeGoals, 2);
-          awayGoals = Math.max(awayGoals, 1);
-        }
-      }
+
+    if (bestProb > 0) {
+      return {
+        home: Math.min(MAX_PREDICTED_GOALS, bestHome),
+        away: Math.min(MAX_PREDICTED_GOALS, bestAway)
+      };
     }
-    
-    return {
-      home: Math.max(0, homeGoals),
-      away: Math.max(0, awayGoals)
-    };
+
+    // Fallback: grid contained no outcome-consistent cell (vanishingly rare
+    // — e.g. an empty or entirely-wrong-side grid). Produce a minimal valid
+    // scoreline rather than a contradiction.
+    if (predictedResult === 'H') return { home: 1, away: 0 };
+    if (predictedResult === 'A') return { home: 0, away: 1 };
+    return { home: 0, away: 0 };
   }
 
   private static calculateValueOdds(probabilities: { homeWin: number; draw: number; awayWin: number }) {

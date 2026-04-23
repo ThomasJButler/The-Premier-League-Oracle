@@ -1,5 +1,5 @@
 import type { Match } from '../types';
-import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, type EnhancedPredictionModel, type ModelOutputs } from './optimizedPredictions';
+import { OptimizedPredictor, getActiveModelWeights, type EnhancedPredictionModel, type ModelOutputs } from './optimizedPredictions';
 import { sharedEloSystem, EloRatingSystem } from './advancedPredictions';
 
 export interface BacktestResult {

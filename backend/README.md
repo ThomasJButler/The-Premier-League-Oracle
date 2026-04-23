@@ -5,12 +5,13 @@
 | Component | Status |
 |---|---|
 | FastAPI server | Running — graceful degradation if heavy deps missing |
-| Free-tier XGBoost model | **Trained** — 53.3% accuracy with draw features + dual calibration (retrained 20 March 2026) |
-| Free-tier feature engineering | 114 features (incl. 13 draw indicators, 10 bookmaker odds, 5 Elo), standalone, no heavy deps |
+| Free-tier XGBoost model | **Trained** — 53.4% calibrated accuracy (isotonic), log-loss 0.9679, draw AUC 0.5724 on 33-season dataset (retrained 21 April 2026 after P11 calibrator investigation) |
+| Dedicated draw classifier | **Trained, cascade disabled at inference** — P11 retrains confirmed cascade at threshold 0.54 gives 34.4% draw recall but only 48.1% overall accuracy vs 53.4% for straight isotonic; classifier still saved in model file, cascade auto-disables in training when it reduces overall accuracy |
+| Free-tier feature engineering | 114 features (112 after selection): 6 draw indicators (post-P10b restoration), 10 bookmaker odds, 5 Elo + interactions, plus base form/H2H/context, standalone, no heavy deps |
 | Pro-tier models (LSTM, Transformer, Oracle ensemble) | Archived to `pro-tier-archive` branch — not in working tree |
-| Backend tests | **163 tests across 4 files — all non-skip tests passing** |
+| Backend tests | **194 tests across 5 files — all non-skip tests passing** |
+| AI chat provider | Anthropic Claude only (Haiku 4.5 default, Sonnet 4.6 / Opus 4.6 / Opus 4.7 selectable) — OpenAI removed April 2026 |
 | Redis | Optional — server starts without it |
-| LangChain / ChromaDB | Optional — server starts without them |
 
 ---
 
@@ -39,10 +40,11 @@ backend/
 ├── models/
 │   └── xgboost_free_tier.joblib          # Trained free-tier model
 ├── tests/
-│   ├── test_free_tier_features.py        # 45 feature engineering tests (incl. Elo leakage)
-│   ├── test_train_free_tier.py           # 25 training pipeline tests (incl. rolling CV, ensemble)
-│   ├── test_predict_free_tier.py         # 17 API endpoint tests
-│   └── test_rag.py                       # 58 RAG engine tests
+│   ├── test_free_tier_features.py        # 60 feature engineering tests (incl. Elo leakage)
+│   ├── test_train_free_tier.py           # 33 training pipeline tests (incl. rolling CV, ensemble)
+│   ├── test_predict_free_tier.py         # 20 API endpoint tests (incl. 3 draw cascade)
+│   ├── test_rag.py                       # 59 RAG engine tests (Anthropic-only, incl. cache_control guard)
+│   └── test_web_search.py               # 22 web search fallback tests
 ├── spreadsheets/
 │   └── KnowledgeFilesCSV/                # 2,191 matches across 5.75 seasons (gitignored)
 ├── train_free_tier.py                    # Active training script
@@ -70,7 +72,7 @@ Create a `.env` file in `backend/`:
 
 ```bash
 FOOTBALL_DATA_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here  # Optional — only needed for LangChain natural language queries
+ANTHROPIC_API_KEY=sk-ant-your_key_here  # Optional — used by /chat/rag for natural-language queries
 ```
 
 ### Run the API
@@ -81,7 +83,7 @@ uvicorn app.api.main:app --reload --port 8000
 # Interactive docs: http://localhost:8000/docs
 ```
 
-Redis, MLflow, and LangChain are all optional — the server starts and serves predictions without them.
+Redis and MLflow are optional — the server starts and serves predictions without them. The `/chat/rag` endpoint needs `ANTHROPIC_API_KEY` to be set (or a per-request `X-Anthropic-Key` header).
 
 ---
 
@@ -178,11 +180,12 @@ pytest tests/ -v          # verbose
 pytest tests/ --cov=app   # with coverage
 ```
 
-163 tests across 4 files, all non-skip tests passing (8 skip without libomp/XGBoost):
-- `test_free_tier_features.py` — 55 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
+194 tests across 5 files, all non-skip tests passing (8 skip without libomp/XGBoost):
+- `test_free_tier_features.py` — 60 tests covering the feature engineering pipeline (incl. Elo ratings, data leakage verification, and 10 bookmaker odds feature tests)
 - `test_train_free_tier.py` — 33 tests covering the training script (rolling CV, stacked ensemble, recency weights, feature selection, 5 odds extraction, and 3 calibrator dispatch tests)
-- `test_predict_free_tier.py` — 17 tests covering the `/predict/free` API endpoint, rate limiting, and client IP extraction
-- `test_rag.py` — 58 tests covering the RAG engine (team extraction, intent parsing, query builder, prompt grounding)
+- `test_predict_free_tier.py` — 20 tests covering `/predict/free`, rate limiting, client IP extraction, and the **draw classifier cascade** (3 cases: override above threshold, no-op below, no-op when classifier absent)
+- `test_rag.py` — 59 tests covering the Anthropic-only RAG engine (team extraction, intent parsing, query builder, prompt grounding, 14 player data tests, and a `cache_control: ephemeral` regression guard)
+- `test_web_search.py` — 22 tests covering the DuckDuckGo web search fallback (cache, prompt injection, graceful degradation)
 
 CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
@@ -200,7 +203,7 @@ CI runs backend tests on every push and PR via `.github/workflows/ci.yml`.
 
 - Python 3.10+
 - Football-Data.org API key (free tier sufficient for the active prediction path)
-- OpenAI API key (optional — only for LangChain natural language queries)
+- Anthropic API key (optional — used by the `/chat/rag` endpoint for data-grounded natural-language queries)
 
 ---
 
