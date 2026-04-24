@@ -2,8 +2,12 @@
 tests/
 check_imports.py
 
-# Training data and spreadsheets (~100MB+)
-spreadsheets/
+# Runtime-required data (historical match CSVs + player stats — total ~3.4 MB).
+# The free-tier feature engineer needs KnowledgeFilesCSV/ at startup, otherwise
+# every fixture returns identical probabilities (all features resolve to 0.0).
+# RAG player-name patterns need fact_player_stats.csv. Keep these in the image.
+# (The `~100MB+` comment in an earlier revision was a mis-estimate — actual size
+# is 3.4 MB, small enough that there's no benefit to excluding them.)
 
 # Documentation
 docs/

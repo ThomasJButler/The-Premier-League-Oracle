@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY app/ ./app/
 COPY models/ ./models/
+COPY spreadsheets/ ./spreadsheets/
 
 # Create directories for data and logs
 RUN mkdir -p /app/data /app/logs /app/models
