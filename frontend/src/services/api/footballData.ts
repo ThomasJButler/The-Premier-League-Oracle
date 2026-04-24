@@ -120,11 +120,13 @@ class FootballDataAPI {
     const savedApiKey = localStorage.getItem('football_data_api_key');
     const apiKey = envKey || savedApiKey || '';
     
-    // Use proxy in development to avoid CORS issues
-    const isDevelopment = import.meta.env.DEV;
-    const baseUrl = isDevelopment 
-      ? '/api/football-data' 
-      : 'https://api.football-data.org/v4';
+    // Always route through the same-origin /api/football-data proxy.
+    // Football-Data.org's CORS policy only permits http://localhost, so a
+    // direct browser call from any deployed origin (e.g. *.vercel.app) gets
+    // blocked before the X-Auth-Token header is even checked. The Vite dev
+    // server (vite.config.ts) and Vercel rewrites (vercel.json) both proxy
+    // this path server-side, sidestepping CORS entirely.
+    const baseUrl = '/api/football-data';
     
     this.config = {
       apiKey,
