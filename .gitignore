@@ -28,10 +28,6 @@ backend/cache/
 backend/logs/
 backend/mlruns/
 
-# Bundled-but-gitignored source data (training CSVs — too large for git)
-/spreadsheets
-backend/spreadsheets
-
 # Playwright e2e test output
 frontend/playwright-report/
 frontend/playwright-screenshots/
