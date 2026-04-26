@@ -58,7 +58,9 @@ predictionTracker.getMatchPredictions(matchId: string): StoredPrediction[];
 
 Each task is one ralph iteration unless explicitly noted as foldable. Run in order.
 
-### Task 1 — `ThisWeek.svelte` skeleton + 5 baseline tests *(auto-gated sub-step OK)*
+### Task 1 — `ThisWeek.svelte` skeleton + 5 baseline tests *(auto-gated sub-step OK)* — ✅ DONE
+
+**Shipped in this iteration:** `frontend/src/screens/predictions/ThisWeek.svelte` + `ThisWeek.test.ts`. vitest **834/834 across 64 files** (was 829/829 across 63 — exactly +5 in 1 new file, matches plan prediction). svelte-check **0/0**. Playwright skipped for this sub-slice — no route mount, no routing surface touched. Test #4 used the existing `[data-kicker]` marker on `SectionHeader.svelte:8` (option (b)) instead of adding a new `[data-section-kicker]` marker (option (a)) — keeps the atom untouched. The component file is in tree but **not** mounted on `App.svelte` yet; Task 2 wires the route.
 
 The screen loads `getCurrentSeasonMatches`, derives `currentGw`, derives `gwFixtures`, and renders one `<MatchCard>` per fixture. `[data-screen="predictions-this-week"]` root marker; `[data-card-row]` per fixture row; `[data-empty]` when no fixtures for the current GW (degraded but possible — e.g. mid-week between GWs); `[data-no-gameweek]` when `findCurrentGameweek` returns `null` (no fixtures returned at all from `dataService`).
 
