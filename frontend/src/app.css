@@ -343,6 +343,23 @@
 
 }
 
+/* ─── REDESIGN TOKEN UTILITIES ─── */
+/* Flat utility classes for v3 broadcast tokens that don't need alpha modifiers.
+   Tokens that DO need alpha (primary, accent, destructive, warning, card, border) are
+   already wired through tailwind.config.js with <alpha-value>. */
+@layer utilities {
+  .bg-bg-inset       { background-color: hsl(var(--bg-inset)); }
+  .bg-bg-raised      { background-color: hsl(var(--bg-raised)); }
+  .bg-surface-hover  { background-color: hsl(var(--surface-hover)); }
+  .bg-text-faint     { background-color: hsl(var(--text-faint)); }
+  .bg-text-dim       { background-color: hsl(var(--text-dim)); }
+  .text-text-muted   { color: hsl(var(--muted-foreground)); }
+  .text-text-dim     { color: hsl(var(--text-dim)); }
+  .text-text-faint   { color: hsl(var(--text-faint)); }
+  .text-text-ghost   { color: hsl(var(--text-ghost)); }
+  .border-border-strong { border-color: hsl(var(--border-strong)); }
+}
+
 /* ─── ATMOSPHERE & TEXTURE ─── */
 @layer utilities {
   /* Noise texture overlay — adds organic warmth to flat surfaces */

@@ -14,14 +14,14 @@
 
 ## Active phase
 
-Phase 0 (Foundation) — slice **P0c Atoms** is next.
+Phase 0 (Foundation) — slice **P0d Shells** is next.
 
 ## Ordered checklist
 
 ### Phase 0 — Foundation
 - [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0a-tokens.md`.
 - [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0b-routing.md`.
-- [ ] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md`.
+- [x] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md`.
 - [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
 - [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
 
@@ -77,6 +77,12 @@ Phase 0 (Foundation) — slice **P0c Atoms** is next.
   - Patched `Sidebar.svelte`'s forwarder (the `handleNavClick` that re-dispatches `SidebarNav`'s `navigate` event) rather than touching `SidebarNav.svelte` itself — single interception point, less surface.
   - Defaulted `currentView: string = ''` in both `Sidebar.svelte` and `MobileNav.svelte`. The new `App.svelte` no longer passes the prop, and a default avoids svelte-check warning. The active-route highlight will look stale on legacy nav until P0d swaps the shell.
 - **(P0b → P0c handoff)** `frontend/src/routes.ts` is the single source of truth for the v3 route table. P0c's atoms can already import `RouteDef` / `SubTabDef` types if needed. Note: `findRoute(path)` only matches top-level hub paths (e.g. `/fixtures`), not full sub-tab paths — extend if a future slice needs `/fixtures/live` resolution.
+- **(P0c, no blocker)** P0c landed: vitest 704/704 across 48 files (+33 atom tests across 7 new files). `svelte-check` 0/0. All 7 atoms (`Crest`, `FormDot`, `ProbBar`, `Spark`, `Icon`+registry, `KpiTile`, `SectionHeader`) shipped with co-located `.test.ts`. `types/redesign.ts` created. `app.css` got an `@layer utilities` block for redesign tokens (`bg-bg-inset`, `bg-text-faint`, `bg-text-dim`, `bg-surface-hover`, `text-text-dim/faint/muted/ghost`, `border-border-strong`).
+- **(P0c deviations from plan)**
+  - `Icon.svelte`: moved `stroke-width={strokeWidth}` from the `<svg>` element to the inner `<path>`. Plan template put it on the svg, but the contract test asserts `path.getAttribute('stroke-width')`. Test wins; functionally equivalent because stroke attrs inherit, but the path now owns the explicit attribute.
+  - `FormDot.test.ts` + `ProbBar.test.ts`: split each rerender-based test into two separate `render()` calls. `@testing-library/svelte` v5.2.x's `rerender()` did not update Svelte 4 prop reactivity in this setup (size remained `sm`, `showLabels` remained `false` after rerender). Two-render structure is also more idiomatic and removes a v5/Svelte4 compatibility footgun for future atoms.
+  - `ProbBar.svelte`: dropped `role="progressbar"` and the `aria-valuemin/max/now` triplet. svelte-check warned `aria-invalid is not supported by role progressbar`, and semantically a stacked three-segment probability bar isn't a single-task progress widget. The `aria-invalid` attribute (which the test asserts on) is preserved.
+  - `app.css` additions are scoped under a new `@layer utilities` block placed before the `ATMOSPHERE & TEXTURE` block — preserves the file's section ordering so future slices can locate where to add new utility classes.
 
 ## Human notes for next iteration
 
@@ -86,4 +92,6 @@ Phase 0 (Foundation) — slice **P0c Atoms** is next.
 
 ## Next recommended build slice
 
-**P0c — Atoms** — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md` for the full step list (~13K tokens, fits in one Read). Creates `frontend/src/types/redesign.ts` (shared type contracts) and `frontend/src/components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each atom ships with a co-located `.test.ts` per Section 4 of the spec. Auto-gated by `npm run test -- --run` green + `npm run check` clean.
+**P0d — Shells** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`. Creates `frontend/src/components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Adds `density` and `supportingClub` stores. Mounts the new shell as the outer chrome of `App.svelte` while legacy screens still render inside (strangler-fig step). Manual-gated: ralph commits when `npm run check` passes and `npm run test -- --run` is green, then stops with a one-paragraph summary for human eyeball before the `[x]` flip.
+
+P0c atoms (`Crest`, `FormDot`, `ProbBar`, `Spark`, `Icon`, `KpiTile`, `SectionHeader`) and the icon registry are now available for P0d to import. `types/redesign.ts` exports `Density` (used by the new `density` store) and `TeamSummary` (used by the supporting-club picker if scoped that far).
