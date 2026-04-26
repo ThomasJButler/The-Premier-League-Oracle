@@ -192,7 +192,9 @@ export function groupMatchesByDate(matches: Match[]): FixtureGroup[] {
 
 **Validation:** `cd frontend && npm run test -- --run src/lib/fixtureGrouping.test.ts` — expect 6/6 pass.
 
-### Task 2 — `FilterChips.svelte` + 4 tests *(auto-gated sub-step)*
+### Task 2 — `FilterChips.svelte` + 4 tests *(auto-gated sub-step)* — ✅ DONE
+
+Shipped as an auto-gated sub-slice ahead of the full P3b slice (mirrors Task 1 / P2b Task 1 / P2c Task 1 pattern). The Task 2 portion of this plan doc can be skipped — the component + co-located 4-test file are already in the codebase. Skip-ahead to Task 3.
 
 **Test file: `frontend/src/components/fixtures/FilterChips.test.ts`**
 
@@ -272,7 +274,7 @@ describe('FilterChips', () => {
 </div>
 ```
 
-**Note on `aria-pressed:` Tailwind variants:** if the project's Tailwind config doesn't have the `aria-pressed` variant enabled, fall back to `class:bg-primary={chip.id === active}` etc. **Pre-flight check ralph should run first:** `grep -n "aria-pressed" frontend/tailwind.config.js` — if no match, use the class-binding fallback (which is what the existing `Tabs.svelte` does).
+**Note on `aria-pressed:` Tailwind variants:** if the project's Tailwind config doesn't have the `aria-pressed` variant enabled, fall back to `class:bg-primary={chip.id === active}` etc. **Pre-flight check ralph should run first:** `grep -n "aria-pressed" frontend/tailwind.config.js` — if no match, use the class-binding fallback (which is what the existing `Tabs.svelte` does). **2026-04-26 sub-slice resolution:** the project's `tailwind.config.js` does NOT have `aria-pressed` variants, so the shipped FilterChips uses the `class:` fallback (same convention as `Tabs.svelte`). The `aria-pressed` HTML attribute is still emitted (test #2 asserts on it), only the styling bridge is via `class:` instead of an attribute-driven Tailwind variant.
 
 **Validation:** `cd frontend && npm run test -- --run src/components/fixtures/FilterChips.test.ts` — expect 4/4 pass.
 
