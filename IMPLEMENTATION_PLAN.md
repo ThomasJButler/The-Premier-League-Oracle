@@ -15,7 +15,7 @@
 
 ## Active phase
 
-Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Brier extension) committed as auto-gated sub-slice.** Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`. All automated gates green: vitest 763/763 across 56 files (+4 from Brier sub-slice), svelte-check 0/0, Playwright routing 32/32 last green on P2a-cleanup. **P1c and P2a both manual-gated and awaiting human eyeball** — checkboxes stay `[ ]` until the visual sweep is signed off. **P2b's data-layer task (Brier on `AccuracyStats`) is done in advance** as a non-visual sub-slice; the remaining P2b work (KPI strip + grid markup on `Today.svelte`) is gated behind P1c + P2a sign-offs because it adds visual surface that overlaps the pending review.
+Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Brier extension) and P2c Task 1 (`storedPredictionToFixture` adapter) committed as auto-gated sub-slices.** Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`. All automated gates green: vitest 768/768 across 56 files (+5 from P2c adapter sub-slice), svelte-check 0/0, Playwright routing 32/32 last green on P2a-cleanup. **P1c and P2a both manual-gated and awaiting human eyeball** — checkboxes stay `[ ]` until the visual sweep is signed off. **P2b's and P2c's data-layer tasks are both done in advance** as non-visual sub-slices; the remaining visual work for both slices (P2b: KPI strip + grid markup; P2c: trends Spark + recent-log MatchRows + Phase 2 checkpoint spec) is gated behind P1c + P2a sign-offs because it adds visual surface that overlaps the pending review.
 
 **Tagging policy (per human note 2026-04-26):** every ralph slice commit is tagged with a sequential v3.x version. P2a → `v3.1`. The full P2b → `v3.2` (when the visual zones land). P2c → `v3.3`. And so on. Sub-slice commits like the Brier extension above are **untagged** so the version sequence cleanly maps onto checklist items. Tags are local-only — push policy is unchanged (no auto-push).
 
@@ -135,6 +135,14 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Br
   - Extracted `computeBrier(predictions)` as a `private` method on `PredictionTracker` rather than inlining inside `getAccuracyStats`. Keeps the parent function readable and gives P4b (Backtest) a unit-of-work to call from a new public method (e.g., `getBrierByGameweek()`) without re-implementing the formula.
   - Added `expect(stats.brierScore).toBe(0)` to the existing "should handle empty prediction history" test rather than creating a separate empty-state test for Brier — same scenario, one assertion, no duplication.
 
+- **(P2c — Task 1 only, auto-gated sub-slice, no blocker)** Added `storedPredictionToFixture(p: StoredPrediction): Fixture` to `frontend/src/lib/adapters/v3.ts`. Pure data-layer: synthesises a v3 `Fixture` from a `StoredPrediction` so the future P2c recent-log strip can render `<MatchRow fixture={…} prediction={…} />` from `predictionTracker.getRecentPredictions(5)` without a corresponding `Match` record. Status derives from `actualResult !== undefined && typeof actualHomeGoals === 'number' && typeof actualAwayGoals === 'number'` (FINISHED ⇒ score populated; SCHEDULED ⇒ score omitted). vitest 768/768 across 56 files (+5 in a new `storedPredictionToFixture` describe). `svelte-check` 0/0. Targeted: `v3.test.ts` 14/14 (was 9/9). Mirrors the same pattern as the Brier sub-slice — non-visual data-layer prep that doesn't overlap the pending P1c/P2a manual review surface, so it can ship ahead. Sub-slice deliberately stops at the adapter; Tasks 2-3 of P2c (Today.svelte trends + log markup, Phase 2 Playwright checkpoint) remain pending and gated on the visual sweeps. P2c's checklist box stays `[ ]`. Tagging: **untagged** — `v3.x` numbering stays reserved for the phase-checklist slices (next tag `v3.2` belongs to the full P2b slice).
+- **(P2c sub-slice deviations from plan)**
+  - Plan template inlined `home: { abbr: p.homeTeam.slice(0, 3).toUpperCase(), name: p.homeTeam }`. Used the existing `teamFrom(p.homeTeam)` helper from the same file instead — it routes through the shared `toAbbr()` which strips `\b(?:FC|AFC)\b` before slicing. One source of truth for abbreviations across `matchToFixture` and `storedPredictionToFixture`, and correctly handles "Liverpool FC" / "AFC Bournemouth" team-name shapes that the bare slice would mishandle on edge inputs (e.g. `'AFC Bournemouth'.slice(0,3)` = `'AFC'` would collide with the league abbreviation).
+  - Added two extra tests beyond the plan template:
+    - **0-0 settled score** — guards against a future refactor that swaps `typeof p.actualHomeGoals === 'number'` for the shorter-but-broken `p.actualHomeGoals && p.actualAwayGoals` (which silently fails on the falsy `0`).
+    - **FC/AFC suffix stripping** — pins the chosen `teamFrom` deviation above so a future "simplify the adapter" PR can't quietly regress to bare slice behaviour.
+  - Used the existing `mkStored()` factory pattern (mirrors `mkMatch()` already in the file) rather than inlining a full `StoredPrediction` literal in each test. Cuts ~20 lines of test fixtures and matches the file's house style.
+
 ## Human notes for next iteration
 
 *(Drop notes here mid-run. The next ralph build iteration consumes them as part of the slice contract: address every note OR explain in `## Notes / discoveries` why a note doesn't apply. Once addressed, ralph moves the consumed note to `## Notes / discoveries` prefixed with `(addressed) ` and a one-line summary of how it was addressed.)*
@@ -143,9 +151,15 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Br
 
 ## Next recommended build slice
 
-**P1c + P2a committed — both awaiting human eyeball.** Two manual sweeps to clear before the **visual** half of P2b (KPI strip + predictions grid markup) can start.
+**P1c + P2a committed — both awaiting human eyeball.** Two manual sweeps to clear before the **visual** halves of P2b and P2c can start.
 
-**P2b Task 1 (Brier extension on `AccuracyStats`) is already done** as an auto-gated sub-slice (committed separately, untagged). Once the sweeps clear, the next iteration picks up P2b Tasks 2-5: extend `Today.test.ts` with the four KPI/grid zone tests (the plan template under `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md` Task 2), append KPI strip + grid markup to `Today.svelte` (Task 3), run the validation gate (Task 4), commit + tag `v3.2` + surface the manual sweep checklist (Task 5). The Task 1 portion of the plan doc can be skipped — it's already in the codebase.
+**Both data-layer sub-slices are already done** as auto-gated sub-slices (committed separately, untagged):
+- **P2b Task 1** — Brier extension on `AccuracyStats` (`predictionTracker.ts`). Reusable by P4b.
+- **P2c Task 1** — `storedPredictionToFixture` adapter on `lib/adapters/v3.ts`. Reusable by P4c.
+
+Once the sweeps clear, the next iteration picks up:
+- **P2b Tasks 2-5**: extend `Today.test.ts` with the four KPI/grid zone tests (plan template under `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md` Task 2), append KPI strip + grid markup to `Today.svelte` (Task 3), run the validation gate (Task 4), commit + tag `v3.2` + surface the manual sweep checklist (Task 5). The Task 1 portion of the plan doc can be skipped — it's already in the codebase.
+- **P2c Tasks 2-5** (after P2b lands): extend `Today.test.ts` with the three below-fold zone tests (plan template under `docs/superpowers/plans/2026-04-26-phase-2-today/p2c-below-fold.md` Task 2 Step 1), append the trends Spark + recent-log MatchRows to `Today.svelte` (Task 2 Step 2), write `e2e/checkpoint-p2.spec.ts` (Task 3), run the full validation gate (Task 4), commit + tag `v3.3` + surface the Phase 2 manual sweep checklist (Task 5). The Task 1 portion of the plan doc can be skipped — it's already in the codebase.
 
 ### Phase 1 sweep (P1c) — boot `npm run dev`
 
@@ -175,7 +189,9 @@ If everything looks right, flip P1c's `[ ]` to `[x]`. If wrong, drop notes under
 
 If everything looks right, flip P2a's `[ ]` to `[x]`. If wrong, drop notes under `## Human notes for next iteration`.
 
-**Once P2a is signed off → P2b — KPI strip + predictions grid** *(Manual-gated)* — plan ready at `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md`. P2b extends `predictionTracker.getAccuracyStats()` with a `brierScore` field, then appends the 4-tile KPI strip and the 2-col `MatchCard` grid below the hero. Will be tagged `v3.2`.
+**Once P2a is signed off → P2b — KPI strip + predictions grid** *(Manual-gated)* — plan ready at `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md`. P2b extends `predictionTracker.getAccuracyStats()` with a `brierScore` field (already done as a sub-slice — see notes), then appends the 4-tile KPI strip and the 2-col `MatchCard` grid below the hero. Will be tagged `v3.2`.
+
+**Then P2c — Below-fold + Phase 2 checkpoint** *(Manual-gated)* — plan ready at `docs/superpowers/plans/2026-04-26-phase-2-today/p2c-below-fold.md`. P2c adds `storedPredictionToFixture` to `lib/adapters/v3.ts` (already done as a sub-slice — see notes), then appends the trends Spark + recent-log MatchRows to `Today.svelte` and ships `e2e/checkpoint-p2.spec.ts`. Will be tagged `v3.3`.
 
 Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/` (Phase 1) and `docs/superpowers/plans/2026-04-26-phase-2-today/` (Phase 2 — index + p2a/p2b/p2c). A Phase 3 plan directory at `docs/superpowers/plans/2026-04-26-phase-3-per-hub/` should be created when Phase 2 completes.
 

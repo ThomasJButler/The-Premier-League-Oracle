@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchToFixture, predictionToV3 } from './v3';
+import { matchToFixture, predictionToV3, storedPredictionToFixture } from './v3';
 import type { Match } from '../../types';
 import type { StoredPrediction } from '../../services/predictionTracker';
 
@@ -114,5 +114,78 @@ describe('predictionToV3', () => {
   it('maps draw and away picks correctly', () => {
     expect(predictionToV3({ ...stored, predictedResult: 'D' })?.pick).toBe('DRAW');
     expect(predictionToV3({ ...stored, predictedResult: 'A' })?.pick).toBe('AWAY');
+  });
+});
+
+describe('storedPredictionToFixture', () => {
+  function mkStored(over: Partial<StoredPrediction> = {}): StoredPrediction {
+    return {
+      id: 'p-1',
+      matchId: '1234',
+      homeTeam: 'Liverpool',
+      awayTeam: 'Arsenal',
+      predictedResult: 'H',
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 0,
+      confidence: 0.6,
+      timestamp: '2026-04-26T10:00:00Z',
+      matchDate: '2026-04-30T19:00:00Z',
+      matchday: 35,
+      ...over,
+    };
+  }
+
+  it('synthesises a v3 Fixture from a settled stored prediction', () => {
+    const fx = storedPredictionToFixture(mkStored({
+      actualResult: 'H',
+      actualHomeGoals: 2,
+      actualAwayGoals: 0,
+      isCorrect: true,
+    }));
+    expect(fx.id).toBe('1234');
+    expect(fx.competition).toBe('Premier League');
+    expect(fx.gameweek).toBe(35);
+    expect(fx.utcDate).toBe('2026-04-30T19:00:00Z');
+    expect(fx.status).toBe('FINISHED');
+    expect(fx.score).toEqual({ home: 2, away: 0 });
+    expect(fx.home.name).toBe('Liverpool');
+    expect(fx.home.abbr).toBe('LIV');
+    expect(fx.away.name).toBe('Arsenal');
+    expect(fx.away.abbr).toBe('ARS');
+  });
+
+  it('marks unsettled stored predictions as SCHEDULED with no score', () => {
+    const fx = storedPredictionToFixture(mkStored({
+      matchId: '5678', homeTeam: 'Chelsea', awayTeam: 'Spurs',
+      predictedResult: 'A', predictedHomeGoals: 1, predictedAwayGoals: 2,
+      confidence: 0.5,
+    }));
+    expect(fx.status).toBe('SCHEDULED');
+    expect(fx.score).toBeUndefined();
+  });
+
+  it('preserves a 0-0 settled score (guards against truthiness regressions)', () => {
+    const fx = storedPredictionToFixture(mkStored({
+      predictedResult: 'D', predictedHomeGoals: 0, predictedAwayGoals: 0,
+      actualResult: 'D', actualHomeGoals: 0, actualAwayGoals: 0, isCorrect: true,
+    }));
+    expect(fx.status).toBe('FINISHED');
+    expect(fx.score).toEqual({ home: 0, away: 0 });
+  });
+
+  it('strips FC/AFC suffixes from team abbreviations via the shared helper', () => {
+    const fx = storedPredictionToFixture(mkStored({
+      homeTeam: 'Liverpool FC',
+      awayTeam: 'AFC Bournemouth',
+    }));
+    expect(fx.home.abbr).toBe('LIV');
+    expect(fx.away.abbr).toBe('BOU');
+    expect(fx.home.name).toBe('Liverpool FC');
+    expect(fx.away.name).toBe('AFC Bournemouth');
+  });
+
+  it('defaults gameweek to 0 when matchday is missing', () => {
+    const fx = storedPredictionToFixture(mkStored({ matchday: undefined }));
+    expect(fx.gameweek).toBe(0);
   });
 });

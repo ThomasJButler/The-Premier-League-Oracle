@@ -63,6 +63,26 @@ const PICK_MAP: Record<StoredPrediction['predictedResult'], MatchPrediction['pic
   H: 'HOME', A: 'AWAY', D: 'DRAW',
 };
 
+export function storedPredictionToFixture(p: StoredPrediction): Fixture {
+  const settled =
+    p.actualResult !== undefined &&
+    typeof p.actualHomeGoals === 'number' &&
+    typeof p.actualAwayGoals === 'number';
+
+  return {
+    id: p.matchId,
+    competition: 'Premier League',
+    gameweek: p.matchday ?? 0,
+    utcDate: p.matchDate,
+    status: settled ? 'FINISHED' : 'SCHEDULED',
+    home: teamFrom(p.homeTeam),
+    away: teamFrom(p.awayTeam),
+    score: settled
+      ? { home: p.actualHomeGoals as number, away: p.actualAwayGoals as number }
+      : undefined,
+  };
+}
+
 export function predictionToV3(p: StoredPrediction): MatchPrediction | undefined {
   if (!p.poissonProbs) return undefined;
   return {
