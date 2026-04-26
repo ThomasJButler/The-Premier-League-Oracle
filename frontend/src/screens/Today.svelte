@@ -3,9 +3,12 @@
   import { dataService } from '../services/dataService';
   import { predictionTracker } from '../services/predictionTracker';
   import { findCurrentGameweek, fixturesForGameweek, nextKickoff } from '../lib/gameweek';
-  import { matchToFixture, predictionToV3 } from '../lib/adapters/v3';
+  import { matchToFixture, predictionToV3, storedPredictionToFixture } from '../lib/adapters/v3';
   import MatchCard from '../components/matchcard/MatchCard.svelte';
+  import MatchRow from '../components/matchcard/MatchRow.svelte';
   import KpiTile from '../components/atoms/KpiTile.svelte';
+  import Spark from '../components/atoms/Spark.svelte';
+  import SectionHeader from '../components/atoms/SectionHeader.svelte';
   import CommandStrip from '../components/today/CommandStrip.svelte';
   import type { Match } from '../types';
   import type { Fixture, MatchPrediction } from '../types/redesign';
@@ -15,6 +18,7 @@
   let matches: Match[] = [];
   let loaded = false;
   let brierState: 'default' | 'highlight' = 'default';
+  let trendsDirection: 'up' | 'down' | 'flat' = 'flat';
 
   $: gameweek = loaded ? findCurrentGameweek(matches) : null;
   $: heroMatch = loaded ? nextKickoff(matches) : null;
@@ -23,6 +27,14 @@
   $: kickoffIso = heroMatch?.date ?? null;
 
   $: stats = predictionTracker.getAccuracyStats();
+  $: gameweekAccuracy = predictionTracker.getAccuracyByGameweek();
+  $: trendsValues = gameweekAccuracy.map((g) => g.accuracy);
+  $: trendsDirection =
+    gameweekAccuracy.length > 1 &&
+    gameweekAccuracy[gameweekAccuracy.length - 1].accuracy >= gameweekAccuracy[0].accuracy
+      ? 'up'
+      : 'down';
+  $: recentPredictions = predictionTracker.getRecentPredictions(5);
   $: apiHealthy = isApiHealthy(loaded);
   $: gridFixtures =
     gameweek !== null && loaded
@@ -113,5 +125,36 @@
         No more fixtures in this gameweek.
       </div>
     {/if}
+
+    <div class="px-4" data-zone="trends">
+      <SectionHeader kicker="MODEL TRENDS" title="How the predictions are landing">
+        <a slot="right" href="/settings/help" class="text-body-sm text-text-dim hover:text-foreground">
+          How we predict →
+        </a>
+      </SectionHeader>
+      {#if gameweekAccuracy.length > 0}
+        <Spark data={trendsValues} width={320} height={48} trend={trendsDirection} fill />
+      {:else}
+        <p class="text-text-dim text-body-sm">
+          No settled predictions yet — predictions appear here once results land.
+        </p>
+      {/if}
+    </div>
+
+    <div class="px-4" data-zone="log">
+      <SectionHeader title="Recent log" />
+      {#if recentPredictions.length > 0}
+        <div class="rounded-lg border border-border overflow-hidden">
+          {#each recentPredictions as stored (stored.id)}
+            {@const fx = storedPredictionToFixture(stored)}
+            <MatchRow fixture={fx} prediction={predictionToV3(stored)} />
+          {/each}
+        </div>
+      {:else}
+        <p class="text-text-dim text-body-sm" data-zone="log-empty">
+          No settled predictions in the log yet.
+        </p>
+      {/if}
+    </div>
   {/if}
 </div>

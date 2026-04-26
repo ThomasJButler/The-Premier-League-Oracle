@@ -221,3 +221,60 @@ describe('Today screen — P2b predictions grid', () => {
     expect(container.querySelector('[data-zone="grid-empty"]')).toBeTruthy();
   });
 });
+
+describe('Today screen — P2c below-fold', () => {
+  it('renders the model-trends section header and Spark', async () => {
+    const { predictionTracker } = await import('../services/predictionTracker');
+    (predictionTracker.getAccuracyByGameweek as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+      { matchday: 32, totalPredictions: 8, correctPredictions: 5, accuracy: 62 },
+      { matchday: 33, totalPredictions: 9, correctPredictions: 6, accuracy: 67 },
+      { matchday: 34, totalPredictions: 10, correctPredictions: 7, accuracy: 70 },
+    ]);
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const trends = container.querySelector('[data-zone="trends"]');
+    expect(trends).toBeTruthy();
+    expect(trends!.textContent).toMatch(/MODEL TRENDS/);
+    expect(trends!.querySelector('svg')).toBeTruthy();
+  });
+
+  it('renders five MatchRow entries when getRecentPredictions returns five', async () => {
+    const { predictionTracker } = await import('../services/predictionTracker');
+    (predictionTracker.getRecentPredictions as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: `p-${i}`,
+        matchId: String(100 + i),
+        homeTeam: 'Liverpool',
+        awayTeam: 'Arsenal',
+        predictedResult: 'H' as const,
+        predictedHomeGoals: 2,
+        predictedAwayGoals: 0,
+        confidence: 0.6,
+        actualResult: 'H' as const,
+        actualHomeGoals: 2,
+        actualAwayGoals: 0,
+        isCorrect: true,
+        timestamp: '2026-04-26T10:00:00Z',
+        matchDate: `2026-04-${20 + i}T19:00:00Z`,
+        matchday: 34,
+        poissonProbs: { homeWin: 0.6, draw: 0.25, awayWin: 0.15 },
+      })),
+    );
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const log = container.querySelector('[data-zone="log"]');
+    expect(log).toBeTruthy();
+    // Each settled MatchRow renders a [data-hit] cell on the right (MatchRow.svelte:54-57)
+    expect(log!.querySelectorAll('[data-hit]').length).toBe(5);
+  });
+
+  it('renders an empty-state when getRecentPredictions returns nothing', async () => {
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    // Default mock returns [] for recent → empty state shown
+    expect(container.querySelector('[data-zone="log-empty"]')).toBeTruthy();
+  });
+});
