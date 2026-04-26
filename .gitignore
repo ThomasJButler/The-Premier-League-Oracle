@@ -46,3 +46,4 @@ backend/htmlcov/
 .claude/settings.json
 .claude-run/
 .playwright-mcp/
+/ClaudeRalph
