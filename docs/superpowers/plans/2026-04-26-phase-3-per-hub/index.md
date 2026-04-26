@@ -34,7 +34,7 @@ Phase 3 is sub-divided by hub. Plans for the **Fixtures sub-phase** are detailed
 
 | Slice | Plan file | Gate | Tag at sign-off |
 |---|---|---|---|
-| P4a — This Week | `p4a-predictions-this-week.md` *(TBD)* | Manual | `v3.8` |
+| P4a — This Week | [`p4a-predictions-this-week.md`](./p4a-predictions-this-week.md) | Manual | `v3.8` |
 | P4b — Backtest | `p4b-predictions-backtest.md` *(TBD)* | Manual | `v3.9` |
 | P4c — Log | `p4c-predictions-log.md` *(TBD)* | Manual | `v3.10` |
 | P4d — Tools (Kelly + Value) | `p4d-predictions-tools.md` *(TBD)* | Manual | `v3.11` |
