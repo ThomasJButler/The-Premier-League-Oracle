@@ -1,68 +1,25 @@
+/* ─── BROADCAST TOKENS ─── */
+@import url('./lib/styles/typography.css');
+@import url('./lib/styles/tokens.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── DESIGN TOKENS (shadcn-svelte compatible) ─── */
-/* "Stadium Nightfall" — PL-inspired, dark-first, broadcast-quality */
 @layer base {
-  :root {
-    --background: 210 15% 97%;
-    --foreground: 220 15% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 10%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 12% 93%;
-    --secondary-foreground: 220 15% 10%;
-    --muted: 215 10% 94%;
-    --muted-foreground: 215 8% 45%;
-    --accent: 155 100% 40%;
-    --accent-foreground: 155 80% 8%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 155 100% 35%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 215 12% 89%;
-    --input: 215 12% 89%;
-    --ring: 160 84% 39%;
-    --radius: 0.75rem;
-
-    --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent) / 0.85) 0%, hsl(var(--accent)) 100%);
-  }
-
-  .dark {
-    --background: 222 30% 5%;
-    --foreground: 210 5% 93%;
-    --card: 222 25% 7%;
-    --card-foreground: 210 5% 93%;
-    --popover: 222 25% 7%;
-    --popover-foreground: 210 5% 93%;
-    --primary: 160 72% 45%;
-    --primary-foreground: 222 40% 6%;
-    --secondary: 222 20% 12%;
-    --secondary-foreground: 210 5% 93%;
-    --muted: 222 18% 10%;
-    --muted-foreground: 215 6% 55%;
-    --accent: 155 100% 50%;
-    --accent-foreground: 155 60% 8%;
-    --destructive: 0 62% 35%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 155 100% 42%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --border: 222 18% 13%;
-    --input: 222 18% 13%;
-    --ring: 160 72% 45%;
-
-    --gradient-primary: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent) / 0.85) 0%, hsl(var(--accent)) 100%);
-  }
+  /* Type scale utility classes — semantic, not Tailwind-extended */
+  .text-kicker    { font-size: 10px; letter-spacing: 0.25em; font-weight: 700; color: hsl(var(--primary)); text-transform: uppercase; }
+  .text-eyebrow   { font-size: 10px; letter-spacing: 0.20em; font-weight: 700; color: hsl(var(--text-dim)); text-transform: uppercase; }
+  .text-body-sm   { font-size: 11px; color: hsl(var(--muted-foreground)); }
+  .text-body      { font-size: 12px; line-height: 1.55; color: hsl(var(--muted-foreground)); }
+  .text-label     { font-size: 13px; font-weight: 500; }
+  .text-metric-sm { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; font-weight: 700; }
+  .text-metric    { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 22px; font-weight: 700; }
+  .text-metric-lg { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 28px; font-weight: 800; }
+  .text-metric-xl { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 44px; font-weight: 800; letter-spacing: -0.04em; }
+  .text-title     { font-size: 17px; letter-spacing: -0.01em; font-weight: 800; }
+  .text-display   { font-size: 24px; letter-spacing: -0.01em; font-weight: 800; }
+  .text-italic-serif { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; }
 
   /* ─── TEAM THEMES ─── */
   /* Override primary/accent/ring per favourite team. Dark variants lighten

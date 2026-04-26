@@ -8,8 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Figtree', 'system-ui', 'sans-serif'],
-        display: ['Outfit', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],   // alias retained during transition; killed in P10
       },
       colors: {
         // shadcn-svelte semantic tokens (HSL via CSS variables)
@@ -74,6 +76,7 @@ export default {
         'glow-accent-md': '0 0 15px 2px hsl(var(--accent) / 0.4)',
         'glow-green': '0 0 15px 2px hsl(var(--primary) / 0.25)',
         'inner-glow': 'inset 0 1px 0 0 hsl(var(--border) / 0.1)',
+        'emphasised': '0 0 0 1px hsl(var(--primary) / 0.30), 0 8px 24px hsl(var(--background) / 0.40)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',

@@ -1,0 +1,112 @@
+/*
+ * Broadcast design tokens.
+ * HSL components only (so Tailwind 3's <alpha-value> placeholder works in bg-x/N classes).
+ * Light is the default; .dark class overrides.
+ *
+ * Existing shadcn-svelte var names (--background, --foreground, --primary, --accent, --card, --muted,
+ * --border, --destructive, --warning) are preserved; their VALUES change.
+ * New vars (--bg-raised, --bg-inset, --surface-hover, --border-strong, --text-dim, --text-faint,
+ * --text-ghost, --primary-deep, --accent-deep, --warn-deep) are added.
+ */
+
+:root {
+  /* Surfaces */
+  --background: 40 21% 95%;        /* warm cream #f5f3ee */
+  --bg-raised: 0 0% 100%;          /* #ffffff (alias to --card) */
+  --bg-inset: 40 16% 90%;          /* #ebe8e1 */
+  --surface-hover: 40 30% 97%;     /* #faf8f3 */
+  --card: 0 0% 100%;
+  --card-foreground: 216 11% 6%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 216 11% 6%;
+
+  /* Borders */
+  --border: 38 17% 86%;            /* #e3dfd6 */
+  --border-strong: 40 14% 77%;     /* #cfc9bc */
+  --input: 38 17% 86%;
+
+  /* Text */
+  --foreground: 216 11% 6%;        /* #0c0f12 */
+  --muted: 40 16% 90%;             /* alias to --bg-inset for shadcn compat */
+  --muted-foreground: 212 7% 27%;  /* #3d4348 */
+  --text-dim: 211 5% 44%;          /* #6b7178 */
+  --text-faint: 217 5% 63%;        /* #9ba0a6 */
+  --text-ghost: 213 6% 79%;        /* #c4c8cd */
+
+  /* Brand — Liverpool red is the default --primary */
+  --primary: 351 85% 42%;          /* #c8102e */
+  --primary-foreground: 0 0% 100%;
+  --primary-deep: 351 87% 29%;     /* #8a0a1f */
+
+  --secondary: 40 16% 90%;
+  --secondary-foreground: 216 11% 6%;
+
+  /* Signal — Oracle green */
+  --accent: 153 82% 30%;           /* #0d8a5f */
+  --accent-foreground: 0 0% 100%;
+  --accent-deep: 153 75% 19%;      /* #085a3e */
+
+  /* States */
+  --destructive: 5 60% 46%;        /* #c2362a */
+  --destructive-foreground: 0 0% 100%;
+  --success: 153 82% 30%;
+  --success-foreground: 0 0% 100%;
+  --warning: 27 71% 42%;           /* #b8651f */
+  --warning-foreground: 0 0% 100%;
+  --warn-deep: 28 78% 27%;         /* #7a3f0d */
+
+  --ring: 351 85% 42%;
+  --radius: 0.5rem;
+
+  --gradient-primary: linear-gradient(135deg, hsl(var(--primary-deep)) 0%, hsl(var(--primary)) 100%);
+  --gradient-accent: linear-gradient(135deg, hsl(var(--accent-deep)) 0%, hsl(var(--accent)) 100%);
+}
+
+.dark {
+  /* Surfaces */
+  --background: 204 33% 3%;        /* #05080a near-black */
+  --bg-raised: 210 22% 6%;         /* #0a0e12 */
+  --bg-inset: 213 50% 3%;          /* #03060a */
+  --surface-hover: 212 23% 8%;     /* #0f141a */
+  --card: 210 22% 6%;
+  --card-foreground: 210 8% 95%;
+  --popover: 210 22% 6%;
+  --popover-foreground: 210 8% 95%;
+
+  /* Borders */
+  --border: 210 25% 8%;            /* #0e1418 */
+  --border-strong: 210 17% 13%;    /* #1a2026 */
+  --input: 210 25% 8%;
+
+  /* Text */
+  --foreground: 210 8% 95%;        /* #f0f2f4 */
+  --muted: 213 50% 3%;
+  --muted-foreground: 212 4% 68%;  /* #a8adb3 */
+  --text-dim: 211 6% 51%;          /* #7a8189 */
+  --text-faint: 211 6% 39%;        /* #5b636b */
+  --text-ghost: 212 14% 27%;       /* #3a4550 */
+
+  /* Brand */
+  --primary: 351 73% 50%;          /* #dc2440 */
+  --primary-foreground: 0 0% 100%;
+  --primary-deep: 351 84% 33%;     /* #9c0d22 */
+
+  --secondary: 212 23% 8%;
+  --secondary-foreground: 210 8% 95%;
+
+  /* Signal */
+  --accent: 153 75% 64%;           /* #5fe8a6 */
+  --accent-foreground: 153 60% 8%;
+  --accent-deep: 155 73% 36%;      /* #1a9f65 */
+
+  /* States */
+  --destructive: 0 84% 60%;        /* #ef4444 */
+  --destructive-foreground: 0 0% 100%;
+  --success: 153 75% 64%;
+  --success-foreground: 0 0% 100%;
+  --warning: 28 81% 67%;           /* #f0a868 */
+  --warning-foreground: 0 0% 0%;
+  --warn-deep: 28 78% 35%;         /* #a25414 */
+
+  --ring: 351 73% 50%;
+}

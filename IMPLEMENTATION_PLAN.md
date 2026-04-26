@@ -14,12 +14,12 @@
 
 ## Active phase
 
-Phase 0 (Foundation) — slice **P0a Tokens** is next.
+Phase 0 (Foundation) — slice **P0b Routing** is next.
 
 ## Ordered checklist
 
 ### Phase 0 — Foundation
-- [ ] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0a.
+- [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0a.
 - [ ] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan § P0b.
 - [ ] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan § P0c.
 - [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan § P0d.
@@ -67,7 +67,8 @@ Phase 0 (Foundation) — slice **P0a Tokens** is next.
 
 *(Filled by ralph as it discovers blockers.)*
 
-- *(none yet)*
+- **(P0a, no blocker)** P0a landed clean: 6/6 token gate tests pass, full vitest 705/705 across 43 files (project memory's "561 / 34" count is stale — not blocking, just FYI for future ralph runs that compare suite size). `svelte-check` 0/0. `--radius` shrank from 0.75rem → 0.5rem as designed; no legacy test was hard-coded against a radius value, so the change rippled silently through `rounded-lg/md/sm` utilities.
+- **(P0a → P0b handoff)** `app.css` now begins with `@import url('./lib/styles/typography.css'); @import url('./lib/styles/tokens.css');` *above* the `@tailwind` directives — required because CSS spec puts `@import` first, and PostCSS-import in the Vite pipeline needs that ordering. Future slices that touch `app.css` should preserve that ordering.
 
 ## Human notes for next iteration
 
@@ -77,4 +78,4 @@ Phase 0 (Foundation) — slice **P0a Tokens** is next.
 
 ## Next recommended build slice
 
-**P0a — Tokens** — see `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0a for the full step list. Auto-gated by `frontend/src/tests/tokens.test.ts` (Task 5 of P0a).
+**P0b — Routing** — see `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0b for the full step list. Installs `svelte-routing`, refactors `App.svelte` from `currentView` state to `<Router>` + `<Route>`, creates `frontend/src/routes.ts` (route table + redirect map + sub-tab declarations), adds Vercel SPA fallback rewrite, and deletes the orphaned `SuggestedBets`, `AccumulatorBuilder`, `BettingHistory` components (and their tests). Auto-gated by Playwright spec `frontend/e2e/routing.spec.ts` covering every new URL + every legacy redirect.
