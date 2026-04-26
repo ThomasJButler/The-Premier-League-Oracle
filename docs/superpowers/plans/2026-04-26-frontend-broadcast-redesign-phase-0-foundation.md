@@ -465,9 +465,6 @@ Expected: 0 errors. (`svelte-routing` ships its own types.)
  * and by the redirect logic at the top of <Router>.
  */
 
-import type { SvelteComponentTyped } from 'svelte';
-
-// Lazy-load route components to keep initial bundle small.
 // Phase 0d wires the screens; until then, App.svelte may render legacy components by route.
 export type RouteDef = {
   path: string;
@@ -738,9 +735,43 @@ const VIEW_TO_PATH: Record<string, string> = {
 
 Replace the dispatch call with `routerNavigate(VIEW_TO_PATH[view] ?? '/today')`.
 
-- [ ] **Step 3: Patch MobileNav.svelte the same way**
+- [ ] **Step 3: Patch MobileNav.svelte to use svelte-routing's navigate**
 
-Repeat the import + map + replace pattern in `frontend/src/components/MobileNav.svelte`. The map is the same; the click handler logic is similar.
+Open `frontend/src/components/MobileNav.svelte`. Add the same import:
+
+```svelte
+<script lang="ts">
+  import { navigate as routerNavigate } from 'svelte-routing';
+  // ... existing imports
+</script>
+```
+
+Add the same `VIEW_TO_PATH` map at the top of the script (identical to the one in Sidebar.svelte from Step 2):
+
+```ts
+const VIEW_TO_PATH: Record<string, string> = {
+  'Dashboard': '/today',
+  'Matches': '/fixtures/matches',
+  'Live Matches': '/fixtures/live',
+  'Standings': '/fixtures/standings',
+  'Predictions': '/predictions/this-week',
+  'Suggested Bets': '/predictions/tools',
+  'Kelly Calculator': '/predictions/tools?utility=kelly',
+  'Value Scanner': '/predictions/tools?utility=value',
+  'Accumulators': '/predictions/tools',
+  'Betting History': '/predictions/log',
+  'Top Scorers': '/insights/scorers',
+  'Season Stats': '/insights/stats',
+  'Season Timeline': '/insights/timeline',
+  'Oracle Chat': '/oracle',
+  'Settings': '/settings/account',
+  'Help': '/settings/help',
+};
+```
+
+Search for `dispatch('navigate'` (or the equivalent `createEventDispatcher` call) in the file and replace it with `routerNavigate(VIEW_TO_PATH[view] ?? '/today')`. The `view` variable is whatever the click handler uses to identify the destination — most likely a `view: string` parameter or a string from the click event payload.
+
+Strip the now-unused `createEventDispatcher` import and any unused `dispatch` variable.
 
 - [ ] **Step 4: Run svelte-check**
 
