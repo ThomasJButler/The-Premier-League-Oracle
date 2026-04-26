@@ -4,7 +4,7 @@
   import MobileTabBar from './components/layout/MobileTabBar.svelte';
   import MobileBottomSheet from './components/layout/MobileBottomSheet.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
-  import Dashboard from './components/Dashboard.svelte';
+  import Today from './screens/Today.svelte';
   import MatchList from './components/MatchList.svelte';
   import Predictions from './components/Predictions.svelte';
   import LiveMatches from './components/LiveMatches.svelte';
@@ -28,7 +28,6 @@
 
   let showApiSetup = false;
   let mobileSheetOpen = false;
-  let dashboardComponent: Dashboard;
 
   function applyRedirect(): boolean {
     const here = window.location.pathname;
@@ -59,9 +58,6 @@
     footballDataAPI.setApiKey(event.detail.apiKey);
     await dataService.clearCache();
     await dataService.refreshApiConfiguration();
-    if (dashboardComponent) {
-      setTimeout(() => dashboardComponent.refresh(), 100);
-    }
   }
 </script>
 
@@ -69,7 +65,7 @@
   <BroadcastShell>
     <LiveTicker />
 
-    <Route path="/today"><Dashboard bind:this={dashboardComponent} /></Route>
+    <Route path="/today"><Today /></Route>
     <Route path="/fixtures/live"><LiveMatches /></Route>
     <Route path="/fixtures/matches"><MatchList /></Route>
     <Route path="/fixtures/standings"><StandingsTable /></Route>
