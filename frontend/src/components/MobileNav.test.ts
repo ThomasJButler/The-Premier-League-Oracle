@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import MobileNav from './MobileNav.svelte';
+import { navigate as routerNavigate } from 'svelte-routing';
+
+// Mock svelte-routing — MobileNav calls navigate() to drive client-side routing
+vi.mock('svelte-routing', () => ({ navigate: vi.fn() }));
 
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({
@@ -83,29 +87,21 @@ describe('MobileNav', () => {
     }
   });
 
-  it('dispatches navigate event when primary item is clicked', async () => {
-    const { component } = render(MobileNav, { props: { currentView: 'Dashboard' } });
-    const handler = vi.fn();
-    component.$on('navigate', handler);
+  it('routes to the target path via svelte-routing when primary item is clicked', async () => {
+    render(MobileNav, { props: { currentView: 'Dashboard' } });
 
     await fireEvent.click(screen.getByText('Predictions'));
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({ detail: { view: 'Predictions' } }),
-    );
+    expect(routerNavigate).toHaveBeenCalledWith('/predictions/this-week');
   });
 
-  it('dispatches navigate and closes menu when more item is clicked', async () => {
-    const { component } = render(MobileNav, { props: { currentView: 'Dashboard' } });
-    const handler = vi.fn();
-    component.$on('navigate', handler);
+  it('routes to target and closes menu when more item is clicked', async () => {
+    render(MobileNav, { props: { currentView: 'Dashboard' } });
 
     // Open then click a secondary item
     await fireEvent.click(screen.getByRole('button', { name: 'More options' }));
     await fireEvent.click(screen.getByText('Top Scorers'));
 
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({ detail: { view: 'Top Scorers' } }),
-    );
+    expect(routerNavigate).toHaveBeenCalledWith('/insights/scorers');
     // Menu should be closed — secondary items no longer in DOM
     expect(screen.queryByText('Kelly Calculator')).not.toBeInTheDocument();
   });

@@ -1,11 +1,28 @@
 <script lang="ts">
   import { LayoutDashboard, Tv, BarChart3, Table, MoreHorizontal, List, Calculator, History, Trophy, HelpCircle, Settings, BarChart2, X, MessageCircle, Search, Layers, Calendar, Zap } from 'lucide-svelte';
-  import { createEventDispatcher } from 'svelte';
+  import { navigate as routerNavigate } from 'svelte-routing';
   import { focusTrap } from '$lib/utils';
 
-  export let currentView: string;
+  export let currentView: string = '';
 
-  const dispatch = createEventDispatcher();
+  const VIEW_TO_PATH: Record<string, string> = {
+    'Dashboard': '/today',
+    'Matches': '/fixtures/matches',
+    'Live Matches': '/fixtures/live',
+    'Standings': '/fixtures/standings',
+    'Predictions': '/predictions/this-week',
+    'Suggested Bets': '/predictions/tools',
+    'Kelly Calculator': '/predictions/tools?utility=kelly',
+    'Value Scanner': '/predictions/tools?utility=value',
+    'Accumulators': '/predictions/tools',
+    'Betting History': '/predictions/log',
+    'Top Scorers': '/insights/scorers',
+    'Season Stats': '/insights/stats',
+    'Season Timeline': '/insights/timeline',
+    'Oracle Chat': '/oracle',
+    'Settings': '/settings/account',
+    'Help': '/settings/help',
+  };
 
   let isMoreOpen = false;
 
@@ -32,12 +49,12 @@
   ];
 
   function handleNavClick(view: string) {
-    dispatch('navigate', { view });
+    routerNavigate(VIEW_TO_PATH[view] ?? '/today');
     isMoreOpen = false;
   }
 
   // Svelte 4 types on:keydown as CustomEvent, not KeyboardEvent — any is required here
-  function handleKeydown(e: any) {   
+  function handleKeydown(e: any) {
     if (e.key === 'Escape' && isMoreOpen) isMoreOpen = false;
   }
 

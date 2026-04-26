@@ -14,13 +14,13 @@
 
 ## Active phase
 
-Phase 0 (Foundation) — slice **P0b Routing** is next.
+Phase 0 (Foundation) — slice **P0c Atoms** is next.
 
 ## Ordered checklist
 
 ### Phase 0 — Foundation
 - [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0a.
-- [ ] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan § P0b.
+- [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan § P0b.
 - [ ] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan § P0c.
 - [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan § P0d.
 - [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan § P0-cp.
@@ -69,6 +69,14 @@ Phase 0 (Foundation) — slice **P0b Routing** is next.
 
 - **(P0a, no blocker)** P0a landed clean: 6/6 token gate tests pass, full vitest 705/705 across 43 files (project memory's "561 / 34" count is stale — not blocking, just FYI for future ralph runs that compare suite size). `svelte-check` 0/0. `--radius` shrank from 0.75rem → 0.5rem as designed; no legacy test was hard-coded against a radius value, so the change rippled silently through `rounded-lg/md/sm` utilities.
 - **(P0a → P0b handoff)** `app.css` now begins with `@import url('./lib/styles/typography.css'); @import url('./lib/styles/tokens.css');` *above* the `@tailwind` directives — required because CSS spec puts `@import` first, and PostCSS-import in the Vite pipeline needs that ordering. Future slices that touch `app.css` should preserve that ordering.
+- **(P0b, no blocker)** P0b landed: vitest 671/671 across 41 files (down from 705 because we deleted `AccumulatorBuilder.test.ts` + `BettingHistory.test.ts`, ~34 tests). `svelte-check` 0/0. Playwright `routing.spec.ts` 32/32 in 20.6s. Three legacy tests that asserted on `dispatch('navigate', { view })` were rewritten to mock `svelte-routing`'s `navigate()` and assert on path strings (per the plan's prescribed pattern).
+- **(P0b deviations from plan)**
+  - `vercel.json` lives at `frontend/vercel.json`, not the repo root. Updated that file's existing `/(.*)` SPA catch-all to the plan's stricter regex `/((?!api/|_next/|favicon\\.ico|.*\\..*).*)/` so static assets and API rewrites still take precedence.
+  - Dropped the `import ValueBets` line from the plan's `App.svelte` template — the plan kept it but never mounted it, which would have tripped svelte-check. `ValueBets` will be re-imported in P4d when `/predictions/tools?utility=value` is wired.
+  - Removed the dead `<style>` block (`.page-content { transition }`) from `App.svelte` after svelte-check flagged the selector as unused — the wrapper div it styled was deleted in this slice's rewrite.
+  - Patched `Sidebar.svelte`'s forwarder (the `handleNavClick` that re-dispatches `SidebarNav`'s `navigate` event) rather than touching `SidebarNav.svelte` itself — single interception point, less surface.
+  - Defaulted `currentView: string = ''` in both `Sidebar.svelte` and `MobileNav.svelte`. The new `App.svelte` no longer passes the prop, and a default avoids svelte-check warning. The active-route highlight will look stale on legacy nav until P0d swaps the shell.
+- **(P0b → P0c handoff)** `frontend/src/routes.ts` is the single source of truth for the v3 route table. P0c's atoms can already import `RouteDef` / `SubTabDef` types if needed. Note: `findRoute(path)` only matches top-level hub paths (e.g. `/fixtures`), not full sub-tab paths — extend if a future slice needs `/fixtures/live` resolution.
 
 ## Human notes for next iteration
 
@@ -78,4 +86,4 @@ Phase 0 (Foundation) — slice **P0b Routing** is next.
 
 ## Next recommended build slice
 
-**P0b — Routing** — see `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0b for the full step list. Installs `svelte-routing`, refactors `App.svelte` from `currentView` state to `<Router>` + `<Route>`, creates `frontend/src/routes.ts` (route table + redirect map + sub-tab declarations), adds Vercel SPA fallback rewrite, and deletes the orphaned `SuggestedBets`, `AccumulatorBuilder`, `BettingHistory` components (and their tests). Auto-gated by Playwright spec `frontend/e2e/routing.spec.ts` covering every new URL + every legacy redirect.
+**P0c — Atoms** — see `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0c for the full step list. Creates `frontend/src/types/redesign.ts` (shared type contracts) and `frontend/src/components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each atom ships with a co-located `.test.ts` per Section 4 of the spec. Auto-gated by `npm run test -- --run` green + `npm run check` clean.

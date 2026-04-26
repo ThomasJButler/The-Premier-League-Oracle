@@ -1,10 +1,30 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
+  import { navigate as routerNavigate } from 'svelte-routing';
   import * as Sheet from '$lib/components/ui/sheet';
   import SidebarNav from './SidebarNav.svelte';
 
-  export let currentView: string;
+  export let currentView: string = '';
   export let isOpen: boolean;
+
+  const VIEW_TO_PATH: Record<string, string> = {
+    'Dashboard': '/today',
+    'Matches': '/fixtures/matches',
+    'Live Matches': '/fixtures/live',
+    'Standings': '/fixtures/standings',
+    'Predictions': '/predictions/this-week',
+    'Suggested Bets': '/predictions/tools',
+    'Kelly Calculator': '/predictions/tools?utility=kelly',
+    'Value Scanner': '/predictions/tools?utility=value',
+    'Accumulators': '/predictions/tools',
+    'Betting History': '/predictions/log',
+    'Top Scorers': '/insights/scorers',
+    'Season Stats': '/insights/stats',
+    'Season Timeline': '/insights/timeline',
+    'Oracle Chat': '/oracle',
+    'Settings': '/settings/account',
+    'Help': '/settings/help',
+  };
 
   let isMobile = false;
   function checkMobile() { isMobile = window.innerWidth < 1024; }
@@ -23,7 +43,8 @@
   }
 
   function handleNavClick(e: CustomEvent<{ view: string }>) {
-    dispatch('navigate', e.detail);
+    const path = VIEW_TO_PATH[e.detail.view] ?? '/today';
+    routerNavigate(path);
     if (isMobile) closeSidebar();
   }
 </script>

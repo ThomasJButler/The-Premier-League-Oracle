@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import Sidebar from './Sidebar.svelte';
+import { navigate as routerNavigate } from 'svelte-routing';
+
+// Mock svelte-routing — Sidebar calls navigate() to drive client-side routing
+vi.mock('svelte-routing', () => ({ navigate: vi.fn() }));
 
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({
@@ -111,15 +115,11 @@ describe('Sidebar', () => {
     expect(screen.getByTitle('Predictions')).toHaveAttribute('aria-current', 'page');
   });
 
-  it('dispatches navigate event when a nav item is clicked', async () => {
-    const { component } = render(Sidebar, { props: { currentView: 'Dashboard', isOpen: true } });
-    const handler = vi.fn();
-    component.$on('navigate', handler);
+  it('routes to the target path via svelte-routing when a nav item is clicked', async () => {
+    render(Sidebar, { props: { currentView: 'Dashboard', isOpen: true } });
 
     await fireEvent.click(screen.getByTitle('Standings'));
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({ detail: { view: 'Standings' } }),
-    );
+    expect(routerNavigate).toHaveBeenCalledWith('/fixtures/standings');
   });
 
   it('dispatches closeSidebar on mobile after navigation', async () => {
