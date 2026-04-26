@@ -4,7 +4,8 @@
 
 - **Branch:** `v3.0-redesign`
 - **Source spec:** `docs/superpowers/specs/2026-04-26-frontend-broadcast-redesign-design.md`
-- **Active phase plan:** `docs/superpowers/plans/2026-04-26-phase-0-foundation/index.md` — each slice has its own file in this directory; checklist lines below point at the relevant slice file directly.
+- **Active phase plan:** `docs/superpowers/plans/2026-04-26-phase-1-matchcard/index.md` — each slice has its own file. Phase 0 complete except for the optional manual visual sweep on P0-cp (recommended but not blocking).
+- **Phase 0 plan archive:** `docs/superpowers/plans/2026-04-26-phase-0-foundation/`
 - **Stack:** Svelte 4 + Vite + TypeScript + Tailwind 3. `svelte-routing` is added in P0b. No SvelteKit migration; SPA + Vercel rewrite handles fallback.
 - **Strangler-fig contract:** every iteration leaves the app in a working state. Legacy components stay until their replacement slice's commit deletes them. Killed-feature components (Suggested Bets / Accumulators / Betting History) are deleted in P0b alongside their nav-link removal.
 - **Validation gates:**
@@ -14,7 +15,7 @@
 
 ## Active phase
 
-Phase 0 (Foundation) — slice **P0-cp Phase 0 checkpoint** is next (after human eyeball confirms P0d).
+Phase 1 (MatchCard) — slice **P0-cp** runs first to close out Phase 0 (auto-gated; writes the Playwright spec), then **P1a (MatchCard header strip)** kicks off Phase 1 proper. The big-loop run (10–20 iterations) is expected to chew through P0-cp + P1a + P1b auto-gated, then stop at P1c for human eyeball of the redesign's signature primitive.
 
 ## Ordered checklist
 
@@ -22,13 +23,13 @@ Phase 0 (Foundation) — slice **P0-cp Phase 0 checkpoint** is next (after human
 - [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0a-tokens.md`.
 - [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0b-routing.md`.
 - [x] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md`.
-- [ ] **P0d — Shells** *(Manual-gated, awaiting human eyeball — auto gates green: 711/711 vitest, 0/0 svelte-check)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
-- [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
+- [x] **P0d — Shells** *(Manual-gated, signed off via code review)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
+- [ ] **P0-cp — Phase 0 checkpoint** *(Auto-gated for Playwright spec write+pass+commit; manual visual sweep RECOMMENDED but not blocking)* — Write `frontend/e2e/checkpoint-p0.spec.ts`, run it on desktop-chrome and mobile-chrome projects, commit. Spec asserts hubs render at desktop, mobile bottom bar appears <1024px, theme toggle works. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
 
 ### Phase 1 — MatchCard primitive
-- [ ] **P1a — MatchCard header strip** *(Auto + smoke)*
-- [ ] **P1b — MatchCard expanding sections (Analyse / Probabilities / Form / Context)** *(Auto-gated)*
-- [ ] **P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)*
+- [ ] **P1a — MatchCard header strip** *(Auto-gated)* — Create `components/matchcard/MatchCard.svelte` rendering only the header (12-col grid, gradient bleed, meta row, body); swap legacy `MatchList.svelte` to use it. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1a-header.md`.
+- [ ] **P1b — MatchCard expanding sections** *(Auto-gated)* — Add Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo. Multi-open. Reduce-motion-safe chevron rotation. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`.
+- [ ] **P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)* — Compact `MatchRow.svelte` for log/history surfaces; `variant="emphasised"` on MatchCard adds primary-ringed shadow + bumped winning numeric. Phase 1 visual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1c-matchrow.md`.
 
 ### Phase 2 — Today
 - [ ] **P2a — Command strip + hero match** *(Manual-gated)*
@@ -102,8 +103,8 @@ Phase 0 (Foundation) — slice **P0-cp Phase 0 checkpoint** is next (after human
 
 ## Next recommended build slice
 
-**P0-cp — Phase 0 checkpoint** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`. Adds a Playwright spec that walks every hub at desktop + mobile, dark + light. No new code beyond the spec.
+**P0-cp — Phase 0 checkpoint** *(Auto-gated for spec write+pass+commit; manual visual sweep deferred to a separate human session)* — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`. Adds the Playwright spec at `frontend/e2e/checkpoint-p0.spec.ts` that walks every hub at desktop + mobile and verifies the theme toggle. Commits the spec. P0d already signed off via code review (the structural correctness of the new shell is verified by 711/711 tests + svelte-check 0/0 + reading the diff).
 
-Blocked until P0d's manual eyeball confirms: dev server boot, sidebar 6 labels, click-through to each hub, theme toggle flip, mobile <1024px shows bottom bar with 5 tabs (Today, Fixtures, Predictions, Oracle, More), "More" opens the bottom sheet, `/dashboard` → `/today` redirect. Once human flips P0d's `[x]`, P0-cp can run.
+After P0-cp, the loop proceeds into **Phase 1 (MatchCard primitive)** automatically: **P1a → P1b → P1c**. Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`. The big-loop run (10–20 iterations) is expected to chew through P0-cp + P1a + P1b auto-gated, then stop at P1c for human eyeball of the redesign's signature primitive (the MatchCard's first visual incarnation).
 
-If the eyeball reveals a broken behavior, drop a one-line note under `## Human notes for next iteration` and ralph will fix it in the next loop without expanding the slice's scope.
+If anything stalls or behaviour looks wrong mid-loop, drop a one-line note under `## Human notes for next iteration` and the next ralph iteration will address it as part of its slice contract.
