@@ -151,7 +151,7 @@ Expected: 3 tests PASS.
 
 If existing predictionTracker tests asserted the exact shape of `getAccuracyStats()` (e.g., snapshotted the whole object), update them to expect the new `brierScore` field.
 
-### Task 1b: Gate empty PROBABILITIES & MODELS sub-blocks in MatchCard primitive
+### Task 1b: Gate empty PROBABILITIES & MODELS sub-blocks in MatchCard primitive — ✅ DONE (committed as standalone auto-gated sub-slice ahead of the rest of P2b; see `IMPLEMENTATION_PLAN.md` § "P2b — Task 1b only" for deviations from this template)
 
 **Why:** The P2a follow-up identified that `predictionToV3` returns `models: []`, `xg: {0,0}`, `elo: {0,0}` for `StoredPrediction` inputs (which lack per-model breakdowns). The MatchCard's PROBABILITIES & MODELS section currently renders these unconditionally — empty 5-col grid, "xG 0.00 - 0.00", "ELO 0 vs 0" — which are visible defects on P2a's hero card already and would ship to every grid card produced by Task 3 below.
 
@@ -161,7 +161,7 @@ If existing predictionTracker tests asserted the exact shape of `getAccuracyStat
 - Modify: `frontend/src/components/matchcard/MatchCard.svelte`
 - Modify: `frontend/src/components/matchcard/MatchCard.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append a new describe block to `MatchCard.test.ts`:
 
@@ -226,7 +226,7 @@ describe('MatchCard — PROBABILITIES section graceful degradation', () => {
 
 **TDD-discipline note (added 2026-04-26 plan grooming):** the three "hides …" tests would *trivially* pass on the current `MatchCard.svelte` source (`MatchCard.svelte:155-188` has no `data-models-grid` / `data-xg-block` / `data-elo-block` attributes anywhere — `querySelector` returns `null` for any non-existent attribute, and `expect(null).toBeNull()` passes). Without the three companion "renders …" tests, the only test that actually fails pre-fix would be `always renders [data-scorelines]` (1 of 4), and a future refactor that reverts the gating logic + removes the markers together would not be caught. The companion "renders when populated" tests fail pre-fix (markers don't exist anywhere) and pass post-fix (markers rendered for populated inputs) — together the bidirectional pairs lock the contract in both directions. `makePrediction()`'s defaults (`frontend/src/tests/fixtures/matchcard.ts:30-49`) already populate `models` (5 entries), `xg: { home: 1.85, away: 0.92 }`, `elo: { home: 1820, away: 1780 }`, so the bare `makePrediction()` call in the models-renders test is sufficient.
 
-- [ ] **Step 2: Add the gating in `MatchCard.svelte`**
+- [x] **Step 2: Add the gating in `MatchCard.svelte`**
 
 Inside the existing `MatchCardSection id="probabilities"` block, replace the three sub-blocks with conditionally-rendered versions plus stable `data-*` markers. Crucially, **keep TOP-3 SCORELINES always visible** — `predictionToV3` always populates at least the predicted scoreline, so this is the section's minimum useful payload.
 
@@ -270,11 +270,13 @@ Inside the existing `MatchCardSection id="probabilities"` block, replace the thr
 
 The outer `{#if … xg or elo populated}` wrapping the 2-col grid prevents an empty grid container from rendering when both inner blocks are gated out.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `cd frontend && npm run test -- --run src/components/matchcard/MatchCard.test.ts`
 
 Expected: all P1a + P1b + P1c tests still PASS, plus 7 new degradation tests PASS (3 hide-when-empty pairs + 1 always-renders-scorelines). Three of the seven tests (the "renders … when populated" companions) and the always-renders-scorelines test will fail PRE-fix because their `data-*` markers don't exist on the current source — that's the TDD-discipline check. After Step 2's gating + markers land, all seven pass.
+
+Actually landed: `MatchCard.test.ts` 24/24 (was 17/17). Pre-fix run confirmed 4 of 7 new tests failed (the 3 "renders when populated" + always-renders-scorelines), with the 3 "hides when empty" companions trivially passing on `null`. Post-fix all 7 pass — bidirectional contract holds.
 
 This task closes the P2a follow-up about the empty PROBABILITIES section. Once Task 3 lands, the grid cards built from `predictionToV3(stored)` will render only the scorelines block (no empty 5-col grid, no zero xG / zero ELO tiles), and P4-era work that widens `predictionToV3` to surface real per-model leans / xG / ELO will automatically un-gate the hidden sub-blocks.
 
@@ -479,16 +481,14 @@ Leave P2b's `[ ]` unchecked. Add a Phase 2 progress note under `## Notes / disco
 
 - [ ] **Step 2: Commit**
 
-`predictionTracker.ts` / `predictionTracker.test.ts` already shipped in `f0c2225` (Task 1) — do **not** re-add them. The remaining surface is Task 1b's `MatchCard` gating + Tasks 2-3's `Today` zone markup + tests.
+`predictionTracker.ts` / `predictionTracker.test.ts` already shipped in `f0c2225` (Task 1). `MatchCard.svelte` / `MatchCard.test.ts` already shipped in this slice's Task 1b sub-slice — do **not** re-add either pair. The remaining surface is Tasks 2-3's `Today` zone markup + tests.
 
 ```bash
 cd /Users/tombutler/Repos/The-Premier-League-Oracle
 git add IMPLEMENTATION_PLAN.md \
-        frontend/src/components/matchcard/MatchCard.svelte \
-        frontend/src/components/matchcard/MatchCard.test.ts \
         frontend/src/screens/Today.svelte \
         frontend/src/screens/Today.test.ts
-git commit -m "P2b: Today KPI strip + predictions grid; gate empty PROBABILITIES & MODELS sub-blocks"
+git commit -m "P2b: Today KPI strip + predictions grid"
 ```
 
 - [ ] **Step 3: Surface the manual sweep checklist**

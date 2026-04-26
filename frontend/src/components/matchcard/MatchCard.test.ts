@@ -188,3 +188,86 @@ describe('MatchCard — emphasised variant', () => {
     expect(center.innerHTML).toMatch(/text-metric-xl/);
   });
 });
+
+describe('MatchCard — PROBABILITIES section graceful degradation', () => {
+  it('hides the 5-col models grid when prediction.models is empty', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({ models: [] }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-models-grid]')).toBeNull();
+  });
+
+  it('renders the 5-col models grid when prediction.models has entries', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction(), // default has 5 models
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-models-grid]')).toBeTruthy();
+  });
+
+  it('hides the xG block when xg.home and xg.away are both zero', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({ xg: { home: 0, away: 0 } }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-xg-block]')).toBeNull();
+  });
+
+  it('renders the xG block when at least one xg value is non-zero', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({ xg: { home: 1.2, away: 0 } }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-xg-block]')).toBeTruthy();
+  });
+
+  it('hides the ELO block when elo.home and elo.away are both zero', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({ elo: { home: 0, away: 0 } }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-elo-block]')).toBeNull();
+  });
+
+  it('renders the ELO block when at least one elo value is non-zero', () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({ elo: { home: 1800, away: 0 } }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-elo-block]')).toBeTruthy();
+  });
+
+  it("always renders TOP-3 SCORELINES (the section's minimum useful payload)", () => {
+    const { container } = render(MatchCard, {
+      props: {
+        fixture: makeFixture(),
+        prediction: makePrediction({
+          models: [],
+          xg: { home: 0, away: 0 },
+          elo: { home: 0, away: 0 },
+        }),
+        defaultOpen: 'probabilities',
+      },
+    });
+    expect(container.querySelector('[data-scorelines]')).toBeTruthy();
+  });
+});

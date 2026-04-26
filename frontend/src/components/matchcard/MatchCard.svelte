@@ -154,18 +154,21 @@
 
   {#if isShown('probabilities') && prediction}
     <MatchCardSection id="probabilities" label="PROBABILITIES & MODELS" open={openState.probabilities} onToggle={toggleSection}>
-      <div class="grid grid-cols-5 gap-3 mb-4">
-        {#each prediction.models as model}
-          <div class="text-center">
-            <span class="text-eyebrow block">{model.name}</span>
-            <span class="text-metric font-mono">{model.lean}</span>
-            <div class="mt-1 h-1 rounded-full bg-bg-inset overflow-hidden">
-              <span class="block h-full bg-primary" style:width="{Math.round(model.confidence * 100)}%"></span>
+      {#if prediction.models.length > 0}
+        <div class="grid grid-cols-5 gap-3 mb-4" data-models-grid>
+          {#each prediction.models as model}
+            <div class="text-center">
+              <span class="text-eyebrow block">{model.name}</span>
+              <span class="text-metric font-mono">{model.lean}</span>
+              <div class="mt-1 h-1 rounded-full bg-bg-inset overflow-hidden">
+                <span class="block h-full bg-primary" style:width="{Math.round(model.confidence * 100)}%"></span>
+              </div>
             </div>
-          </div>
-        {/each}
-      </div>
-      <div class="space-y-1 mb-4">
+          {/each}
+        </div>
+      {/if}
+
+      <div class="space-y-1 mb-4" data-scorelines>
         <span class="text-kicker block">TOP-3 SCORELINES</span>
         {#each prediction.topScorelines as s}
           <div class="flex items-center justify-between text-body font-mono">
@@ -174,16 +177,23 @@
           </div>
         {/each}
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-md border border-border p-3 text-center">
-          <span class="text-eyebrow block">xG</span>
-          <span class="font-mono text-metric">{prediction.xg.home.toFixed(2)} - {prediction.xg.away.toFixed(2)}</span>
+
+      {#if prediction.xg.home > 0 || prediction.xg.away > 0 || prediction.elo.home > 0 || prediction.elo.away > 0}
+        <div class="grid grid-cols-2 gap-3">
+          {#if prediction.xg.home > 0 || prediction.xg.away > 0}
+            <div class="rounded-md border border-border p-3 text-center" data-xg-block>
+              <span class="text-eyebrow block">xG</span>
+              <span class="font-mono text-metric">{prediction.xg.home.toFixed(2)} - {prediction.xg.away.toFixed(2)}</span>
+            </div>
+          {/if}
+          {#if prediction.elo.home > 0 || prediction.elo.away > 0}
+            <div class="rounded-md border border-border p-3 text-center" data-elo-block>
+              <span class="text-eyebrow block">ELO</span>
+              <span class="font-mono text-metric">{prediction.elo.home} vs {prediction.elo.away}</span>
+            </div>
+          {/if}
         </div>
-        <div class="rounded-md border border-border p-3 text-center">
-          <span class="text-eyebrow block">ELO</span>
-          <span class="font-mono text-metric">{prediction.elo.home} vs {prediction.elo.away}</span>
-        </div>
-      </div>
+      {/if}
     </MatchCardSection>
   {/if}
 
