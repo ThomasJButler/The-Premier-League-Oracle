@@ -151,6 +151,110 @@ Expected: 3 tests PASS.
 
 If existing predictionTracker tests asserted the exact shape of `getAccuracyStats()` (e.g., snapshotted the whole object), update them to expect the new `brierScore` field.
 
+### Task 1b: Gate empty PROBABILITIES & MODELS sub-blocks in MatchCard primitive
+
+**Why:** The P2a follow-up identified that `predictionToV3` returns `models: []`, `xg: {0,0}`, `elo: {0,0}` for `StoredPrediction` inputs (which lack per-model breakdowns). The MatchCard's PROBABILITIES & MODELS section currently renders these unconditionally — empty 5-col grid, "xG 0.00 - 0.00", "ELO 0 vs 0" — which are visible defects on P2a's hero card already and would ship to every grid card produced by Task 3 below.
+
+**Sequencing:** This task touches `MatchCard.svelte`, which sits inside the pending P1c review surface. Do **NOT** execute this task before the P1c manual sweep is signed off. Once cleared, do this **before** Task 2 so the new grid cards in Task 3 don't ship the empty-state defect.
+
+**Files:**
+- Modify: `frontend/src/components/matchcard/MatchCard.svelte`
+- Modify: `frontend/src/components/matchcard/MatchCard.test.ts`
+
+- [ ] **Step 1: Write the failing tests**
+
+Append a new describe block to `MatchCard.test.ts`:
+
+```ts
+import { makeFixture, makePrediction } from '../../tests/fixtures/matchcard';
+
+describe('MatchCard — PROBABILITIES section graceful degradation', () => {
+  it('hides the 5-col models grid when prediction.models is empty', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({ models: [] });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-models-grid]')).toBeNull();
+  });
+
+  it('hides the xG block when xg.home and xg.away are both zero', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({ xg: { home: 0, away: 0 } });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-xg-block]')).toBeNull();
+  });
+
+  it('hides the ELO block when elo.home and elo.away are both zero', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({ elo: { home: 0, away: 0 } });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-elo-block]')).toBeNull();
+  });
+
+  it('always renders TOP-3 SCORELINES (the section\'s minimum useful payload)', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({
+      models: [],
+      xg: { home: 0, away: 0 },
+      elo: { home: 0, away: 0 },
+    });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-scorelines]')).toBeTruthy();
+  });
+});
+```
+
+- [ ] **Step 2: Add the gating in `MatchCard.svelte`**
+
+Inside the existing `MatchCardSection id="probabilities"` block, replace the three sub-blocks with conditionally-rendered versions plus stable `data-*` markers. Crucially, **keep TOP-3 SCORELINES always visible** — `predictionToV3` always populates at least the predicted scoreline, so this is the section's minimum useful payload.
+
+```svelte
+{#if isShown('probabilities') && prediction}
+  <MatchCardSection id="probabilities" label="PROBABILITIES & MODELS" open={openState.probabilities} onToggle={toggleSection}>
+    {#if prediction.models.length > 0}
+      <div class="grid grid-cols-5 gap-3 mb-4" data-models-grid>
+        {#each prediction.models as model}
+          ... (unchanged)
+        {/each}
+      </div>
+    {/if}
+
+    <div class="space-y-1 mb-4" data-scorelines>
+      <span class="text-kicker block">TOP-3 SCORELINES</span>
+      {#each prediction.topScorelines as s}
+        ... (unchanged)
+      {/each}
+    </div>
+
+    {#if prediction.xg.home > 0 || prediction.xg.away > 0 || prediction.elo.home > 0 || prediction.elo.away > 0}
+      <div class="grid grid-cols-2 gap-3">
+        {#if prediction.xg.home > 0 || prediction.xg.away > 0}
+          <div class="rounded-md border border-border p-3 text-center" data-xg-block>
+            <span class="text-eyebrow block">xG</span>
+            <span class="font-mono text-metric">{prediction.xg.home.toFixed(2)} - {prediction.xg.away.toFixed(2)}</span>
+          </div>
+        {/if}
+        {#if prediction.elo.home > 0 || prediction.elo.away > 0}
+          <div class="rounded-md border border-border p-3 text-center" data-elo-block>
+            <span class="text-eyebrow block">ELO</span>
+            <span class="font-mono text-metric">{prediction.elo.home} vs {prediction.elo.away}</span>
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </MatchCardSection>
+{/if}
+```
+
+The outer `{#if … xg or elo populated}` wrapping the 2-col grid prevents an empty grid container from rendering when both inner blocks are gated out.
+
+- [ ] **Step 3: Verify**
+
+Run: `cd frontend && npm run test -- --run src/components/matchcard/MatchCard.test.ts`
+
+Expected: all P1a + P1b + P1c tests still PASS, plus 4 new degradation tests PASS.
+
+This task closes the P2a follow-up about the empty PROBABILITIES section. Once Task 3 lands, the grid cards built from `predictionToV3(stored)` will render only the scorelines block (no empty 5-col grid, no zero xG / zero ELO tiles), and P4-era work that widens `predictionToV3` to surface real per-model leans / xG / ELO will automatically un-gate the hidden sub-blocks.
+
 ### Task 2: Extend the Today fixture mock + write the failing zone tests
 
 **Files:**
