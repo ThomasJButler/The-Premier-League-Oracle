@@ -15,7 +15,7 @@
 
 ## Active phase
 
-Phase 1 (MatchCard). **P0-cp landed** (Playwright checkpoint spec, both projects green). Next slice is **P1a (MatchCard header strip)**, then **P1b (expanding sections)**, then stop at **P1c** for human eyeball of the redesign's signature primitive. The big-loop run is expected to chew through P1a + P1b auto-gated.
+Phase 1 (MatchCard). **P1a landed** (MatchCard header strip + MatchList swap, both auto-gates green). Next slice is **P1b (expanding sections)**, then stop at **P1c** for human eyeball of the redesign's signature primitive.
 
 ## Ordered checklist
 
@@ -27,7 +27,7 @@ Phase 1 (MatchCard). **P0-cp landed** (Playwright checkpoint spec, both projects
 - [x] **P0-cp — Phase 0 checkpoint** *(Auto-gated for Playwright spec write+pass+commit; manual visual sweep RECOMMENDED but not blocking)* — Write `frontend/e2e/checkpoint-p0.spec.ts`, run it on desktop-chrome and mobile-chrome projects, commit. Spec asserts hubs render at desktop, mobile bottom bar appears <1024px, theme toggle works. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
 
 ### Phase 1 — MatchCard primitive
-- [ ] **P1a — MatchCard header strip** *(Auto-gated)* — Create `components/matchcard/MatchCard.svelte` rendering only the header (12-col grid, gradient bleed, meta row, body); swap legacy `MatchList.svelte` to use it. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1a-header.md`.
+- [x] **P1a — MatchCard header strip** *(Auto-gated)* — Create `components/matchcard/MatchCard.svelte` rendering only the header (12-col grid, gradient bleed, meta row, body); swap legacy `MatchList.svelte` to use it. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1a-header.md`.
 - [ ] **P1b — MatchCard expanding sections** *(Auto-gated)* — Add Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo. Multi-open. Reduce-motion-safe chevron rotation. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`.
 - [ ] **P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)* — Compact `MatchRow.svelte` for log/history surfaces; `variant="emphasised"` on MatchCard adds primary-ringed shadow + bumped winning numeric. Phase 1 visual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1c-matchrow.md`.
 
@@ -99,6 +99,13 @@ Phase 1 (MatchCard). **P0-cp landed** (Playwright checkpoint spec, both projects
   - Spec calls `setupApp(page)` from `frontend/e2e/helpers.ts` before each `page.goto(path)` — the plan template went straight to `page.goto()`. Without `setupApp()` the `ApiSetupWizard` modal pops up (no API key in localStorage) and would intercept the "Toggle theme" click. `setupApp()` also registers `mockFootballApi()` so hubs render against deterministic mock data instead of failing real Football-Data calls.
   - Theme-toggle test pins viewport to 1280×800 (the plan template left it at the project default). The toggle button is intentionally desktop-only in P0d (`<aside>` has `hidden lg:flex`, and `MobileBottomSheet` does not surface a theme toggle), so on the `mobile-chrome` project (Pixel 5 ~393px) the click would time out. Override is per-test rather than spec-wide so the mobile-bottom-bar test still exercises the mobile viewport.
   - The manual visual sweep (Task 2 in the slice plan) is intentionally deferred per the gate-relaxation note in `fc7bd69` — the auto-gate requires only spec write+pass+commit. A human can run the sweep separately whenever convenient; observations should land under `## Human notes for next iteration`.
+- **(P1a, no blocker)** P1a landed: vitest 718/718 across 51 files (+7 from `MatchCard.test.ts`; `MatchList.test.ts` net 0 — two legacy assertions swapped for two `[data-block]`/`[data-meta]` contract assertions). `svelte-check` 0/0. Playwright `routing.spec.ts` 32/32 on desktop-chrome. New `frontend/src/components/matchcard/` directory (component + co-located test) and `frontend/src/tests/fixtures/matchcard.ts` (reusable Fixture/Prediction builders for P1b/P1c).
+- **(P1a deviations from plan)**
+  - `MatchCard.svelte`: the no-prediction center block uses `isFinished = fixture.status === 'FINISHED' || kickoff < new Date()` rather than the plan template's `kickoff < new Date()` alone. `Match.result` maps cleanly to `status: 'FINISHED'` in the adapter, so honouring status first preserves "FT" semantics if a device clock drifts ahead.
+  - `MatchList.svelte` adapter: implemented `mapToFixture(Match)` only — no `mapToPrediction`, because the legacy data-loading path (`dataService.getMatchesBySeason`) doesn't yield prediction shape. MatchCard receives `prediction={undefined}` and renders kickoff time / FT label, which is the slice's intended degraded mode. Predictions hookup belongs to P4a/P4c.
+  - `MatchList.svelte`: deleted the `import { format } from 'date-fns'`, `import { getTeamLogo }`, and `import { Badge }` lines — all three only fed the per-row markup that's now gone. `Button` is kept because it's still used by the error/empty-state retry CTAs.
+  - `MatchList.test.ts`: removed the `vi.mock('date-fns', …)` block (no longer reachable) and replaced the "displays scores for completed matches" / "displays kick-off time for upcoming matches" tests with two `data-block`/`data-meta` count assertions. The slice plan explicitly authorises this swap ("update the test to assert on MatchCard's data-attributes — these are stable contracts"). Net test count for the file unchanged at 12.
+  - `mapToFixture` synthesises team `abbr` via `name.replace(/\b(?:FC|AFC)\b/g, '').trim().slice(0, 3).toUpperCase()` — lossy but adequate for the slice's goal (proving integration). A proper crest-URL pipeline lands when the v3 `Fixture` shape gets sourced directly from the dataService in a later phase; for now the legacy `Match` carries no abbreviation field.
 
 ## Human notes for next iteration
 
@@ -108,8 +115,8 @@ Phase 1 (MatchCard). **P0-cp landed** (Playwright checkpoint spec, both projects
 
 ## Next recommended build slice
 
-**P1a — MatchCard header strip** *(Auto-gated)* — see `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1a-header.md`. Creates `frontend/src/components/matchcard/MatchCard.svelte` rendering only the header (12-col grid, gradient bleed, meta row, body) and swaps legacy `MatchList.svelte` to consume it. Auto-gate passes when `npm run test -- --run` is green and `npm run check` is clean.
+**P1b — MatchCard expanding sections** *(Auto-gated)* — see `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`. Adds the four collapsible sections (Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo) below the header strip landed in P1a. Multi-open. Reduce-motion-safe chevron rotation. Auto-gate passes when `npm run test -- --run` is green and `npm run check` is clean.
 
-After P1a, the loop proceeds into **P1b (expanding sections, auto-gated)** then stops at **P1c (MatchRow + emphasised + Phase 1 checkpoint, manual-gated)** for human eyeball of the redesign's signature primitive (the MatchCard's first visual incarnation). Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`.
+After P1b, the loop stops at **P1c (MatchRow + emphasised + Phase 1 checkpoint, manual-gated)** for human eyeball of the redesign's signature primitive. Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`.
 
 If anything stalls or behaviour looks wrong mid-loop, drop a one-line note under `## Human notes for next iteration` and the next ralph iteration will address it as part of its slice contract.

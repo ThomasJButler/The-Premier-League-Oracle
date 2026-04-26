@@ -23,15 +23,6 @@ vi.mock('../lib/utils', () => ({
   getSeasonYear: vi.fn(() => 2025),
 }));
 
-// Mock date-fns
-vi.mock('date-fns', () => ({
-  format: vi.fn((date: Date, fmt: string) => {
-    if (fmt === 'HH:mm') return '15:00';
-    if (fmt === 'MMM d') return 'Jan 15';
-    return 'Mocked Date';
-  }),
-}));
-
 // Mock svelte/transition
 vi.mock('svelte/transition', () => ({
   fly: () => ({ duration: 0 }),
@@ -212,22 +203,24 @@ describe('MatchList', () => {
     expect(screen.getByText(/Showing 3 of 3 matches/)).toBeInTheDocument();
   });
 
-  it('displays scores for completed matches', async () => {
+  it('renders one MatchCard per fixture (data-block contract)', async () => {
     const { component } = render(MatchList);
     await (component as any).loadSeasons();
     await (component as any).loadMatches();
     await act();
-    // Arsenal 2-1 Chelsea
-    expect(screen.getByText(/2 - 1/)).toBeInTheDocument();
+    // Each MatchCard exposes a centre data-block; one per fixture (3 fixtures here).
+    const centerBlocks = document.querySelectorAll('[data-block="center"]');
+    expect(centerBlocks.length).toBe(3);
   });
 
-  it('displays kick-off time for upcoming matches', async () => {
+  it('renders MatchCard meta rows for each fixture', async () => {
     const { component } = render(MatchList);
     await (component as any).loadSeasons();
     await (component as any).loadMatches();
     await act();
-    // Upcoming match should show mocked time
-    expect(screen.getAllByText('15:00').length).toBeGreaterThan(0);
+    // [data-meta] is MatchCard's stable header-row contract.
+    const metaRows = document.querySelectorAll('[data-meta]');
+    expect(metaRows.length).toBe(3);
   });
 
   it('extracts unique teams from matches', async () => {

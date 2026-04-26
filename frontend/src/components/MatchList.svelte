@@ -2,13 +2,32 @@
   import { onMount } from 'svelte';
   import { dataService } from '../services/dataService';
   import type { Match, Season } from '../types';
-  import { format } from 'date-fns';
-  import { getTeamLogo } from '../utils/teamLogos';
+  import type { Fixture } from '../types/redesign';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
-  import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { getSeasonYear } from '../lib/utils';
   import DataFreshness from './DataFreshness.svelte';
+  import MatchCard from './matchcard/MatchCard.svelte';
+
+  function toAbbr(name: string): string {
+    return name.replace(/\b(?:FC|AFC)\b/g, '').trim().slice(0, 3).toUpperCase();
+  }
+
+  function mapToFixture(m: Match): Fixture {
+    return {
+      id: m.id,
+      competition: 'Premier League',
+      gameweek: m.matchday ?? 0,
+      utcDate: m.date,
+      status: m.result ? 'FINISHED' : 'SCHEDULED',
+      home: { abbr: toAbbr(m.home_team), name: m.home_team },
+      away: { abbr: toAbbr(m.away_team), name: m.away_team },
+      score:
+        m.home_goals != null && m.away_goals != null
+          ? { home: m.home_goals, away: m.away_goals }
+          : undefined,
+    };
+  }
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
@@ -307,45 +326,8 @@
     </div>
   {:else}
     <div class="space-y-4">
-      {#each filteredMatches as match, i (match.id)}
-        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-5 grid grid-cols-3 sm:grid-cols-[1fr_auto_1fr_auto] items-center gap-4 motion-safe:hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-slide-in-up" style="animation-delay: {i * 50}ms">
-          <!-- Team 1 -->
-          <div class="flex items-center justify-end space-x-3">
-            <span class="font-semibold text-foreground text-right">{match.home_team}</span>
-            <img src={getTeamLogo(match.home_team, 30)} alt="{match.home_team} logo" class="w-7 h-7 object-contain rounded-full">
-          </div>
-
-          <!-- Score/Time -->
-          <div class="text-center">
-            {#if match.result}
-              <div class="text-xl font-bold text-foreground px-3 py-1">
-                {match.home_goals ?? '?'} - {match.away_goals ?? '?'}
-              </div>
-            {:else}
-              <div class="text-sm font-medium text-muted-foreground">
-                {format(new Date(match.date), 'HH:mm')}
-              </div>
-              <div class="text-xs text-muted-foreground">
-                {format(new Date(match.date), 'MMM d')}
-              </div>
-            {/if}
-          </div>
-
-          <!-- Team 2 -->
-          <div class="flex items-center justify-start space-x-3">
-            <img src={getTeamLogo(match.away_team, 30)} alt="{match.away_team} logo" class="w-7 h-7 object-contain rounded-full">
-            <span class="font-semibold text-foreground text-left">{match.away_team}</span>
-          </div>
-
-          <!-- Status/Actions -->
-          <div class="flex items-center justify-center sm:justify-end space-x-2 mt-2 sm:mt-0 col-span-full sm:col-span-1">
-            {#if match.result}
-              <Badge variant="neutral">Finished</Badge>
-            {:else}
-              <Badge variant="info">Upcoming</Badge>
-            {/if}
-          </div>
-        </div>
+      {#each filteredMatches as match (match.id)}
+        <MatchCard fixture={mapToFixture(match)} />
       {/each}
     </div>
   {/if}
