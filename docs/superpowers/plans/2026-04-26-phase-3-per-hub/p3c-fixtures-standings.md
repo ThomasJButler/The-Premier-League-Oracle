@@ -59,9 +59,11 @@ $: rows = standings.map(s => ({
 
 ## TDD task list
 
-### Task 1 — `lib/standingsHelpers.ts` + 8 tests *(auto-gated sub-step)*
+### Task 1 — `lib/standingsHelpers.ts` + 11 tests *(auto-gated sub-step)* — ✅ DONE
 
 Pure-function unit. No DOM, no Svelte.
+
+**Status (2026-04-26):** Shipped in commit on `v3.0-redesign`. vitest 822/822 across 62 files (+11 in 1 new file: `standingsHelpers.test.ts`). svelte-check 0/0. The plan prose originally said "8 tests" but the prescribed code template has **11** `it()` blocks (4 classifyZone + 1 zoneRowClass + 4 parseFormString + 2 pointsPerGame); count corrected here so Task 3's gate matches reality.
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -157,7 +159,7 @@ export function pointsPerGame(points: number, playedGames: number): number {
 
 **Note on Tailwind opacity classes:** `bg-accent/8` and `bg-destructive/6` rely on Tailwind's arbitrary opacity syntax (1–100). **Pre-flight check ralph runs first:** boot the Tailwind config and confirm these classes exist in the redesign palette — if `bg-accent` or `bg-destructive` aren't surfaced, the JIT compiler may purge the classes. Fall back to inline styles or `class:bg-accent/8={...}` if the dev server warns. The existing `--accent` and `--destructive` tokens were added in P0a (verify in `frontend/src/lib/styles/tokens.css`).
 
-**Validation:** `cd frontend && npm run test -- --run src/lib/standingsHelpers.test.ts` — expect 8/8 pass.
+**Validation:** `cd frontend && npm run test -- --run src/lib/standingsHelpers.test.ts` — expect 11/11 pass. *(Already green at sign-off of this sub-slice.)*
 
 ### Task 2 — `Standings.svelte` + 7 tests including the auto-supplemented assertions *(auto-gated sub-step)*
 
@@ -412,7 +414,7 @@ describe('Standings (Fixtures Standings screen)', () => {
 
 **Validation gate:**
 - `cd frontend && npm run check` — 0/0
-- `cd frontend && npm run test -- --run` — expect **825/825** across **62 files** (810 + 8 standingsHelpers + 7 Standings)
+- `cd frontend && npm run test -- --run` — expect **829/829** across **63 files** (post-P3b 811 baseline + 11 standingsHelpers + 7 Standings; the +11 reflects Task 1 landing 11 tests instead of 8 per the deviation note above)
 - `cd frontend && npx playwright test --project=desktop-chrome routing.spec.ts` — 32/32 green
 
 ### Task 4 — Commit, surface manual sweep checklist
@@ -433,8 +435,8 @@ lib/standingsHelpers.ts: classifyZone, zoneRowClass, parseFormString,
 pointsPerGame. PPG Spark is single-data-point until getStandingsHistory
 ships in a Phase 5 follow-up.
 
-vitest 825/825 (+15 across 2 new files), svelte-check 0/0, Playwright
-routing 32/32 on desktop-chrome.
+vitest 829/829 (+18 across 2 new files: 11 helpers + 7 Standings),
+svelte-check 0/0, Playwright routing 32/32 on desktop-chrome.
 
 Manual gate: P3c's [ ] stays unchecked pending sweep at /fixtures/standings.
 Tag at sign-off → v3.6.
