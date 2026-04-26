@@ -193,8 +193,11 @@ Append after the existing grid block (still inside the root `<div>`):
     </SectionHeader>
     {#if gameweekAccuracy.length > 0}
       <Spark
-        values={gameweekAccuracy.map(g => g.accuracy)}
-        labels={gameweekAccuracy.map(g => `GW ${g.matchday}`)}
+        data={gameweekAccuracy.map(g => g.accuracy)}
+        width={320}
+        height={48}
+        trend={gameweekAccuracy.at(-1)!.accuracy >= gameweekAccuracy[0].accuracy ? 'up' : 'down'}
+        fill
       />
     {:else}
       <p class="text-text-dim text-body-sm">No settled predictions yet — predictions appear here once results land.</p>
@@ -219,9 +222,9 @@ Append after the existing grid block (still inside the root `<div>`):
 {/if}
 ```
 
-If `Spark.svelte`'s prop names differ (`data` vs `values`), inspect `frontend/src/components/atoms/Spark.svelte` and adjust — atoms shipped in P0c are the contract.
-
-If `SectionHeader.svelte` does not have a `right` slot, inspect the file and use whatever slot name P0c shipped. If it has no right slot at all, render the link as a sibling above the Spark and note that as a P2c deviation.
+**Atom signatures verified during 2026-04-26 plan grooming:**
+- `Spark.svelte` exposes `data: number[]` (single array — no separate `labels` prop), plus `width`, `height`, `trend: 'up' | 'down' | 'flat'`, and `fill: boolean`. The SVG itself is `aria-hidden="true"` with no hover affordances; if a tooltip is wanted later, wrap `<Spark>` in an external tooltip primitive — don't expect it from the atom.
+- `SectionHeader.svelte` does expose a named `slot="right"`, so `<a slot="right" …>` is correct as written above.
 
 - [ ] **Step 3: Verify**
 
@@ -344,7 +347,7 @@ git commit -m "P2c: Today below-fold (Spark + MatchRow log) + Phase 2 Playwright
 P2c committed. Phase 2 manual sweep checklist (boot npm run dev):
 
 [ ] /today — full vertical stack visible: strip → hero → KPI → grid → trends → log
-[ ] /today — Spark renders the accuracy-by-gameweek line; hover tooltip works
+[ ] /today — Spark renders the accuracy-by-gameweek line (atom is decorative / aria-hidden — no hover tooltip; defer that to a P4-era enhancement if wanted)
 [ ] /today — "How we predict →" link navigates to /settings/help
 [ ] /today — Recent log: 5 MatchRows, each with hit/miss indicator (✓/✗) and ProbBar
 [ ] /today — empty states render gracefully when no data (test by clearing localStorage)
