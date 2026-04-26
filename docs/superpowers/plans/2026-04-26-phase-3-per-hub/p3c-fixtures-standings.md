@@ -161,7 +161,9 @@ export function pointsPerGame(points: number, playedGames: number): number {
 
 **Validation:** `cd frontend && npm run test -- --run src/lib/standingsHelpers.test.ts` — expect 11/11 pass. *(Already green at sign-off of this sub-slice.)*
 
-### Task 2 — `Standings.svelte` + 7 tests including the auto-supplemented assertions *(auto-gated sub-step)*
+### Task 2 — `Standings.svelte` + 7 tests including the auto-supplemented assertions *(auto-gated sub-step)* — ✅ DONE
+
+**Status (2026-04-26):** Shipped on `v3.0-redesign` together with Task 3's route mount. vitest 829/829 across 63 files (+7 in 1 new file: `Standings.test.ts`); svelte-check 0/0; targeted: `Standings.test.ts` 7/7. Two deviations from the prescribed template (logged under `IMPLEMENTATION_PLAN.md` → `## Notes / discoveries`): pending-dot opacity uses `style="background-color: hsl(var(--text-faint) / 0.3)"` (the inline-style option (a) the Task 1 tripwire note flagged), and `<Crest>` consumes a one-line inline `toTeamSummary` adapter `{ abbr: team.tla, name: team.name, crestUrl: team.crest || undefined }` because the atom takes `team: TeamSummary`, not the `src`/`alt` props the plan template wrote.
 
 ```ts
 import { act, fireEvent, render } from '@testing-library/svelte';
@@ -406,7 +408,9 @@ describe('Standings (Fixtures Standings screen)', () => {
 
 **Validation:** `cd frontend && npm run test -- --run src/screens/fixtures/Standings.test.ts` — expect 7/7 pass.
 
-### Task 3 — Mount the route on `App.svelte`, full validation gate
+### Task 3 — Mount the route on `App.svelte`, full validation gate — ✅ DONE
+
+**Status (2026-04-26):** `<Route path="/fixtures/standings"><Standings /></Route>` shipped in the same commit as Task 2. `StandingsTable` import dropped from `App.svelte` (component stays in tree for P10 cleanup). Validation passed on first run: `npm run check` 0/0, `npm run test -- --run` 829/829 across 63 files (matched plan's exact prediction).
 
 ```svelte
 <Route path="/fixtures/standings" component={Standings} />
