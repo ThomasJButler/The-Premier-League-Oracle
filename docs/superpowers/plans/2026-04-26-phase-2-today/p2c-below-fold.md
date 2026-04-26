@@ -261,14 +261,14 @@ test.describe('Phase 2 checkpoint — Today screen', () => {
     await expect(page.locator('[data-zone="log"]')).toBeVisible();
   });
 
-  test('command strip stays sticky during scroll', async ({ page }) => {
+  test('command strip is positioned sticky', async ({ page }) => {
     await setupApp(page);
     await page.goto('/today');
-    const strip = page.locator('[data-command-strip]');
-    const initialBox = await strip.boundingBox();
-    await page.mouse.wheel(0, 600);
-    const afterBox = await strip.boundingBox();
-    expect(initialBox?.y).toBeCloseTo(afterBox?.y ?? -1, 0);
+    // Static CSS-property assertion — see scroll-stickiness note below.
+    const position = await page
+      .locator('[data-command-strip]')
+      .evaluate((el) => getComputedStyle(el).position);
+    expect(position).toBe('sticky');
   });
 
   test('theme toggle still flips the dark class while on /today', async ({ page }) => {
@@ -284,6 +284,8 @@ test.describe('Phase 2 checkpoint — Today screen', () => {
   });
 });
 ```
+
+**Scroll-stickiness note (added 2026-04-26 plan grooming):** an earlier draft of this spec asserted stickiness dynamically with `page.mouse.wheel(0, 600)` + `boundingBox` before/after. That assertion is **non-falsifying** in this codebase for two compounding reasons. (1) The scroll container is `<main>` (`BroadcastShell.svelte:41` — `class="flex-1 overflow-y-auto …"`), not the document body (the outer flex wrapper has `h-screen overflow-hidden`). `page.mouse.wheel(0, 600)` from default cursor origin (0,0) at desktop viewport lands on the sidebar (`<aside class="hidden lg:flex w-64 …">` covers the first 256px), so the wheel event doesn't dispatch on `<main>` and no scroll fires. (2) Even if we hovered `<main>` first, the mocked content (1 hero card + KPI + small/empty grid + trends + log) is shorter than viewport height — `<main>.scrollHeight` ≤ `<main>.clientHeight`, so there's nothing to scroll regardless of where the wheel lands. Either way both `boundingBox().y` reads return the same value, and the assertion passes whether the `sticky` class is present or not. A future refactor that drops `sticky` would not be caught. The replacement above asserts the static CSS contract (`getComputedStyle(el).position === 'sticky'`), which deterministically fails if the class is removed; the runtime "actually pinned during scroll" verification moves to the manual sweep checklist (Task 5 Step 3) where a human can scroll a real page with real data.
 
 - [ ] **Step 2: Run the spec on desktop and mobile projects**
 
@@ -349,6 +351,7 @@ git commit -m "P2c: Today below-fold (Spark + MatchRow log) + Phase 2 Playwright
 P2c committed. Phase 2 manual sweep checklist (boot npm run dev):
 
 [ ] /today — full vertical stack visible: strip → hero → KPI → grid → trends → log
+[ ] /today — command strip stays pinned to the top of <main>'s scroll viewport while scrolling the page (the automated spec only asserts `position: sticky` is set — runtime pinning is verified here)
 [ ] /today — Spark renders the accuracy-by-gameweek line (atom is decorative / aria-hidden — no hover tooltip; defer that to a P4-era enhancement if wanted)
 [ ] /today — "How we predict →" link navigates to /settings/help
 [ ] /today — Recent log: 5 MatchRows, each with hit/miss indicator (✓/✗) and ProbBar
