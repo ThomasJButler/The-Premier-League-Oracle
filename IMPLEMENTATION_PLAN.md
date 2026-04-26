@@ -15,7 +15,7 @@
 
 ## Active phase
 
-Phase 1 (MatchCard). **P1a landed** (MatchCard header strip + MatchList swap, both auto-gates green). Next slice is **P1b (expanding sections)**, then stop at **P1c** for human eyeball of the redesign's signature primitive.
+Phase 1 (MatchCard). **P1a + P1b landed** (header strip + four expanding sections, both auto-gates green at 726/726). Next slice is **P1c (MatchRow + emphasised + Phase 1 checkpoint, manual-gated)** — ralph commits when `npm run check` is clean and stops for human eyeball of the redesign's signature primitive.
 
 ## Ordered checklist
 
@@ -28,7 +28,7 @@ Phase 1 (MatchCard). **P1a landed** (MatchCard header strip + MatchList swap, bo
 
 ### Phase 1 — MatchCard primitive
 - [x] **P1a — MatchCard header strip** *(Auto-gated)* — Create `components/matchcard/MatchCard.svelte` rendering only the header (12-col grid, gradient bleed, meta row, body); swap legacy `MatchList.svelte` to use it. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1a-header.md`.
-- [ ] **P1b — MatchCard expanding sections** *(Auto-gated)* — Add Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo. Multi-open. Reduce-motion-safe chevron rotation. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`.
+- [x] **P1b — MatchCard expanding sections** *(Auto-gated)* — Add Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo. Multi-open. Reduce-motion-safe chevron rotation. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`.
 - [ ] **P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)* — Compact `MatchRow.svelte` for log/history surfaces; `variant="emphasised"` on MatchCard adds primary-ringed shadow + bumped winning numeric. Phase 1 visual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1c-matchrow.md`.
 
 ### Phase 2 — Today
@@ -106,6 +106,8 @@ Phase 1 (MatchCard). **P1a landed** (MatchCard header strip + MatchList swap, bo
   - `MatchList.svelte`: deleted the `import { format } from 'date-fns'`, `import { getTeamLogo }`, and `import { Badge }` lines — all three only fed the per-row markup that's now gone. `Button` is kept because it's still used by the error/empty-state retry CTAs.
   - `MatchList.test.ts`: removed the `vi.mock('date-fns', …)` block (no longer reachable) and replaced the "displays scores for completed matches" / "displays kick-off time for upcoming matches" tests with two `data-block`/`data-meta` count assertions. The slice plan explicitly authorises this swap ("update the test to assert on MatchCard's data-attributes — these are stable contracts"). Net test count for the file unchanged at 12.
   - `mapToFixture` synthesises team `abbr` via `name.replace(/\b(?:FC|AFC)\b/g, '').trim().slice(0, 3).toUpperCase()` — lossy but adequate for the slice's goal (proving integration). A proper crest-URL pipeline lands when the v3 `Fixture` shape gets sourced directly from the dataService in a later phase; for now the legacy `Match` carries no abbreviation field.
+- **(P1b, no blocker)** P1b landed: vitest 726/726 across 51 files (+8 from `MatchCard.test.ts`: 6 section-behaviour + 2 section-content). `svelte-check` 0/0. New `frontend/src/components/matchcard/MatchCardSection.svelte` (toggleable shell with `aria-expanded` + `motion-safe:` chevron rotation). `MatchCard.svelte` gained `defaultOpen` (single ID or array) and `hideSections` props plus an `openState` map; multi-open semantics fall out of `openState = { ...openState, [id]: next }` (no accordion exclusivity). The `analyse` and `probabilities` sections only render when `prediction` is defined — both gated on `{#if isShown(...) && prediction}`; `form` and `context` always render. The four `—` placeholders in the *context* section are intentional per the plan: no data source for venue / referee / tempo until a later phase.
+- **(P1b deviations from plan)** None — implementation tracked the plan template verbatim. Reduce-motion is delivered via Tailwind's `motion-safe:transition-transform motion-safe:duration-150` (transition skipped under `prefers-reduced-motion: reduce`); the `rotate-180` itself stays unconditional so the chevron's open/closed visual state is preserved even with motion off.
 
 ## Human notes for next iteration
 
@@ -115,8 +117,8 @@ Phase 1 (MatchCard). **P1a landed** (MatchCard header strip + MatchList swap, bo
 
 ## Next recommended build slice
 
-**P1b — MatchCard expanding sections** *(Auto-gated)* — see `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1b-sections.md`. Adds the four collapsible sections (Analyse / Probabilities & Models / Form & H2H / Venue Referee Tempo) below the header strip landed in P1a. Multi-open. Reduce-motion-safe chevron rotation. Auto-gate passes when `npm run test -- --run` is green and `npm run check` is clean.
+**P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1c-matchrow.md`. Adds compact `MatchRow.svelte` for log/history surfaces, plus `variant="emphasised"` on `MatchCard` (primary-ringed shadow + bumped winning numeric). Phase 1 visual sweep is part of the slice. Manual gate: ralph commits when `npm run check` is clean, then stops with a one-paragraph summary; human flips `[x]` after eyeball.
 
-After P1b, the loop stops at **P1c (MatchRow + emphasised + Phase 1 checkpoint, manual-gated)** for human eyeball of the redesign's signature primitive. Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`.
+Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`.
 
 If anything stalls or behaviour looks wrong mid-loop, drop a one-line note under `## Human notes for next iteration` and the next ralph iteration will address it as part of its slice contract.
