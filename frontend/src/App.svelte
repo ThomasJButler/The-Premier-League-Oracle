@@ -9,6 +9,7 @@
   import Matches from './screens/fixtures/Matches.svelte';
   import Standings from './screens/fixtures/Standings.svelte';
   import Predictions from './components/Predictions.svelte';
+  import ThisWeek from './screens/predictions/ThisWeek.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
@@ -69,7 +70,7 @@
     <Route path="/fixtures/live"><Live /></Route>
     <Route path="/fixtures/matches"><Matches /></Route>
     <Route path="/fixtures/standings"><Standings /></Route>
-    <Route path="/predictions/this-week"><Predictions /></Route>
+    <Route path="/predictions/this-week"><ThisWeek /></Route>
     <Route path="/predictions/backtest"><Predictions /></Route>
     <Route path="/predictions/log"><Predictions /></Route>
     <Route path="/predictions/tools"><KellyCalculator /></Route>
