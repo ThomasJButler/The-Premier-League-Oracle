@@ -13,12 +13,8 @@ import type {
  * broadcast-redesign `Fixture` / `MatchPrediction` shapes that
  * `MatchCard` and `MatchRow` consume.
  *
- * Reused by Today (P2a/P2b/P2c) and the per-hub screens in Phase 3.
- *
- * Note: `MatchList.svelte` still inlines its own `mapToFixture` from
- * P1a — consolidating that into this module is a low-risk follow-up
- * but is intentionally out of scope for the slice that introduced
- * this file.
+ * Reused by Today (P2a/P2b/P2c), `MatchList.svelte`, and the per-hub
+ * screens in Phase 3.
  */
 
 const STATUS_PASSTHROUGH: ReadonlySet<FixtureStatus> = new Set([

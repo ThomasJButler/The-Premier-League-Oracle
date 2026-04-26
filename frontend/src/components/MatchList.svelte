@@ -2,32 +2,12 @@
   import { onMount } from 'svelte';
   import { dataService } from '../services/dataService';
   import type { Match, Season } from '../types';
-  import type { Fixture } from '../types/redesign';
   import { ArrowUpDown, Filter, Users } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { getSeasonYear } from '../lib/utils';
+  import { matchToFixture } from '../lib/adapters/v3';
   import DataFreshness from './DataFreshness.svelte';
   import MatchCard from './matchcard/MatchCard.svelte';
-
-  function toAbbr(name: string): string {
-    return name.replace(/\b(?:FC|AFC)\b/g, '').trim().slice(0, 3).toUpperCase();
-  }
-
-  function mapToFixture(m: Match): Fixture {
-    return {
-      id: m.id,
-      competition: 'Premier League',
-      gameweek: m.matchday ?? 0,
-      utcDate: m.date,
-      status: m.result ? 'FINISHED' : 'SCHEDULED',
-      home: { abbr: toAbbr(m.home_team), name: m.home_team },
-      away: { abbr: toAbbr(m.away_team), name: m.away_team },
-      score:
-        m.home_goals != null && m.away_goals != null
-          ? { home: m.home_goals, away: m.away_goals }
-          : undefined,
-    };
-  }
 
   let matches: Match[] = [];
   let filteredMatches: Match[] = [];
@@ -327,7 +307,7 @@
   {:else}
     <div class="space-y-4">
       {#each filteredMatches as match (match.id)}
-        <MatchCard fixture={mapToFixture(match)} />
+        <MatchCard fixture={matchToFixture(match)} />
       {/each}
     </div>
   {/if}
