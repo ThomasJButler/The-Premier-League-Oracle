@@ -74,6 +74,20 @@ export interface CalibrationFactors {
   lowBand: number;    // Multiplier for confidence < 0.5
 }
 
+/**
+ * One bin of a calibration curve. The curve plots predicted confidence
+ * (x-axis) against actual hit rate (y-axis) across uniformly-sized bins
+ * over [0, 1]. Empty bins are emitted with sampleCount = 0 so the SVG
+ * can render an even x-axis; their `predicted` falls back to the bin
+ * midpoint so the empty-state rendering stays geometrically sane.
+ */
+export interface CalibrationBin {
+  bin: number;        // 0..bins-1
+  predicted: number;  // Mean stated confidence inside the bin (or midpoint if empty)
+  actual: number;     // Hit rate inside the bin (0 if empty)
+  sampleCount: number;
+}
+
 class PredictionTracker {
   private readonly STORAGE_KEY = 'pl_oracle_predictions';
   /** Minimum settled predictions per band before calibration applies */
@@ -347,6 +361,40 @@ class PredictionTracker {
       mediumBand: computeFactor(medConf),
       lowBand: computeFactor(lowConf)
     };
+  }
+
+  /**
+   * Build a uniformly-binned calibration curve over [0, 1].
+   *
+   * Each settled prediction lands in one bin based on its stated `confidence`
+   * (bin i covers `[i/bins, (i+1)/bins)`; `confidence === 1.0` lands in the
+   * last bin). For each bin we report the mean confidence (x) and hit rate
+   * (y), so a perfectly-calibrated model would plot all points along the y=x
+   * diagonal.
+   *
+   * Empty bins are still emitted with `sampleCount: 0`, `actual: 0`, and
+   * `predicted` set to the bin midpoint — the consumer can render an even
+   * x-axis without conditional skipping.
+   */
+  public getCalibrationCurve(bins: number = 10): CalibrationBin[] {
+    const settled = Array.from(this.predictions.values())
+      .filter(p => p.actualResult !== undefined);
+
+    const buckets: StoredPrediction[][] = Array.from({ length: bins }, () => []);
+    for (const p of settled) {
+      const idx = Math.min(bins - 1, Math.floor(p.confidence * bins));
+      buckets[idx].push(p);
+    }
+
+    return buckets.map((preds, i) => {
+      const midpoint = (i + 0.5) / bins;
+      if (preds.length === 0) {
+        return { bin: i, predicted: midpoint, actual: 0, sampleCount: 0 };
+      }
+      const predicted = preds.reduce((s, p) => s + p.confidence, 0) / preds.length;
+      const actual = preds.filter(p => p.isCorrect).length / preds.length;
+      return { bin: i, predicted, actual, sampleCount: preds.length };
+    });
   }
 
   // Calculate prediction streaks

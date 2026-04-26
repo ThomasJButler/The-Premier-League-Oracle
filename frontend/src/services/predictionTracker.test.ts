@@ -688,6 +688,62 @@ describe('PredictionTracker Service', () => {
     });
   });
 
+  describe('Calibration Curve', () => {
+    it('emits all bins with sampleCount 0 when no settled predictions exist', () => {
+      const curve = tracker.getCalibrationCurve();
+      expect(curve).toHaveLength(10);
+      curve.forEach((bin, i) => {
+        expect(bin.bin).toBe(i);
+        expect(bin.sampleCount).toBe(0);
+        expect(bin.actual).toBe(0);
+        // predicted falls back to bin midpoint when empty
+        expect(bin.predicted).toBeCloseTo((i + 0.5) / 10, 5);
+      });
+    });
+
+    it('reflects mean stated confidence and hit rate inside each populated bin', () => {
+      // Two predictions land in bin 7 (confidence range [0.7, 0.8)):
+      //   one at 0.72 (correct), one at 0.78 (wrong) → mean predicted = 0.75, actual = 0.5
+      tracker.storePrediction(
+        'cv_a', 'Arsenal', 'Chelsea',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.72 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      );
+      tracker.updateWithResult('cv_a', 'H', 2, 1); // correct
+
+      tracker.storePrediction(
+        'cv_b', 'Liverpool', 'Spurs',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.78 },
+        new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+      );
+      tracker.updateWithResult('cv_b', 'A', 0, 1); // wrong
+
+      const curve = tracker.getCalibrationCurve();
+      const bin7 = curve[7];
+      expect(bin7.sampleCount).toBe(2);
+      expect(bin7.predicted).toBeCloseTo(0.75, 5);
+      expect(bin7.actual).toBe(0.5);
+      // Other bins remain empty
+      expect(curve[0].sampleCount).toBe(0);
+      expect(curve[9].sampleCount).toBe(0);
+    });
+
+    it('respects a custom bin count and clamps confidence === 1 into the final bin', () => {
+      // Confidence 1.0 must NOT overflow past the last bin (Math.floor(1.0 * 5) = 5 would).
+      tracker.storePrediction(
+        'cv_max', 'Team A', 'Team B',
+        { predictedResult: 'H', predictedHomeGoals: 1, predictedAwayGoals: 0, confidence: 1.0 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      );
+      tracker.updateWithResult('cv_max', 'H', 1, 0);
+
+      const curve = tracker.getCalibrationCurve(5);
+      expect(curve).toHaveLength(5);
+      expect(curve[4].sampleCount).toBe(1);
+      expect(curve[4].actual).toBe(1);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle localStorage errors gracefully', () => {
       vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
