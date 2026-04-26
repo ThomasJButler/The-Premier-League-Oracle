@@ -169,3 +169,22 @@ describe('MatchCard — section content', () => {
     expect(section.textContent).toContain('XGBOOST');
   });
 });
+
+describe('MatchCard — emphasised variant', () => {
+  it('applies the shadow-emphasised utility', () => {
+    const { container } = render(MatchCard, {
+      props: { fixture: makeFixture(), prediction: makePrediction(), variant: 'emphasised' },
+    });
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toMatch(/shadow-emphasised/);
+  });
+
+  it('bumps the winning numeric to a larger metric class', () => {
+    const { container } = render(MatchCard, {
+      props: { fixture: makeFixture(), prediction: makePrediction(), variant: 'emphasised' },
+    });
+    // Winning side (HOME) numeric should use text-metric-xl in emphasised mode
+    const center = container.querySelector('[data-block="center"]') as HTMLElement;
+    expect(center.innerHTML).toMatch(/text-metric-xl/);
+  });
+});

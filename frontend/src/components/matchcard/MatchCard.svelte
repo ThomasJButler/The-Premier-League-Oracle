@@ -90,9 +90,9 @@
       {#if prediction}
         <span class="text-eyebrow">HOME · DRAW · AWAY</span>
         <span class="flex items-baseline justify-center gap-3 font-mono">
-          <span class="{prediction.pick === 'HOME' ? 'text-metric-lg' : 'text-metric-sm'} text-foreground">{pct(prediction.ensemble.home)}</span>
-          <span class="{prediction.pick === 'DRAW' ? 'text-metric-lg' : 'text-metric-sm'} text-text-dim">{pct(prediction.ensemble.draw)}</span>
-          <span class="{prediction.pick === 'AWAY' ? 'text-metric-lg' : 'text-metric-sm'} text-foreground">{pct(prediction.ensemble.away)}</span>
+          <span class="{prediction.pick === 'HOME' ? (variant === 'emphasised' ? 'text-metric-xl' : 'text-metric-lg') : 'text-metric-sm'} text-foreground">{pct(prediction.ensemble.home)}</span>
+          <span class="{prediction.pick === 'DRAW' ? (variant === 'emphasised' ? 'text-metric-xl' : 'text-metric-lg') : 'text-metric-sm'} text-text-dim">{pct(prediction.ensemble.draw)}</span>
+          <span class="{prediction.pick === 'AWAY' ? (variant === 'emphasised' ? 'text-metric-xl' : 'text-metric-lg') : 'text-metric-sm'} text-foreground">{pct(prediction.ensemble.away)}</span>
         </span>
         <ProbBar
           home={prediction.ensemble.home}

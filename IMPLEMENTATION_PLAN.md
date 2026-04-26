@@ -15,7 +15,7 @@
 
 ## Active phase
 
-Phase 1 (MatchCard). **P1a + P1b landed** (header strip + four expanding sections, both auto-gates green at 726/726). Next slice is **P1c (MatchRow + emphasised + Phase 1 checkpoint, manual-gated)** — ralph commits when `npm run check` is clean and stops for human eyeball of the redesign's signature primitive.
+Phase 1 (MatchCard). **P1a + P1b + P1c committed** (header strip + four expanding sections + MatchRow + emphasised variant). All automated gates green: vitest 732/732 across 52 files, svelte-check 0/0, Playwright routing 32/32. **P1c manual-gated and awaiting human eyeball** — checkbox stays `[ ]` until the visual sweep below is signed off. Next slice (after eyeball) is Phase 2 (Today screen, starting with P2a — command strip + hero match).
 
 ## Ordered checklist
 
@@ -108,6 +108,8 @@ Phase 1 (MatchCard). **P1a + P1b landed** (header strip + four expanding section
   - `mapToFixture` synthesises team `abbr` via `name.replace(/\b(?:FC|AFC)\b/g, '').trim().slice(0, 3).toUpperCase()` — lossy but adequate for the slice's goal (proving integration). A proper crest-URL pipeline lands when the v3 `Fixture` shape gets sourced directly from the dataService in a later phase; for now the legacy `Match` carries no abbreviation field.
 - **(P1b, no blocker)** P1b landed: vitest 726/726 across 51 files (+8 from `MatchCard.test.ts`: 6 section-behaviour + 2 section-content). `svelte-check` 0/0. New `frontend/src/components/matchcard/MatchCardSection.svelte` (toggleable shell with `aria-expanded` + `motion-safe:` chevron rotation). `MatchCard.svelte` gained `defaultOpen` (single ID or array) and `hideSections` props plus an `openState` map; multi-open semantics fall out of `openState = { ...openState, [id]: next }` (no accordion exclusivity). The `analyse` and `probabilities` sections only render when `prediction` is defined — both gated on `{#if isShown(...) && prediction}`; `form` and `context` always render. The four `—` placeholders in the *context* section are intentional per the plan: no data source for venue / referee / tempo until a later phase.
 - **(P1b deviations from plan)** None — implementation tracked the plan template verbatim. Reduce-motion is delivered via Tailwind's `motion-safe:transition-transform motion-safe:duration-150` (transition skipped under `prefers-reduced-motion: reduce`); the `rotate-180` itself stays unconditional so the chevron's open/closed visual state is preserved even with motion off.
+- **(P1c, awaiting human eyeball)** P1c shipped `MatchRow.svelte` + emphasised variant winning-numeric bump on `MatchCard.svelte`. vitest 732/732 across 52 files (+4 from new `MatchRow.test.ts`, +2 from new `MatchCard — emphasised variant` describe block in `MatchCard.test.ts`). `svelte-check` 0/0. Playwright routing smoke 32/32 on `desktop-chrome` (13.8s). New `frontend/src/components/matchcard/MatchRow.svelte` is a single-row 12-col grid (date · home crest+abbr · score-or-v · away abbr+crest · ProbBar · pick-or-hit-indicator) for log/history surfaces. `data-hit="true"|"false"` contract on the right-hand cell is the stable signal for predictions-log filtering. Emphasised variant on `MatchCard` now bumps the winning side's percentage from `text-metric-lg` (28px) to `text-metric-xl` (44px) — losing sides stay at `text-metric-sm` so the hierarchy is one big number, not three. `shadow-emphasised` ring shadow remained from P1a unchanged.
+- **(P1c deviations from plan)** Preserved P1a's `isFinished = fixture.status === 'FINISHED' || kickoff < new Date()` semantic in MatchCard's center-block fallback rather than reverting to the plan template's `kickoff < new Date()` only. The deviation is documented in P1a's notes (line "honouring status first preserves 'FT' semantics if a device clock drifts ahead") and removing it would regress that improvement. MatchRow's own `isFinished` *does* additionally require `fixture.score !== undefined` — that's intentional, because a row's right-hand cell needs a score to compute hit/miss; an early-FT-by-clock fixture without a posted score should fall back to the pick+confidence display, not throw on `actualOutcome`. The `[vite] http proxy error: /health` log line during the Playwright run is the same pre-existing FastAPI-not-running noise documented in P0-cp's notes — not introduced by this slice.
 
 ## Human notes for next iteration
 
@@ -117,8 +119,21 @@ Phase 1 (MatchCard). **P1a + P1b landed** (header strip + four expanding section
 
 ## Next recommended build slice
 
-**P1c — MatchRow + emphasised + Phase 1 checkpoint** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-1-matchcard/p1c-matchrow.md`. Adds compact `MatchRow.svelte` for log/history surfaces, plus `variant="emphasised"` on `MatchCard` (primary-ringed shadow + bumped winning numeric). Phase 1 visual sweep is part of the slice. Manual gate: ralph commits when `npm run check` is clean, then stops with a one-paragraph summary; human flips `[x]` after eyeball.
+**P1c committed — awaiting human eyeball.** Phase 1 manual sweep checklist (boot `npm run dev`):
 
-Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`.
+```
+[ ] /fixtures/matches — MatchCard renders with header strip, gradient bleed, ProbBar
+[ ] /fixtures/matches — Click "AI ANALYSIS" — section expands with 3-col layout
+[ ] /fixtures/matches — Click "PROBABILITIES & MODELS" — both expanded simultaneously
+[ ] /fixtures/matches — Toggle theme — colours flip cleanly, no FOUC
+[ ] Resize <1024px — MatchCard stacks gracefully
+[ ] Predictions log surface — verify MatchRow when ready (Phase 3 work)
+```
+
+If everything looks right, flip P1c's `[ ]` to `[x]` in this file. If anything is wrong, drop notes under `## Human notes for next iteration`.
+
+**Once P1c is signed off → Phase 2 begins:** **P2a — Today command strip + hero match** *(Manual-gated)*. Phase 2 plan does not exist yet; it should be written before P2a starts. The Today hero is `MatchCard variant="emphasised" defaultOpen="analyse"`; the grid below is standard `MatchCard`s. It's the first place the redesign feels finished.
+
+Plans live in `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`. A Phase 2 plan directory should be created at `docs/superpowers/plans/2026-04-26-phase-2-today/` when P1c is signed off.
 
 If anything stalls or behaviour looks wrong mid-loop, drop a one-line note under `## Human notes for next iteration` and the next ralph iteration will address it as part of its slice contract.
