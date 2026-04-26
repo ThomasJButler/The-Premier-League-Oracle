@@ -6,7 +6,7 @@
   import LiveTicker from './components/LiveTicker.svelte';
   import Today from './screens/Today.svelte';
   import Live from './screens/fixtures/Live.svelte';
-  import MatchList from './components/MatchList.svelte';
+  import Matches from './screens/fixtures/Matches.svelte';
   import Predictions from './components/Predictions.svelte';
   import StandingsTable from './components/StandingsTable.svelte';
   import KellyCalculator from './components/betting/KellyCalculator.svelte';
@@ -67,7 +67,7 @@
 
     <Route path="/today"><Today /></Route>
     <Route path="/fixtures/live"><Live /></Route>
-    <Route path="/fixtures/matches"><MatchList /></Route>
+    <Route path="/fixtures/matches"><Matches /></Route>
     <Route path="/fixtures/standings"><StandingsTable /></Route>
     <Route path="/predictions/this-week"><Predictions /></Route>
     <Route path="/predictions/backtest"><Predictions /></Route>
