@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Router, Route, navigate } from 'svelte-routing';
-  import Header from './components/Header.svelte';
-  import Sidebar from './components/Sidebar.svelte';
-  import MobileNav from './components/MobileNav.svelte';
+  import BroadcastShell from './components/layout/BroadcastShell.svelte';
+  import MobileTabBar from './components/layout/MobileTabBar.svelte';
+  import MobileBottomSheet from './components/layout/MobileBottomSheet.svelte';
   import LiveTicker from './components/LiveTicker.svelte';
   import Dashboard from './components/Dashboard.svelte';
   import MatchList from './components/MatchList.svelte';
@@ -21,54 +21,41 @@
   import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
   import { isDarkMode } from './stores/theme';
+  import { supportingClub } from './stores/supportingClub';
   import { REDIRECTS } from './routes';
 
   export let url = '';
 
-  let isSidebarOpen = false;
   let showApiSetup = false;
-  let hasApiKey = false;
+  let mobileSheetOpen = false;
   let dashboardComponent: Dashboard;
 
   function applyRedirect(): boolean {
-    const here = window.location.pathname + window.location.search;
-    const target = REDIRECTS[window.location.pathname];
-    if (target && here !== target) {
+    const here = window.location.pathname;
+    const target = REDIRECTS[here];
+    if (target && here !== target.split('?')[0]) {
       navigate(target, { replace: true });
       return true;
     }
     return false;
   }
 
-  function toggleSidebar() {
-    isSidebarOpen = !isSidebarOpen;
-  }
-
   onMount(() => {
-    if (window.innerWidth >= 1024) {
-      isSidebarOpen = true;
-    }
     isDarkMode.init();
-    const savedTeam = localStorage.getItem('favourite_team');
-    if (savedTeam) {
-      document.documentElement.dataset.team = savedTeam;
-    }
+    // supportingClub store self-initialises the data-team attribute on module load
+    void supportingClub;
     applyRedirect();
     checkApiKey();
   });
 
   function checkApiKey() {
     const apiKey = localStorage.getItem('football_data_api_key');
-    hasApiKey = !!apiKey;
-    if (!hasApiKey) {
-      showApiSetup = true;
-    }
+    if (!apiKey) showApiSetup = true;
   }
 
   async function handleApiSetupComplete(event: CustomEvent<{ apiKey: string }>) {
     showApiSetup = false;
     if (!event.detail.apiKey) return;
-    hasApiKey = true;
     footballDataAPI.setApiKey(event.detail.apiKey);
     await dataService.clearCache();
     await dataService.refreshApiConfiguration();
@@ -79,42 +66,37 @@
 </script>
 
 <Router {url}>
-  <div class="flex h-screen bg-background text-foreground overflow-hidden relative noise-bg">
-    <Sidebar bind:isOpen={isSidebarOpen} on:closeSidebar={() => (isSidebarOpen = false)} />
+  <BroadcastShell>
+    <LiveTicker />
 
-    <div class="flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ease-in-out {isSidebarOpen ? 'lg:ml-64' : ''}">
-      <Header toggleSidebar={toggleSidebar} {isSidebarOpen} />
-      <LiveTicker />
+    <Route path="/today"><Dashboard bind:this={dashboardComponent} /></Route>
+    <Route path="/fixtures/live"><LiveMatches /></Route>
+    <Route path="/fixtures/matches"><MatchList /></Route>
+    <Route path="/fixtures/standings"><StandingsTable /></Route>
+    <Route path="/predictions/this-week"><Predictions /></Route>
+    <Route path="/predictions/backtest"><Predictions /></Route>
+    <Route path="/predictions/log"><Predictions /></Route>
+    <Route path="/predictions/tools"><KellyCalculator /></Route>
+    <Route path="/oracle"><ChatBot /></Route>
+    <Route path="/insights/scorers"><TopScorers /></Route>
+    <Route path="/insights/stats"><SeasonStats /></Route>
+    <Route path="/insights/timeline"><SeasonTimeline /></Route>
+    <Route path="/settings/account"><Settings /></Route>
+    <Route path="/settings/api-data"><Settings /></Route>
+    <Route path="/settings/display"><Settings /></Route>
+    <Route path="/settings/predictions"><Settings /></Route>
+    <Route path="/settings/notifications"><Settings /></Route>
+    <Route path="/settings/privacy"><Settings /></Route>
+    <Route path="/settings/help"><Help /></Route>
+  </BroadcastShell>
 
-      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8 relative" aria-label="Premier League Oracle content">
-        <!-- Phase 0b: routes mount LEGACY components by URL.
-             Phase 0d swaps the shell; later phases swap the components. -->
-        <Route path="/today"><Dashboard bind:this={dashboardComponent} /></Route>
-        <Route path="/fixtures/live"><LiveMatches /></Route>
-        <Route path="/fixtures/matches"><MatchList /></Route>
-        <Route path="/fixtures/standings"><StandingsTable /></Route>
-        <Route path="/predictions/this-week"><Predictions /></Route>
-        <Route path="/predictions/backtest"><Predictions /></Route>
-        <Route path="/predictions/log"><Predictions /></Route>
-        <Route path="/predictions/tools"><KellyCalculator /></Route>
-        <Route path="/oracle"><ChatBot /></Route>
-        <Route path="/insights/scorers"><TopScorers /></Route>
-        <Route path="/insights/stats"><SeasonStats /></Route>
-        <Route path="/insights/timeline"><SeasonTimeline /></Route>
-        <Route path="/settings/account"><Settings /></Route>
-        <Route path="/settings/api-data"><Settings /></Route>
-        <Route path="/settings/display"><Settings /></Route>
-        <Route path="/settings/predictions"><Settings /></Route>
-        <Route path="/settings/notifications"><Settings /></Route>
-        <Route path="/settings/privacy"><Settings /></Route>
-        <Route path="/settings/help"><Help /></Route>
-      </main>
-    </div>
+  <MobileTabBar onMore={() => (mobileSheetOpen = true)} />
+  <MobileBottomSheet open={mobileSheetOpen} onClose={() => (mobileSheetOpen = false)}>
+    <a href="/insights/scorers" class="block py-2 text-label">Insights</a>
+    <a href="/settings/account" class="block py-2 text-label">Settings</a>
+  </MobileBottomSheet>
 
-    <MobileNav />
-
-    {#if showApiSetup}
-      <ApiSetupWizard on:complete={handleApiSetupComplete} />
-    {/if}
-  </div>
+  {#if showApiSetup}
+    <ApiSetupWizard on:complete={handleApiSetupComplete} />
+  {/if}
 </Router>

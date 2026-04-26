@@ -14,7 +14,7 @@
 
 ## Active phase
 
-Phase 0 (Foundation) — slice **P0d Shells** is next.
+Phase 0 (Foundation) — slice **P0-cp Phase 0 checkpoint** is next (after human eyeball confirms P0d).
 
 ## Ordered checklist
 
@@ -22,7 +22,7 @@ Phase 0 (Foundation) — slice **P0d Shells** is next.
 - [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0a-tokens.md`.
 - [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0b-routing.md`.
 - [x] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md`.
-- [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
+- [ ] **P0d — Shells** *(Manual-gated, awaiting human eyeball — auto gates green: 711/711 vitest, 0/0 svelte-check)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
 - [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
 
 ### Phase 1 — MatchCard primitive
@@ -83,6 +83,16 @@ Phase 0 (Foundation) — slice **P0d Shells** is next.
   - `FormDot.test.ts` + `ProbBar.test.ts`: split each rerender-based test into two separate `render()` calls. `@testing-library/svelte` v5.2.x's `rerender()` did not update Svelte 4 prop reactivity in this setup (size remained `sm`, `showLabels` remained `false` after rerender). Two-render structure is also more idiomatic and removes a v5/Svelte4 compatibility footgun for future atoms.
   - `ProbBar.svelte`: dropped `role="progressbar"` and the `aria-valuemin/max/now` triplet. svelte-check warned `aria-invalid is not supported by role progressbar`, and semantically a stacked three-segment probability bar isn't a single-task progress widget. The `aria-invalid` attribute (which the test asserts on) is preserved.
   - `app.css` additions are scoped under a new `@layer utilities` block placed before the `ATMOSPHERE & TEXTURE` block — preserves the file's section ordering so future slices can locate where to add new utility classes.
+- **(P0d, no blocker)** P0d landed: vitest 711/711 across 50 files (+7 new tests across 2 files: `BroadcastShell.test.ts` 3, `Tabs.test.ts` 4). `svelte-check` 0/0. New `frontend/src/components/layout/` directory with `BroadcastShell.svelte`, `Tabs.svelte`, `MobileTabBar.svelte`, `MobileBottomSheet.svelte`. New stores `frontend/src/stores/density.ts` and `frontend/src/stores/supportingClub.ts`. New test fixture `frontend/src/tests/LinkStub.svelte` (re-usable by future layout/component tests). `App.svelte` now mounts `BroadcastShell` as the outer chrome — legacy `Header.svelte`, `Sidebar.svelte`, `MobileNav.svelte` are unimported and scheduled for P10 cleanup.
+- **(P0d deviations from plan)**
+  - `Tabs.svelte`: changed the wrapping element from `<nav role="tablist">` (plan template) to `<div role="tablist">`. svelte-check correctly warns that `<nav>` is a landmark and shouldn't have an interactive role. Tests still query by `role="tablist"`, so they pass unchanged.
+  - `MobileBottomSheet.svelte`: replaced `on:click|stopPropagation` (plan template) with a `target === currentTarget` check on the scrim's click handler — same click-outside-to-close behavior, but Svelte 4 strict TS mode rejects `|stopPropagation` without an explicit handler. Cleaner and removes the need for stopPropagation modifiers anywhere in the component.
+  - `MobileBottomSheet.svelte`: handler params typed `e: any` with the same `// Svelte 4 types on:keydown as CustomEvent...` comment used in `MobileNav.svelte`, `dialog-content.svelte`, `sheet-content.svelte`. Following the existing codebase convention rather than introducing a one-off `KeyboardEvent` type that would conflict with the same Svelte 4 typing quirk.
+  - `BroadcastShell.test.ts`: scoped the "renders sidebar labels" assertion to within the `<nav>` element (using `within(nav)`). The plan template's bare `getByText('Oracle')` would match both the brand text and the hub label and throw a multiple-match error.
+  - Both layout-component tests use `vi.mock('svelte-routing', async () => { const LinkStub = (await import('../../tests/LinkStub.svelte')).default; return { Link: LinkStub, navigate: vi.fn() }; })` instead of wrapping in a `<Router>`. The new `frontend/src/tests/LinkStub.svelte` fixture renders `Link` as a plain anchor with `to → href`.
+  - `MobileTabBar.svelte`: imported `IconName` from `'../atoms/icons'` (where the type actually lives), not from `'../atoms/Icon.svelte'` (where the plan template put the import — that path doesn't re-export `IconName`).
+  - `supportingClub.ts`: read localStorage once into a local `initial` constant instead of calling `read()` twice (once for the writable seed, once for `applyDom`). Functionally identical, avoids a redundant DOM call.
+  - `MobileTabBar.svelte` and `BroadcastShell.svelte`'s `<nav>` got `aria-label` strings ("Primary mobile navigation" / "Primary navigation") — landmark elements should be labelled when more than one nav exists on a page.
 
 ## Human notes for next iteration
 
@@ -92,6 +102,8 @@ Phase 0 (Foundation) — slice **P0d Shells** is next.
 
 ## Next recommended build slice
 
-**P0d — Shells** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`. Creates `frontend/src/components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Adds `density` and `supportingClub` stores. Mounts the new shell as the outer chrome of `App.svelte` while legacy screens still render inside (strangler-fig step). Manual-gated: ralph commits when `npm run check` passes and `npm run test -- --run` is green, then stops with a one-paragraph summary for human eyeball before the `[x]` flip.
+**P0-cp — Phase 0 checkpoint** *(Manual-gated)* — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`. Adds a Playwright spec that walks every hub at desktop + mobile, dark + light. No new code beyond the spec.
 
-P0c atoms (`Crest`, `FormDot`, `ProbBar`, `Spark`, `Icon`, `KpiTile`, `SectionHeader`) and the icon registry are now available for P0d to import. `types/redesign.ts` exports `Density` (used by the new `density` store) and `TeamSummary` (used by the supporting-club picker if scoped that far).
+Blocked until P0d's manual eyeball confirms: dev server boot, sidebar 6 labels, click-through to each hub, theme toggle flip, mobile <1024px shows bottom bar with 5 tabs (Today, Fixtures, Predictions, Oracle, More), "More" opens the bottom sheet, `/dashboard` → `/today` redirect. Once human flips P0d's `[x]`, P0-cp can run.
+
+If the eyeball reveals a broken behavior, drop a one-line note under `## Human notes for next iteration` and ralph will fix it in the next loop without expanding the slice's scope.
