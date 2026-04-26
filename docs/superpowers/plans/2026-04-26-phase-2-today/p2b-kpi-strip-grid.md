@@ -280,18 +280,18 @@ Actually landed: `MatchCard.test.ts` 24/24 (was 17/17). Pre-fix run confirmed 4 
 
 This task closes the P2a follow-up about the empty PROBABILITIES section. Once Task 3 lands, the grid cards built from `predictionToV3(stored)` will render only the scorelines block (no empty 5-col grid, no zero xG / zero ELO tiles), and P4-era work that widens `predictionToV3` to surface real per-model leans / xG / ELO will automatically un-gate the hidden sub-blocks.
 
-### Task 2: Extend the Today fixture mock + write the failing zone tests
+### Task 2: Extend the Today fixture mock + write the failing zone tests — ✅ DONE
 
 **Files:**
 - Modify: `frontend/src/screens/Today.test.ts`
 
 The P2a mocks need extending: `getCurrentSeasonMatches` returns multiple GW35 fixtures (so the grid has rows besides the hero), and `getAccuracyStats` returns a deterministic Brier so the KPI tile assertion is stable.
 
-- [ ] **Step 1: Update the existing default `getAccuracyStats` mock to include `brierScore`**
+- [x] **Step 1: Update the existing default `getAccuracyStats` mock to include `brierScore`**
 
 Inside `Today.test.ts`'s top-of-file `vi.mock('../services/predictionTracker', …)` factory, append `brierScore: 0` to the default `getAccuracyStats` `mockReturnValue` object. Without this, every existing P2a test that triggers `await component.load()` (i.e., goes through the `loaded = true` branch) will throw `TypeError: Cannot read properties of undefined (reading 'toFixed')` once Task 3's `stats.brierScore.toFixed(2)` markup lands. The `brierScore: 0.6` highlight test below uses `mockReturnValueOnce` to override per-test, so the default value just needs to be a valid number.
 
-- [ ] **Step 2: Append KPI + grid tests**
+- [x] **Step 2: Append KPI + grid tests**
 
 **Match-shape note:** `dataService.getCurrentSeasonMatches()` returns the internal `Match[]` shape (defined at `frontend/src/types/index.ts:27`) — snake_case fields (`date`, `home_team`, `home_goals`, `result`), not the Football-Data API shape (`utcDate`, `homeTeam.tla`, `score.fullTime`). `matchToFixture` reads the internal shape; passing API-shape fixtures into the mock produces a Fixture with `home: { abbr: '', name: undefined }` and the test fails for the wrong reason. The `mkMatch` helper below pins the right shape and matches the existing `mockMatch` factory inside the top-of-file `vi.mock` factory. (Helper is defined at the top of the new describe block — vitest hoists `vi.mock` above top-level consts, but tests inside `it(…)` blocks resolve normally, so a describe-scoped helper is safe.)
 
@@ -370,18 +370,18 @@ describe('Today screen — P2b predictions grid', () => {
 });
 ```
 
-- [ ] **Step 3: Confirm the new tests fail**
+- [x] **Step 3: Confirm the new tests fail**
 
 Run: `cd frontend && npm run test -- --run src/screens/Today.test.ts`
 
 Expected: P2a tests still PASS (the `brierScore: 0` default mock update from Step 1 keeps them green even though Task 3's markup hasn't landed yet — accessing `0.toFixed(2)` is fine); the four new tests FAIL because the zones don't exist yet.
 
-### Task 3: Extend `screens/Today.svelte` with KPI strip + grid
+### Task 3: Extend `screens/Today.svelte` with KPI strip + grid — ✅ DONE
 
 **Files:**
 - Modify: `frontend/src/screens/Today.svelte`
 
-- [ ] **Step 1: Add `KpiTile` import and derived values**
+- [x] **Step 1: Add `KpiTile` import and derived values**
 
 In the existing `<script>` block:
 
@@ -396,7 +396,7 @@ $: gridFixtures = (gameweek !== null && loaded)
   : [];
 ```
 
-- [ ] **Step 2: Append the KPI strip and grid markup below the hero**
+- [x] **Step 2: Append the KPI strip and grid markup below the hero**
 
 Inside the existing root `<div class="flex flex-col gap-6">`, after the hero block:
 
@@ -443,35 +443,43 @@ Inside the existing root `<div class="flex flex-col gap-6">`, after the hero blo
 
 If `KpiTile.svelte` doesn't already accept `data-*` rest props, briefly check its signature. If it doesn't, the simplest path is to wrap each `<KpiTile>` in a `<div data-tile="...">` instead of forwarding the attribute — both satisfy the test.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `cd frontend && npm run test -- --run src/screens/Today.test.ts`
 
 Expected: all P2a + P2b zone tests PASS.
 
-### Task 4: Run full validation gate
+Actually landed: `Today.test.ts` 8/8 (was 4/4).
 
-- [ ] **Step 1: Vitest full suite**
+### Task 4: Run full validation gate — ✅ DONE
+
+- [x] **Step 1: Vitest full suite**
 
 Run: `cd frontend && npm run test -- --run`
 
 Expected: green. Net change vs P2a: +3 brier tests on predictionTracker, +4 zone tests on Today.
 
-- [ ] **Step 2: svelte-check**
+Actually landed: vitest 779/779 across 56 files (was 775/775; +4 from Today P2b zone tests).
+
+- [x] **Step 2: svelte-check**
 
 Run: `cd frontend && npm run check`
 
 Expected: 0 errors.
 
-- [ ] **Step 3: Playwright routing smoke**
+Actually landed: 0 errors / 0 warnings (one Svelte-4 reactive-narrowing fix needed mid-flight — see IMPLEMENTATION_PLAN.md "P2b Tasks 2-3 deviations from plan").
+
+- [x] **Step 3: Playwright routing smoke**
 
 Run: `cd frontend && npx playwright test e2e/routing.spec.ts --project=desktop-chrome`
 
 Expected: green.
 
-### Task 5: Update IMPLEMENTATION_PLAN.md and commit
+Actually landed: 32/32 in 14.1s.
 
-- [ ] **Step 1: Update IMPLEMENTATION_PLAN.md**
+### Task 5: Update IMPLEMENTATION_PLAN.md and commit — ✅ DONE
+
+- [x] **Step 1: Update IMPLEMENTATION_PLAN.md**
 
 Leave P2b's `[ ]` unchecked. Add a Phase 2 progress note under `## Notes / discoveries`:
 
@@ -479,7 +487,7 @@ Leave P2b's `[ ]` unchecked. Add a Phase 2 progress note under `## Notes / disco
 - **(P2b, awaiting human eyeball)** P2b gated empty PROBABILITIES & MODELS sub-blocks on the `MatchCard` primitive (Task 1b — closes the P2a follow-up about the empty 5-col grid + zero xG / zero ELO defects). `Today.svelte` now renders the KPI strip (Picks · Accuracy · Brier · Avg Confidence) and the 2-col `MatchCard` grid for the remaining gameweek. vitest <N>/<N> across <M> files, svelte-check 0/0, routing smoke green. (`brierScore` extension on `AccuracyStats` already shipped as auto-gated sub-slice `f0c2225`.)
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 `predictionTracker.ts` / `predictionTracker.test.ts` already shipped in `f0c2225` (Task 1). `MatchCard.svelte` / `MatchCard.test.ts` already shipped in this slice's Task 1b sub-slice — do **not** re-add either pair. The remaining surface is Tasks 2-3's `Today` zone markup + tests.
 
@@ -491,7 +499,7 @@ git add IMPLEMENTATION_PLAN.md \
 git commit -m "P2b: Today KPI strip + predictions grid"
 ```
 
-- [ ] **Step 3: Surface the manual sweep checklist**
+- [x] **Step 3: Surface the manual sweep checklist**
 
 ```
 P2b committed. Phase 2 P2b manual sweep checklist (boot npm run dev):

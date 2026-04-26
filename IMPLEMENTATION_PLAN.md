@@ -16,7 +16,7 @@
 
 ## Active phase
 
-Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Brier extension), P2b Task 1b (MatchCard PROBABILITIES gating), and P2c Task 1 (`storedPredictionToFixture` adapter) committed as auto-gated sub-slices.** Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`. All automated gates green: vitest 775/775 across 56 files (+7 from P2b Task 1b MatchCard degradation tests), svelte-check 0/0, Playwright routing 32/32 last green on P2a-cleanup. **P1c and P2a both signed off 2026-04-26** — visual sweeps cleared, checkboxes flipped to `[x]`. **P2b's and P2c's data-layer + primitive-gating tasks shipped ahead** as auto-gated sub-slices. **Visual halves of P2b + P2c are now unblocked** and queued for the next ralph iteration: P2b (KPI strip + grid markup) → tag `v3.2`; P2c (trends Spark + recent-log MatchRows + Phase 2 checkpoint spec) → tag `v3.3`. Phase 2 manual sweep gate at the end of P2c.
+Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Brier extension), P2b Task 1b (MatchCard PROBABILITIES gating), P2c Task 1 (`storedPredictionToFixture` adapter), and P2b Tasks 2-3 (Today KPI strip + 2-col MatchCard grid) committed.** Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`; P2b appended the KPI strip (Picks · Accuracy · Brier · Avg Confidence with conditional Brier highlight ≥0.25) and the 2-col `MatchCard` grid for the remaining gameweek (1-col mobile, hero deduplicated). All automated gates green: vitest 779/779 across 56 files (+4 from new Today P2b zone tests), svelte-check 0/0, Playwright routing 32/32. **P1c and P2a both signed off 2026-04-26** — visual sweeps cleared, checkboxes flipped to `[x]`. **P2b is committed and awaiting human eyeball** — checklist box stays `[ ]` until the manual sweep clears. **P2c (trends Spark + recent-log MatchRows + Phase 2 checkpoint spec)** is the only remaining slice in Phase 2; its data-layer Task 1 already shipped. Phase 2 manual sweep gate at the end of P2c.
 
 **Tagging policy (per human note 2026-04-26):** every ralph slice commit is tagged with a sequential v3.x version. P2a → `v3.1`. The full P2b → `v3.2` (when the visual zones land). P2c → `v3.3`. And so on. Sub-slice commits like the Brier extension above are **untagged** so the version sequence cleanly maps onto checklist items. Tags are local-only — push policy is unchanged (no auto-push).
 
@@ -168,6 +168,13 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Br
   - The TDD-discipline check landed exactly as the grooming note predicted: pre-fix run showed 4 of 7 failing (the 3 "renders … when populated" companions + 1 always-renders-scorelines), and the 3 "hides …" tests trivially passed pre-fix because `querySelector` returns `null` for any non-existent attribute. Post-fix all 7 pass. The bidirectional pairing locks the contract — a future revert that drops gating + markers together would still flip 4 tests red.
   - Skipped Playwright routing smoke for this sub-slice — Task 1b touches only `MatchCard.svelte`, not routing or shells. Earlier auto-gated sub-slices (P2b Task 1, P2c Task 1) followed the same component/data-internal pattern: vitest + svelte-check only. The Playwright gate is reserved for the full P2b slice (Task 4).
 
+- **(P2b Tasks 2-3, awaiting human eyeball)** P2b's visual half landed: `screens/Today.svelte` now renders the KPI strip (4-tile grid: Picks · Accuracy · Brier · Avg Confidence) and the 2-col MatchCard grid for the rest of the gameweek (1-col mobile, hero deduplicated, empty-state hint when only the hero remains). Brier tile gets `data-state="highlight"` when `brierScore > 0.25`. `Today.test.ts` grew by 4 tests (2 KPI + 2 grid) and the default `getAccuracyStats` mock learnt `brierScore: 0`. vitest 779/779 across 56 files (was 775/775), svelte-check 0/0, Playwright routing 32/32 on `desktop-chrome` (14.1s). Pre-fix TDD-discipline check: all 4 new tests failed pre-implementation (zones don't exist yet); post-fix all 4 pass. Manual sweep checklist surfaced below — flip P2b's `[ ]` to `[x]` once cleared. (`brierScore` extension on `AccuracyStats` already shipped in `f0c2225`; PROBABILITIES gating in the prior sub-slice; `predictionTracker.ts`, `predictionTracker.test.ts`, `MatchCard.svelte`, `MatchCard.test.ts` are intentionally **not** in this commit — they shipped earlier.)
+- **(P2b Tasks 2-3 deviations from plan)**
+  - **`KpiTile` doesn't forward `data-*` rest props.** The plan template's `<KpiTile data-tile="picks" … />` would have silently dropped the attribute — KpiTile (`frontend/src/components/atoms/KpiTile.svelte:26`) renders a plain `<div>` with class only, no `{...$$restProps}`. Used the plan's authorised fallback ("the simplest path is to wrap each `<KpiTile>` in a `<div data-tile="...">` instead of forwarding the attribute") so the screen owns its own contract markers without coupling them to the atom's signature. The Brier wrapper also carries `data-state` (test asserts `brierTile?.getAttribute('data-state')`); both attributes live on the same element selected by `[data-tile="brier"]`. Reusable taxonomy for P3/P4/P7 hub screens that will also pin `[data-tile=…]` markers.
+  - **Reactive `$:` ternary with string literals widened to `string`.** Initial implementation used `$: brierState = stats.brierScore > THRESHOLD ? 'highlight' : 'default';` — svelte-check rejected passing `brierState: string` to KpiTile's `state: 'default' | 'highlight' | 'muted'` prop. Svelte 4's reactive declarations don't always narrow ternaries with literal-string branches. Pre-declared `let brierState: 'default' | 'highlight' = 'default';` and reassigned in the `$:` block — control flow then sees the explicit narrow type. Worth remembering for P3 hub screens that pass `state` props to atoms. (`as const` on each branch is an alternative; this approach is one declaration vs two `as const` casts.)
+  - **`String(m.id) !== heroFixture?.id` simplified to `m.id !== heroFixture?.id`.** Both come from the same source (`matchToFixture` passes `m.id` straight through to `fixture.id`), and `Match.id: string`. The plan template's `String(m.id)` was a defensive cast against an imagined number-id case that doesn't exist. Drops one runtime call per filter iteration.
+  - **`fixturesForGameweek` import moved into the existing `from '../lib/gameweek'` line** rather than a separate import statement. Same module — combining keeps the import block tidy.
+
 ## Human notes for next iteration
 
 *(Drop notes here mid-run. The next ralph build iteration consumes them as part of the slice contract: address every note OR explain in `## Notes / discoveries` why a note doesn't apply. Once addressed, ralph moves the consumed note to `## Notes / discoveries` prefixed with `(addressed) ` and a one-line summary of how it was addressed.)*
@@ -176,19 +183,30 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Br
 
 ## Next recommended build slice
 
-**P1c + P2a both signed off 2026-04-26.** Visual sweeps cleared, checkboxes flipped to `[x]`. **The visual halves of P2b and P2c are now unblocked.** Next ralph run is a 20-iteration build loop targeting Phase 2 to completion.
+**P1c + P2a signed off 2026-04-26. P2b shipped this iteration and is awaiting human eyeball** — checklist box stays `[ ]` until the manual sweep clears. The only remaining slice in Phase 2 is **P2c**.
 
-**Already in the codebase (auto-gated sub-slices, untagged):**
+**Already in the codebase:**
 - **P2b Task 1** — Brier extension on `AccuracyStats` (`predictionTracker.ts`, commit `f0c2225`). Reusable by P4b.
-- **P2b Task 1b** — Gated empty PROBABILITIES & MODELS sub-blocks on `MatchCard.svelte` with `[data-models-grid]` / `[data-xg-block]` / `[data-elo-block]` / `[data-scorelines]` markers (this iteration's commit). Closes the P2a follow-up about the empty hero-card 5-col grid; pre-empts the same defect on Task 3's grid cards.
+- **P2b Task 1b** — Gated empty PROBABILITIES & MODELS sub-blocks on `MatchCard.svelte` with `[data-models-grid]` / `[data-xg-block]` / `[data-elo-block]` / `[data-scorelines]` markers.
+- **P2b Tasks 2-3** — Today KPI strip + 2-col MatchCard grid (this iteration's commit, untagged per ralph user's "do not auto-tag" rule). Awaiting eyeball.
 - **P2c Task 1** — `storedPredictionToFixture` adapter on `lib/adapters/v3.ts` (commit `0059a49`). Reusable by P4c.
 
-**Up next (the remaining iterations will burn through, in order):**
+**Up next (single remaining slice):**
 
-1. **P2b Tasks 2–5** — Extend `Today.test.ts` with 4 KPI/grid zone tests (using `await component.load(); await act();` pattern, NOT `waitFor` — see grooming note `377e03d`); append KPI strip + 2-col `MatchCard` grid markup to `Today.svelte`; validation gate; commit + tag `v3.2` + surface manual sweep checklist. Skip Tasks 1 + 1b — already shipped.
-2. **P2c Tasks 2–5** — Extend `Today.test.ts` with 3 below-fold zone tests; append trends `Spark` (note: atom takes single `data` array, not `labels` — see grooming `3194a50`) + 5-row recent-log via `MatchRow` to `Today.svelte`; write `e2e/checkpoint-p2.spec.ts` (note: stickiness test is `getComputedStyle().position === 'sticky'`, NOT `page.mouse.wheel()` — see grooming `2eebb3d`); validation gate; commit + tag `v3.3` + surface Phase 2 manual sweep checklist. Skip Task 1 — already shipped.
+1. **P2c Tasks 2–5** — Extend `Today.test.ts` with 3 below-fold zone tests using the `await component.load(); await act();` pattern (NOT `waitFor` — see grooming `377e03d`); append trends `Spark` (atom takes single `data` array, not `labels` — see grooming `3194a50`) + 5-row recent-log via `MatchRow` to `Today.svelte`; write `e2e/checkpoint-p2.spec.ts` (stickiness test is `getComputedStyle().position === 'sticky'`, NOT `page.mouse.wheel()` — see grooming `2eebb3d`); validation gate; commit + surface Phase 2 manual sweep checklist. Skip Task 1 — already shipped.
 
-**Why this run should be fast:** the 9 plan-grooming commits leading up to the previous iteration (`502982a`, `86c016f`, `27c88f5`, `3194a50`, `c736e91`, `42b9bdd`, `377e03d`, `d13d815`, `2eebb3d`) hardened both slice plans against tripwires ralph found by pre-flight-checking the templates against the codebase: Match-shape mismatch in P2b Task 2 mocks, missing default `brierScore: 0`, Spark atom API mismatch, `waitFor` → `component.load()` pattern, non-falsifying scroll-stickiness assertion, TDD-discipline test pairing for Task 1b (now landed). Expect the remaining P2b + P2c work to land in noticeably fewer iterations than P0/P1 needed.
+**Manual sweep checklist for P2b (boot `cd frontend && npm run dev`):**
+
+```
+[ ] /today — KPI strip renders 4 tiles with the right labels (Picks · Accuracy · Brier · Avg Confidence)
+[ ] /today — Brier value matches what the prediction tracker computes (DevTools: predictionTracker.getAccuracyStats().brierScore)
+[ ] /today — Brier tile gets the highlight ring when score > 0.25
+[ ] /today — Predictions grid below the hero has the remaining gameweek fixtures, hero deduplicated
+[ ] /today — Resize <1024px: grid collapses to 1 column, KPI strip becomes 2x2
+[ ] /today — Toggle theme — KPI tiles flip cleanly
+```
+
+If everything looks right, flip P2b's `[ ]` to `[x]` in this file. If anything is wrong, drop notes under `## Human notes for next iteration`.
 
 **Halt condition:** loop stops at the Phase 2 manual sweep gate after P2c's checkpoint Playwright spec passes. When you're back, eyeball `/today` end-to-end (hero + KPI strip + grid + below-fold trends + recent log) and either flip the boxes or drop notes under `## Human notes for next iteration`.
 

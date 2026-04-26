@@ -70,6 +70,7 @@ vi.mock('../services/predictionTracker', () => {
         totalPredictions: 12,
         correctPredictions: 8,
         accuracy: 67,
+        brierScore: 0,
         averageConfidence: 0.55,
         scoreAccuracy: 0,
         highConfidenceAccuracy: 0,
@@ -118,5 +119,105 @@ describe('Today screen — P2a skeleton', () => {
     await (component as { load(): Promise<void> }).load();
     await act();
     expect(container.querySelector('[data-zone="hero-empty"]')).toBeTruthy();
+  });
+});
+
+describe('Today screen — P2b KPI strip', () => {
+  it('renders four KPI tiles with the expected labels', async () => {
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const strip = container.querySelector('[data-zone="kpi-strip"]');
+    expect(strip).toBeTruthy();
+    expect(strip!.textContent).toContain('Picks');
+    expect(strip!.textContent).toContain('Accuracy');
+    expect(strip!.textContent).toContain('Brier');
+    expect(strip!.textContent).toContain('Avg Confidence');
+  });
+
+  it('highlights the Brier tile when brierScore is above the threshold', async () => {
+    const { predictionTracker } = await import('../services/predictionTracker');
+    (predictionTracker.getAccuracyStats as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      totalPredictions: 12,
+      correctPredictions: 8,
+      accuracy: 67,
+      brierScore: 0.6, // poor — above 0.25 threshold
+      averageConfidence: 0.55,
+      scoreAccuracy: 0,
+      highConfidenceAccuracy: 0,
+      mediumConfidenceAccuracy: 0,
+      lowConfidenceAccuracy: 0,
+      homeWinAccuracy: 0,
+      awayWinAccuracy: 0,
+      drawAccuracy: 0,
+      streak: { current: 0, best: 0, worst: 0 },
+    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const brierTile = container.querySelector('[data-tile="brier"]');
+    expect(brierTile?.getAttribute('data-state')).toBe('highlight');
+  });
+});
+
+describe('Today screen — P2b predictions grid', () => {
+  // Internal `Match` shape (frontend/src/types/index.ts) — matches the
+  // top-of-file `mockMatch` factory inside `vi.mock('../services/dataService', …)`.
+  const mkMatch = (id: string, home: string, away: string, date: string) => ({
+    id,
+    season_id: 's-1',
+    date,
+    home_team: home,
+    away_team: away,
+    home_goals: null,
+    away_goals: null,
+    result: null,
+    home_odds: null,
+    draw_odds: null,
+    away_odds: null,
+    first_half_home_goals: null,
+    first_half_away_goals: null,
+    full_time_result: null,
+    half_time_result: null,
+    referee: null,
+    home_shots: null,
+    away_shots: null,
+    home_shots_target: null,
+    away_shots_target: null,
+    home_fouls: null,
+    away_fouls: null,
+    home_corners: null,
+    away_corners: null,
+    home_yellows: null,
+    away_yellows: null,
+    home_reds: null,
+    away_reds: null,
+    created_at: '2026-04-26T00:00:00Z',
+    status: 'SCHEDULED' as const,
+    matchday: 35,
+  });
+
+  it('renders standard MatchCards for remaining gameweek fixtures (excluding the hero)', async () => {
+    const { dataService } = await import('../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkMatch('1', 'Liverpool', 'Arsenal', '2026-05-01T15:00:00Z'),
+      mkMatch('2', 'Chelsea', 'Man Utd', '2026-05-02T17:30:00Z'),
+      mkMatch('3', 'Spurs', 'Everton', '2026-05-03T15:00:00Z'),
+    ]);
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const grid = container.querySelector('[data-zone="grid"]');
+    expect(grid).toBeTruthy();
+    // 3 fixtures total, 1 in hero → 2 in grid
+    expect(grid!.querySelectorAll('article').length).toBe(2);
+  });
+
+  it('renders an empty-state hint when there are no remaining fixtures beyond the hero', async () => {
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    // P2a default mock has 1 fixture only → grid empty
+    expect(container.querySelector('[data-zone="grid-empty"]')).toBeTruthy();
   });
 });
