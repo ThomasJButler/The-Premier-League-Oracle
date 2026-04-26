@@ -115,6 +115,8 @@ Expected: 7 tests PASS (P2a's 5 + P2c's 2). *(In the actually-shipped sub-slice 
 
 - [ ] **Step 1: Append failing zone tests**
 
+**Test-pattern note (added 2026-04-26 plan grooming):** screen tests in this codebase (`Today.test.ts`, `Predictions.test.ts`, `SeasonStats.test.ts`) deliberately **do not** use `waitFor` from `@testing-library/svelte` — they use `await (component as { load(): Promise<void> }).load(); await act();` to trigger the `loaded = true` branch deterministically, then run synchronous assertions. This matches the existing P2a tests in `Today.test.ts` (lines 96-101, 103-112, 114-121). `Today.test.ts`'s import line is `import { act, render } from '@testing-library/svelte';` — do **not** add `waitFor` to the import. Bonus: pulling assertions out of a `waitFor` callback gives a clean stack trace when an expect fails (a `waitFor` with multiple expects retries the whole callback on any failure, masking the true failure point).
+
 Add to `Today.test.ts`:
 
 ```ts
@@ -126,13 +128,13 @@ describe('Today screen — P2c below-fold', () => {
       { matchday: 33, totalPredictions: 9, correctPredictions: 6, accuracy: 67 },
       { matchday: 34, totalPredictions: 10, correctPredictions: 7, accuracy: 70 },
     ]);
-    const { container } = render(Today);
-    await waitFor(() => {
-      const trends = container.querySelector('[data-zone="trends"]');
-      expect(trends).toBeTruthy();
-      expect(trends!.textContent).toMatch(/MODEL TRENDS/);
-      expect(trends!.querySelector('svg')).toBeTruthy();   // Spark renders an inline SVG
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const trends = container.querySelector('[data-zone="trends"]');
+    expect(trends).toBeTruthy();
+    expect(trends!.textContent).toMatch(/MODEL TRENDS/);
+    expect(trends!.querySelector('svg')).toBeTruthy();   // Spark renders an inline SVG
   });
 
   it('renders five MatchRow entries when getRecentPredictions returns five', async () => {
@@ -148,21 +150,21 @@ describe('Today screen — P2c below-fold', () => {
         matchday: 34, poissonProbs: { homeWin: 0.6, draw: 0.25, awayWin: 0.15 },
       })),
     );
-    const { container } = render(Today);
-    await waitFor(() => {
-      const log = container.querySelector('[data-zone="log"]');
-      expect(log).toBeTruthy();
-      // Each MatchRow renders a single root row div under the section
-      expect(log!.querySelectorAll('[data-hit]').length).toBe(5);
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const log = container.querySelector('[data-zone="log"]');
+    expect(log).toBeTruthy();
+    // Each settled MatchRow renders a [data-hit] cell on the right (MatchRow.svelte:54-57)
+    expect(log!.querySelectorAll('[data-hit]').length).toBe(5);
   });
 
   it('renders an empty-state when getRecentPredictions returns nothing', async () => {
-    const { container } = render(Today);
-    await waitFor(() => {
-      // P2a default mock returns [] for recent → empty state shown
-      expect(container.querySelector('[data-zone="log-empty"]')).toBeTruthy();
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    // P2a default mock returns [] for recent → empty state shown
+    expect(container.querySelector('[data-zone="log-empty"]')).toBeTruthy();
   });
 });
 ```

@@ -270,18 +270,20 @@ Inside `Today.test.ts`'s top-of-file `vi.mock('../services/predictionTracker', �
 
 **Match-shape note:** `dataService.getCurrentSeasonMatches()` returns the internal `Match[]` shape (defined at `frontend/src/types/index.ts:27`) — snake_case fields (`date`, `home_team`, `home_goals`, `result`), not the Football-Data API shape (`utcDate`, `homeTeam.tla`, `score.fullTime`). `matchToFixture` reads the internal shape; passing API-shape fixtures into the mock produces a Fixture with `home: { abbr: '', name: undefined }` and the test fails for the wrong reason. The `mkMatch` helper below pins the right shape and matches the existing `mockMatch` factory inside the top-of-file `vi.mock` factory. (Helper is defined at the top of the new describe block — vitest hoists `vi.mock` above top-level consts, but tests inside `it(…)` blocks resolve normally, so a describe-scoped helper is safe.)
 
+**Test-pattern note (added 2026-04-26 plan grooming):** screen tests in this codebase (`Today.test.ts`, `Predictions.test.ts`, `SeasonStats.test.ts`) deliberately **do not** use `waitFor` from `@testing-library/svelte` — they use `await (component as { load(): Promise<void> }).load(); await act();` to trigger the `loaded = true` branch deterministically, then run synchronous assertions. This is the same pattern the existing P2a tests in `Today.test.ts` use (lines 96-101, 103-112, 114-121). `Today.test.ts`'s import line is `import { act, render } from '@testing-library/svelte';` — do **not** add `waitFor` to the import. The block below uses the established pattern. Bonus: pulling assertions out of a `waitFor` callback gives a clean stack trace when an expect fails (a `waitFor` with multiple expects retries the whole callback on any failure, masking the true failure point).
+
 ```ts
 describe('Today screen — P2b KPI strip', () => {
   it('renders four KPI tiles with the expected labels', async () => {
-    const { container } = render(Today);
-    await waitFor(() => {
-      const strip = container.querySelector('[data-zone="kpi-strip"]');
-      expect(strip).toBeTruthy();
-      expect(strip!.textContent).toContain('Picks');
-      expect(strip!.textContent).toContain('Accuracy');
-      expect(strip!.textContent).toContain('Brier');
-      expect(strip!.textContent).toContain('Avg Confidence');
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const strip = container.querySelector('[data-zone="kpi-strip"]');
+    expect(strip).toBeTruthy();
+    expect(strip!.textContent).toContain('Picks');
+    expect(strip!.textContent).toContain('Accuracy');
+    expect(strip!.textContent).toContain('Brier');
+    expect(strip!.textContent).toContain('Avg Confidence');
   });
 
   it('highlights the Brier tile when brierScore is above the threshold', async () => {
@@ -294,11 +296,11 @@ describe('Today screen — P2b KPI strip', () => {
       homeWinAccuracy: 0, awayWinAccuracy: 0, drawAccuracy: 0,
       streak: { current: 0, best: 0, worst: 0 },
     });
-    const { container } = render(Today);
-    await waitFor(() => {
-      const brierTile = container.querySelector('[data-tile="brier"]');
-      expect(brierTile?.getAttribute('data-state')).toBe('highlight');
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const brierTile = container.querySelector('[data-tile="brier"]');
+    expect(brierTile?.getAttribute('data-state')).toBe('highlight');
   });
 });
 
@@ -324,21 +326,21 @@ describe('Today screen — P2b predictions grid', () => {
       mkMatch('2', 'Chelsea',   'Man Utd', '2026-05-02T17:30:00Z'),
       mkMatch('3', 'Spurs',     'Everton', '2026-05-03T15:00:00Z'),
     ]);
-    const { container } = render(Today);
-    await waitFor(() => {
-      const grid = container.querySelector('[data-zone="grid"]');
-      expect(grid).toBeTruthy();
-      // 3 fixtures total, 1 in hero → 2 in grid
-      expect(grid!.querySelectorAll('article').length).toBe(2);
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const grid = container.querySelector('[data-zone="grid"]');
+    expect(grid).toBeTruthy();
+    // 3 fixtures total, 1 in hero → 2 in grid
+    expect(grid!.querySelectorAll('article').length).toBe(2);
   });
 
   it('renders an empty-state hint when there are no remaining fixtures beyond the hero', async () => {
-    const { container } = render(Today);
-    await waitFor(() => {
-      // P2a default mock has 1 fixture only → grid empty
-      expect(container.querySelector('[data-zone="grid-empty"]')).toBeTruthy();
-    });
+    const { container, component } = render(Today);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    // P2a default mock has 1 fixture only → grid empty
+    expect(container.querySelector('[data-zone="grid-empty"]')).toBeTruthy();
   });
 });
 ```
