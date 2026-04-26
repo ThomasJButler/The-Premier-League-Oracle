@@ -262,7 +262,13 @@ This task closes the P2a follow-up about the empty PROBABILITIES section. Once T
 
 The P2a mocks need extending: `getCurrentSeasonMatches` returns multiple GW35 fixtures (so the grid has rows besides the hero), and `getAccuracyStats` returns a deterministic Brier so the KPI tile assertion is stable.
 
-- [ ] **Step 1: Append KPI + grid tests**
+- [ ] **Step 1: Update the existing default `getAccuracyStats` mock to include `brierScore`**
+
+Inside `Today.test.ts`'s top-of-file `vi.mock('../services/predictionTracker', …)` factory, append `brierScore: 0` to the default `getAccuracyStats` `mockReturnValue` object. Without this, every existing P2a test that triggers `await component.load()` (i.e., goes through the `loaded = true` branch) will throw `TypeError: Cannot read properties of undefined (reading 'toFixed')` once Task 3's `stats.brierScore.toFixed(2)` markup lands. The `brierScore: 0.6` highlight test below uses `mockReturnValueOnce` to override per-test, so the default value just needs to be a valid number.
+
+- [ ] **Step 2: Append KPI + grid tests**
+
+**Match-shape note:** `dataService.getCurrentSeasonMatches()` returns the internal `Match[]` shape (defined at `frontend/src/types/index.ts:27`) — snake_case fields (`date`, `home_team`, `home_goals`, `result`), not the Football-Data API shape (`utcDate`, `homeTeam.tla`, `score.fullTime`). `matchToFixture` reads the internal shape; passing API-shape fixtures into the mock produces a Fixture with `home: { abbr: '', name: undefined }` and the test fails for the wrong reason. The `mkMatch` helper below pins the right shape and matches the existing `mockMatch` factory inside the top-of-file `vi.mock` factory. (Helper is defined at the top of the new describe block — vitest hoists `vi.mock` above top-level consts, but tests inside `it(…)` blocks resolve normally, so a describe-scoped helper is safe.)
 
 ```ts
 describe('Today screen — P2b KPI strip', () => {
@@ -297,24 +303,26 @@ describe('Today screen — P2b KPI strip', () => {
 });
 
 describe('Today screen — P2b predictions grid', () => {
+  // Internal `Match` shape (frontend/src/types/index.ts:27) — matches the existing
+  // top-of-file `mockMatch` factory inside the `vi.mock('../services/dataService', …)` block.
+  const mkMatch = (id: string, home: string, away: string, date: string) => ({
+    id, season_id: 's-1', date, home_team: home, away_team: away,
+    home_goals: null, away_goals: null, result: null,
+    home_odds: null, draw_odds: null, away_odds: null,
+    first_half_home_goals: null, first_half_away_goals: null,
+    full_time_result: null, half_time_result: null, referee: null,
+    home_shots: null, away_shots: null, home_shots_target: null, away_shots_target: null,
+    home_fouls: null, away_fouls: null, home_corners: null, away_corners: null,
+    home_yellows: null, away_yellows: null, home_reds: null, away_reds: null,
+    created_at: '2026-04-26T00:00:00Z', status: 'SCHEDULED' as const, matchday: 35,
+  });
+
   it('renders standard MatchCards for remaining gameweek fixtures (excluding the hero)', async () => {
     const { dataService } = await import('../services/dataService');
     (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      { id: 1, matchday: 35, status: 'SCHEDULED', utcDate: '2026-05-01T15:00:00Z',
-        competition: { name: 'Premier League' },
-        homeTeam: { tla: 'LIV', name: 'Liverpool', shortName: 'Liverpool', crest: '' },
-        awayTeam: { tla: 'ARS', name: 'Arsenal',   shortName: 'Arsenal',   crest: '' },
-        score: { fullTime: { home: null, away: null } } },
-      { id: 2, matchday: 35, status: 'SCHEDULED', utcDate: '2026-05-02T17:30:00Z',
-        competition: { name: 'Premier League' },
-        homeTeam: { tla: 'CHE', name: 'Chelsea',  shortName: 'Chelsea',  crest: '' },
-        awayTeam: { tla: 'MUN', name: 'Man Utd',  shortName: 'Man Utd',  crest: '' },
-        score: { fullTime: { home: null, away: null } } },
-      { id: 3, matchday: 35, status: 'SCHEDULED', utcDate: '2026-05-03T15:00:00Z',
-        competition: { name: 'Premier League' },
-        homeTeam: { tla: 'TOT', name: 'Spurs',    shortName: 'Spurs',    crest: '' },
-        awayTeam: { tla: 'EVE', name: 'Everton',  shortName: 'Everton',  crest: '' },
-        score: { fullTime: { home: null, away: null } } },
+      mkMatch('1', 'Liverpool', 'Arsenal', '2026-05-01T15:00:00Z'),
+      mkMatch('2', 'Chelsea',   'Man Utd', '2026-05-02T17:30:00Z'),
+      mkMatch('3', 'Spurs',     'Everton', '2026-05-03T15:00:00Z'),
     ]);
     const { container } = render(Today);
     await waitFor(() => {
@@ -335,11 +343,11 @@ describe('Today screen — P2b predictions grid', () => {
 });
 ```
 
-- [ ] **Step 2: Confirm the new tests fail**
+- [ ] **Step 3: Confirm the new tests fail**
 
 Run: `cd frontend && npm run test -- --run src/screens/Today.test.ts`
 
-Expected: P2a tests still PASS; the four new tests FAIL because the zones don't exist yet.
+Expected: P2a tests still PASS (the `brierScore: 0` default mock update from Step 1 keeps them green even though Task 3's markup hasn't landed yet — accessing `0.toFixed(2)` is fine); the four new tests FAIL because the zones don't exist yet.
 
 ### Task 3: Extend `screens/Today.svelte` with KPI strip + grid
 
