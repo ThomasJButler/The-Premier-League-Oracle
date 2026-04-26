@@ -43,6 +43,8 @@ export interface AccuracyStats {
   totalPredictions: number;
   correctPredictions: number;
   accuracy: number;
+  /** Mean Brier score across settled predictions with poissonProbs. Range [0, 2]. Lower is better. */
+  brierScore: number;
   scoreAccuracy: number; // Exact score accuracy
   highConfidenceAccuracy: number; // Accuracy when confidence > 70%
   mediumConfidenceAccuracy: number; // Accuracy when confidence 50-70%
@@ -229,6 +231,11 @@ class PredictionTracker {
     // Average confidence
     const averageConfidence = relevantPredictions.reduce((sum, p) => sum + p.confidence, 0) / totalPredictions;
 
+    // Brier score across settled predictions that carry a probability vector.
+    // Predictions stored before poissonProbs was added (or via paths that omit it)
+    // can't contribute — they have no probability distribution to score.
+    const brierScore = this.computeBrier(relevantPredictions);
+
     // Calculate streaks
     const streak = this.calculateStreaks(relevantPredictions);
 
@@ -236,6 +243,7 @@ class PredictionTracker {
       totalPredictions,
       correctPredictions,
       accuracy,
+      brierScore,
       scoreAccuracy,
       highConfidenceAccuracy,
       mediumConfidenceAccuracy,
@@ -246,6 +254,30 @@ class PredictionTracker {
       averageConfidence: averageConfidence * 100,
       streak
     };
+  }
+
+  /**
+   * Mean Brier score for 3-class (H/D/A) outcome predictions.
+   * Brier per match = (p_home - 1{H})^2 + (p_draw - 1{D})^2 + (p_away - 1{A})^2.
+   * Range [0, 2]; calibrated random ≈ 0.667; perfect = 0.
+   * Skips predictions without poissonProbs — they have no probability vector to score.
+   */
+  private computeBrier(predictions: StoredPrediction[]): number {
+    const scored = predictions.filter(p => p.actualResult && p.poissonProbs);
+    if (scored.length === 0) return 0;
+
+    const total = scored.reduce((sum, p) => {
+      const probs = p.poissonProbs!;
+      const homeBit = p.actualResult === 'H' ? 1 : 0;
+      const drawBit = p.actualResult === 'D' ? 1 : 0;
+      const awayBit = p.actualResult === 'A' ? 1 : 0;
+      return sum
+        + (probs.homeWin - homeBit) ** 2
+        + (probs.draw    - drawBit) ** 2
+        + (probs.awayWin - awayBit) ** 2;
+    }, 0);
+
+    return total / scored.length;
   }
 
   // Get accuracy broken down by gameweek
@@ -387,6 +419,7 @@ class PredictionTracker {
       totalPredictions: 0,
       correctPredictions: 0,
       accuracy: 0,
+      brierScore: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,

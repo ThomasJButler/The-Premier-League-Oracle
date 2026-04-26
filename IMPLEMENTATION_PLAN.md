@@ -15,9 +15,9 @@
 
 ## Active phase
 
-Phase 2 (Today). **P1a + P1b + P1c + P2a committed** (Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`). All automated gates green: vitest 759/759 across 56 files (+27 across 4 new files: gameweek 6, v3 adapter 9, CommandStrip 8, Today 4), svelte-check 0/0, Playwright routing 32/32. **P1c and P2a both manual-gated and awaiting human eyeball** — checkboxes stay `[ ]` until the visual sweep is signed off. Next code slice (after P2a eyeball) is P2b — KPI strip + predictions grid, with `AccuracyStats` extended to expose `brierScore`.
+Phase 2 (Today). **P1a + P1b + P1c + P2a + P2a-cleanup committed; P2b Task 1 (Brier extension) committed as auto-gated sub-slice.** Phase 1 MatchCard primitive complete; P2a stood up `screens/Today.svelte` mounted at `/today` with sticky command strip + emphasised hero `MatchCard`. All automated gates green: vitest 763/763 across 56 files (+4 from Brier sub-slice), svelte-check 0/0, Playwright routing 32/32 last green on P2a-cleanup. **P1c and P2a both manual-gated and awaiting human eyeball** — checkboxes stay `[ ]` until the visual sweep is signed off. **P2b's data-layer task (Brier on `AccuracyStats`) is done in advance** as a non-visual sub-slice; the remaining P2b work (KPI strip + grid markup on `Today.svelte`) is gated behind P1c + P2a sign-offs because it adds visual surface that overlaps the pending review.
 
-**Tagging policy (per human note 2026-04-26):** every ralph slice commit is tagged with a sequential v3.x version. P2a → `v3.1`. P2b → `v3.2`. P2c → `v3.3`. And so on. Tags are local-only — push policy is unchanged (no auto-push).
+**Tagging policy (per human note 2026-04-26):** every ralph slice commit is tagged with a sequential v3.x version. P2a → `v3.1`. The full P2b → `v3.2` (when the visual zones land). P2c → `v3.3`. And so on. Sub-slice commits like the Brier extension above are **untagged** so the version sequence cleanly maps onto checklist items. Tags are local-only — push policy is unchanged (no auto-push).
 
 ## Ordered checklist
 
@@ -128,6 +128,13 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a committed** (Phase 1 MatchCard primitiv
 
 - **(P2a-cleanup, no blocker)** P2a-cleanup landed: `MatchList.svelte` now imports `matchToFixture` from `lib/adapters/v3.ts` instead of inlining its own `mapToFixture` (a strict subset of the canonical adapter — same id/competition/gameweek/utcDate/abbr/score, but the inlined version ignored `m.status` entirely). vitest 759/759 across 56 files (test count unchanged — pure refactor; the 12 `MatchList.test.ts` tests assert on `[data-block]` / `[data-meta]` / team-name DOM contracts, not adapter internals, so they pass unchanged). `svelte-check` 0/0. Targeted: `MatchList.test.ts` 12/12 + `v3.test.ts` 9/9. Quiet bug fix: previously `MatchList` would have rendered `IN_PLAY` / `EXTRA_TIME` / `PENALTY_SHOOTOUT` matches as `'SCHEDULED'` (because `m.result` is null mid-match); they now correctly resolve to `'LIVE'` via `deriveStatus`. The stale "still inlines its own copy" disclaimer in `v3.ts`'s docstring was also removed.
 
+- **(P2b — Task 1 only, auto-gated sub-slice, no blocker)** Extended `AccuracyStats` with `brierScore: number` and added `computeBrier()` to `PredictionTracker`. Mean Brier across settled predictions that carry `poissonProbs`; predictions without `poissonProbs` are skipped (a missing probability vector isn't "all zeros", which would unfairly score 1.0 against any outcome). vitest 763/763 across 56 files (+4: 3 in a new `Brier Score` describe + 1 added assertion to the empty-history accuracy test). `svelte-check` 0/0. Targeted: `predictionTracker.test.ts` 30/30 (was 26/26). Sub-slice deliberately stops at the data-layer change — Tasks 2-5 of P2b (extending `Today.test.ts`, appending KPI strip + grid markup, manual sweep) are still pending and gated on the P1c + P2a human eyeballs that block the visual surface of `Today.svelte`. P2b's checklist box stays `[ ]`. Tagging: this commit is **untagged** — `v3.2` is reserved for the full P2b slice when the visual zones land.
+- **(P2b sub-slice deviations from plan)**
+  - Plan template wrote tests in a new `predictionTracker.brier.test.ts` file using a "poke private state directly via `as unknown as`" pattern. Used the existing `predictionTracker.test.ts` instead because it's already the co-located test file, and used the public `storePrediction` + `updateWithResult` API rather than mutating the private `predictions` map. Black-box style means the tests still pass if storage internals change — and matches the rest of the file's conventions. The plan explicitly authorised this: *"Create or modify: `predictionTracker.test.ts` (or `predictionTracker.brier.test.ts` if no co-located test exists yet)"*.
+  - Added a fourth Brier test the plan didn't prescribe: "ignore unsettled predictions even when they carry poissonProbs". Guards a coupling that's currently double-filtered (once in `getAccuracyStats`'s `relevantPredictions`, once in `computeBrier`'s own `actualResult && poissonProbs` filter) — if a future refactor calls `computeBrier` from a different code path that doesn't pre-filter, the test catches the regression.
+  - Extracted `computeBrier(predictions)` as a `private` method on `PredictionTracker` rather than inlining inside `getAccuracyStats`. Keeps the parent function readable and gives P4b (Backtest) a unit-of-work to call from a new public method (e.g., `getBrierByGameweek()`) without re-implementing the formula.
+  - Added `expect(stats.brierScore).toBe(0)` to the existing "should handle empty prediction history" test rather than creating a separate empty-state test for Brier — same scenario, one assertion, no duplication.
+
 ## Human notes for next iteration
 
 *(Drop notes here mid-run. The next ralph build iteration consumes them as part of the slice contract: address every note OR explain in `## Notes / discoveries` why a note doesn't apply. Once addressed, ralph moves the consumed note to `## Notes / discoveries` prefixed with `(addressed) ` and a one-line summary of how it was addressed.)*
@@ -136,7 +143,9 @@ Phase 2 (Today). **P1a + P1b + P1c + P2a committed** (Phase 1 MatchCard primitiv
 
 ## Next recommended build slice
 
-**P1c + P2a committed — both awaiting human eyeball.** Two manual sweeps to clear before P2b can start.
+**P1c + P2a committed — both awaiting human eyeball.** Two manual sweeps to clear before the **visual** half of P2b (KPI strip + predictions grid markup) can start.
+
+**P2b Task 1 (Brier extension on `AccuracyStats`) is already done** as an auto-gated sub-slice (committed separately, untagged). Once the sweeps clear, the next iteration picks up P2b Tasks 2-5: extend `Today.test.ts` with the four KPI/grid zone tests (the plan template under `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md` Task 2), append KPI strip + grid markup to `Today.svelte` (Task 3), run the validation gate (Task 4), commit + tag `v3.2` + surface the manual sweep checklist (Task 5). The Task 1 portion of the plan doc can be skipped — it's already in the codebase.
 
 ### Phase 1 sweep (P1c) — boot `npm run dev`
 

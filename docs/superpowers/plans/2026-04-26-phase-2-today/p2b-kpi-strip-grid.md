@@ -17,7 +17,7 @@ To populate the Brier tile, this slice extends `predictionTracker.getAccuracySta
 
 **Manual gate:** ralph commits when `npm run check`, `npm run test -- --run`, and Playwright routing smoke pass. Human flips `[x]` after eyeball.
 
-### Task 1: Extend `AccuracyStats` with `brierScore`
+### Task 1: Extend `AccuracyStats` with `brierScore` — ✅ DONE (committed as standalone auto-gated sub-slice ahead of the rest of P2b; see `IMPLEMENTATION_PLAN.md` § "P2b — Task 1 only" for deviations from this template)
 
 **Files:**
 - Modify: `frontend/src/services/predictionTracker.ts`
@@ -34,7 +34,7 @@ Lower is better. Range [0, 2]. Calibrated random ≈ 0.667; perfect ≈ 0.
 
 If a stored prediction lacks `poissonProbs`, skip it (it can't contribute to a probability-based score).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `frontend/src/services/predictionTracker.brier.test.ts`:
 
@@ -104,7 +104,7 @@ describe('predictionTracker — brierScore on getAccuracyStats', () => {
 });
 ```
 
-- [ ] **Step 2: Extend the type and implementation**
+- [x] **Step 2: Extend the type and implementation**
 
 In `predictionTracker.ts`, add `brierScore` to the `AccuracyStats` interface:
 
@@ -143,7 +143,7 @@ const brierScore = scored.length === 0
 
 Add `brierScore` to the returned object. Also add it to the empty-stats fallback (`getEmptyStats()` near line 384).
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `cd frontend && npm run test -- --run src/services/predictionTracker.brier.test.ts`
 

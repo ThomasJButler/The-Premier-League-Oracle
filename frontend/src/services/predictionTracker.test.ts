@@ -359,10 +359,86 @@ describe('PredictionTracker Service', () => {
       localStorageMock = {};
       const emptyTracker = new PredictionTracker();
       const stats = emptyTracker.getAccuracyStats(30);
-      
+
       expect(stats.totalPredictions).toBe(0);
       expect(stats.accuracy).toBe(0);
       expect(stats.highConfidenceAccuracy).toBe(0);
+      expect(stats.brierScore).toBe(0);
+    });
+  });
+
+  describe('Brier Score', () => {
+    // Brier per match (3-class) = (p_home - 1{H})^2 + (p_draw - 1{D})^2 + (p_away - 1{A})^2.
+    // We feed the tracker via the public API so the path mirrors production storage.
+
+    it('should return 0 when no settled predictions exist', () => {
+      const stats = tracker.getAccuracyStats(30);
+      expect(stats.brierScore).toBe(0);
+    });
+
+    it('should compute the mean Brier across settled predictions with poissonProbs', () => {
+      // Prediction A — home won, probs {0.6, 0.25, 0.15}.
+      //   brier = (1-0.6)^2 + (0-0.25)^2 + (0-0.15)^2 = 0.16 + 0.0625 + 0.0225 = 0.245
+      tracker.storePrediction(
+        'mA',
+        'Arsenal',
+        'Chelsea',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.6 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.6, draw: 0.25, awayWin: 0.15 } }
+      );
+      tracker.updateWithResult('mA', 'H', 2, 0);
+
+      // Prediction B — away won, probs {0.5, 0.3, 0.2}.
+      //   brier = (0-0.5)^2 + (0-0.3)^2 + (1-0.2)^2 = 0.25 + 0.09 + 0.64 = 0.98
+      tracker.storePrediction(
+        'mB',
+        'Liverpool',
+        'Spurs',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.5 },
+        new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.5, draw: 0.3, awayWin: 0.2 } }
+      );
+      tracker.updateWithResult('mB', 'A', 0, 1);
+
+      const stats = tracker.getAccuracyStats(30);
+      // Mean of [0.245, 0.98] = 0.6125
+      expect(stats.brierScore).toBeCloseTo(0.6125, 4);
+    });
+
+    it('should skip settled predictions that have no poissonProbs', () => {
+      tracker.storePrediction(
+        'mNoProbs',
+        'Team A',
+        'Team B',
+        { predictedResult: 'H', predictedHomeGoals: 1, predictedAwayGoals: 0, confidence: 0.5 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+        // no extras → no poissonProbs
+      );
+      tracker.updateWithResult('mNoProbs', 'H', 1, 0);
+
+      const stats = tracker.getAccuracyStats(30);
+      // Only prediction has no probs → it is skipped → empty pool → 0
+      expect(stats.brierScore).toBe(0);
+    });
+
+    it('should ignore unsettled predictions even when they carry poissonProbs', () => {
+      tracker.storePrediction(
+        'mUnsettled',
+        'Team A',
+        'Team B',
+        { predictedResult: 'H', predictedHomeGoals: 1, predictedAwayGoals: 0, confidence: 0.55 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.55, draw: 0.25, awayWin: 0.20 } }
+      );
+      // Deliberately not calling updateWithResult — actualResult stays undefined.
+
+      const stats = tracker.getAccuracyStats(30);
+      // getAccuracyStats already filters to actualResult !== undefined; brier should mirror that.
+      expect(stats.brierScore).toBe(0);
     });
   });
 
