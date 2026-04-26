@@ -176,6 +176,13 @@ describe('MatchCard — PROBABILITIES section graceful degradation', () => {
     expect(container.querySelector('[data-models-grid]')).toBeNull();
   });
 
+  it('renders the 5-col models grid when prediction.models has entries', () => {
+    const fx = makeFixture();
+    const pred = makePrediction(); // default has 5 models
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-models-grid]')).toBeTruthy();
+  });
+
   it('hides the xG block when xg.home and xg.away are both zero', () => {
     const fx = makeFixture();
     const pred = makePrediction({ xg: { home: 0, away: 0 } });
@@ -183,11 +190,25 @@ describe('MatchCard — PROBABILITIES section graceful degradation', () => {
     expect(container.querySelector('[data-xg-block]')).toBeNull();
   });
 
+  it('renders the xG block when at least one xg value is non-zero', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({ xg: { home: 1.2, away: 0 } });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-xg-block]')).toBeTruthy();
+  });
+
   it('hides the ELO block when elo.home and elo.away are both zero', () => {
     const fx = makeFixture();
     const pred = makePrediction({ elo: { home: 0, away: 0 } });
     const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
     expect(container.querySelector('[data-elo-block]')).toBeNull();
+  });
+
+  it('renders the ELO block when at least one elo value is non-zero', () => {
+    const fx = makeFixture();
+    const pred = makePrediction({ elo: { home: 1800, away: 0 } });
+    const { container } = render(MatchCard, { fixture: fx, prediction: pred, defaultOpen: 'probabilities' });
+    expect(container.querySelector('[data-elo-block]')).toBeTruthy();
   });
 
   it('always renders TOP-3 SCORELINES (the section\'s minimum useful payload)', () => {
@@ -202,6 +223,8 @@ describe('MatchCard — PROBABILITIES section graceful degradation', () => {
   });
 });
 ```
+
+**TDD-discipline note (added 2026-04-26 plan grooming):** the three "hides …" tests would *trivially* pass on the current `MatchCard.svelte` source (`MatchCard.svelte:155-188` has no `data-models-grid` / `data-xg-block` / `data-elo-block` attributes anywhere — `querySelector` returns `null` for any non-existent attribute, and `expect(null).toBeNull()` passes). Without the three companion "renders …" tests, the only test that actually fails pre-fix would be `always renders [data-scorelines]` (1 of 4), and a future refactor that reverts the gating logic + removes the markers together would not be caught. The companion "renders when populated" tests fail pre-fix (markers don't exist anywhere) and pass post-fix (markers rendered for populated inputs) — together the bidirectional pairs lock the contract in both directions. `makePrediction()`'s defaults (`frontend/src/tests/fixtures/matchcard.ts:30-49`) already populate `models` (5 entries), `xg: { home: 1.85, away: 0.92 }`, `elo: { home: 1820, away: 1780 }`, so the bare `makePrediction()` call in the models-renders test is sufficient.
 
 - [ ] **Step 2: Add the gating in `MatchCard.svelte`**
 
@@ -251,7 +274,7 @@ The outer `{#if … xg or elo populated}` wrapping the 2-col grid prevents an em
 
 Run: `cd frontend && npm run test -- --run src/components/matchcard/MatchCard.test.ts`
 
-Expected: all P1a + P1b + P1c tests still PASS, plus 4 new degradation tests PASS.
+Expected: all P1a + P1b + P1c tests still PASS, plus 7 new degradation tests PASS (3 hide-when-empty pairs + 1 always-renders-scorelines). Three of the seven tests (the "renders … when populated" companions) and the always-renders-scorelines test will fail PRE-fix because their `data-*` markers don't exist on the current source — that's the TDD-discipline check. After Step 2's gating + markers land, all seven pass.
 
 This task closes the P2a follow-up about the empty PROBABILITIES section. Once Task 3 lands, the grid cards built from `predictionToV3(stored)` will render only the scorelines block (no empty 5-col grid, no zero xG / zero ELO tiles), and P4-era work that widens `predictionToV3` to surface real per-model leans / xG / ELO will automatically un-gate the hidden sub-blocks.
 
