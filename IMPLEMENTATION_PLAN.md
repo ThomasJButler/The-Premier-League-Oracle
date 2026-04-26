@@ -4,7 +4,7 @@
 
 - **Branch:** `v3.0-redesign`
 - **Source spec:** `docs/superpowers/specs/2026-04-26-frontend-broadcast-redesign-design.md`
-- **Active phase plan:** `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md`
+- **Active phase plan:** `docs/superpowers/plans/2026-04-26-phase-0-foundation/index.md` — each slice has its own file in this directory; checklist lines below point at the relevant slice file directly.
 - **Stack:** Svelte 4 + Vite + TypeScript + Tailwind 3. `svelte-routing` is added in P0b. No SvelteKit migration; SPA + Vercel rewrite handles fallback.
 - **Strangler-fig contract:** every iteration leaves the app in a working state. Legacy components stay until their replacement slice's commit deletes them. Killed-feature components (Suggested Bets / Accumulators / Betting History) are deleted in P0b alongside their nav-link removal.
 - **Validation gates:**
@@ -19,11 +19,11 @@ Phase 0 (Foundation) — slice **P0c Atoms** is next.
 ## Ordered checklist
 
 ### Phase 0 — Foundation
-- [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0a.
-- [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan § P0b.
-- [ ] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan § P0c.
-- [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan § P0d.
-- [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan § P0-cp.
+- [x] **P0a — Tokens** *(Auto-gated)* — Replace `app.css` token block with broadcast palette in HSL components, add new vars (`--bg-raised`, `--text-dim`, etc.), update Tailwind config (fonts, radius, fontFamily), kill Outfit, install Inter / JetBrains Mono / Instrument Serif via fonts CSS. Type-scale utility classes added under `@layer base`. Existing team-theming preserved. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0a-tokens.md`.
+- [x] **P0b — Routing** *(Auto-gated)* — Install `svelte-routing`, refactor `App.svelte` from `currentView` to `<Router>` + `<Route>`, create `routes.ts` (route table + redirect map + sub-tab declarations), add Vercel SPA fallback rewrite, delete orphaned `SuggestedBets.svelte` / `AccumulatorBuilder.svelte` / `BettingHistory.svelte` (and their tests). Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0b-routing.md`.
+- [ ] **P0c — Atoms** *(Auto-gated)* — Create `components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each ships with `.test.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md`.
+- [ ] **P0d — Shells** *(Manual-gated)* — Create `components/layout/`: `BroadcastShell`, `Tabs`, `MobileTabBar`, `MobileBottomSheet`. Add `density` and `supportingClub` stores. Mount the new shell as the outer chrome of `App.svelte`; legacy screens still render inside. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0d-shells.md`.
+- [ ] **P0-cp — Phase 0 checkpoint** *(Manual-gated)* — Render every hub at desktop + mobile, dark + light. Theme toggle smoke. No new code; Playwright spec + manual sweep. Plan: `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0-cp-checkpoint.md`.
 
 ### Phase 1 — MatchCard primitive
 - [ ] **P1a — MatchCard header strip** *(Auto + smoke)*
@@ -86,4 +86,4 @@ Phase 0 (Foundation) — slice **P0c Atoms** is next.
 
 ## Next recommended build slice
 
-**P0c — Atoms** — see `docs/superpowers/plans/2026-04-26-frontend-broadcast-redesign-phase-0-foundation.md` § P0c for the full step list. Creates `frontend/src/types/redesign.ts` (shared type contracts) and `frontend/src/components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each atom ships with a co-located `.test.ts` per Section 4 of the spec. Auto-gated by `npm run test -- --run` green + `npm run check` clean.
+**P0c — Atoms** — see `docs/superpowers/plans/2026-04-26-phase-0-foundation/p0c-atoms.md` for the full step list (~13K tokens, fits in one Read). Creates `frontend/src/types/redesign.ts` (shared type contracts) and `frontend/src/components/atoms/`: `Crest`, `FormDot`, `ProbBar` (with sum-to-1 invariant), `Spark`, `Icon` + icon registry, `KpiTile`, `SectionHeader`. Each atom ships with a co-located `.test.ts` per Section 4 of the spec. Auto-gated by `npm run test -- --run` green + `npm run check` clean.
