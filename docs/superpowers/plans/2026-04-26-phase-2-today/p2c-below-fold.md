@@ -17,7 +17,7 @@ Then write `frontend/e2e/checkpoint-p2.spec.ts` — the Phase 2 Playwright sweep
 
 **Manual gate:** ralph commits when `npm run check`, `npm run test -- --run`, and the new Playwright spec all pass. Human flips `[x]` after eyeball.
 
-### Task 1: Add a fixture-and-prediction adapter for `MatchRow` rendering
+### Task 1: Add a fixture-and-prediction adapter for `MatchRow` rendering — ✅ DONE (committed as standalone auto-gated sub-slice ahead of the rest of P2c; see `IMPLEMENTATION_PLAN.md` § "P2c — Task 1 only" for deviations from this template)
 
 The recent-log strip wants `<MatchRow fixture={…} prediction={…} />` rows, but `predictionTracker.getRecentPredictions()` returns `StoredPrediction` only — there's no `Match` record to derive a `Fixture` from. We need a small adapter that reconstructs a minimal `Fixture` from `StoredPrediction` fields.
 
@@ -25,7 +25,7 @@ The recent-log strip wants `<MatchRow fixture={…} prediction={…} />` rows, b
 - Modify: `frontend/src/lib/adapters/v3.ts`
 - Modify: `frontend/src/lib/adapters/v3.test.ts`
 
-- [ ] **Step 1: Append the failing test**
+- [x] **Step 1: Append the failing test**
 
 Add to `v3.test.ts`:
 
@@ -76,7 +76,7 @@ describe('storedPredictionToFixture', () => {
 });
 ```
 
-- [ ] **Step 2: Implement `storedPredictionToFixture`**
+- [x] **Step 2: Implement `storedPredictionToFixture`**
 
 In `v3.ts`:
 
@@ -101,11 +101,11 @@ export function storedPredictionToFixture(p: StoredPrediction): Fixture {
 }
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `cd frontend && npm run test -- --run src/lib/adapters/v3.test.ts`
 
-Expected: 7 tests PASS (P2a's 5 + P2c's 2).
+Expected: 7 tests PASS (P2a's 5 + P2c's 2). *(In the actually-shipped sub-slice the test count landed at `v3.test.ts` 14/14: P2a's 9 — the P2a slice ended up writing 9 adapter tests rather than 5 per its own deviation note — plus 5 new `storedPredictionToFixture` tests, +2 beyond the plan template covering 0-0 settled scores and FC/AFC suffix stripping.)*
 
 ### Task 2: Append below-fold zones to `screens/Today.svelte`
 
