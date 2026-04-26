@@ -441,19 +441,21 @@ Expected: green.
 Leave P2b's `[ ]` unchecked. Add a Phase 2 progress note under `## Notes / discoveries`:
 
 ```md
-- **(P2b, awaiting human eyeball)** P2b extended AccuracyStats with brierScore (used here, reusable by P4b Backtest). Today.svelte now renders the KPI strip and the 2-col MatchCard grid for the remaining gameweek. vitest <N>/<N> across <M> files, svelte-check 0/0, routing smoke green.
+- **(P2b, awaiting human eyeball)** P2b gated empty PROBABILITIES & MODELS sub-blocks on the `MatchCard` primitive (Task 1b — closes the P2a follow-up about the empty 5-col grid + zero xG / zero ELO defects). `Today.svelte` now renders the KPI strip (Picks · Accuracy · Brier · Avg Confidence) and the 2-col `MatchCard` grid for the remaining gameweek. vitest <N>/<N> across <M> files, svelte-check 0/0, routing smoke green. (`brierScore` extension on `AccuracyStats` already shipped as auto-gated sub-slice `f0c2225`.)
 ```
 
 - [ ] **Step 2: Commit**
 
+`predictionTracker.ts` / `predictionTracker.test.ts` already shipped in `f0c2225` (Task 1) — do **not** re-add them. The remaining surface is Task 1b's `MatchCard` gating + Tasks 2-3's `Today` zone markup + tests.
+
 ```bash
 cd /Users/tombutler/Repos/The-Premier-League-Oracle
 git add IMPLEMENTATION_PLAN.md \
-        frontend/src/services/predictionTracker.ts \
-        frontend/src/services/predictionTracker.brier.test.ts \
+        frontend/src/components/matchcard/MatchCard.svelte \
+        frontend/src/components/matchcard/MatchCard.test.ts \
         frontend/src/screens/Today.svelte \
         frontend/src/screens/Today.test.ts
-git commit -m "P2b: Today KPI strip + predictions grid; brierScore added to AccuracyStats"
+git commit -m "P2b: Today KPI strip + predictions grid; gate empty PROBABILITIES & MODELS sub-blocks"
 ```
 
 - [ ] **Step 3: Surface the manual sweep checklist**

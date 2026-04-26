@@ -327,13 +327,13 @@ Update the "Active phase" line to reflect Phase 2 sitting on the human's desk an
 
 - [ ] **Step 2: Commit**
 
+`lib/adapters/v3.ts` / `v3.test.ts` already shipped in `0059a49` (Task 1) — do **not** re-add them. The remaining surface is Tasks 2-3's `Today` below-fold markup + tests + the new Phase 2 Playwright checkpoint spec.
+
 ```bash
 cd /Users/tombutler/Repos/The-Premier-League-Oracle
 git add IMPLEMENTATION_PLAN.md \
         frontend/src/screens/Today.svelte \
         frontend/src/screens/Today.test.ts \
-        frontend/src/lib/adapters/v3.ts \
-        frontend/src/lib/adapters/v3.test.ts \
         frontend/e2e/checkpoint-p2.spec.ts
 git commit -m "P2c: Today below-fold (Spark + MatchRow log) + Phase 2 Playwright checkpoint"
 ```
