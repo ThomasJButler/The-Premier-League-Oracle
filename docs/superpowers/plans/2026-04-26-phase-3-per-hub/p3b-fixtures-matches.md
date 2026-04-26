@@ -62,9 +62,9 @@ const RELEGATION_CANDIDATES = new Set([/* bottom 3 from current standings — po
 
 ## TDD task list
 
-### Task 1 — `lib/fixtureGrouping.ts` + 6 tests *(auto-gated sub-step)*
+### Task 1 — `lib/fixtureGrouping.ts` + 6 tests *(auto-gated sub-step)* — ✅ DONE
 
-Pure function unit, easiest to start with. No DOM, no Svelte.
+Pure function unit, easiest to start with. No DOM, no Svelte. **Shipped as an auto-gated sub-slice ahead of the full P3b slice (mirrors P2b Task 1 / P2c Task 1 pattern). The Task 1 portion of this plan doc can be skipped — the file is already in the codebase. Skip-ahead to Task 2.**
 
 **Test file: `frontend/src/lib/fixtureGrouping.test.ts`**
 
@@ -467,14 +467,12 @@ function mkUpcomingMatch(id: string, dateIso: string, home = 'Liverpool FC', awa
 
 **Validation gate:**
 - `cd frontend && npm run check` — 0/0
-- `cd frontend && npm run test -- --run` — expect **810/810** across **60 files** (782 + 6 fixtureGrouping + 4 FilterChips + 5 Matches + 13 from P3a if P3a already shipped)
+- `cd frontend && npm run test -- --run` — expect **811/811** across **61 files** (802 baseline after P3a + Task 1 sub-slice → +4 FilterChips + 5 Matches → 811)
 - `cd frontend && npx playwright test --project=desktop-chrome routing.spec.ts` — 32/32 green
 
 ### Task 5 — Commit, surface manual sweep checklist
 
-**Files staged:**
-- `frontend/src/lib/fixtureGrouping.ts`
-- `frontend/src/lib/fixtureGrouping.test.ts`
+**Files staged:** (Task 1's `fixtureGrouping.ts` + `fixtureGrouping.test.ts` already shipped in an earlier sub-slice commit — DO NOT re-add)
 - `frontend/src/components/fixtures/FilterChips.svelte`
 - `frontend/src/components/fixtures/FilterChips.test.ts`
 - `frontend/src/screens/fixtures/Matches.svelte`
@@ -492,13 +490,13 @@ with pluralised count) over MatchCards. FilterChips row at top toggles
 between All / Top 6 / Relegation / TV picks. TV picks is a placeholder
 (returns all) — no API surface to identify.
 
-lib/fixtureGrouping.ts: groupMatchesByDate, formatDateLabel, formatCountLabel.
-Reusable in P9a (Match deep-dive next-fixtures strip).
-
 components/fixtures/FilterChips.svelte: 4-chip pill row with aria-pressed
 state and idempotent click on active chip.
 
-vitest 810/810 (+15 across 3 new files), svelte-check 0/0, Playwright
+(lib/fixtureGrouping.ts + co-located test already shipped in an earlier
+sub-slice — not in this commit.)
+
+vitest 811/811 (+9 across 2 new files), svelte-check 0/0, Playwright
 routing 32/32 on desktop-chrome.
 
 Manual gate: P3b's [ ] stays unchecked pending sweep at /fixtures/matches.
