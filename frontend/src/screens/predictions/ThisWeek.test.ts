@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/svelte';
+import { act, fireEvent, render } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ThisWeek from './ThisWeek.svelte';
 
@@ -12,6 +12,14 @@ vi.mock('../../services/predictionTracker', () => ({
   predictionTracker: {
     getMatchPredictions: vi.fn().mockReturnValue([]),
   },
+}));
+
+vi.mock('../../lib/export/pdf', () => ({
+  exportPdf: vi.fn(),
+}));
+
+vi.mock('../../lib/export/pngCard', () => ({
+  exportPngCard: vi.fn(),
 }));
 
 // vi.mock is hoisted — factory must live INSIDE describe to safely reference values
@@ -97,7 +105,7 @@ describe('ThisWeek (Predictions This Week screen)', () => {
     expect(kicker?.textContent).toContain('GAMEWEEK 35');
   });
 
-  it('renders [Export PDF] and [Share PNG] as disabled placeholder buttons', async () => {
+  it('renders [Export PDF] and [Share PNG] as active buttons after fixtures load', async () => {
     const { dataService } = await import('../../services/dataService');
     (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       mkUpcomingMatch('m1', 35, 2),
@@ -105,16 +113,40 @@ describe('ThisWeek (Predictions This Week screen)', () => {
     const { container, component } = render(ThisWeek);
     await (component as { load(): Promise<void> }).load();
     await act();
-    const buttons = container.querySelectorAll('[data-export-placeholder]');
-    expect(buttons).toHaveLength(2);
-    buttons.forEach((b) => {
-      expect(b.getAttribute('disabled')).not.toBeNull();
-    });
-    expect(Array.from(buttons).map((b) => b.textContent?.trim())).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/Export PDF/i),
-        expect.stringMatching(/Share PNG/i),
-      ]),
-    );
+    expect(container.querySelectorAll('[data-export-placeholder]')).toHaveLength(0);
+    const pdfBtn = container.querySelector('[data-export="pdf"]') as HTMLButtonElement;
+    const pngBtn = container.querySelector('[data-export="png"]') as HTMLButtonElement;
+    expect(pdfBtn).toBeTruthy();
+    expect(pngBtn).toBeTruthy();
+    expect(pdfBtn.hasAttribute('disabled')).toBe(false);
+    expect(pngBtn.hasAttribute('disabled')).toBe(false);
+    expect(pdfBtn.textContent?.trim()).toMatch(/Export PDF/i);
+    expect(pngBtn.textContent?.trim()).toMatch(/Share PNG/i);
+  });
+
+  it('PDF + PNG button clicks call exportPdf + exportPngCard with the grid element and gameweek', async () => {
+    const { exportPdf } = await import('../../lib/export/pdf');
+    const { exportPngCard } = await import('../../lib/export/pngCard');
+    const { dataService } = await import('../../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkUpcomingMatch('m1', 35, 2),
+    ]);
+    const { container, component } = render(ThisWeek);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const pdfBtn = container.querySelector('[data-export="pdf"]') as HTMLButtonElement;
+    const pngBtn = container.querySelector('[data-export="png"]') as HTMLButtonElement;
+    await fireEvent.click(pdfBtn);
+    await fireEvent.click(pngBtn);
+    expect(exportPdf).toHaveBeenCalledOnce();
+    expect(exportPngCard).toHaveBeenCalledOnce();
+    const [pdfOpts] = (exportPdf as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [pngOpts] = (exportPngCard as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(pdfOpts.kind).toBe('this-week');
+    expect(pdfOpts.gameweek).toBe(35);
+    expect(pdfOpts.target).toBeInstanceOf(HTMLElement);
+    expect(pngOpts.kind).toBe('gw-grid');
+    expect(pngOpts.gameweek).toBe(35);
+    expect(pngOpts.target).toBeInstanceOf(HTMLElement);
   });
 });

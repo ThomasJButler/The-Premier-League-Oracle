@@ -4,6 +4,7 @@
   import { filterPredictionLog, type LogFilterId } from '../../lib/predictionFilters';
   import { exportCsv } from '../../lib/export/csv';
   import { exportMarkdown } from '../../lib/export/markdown';
+  import { exportPdf } from '../../lib/export/pdf';
   import SectionHeader from '../../components/atoms/SectionHeader.svelte';
   import MatchRow from '../../components/matchcard/MatchRow.svelte';
   import LogFilterChips from '../../components/predictions/LogFilterChips.svelte';
@@ -12,6 +13,7 @@
   const allPredictions: StoredPrediction[] = predictionTracker.getRecentPredictions(1000);
 
   let activeFilter: LogFilterId = 'last30';
+  let logTableEl: HTMLElement | undefined;
 
   $: rows = filterPredictionLog(allPredictions, activeFilter);
   $: hasAnyStored = allPredictions.length > 0;
@@ -35,11 +37,10 @@
       </button>
       <button
         type="button"
-        class="ml-2 text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="ml-2 text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded px-3 py-1.5"
         data-export="pdf"
+        disabled={!hasFilteredRows || logTableEl === undefined}
+        on:click={() => logTableEl && exportPdf({ kind: 'log', target: logTableEl })}
       >
         Export PDF
       </button>
@@ -65,7 +66,7 @@
       No predictions match the active filter. Try widening the date range.
     </div>
   {:else}
-    <div class="rounded-lg border border-border bg-bg-raised overflow-hidden" data-log-table>
+    <div class="rounded-lg border border-border bg-bg-raised overflow-hidden" data-log-table bind:this={logTableEl}>
       {#each rows as pred (pred.id)}
         {@const fx = storedPredictionToFixture(pred)}
         {@const v3 = predictionToV3(pred)}

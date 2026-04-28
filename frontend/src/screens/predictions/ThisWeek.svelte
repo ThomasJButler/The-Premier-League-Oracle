@@ -6,11 +6,14 @@
   import { matchToFixture, predictionToV3 } from '../../lib/adapters/v3';
   import MatchCard from '../../components/matchcard/MatchCard.svelte';
   import SectionHeader from '../../components/atoms/SectionHeader.svelte';
+  import { exportPdf } from '../../lib/export/pdf';
+  import { exportPngCard } from '../../lib/export/pngCard';
   import type { Match } from '../../types';
   import type { MatchPrediction } from '../../types/redesign';
 
   let allMatches: Match[] = [];
   let loaded = false;
+  let gridEl: HTMLElement | undefined;
 
   $: currentGw = findCurrentGameweek(allMatches);
   $: gwFixtures = currentGw !== null ? fixturesForGameweek(allMatches, currentGw) : [];
@@ -40,21 +43,19 @@
     <svelte:fragment slot="right">
       <button
         type="button"
-        class="text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded px-3 py-1.5"
         data-export="pdf"
+        disabled={!loaded || currentGw === null || gwFixtures.length === 0 || !gridEl}
+        on:click={() => gridEl && currentGw !== null && exportPdf({ kind: 'this-week', target: gridEl, gameweek: currentGw })}
       >
         Export PDF
       </button>
       <button
         type="button"
-        class="text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60 ml-2"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded px-3 py-1.5 ml-2"
         data-export="png"
+        disabled={!loaded || currentGw === null || gwFixtures.length === 0 || !gridEl}
+        on:click={() => gridEl && currentGw !== null && exportPngCard({ kind: 'gw-grid', target: gridEl, gameweek: currentGw })}
       >
         Share PNG
       </button>
@@ -70,7 +71,7 @@
       No fixtures left in gameweek {currentGw}.
     </div>
   {:else}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" bind:this={gridEl}>
       {#each gwFixtures as match (match.id)}
         {@const fx = matchToFixture(match)}
         {@const pred = pickPredictionForMatch(match.id)}

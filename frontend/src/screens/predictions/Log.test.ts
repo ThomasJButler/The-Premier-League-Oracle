@@ -16,6 +16,10 @@ vi.mock('../../lib/export/markdown', () => ({
   exportMarkdown: vi.fn(),
 }));
 
+vi.mock('../../lib/export/pdf', () => ({
+  exportPdf: vi.fn(),
+}));
+
 describe('Log (Predictions Log screen)', () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -44,7 +48,7 @@ describe('Log (Predictions Log screen)', () => {
     expect(last30?.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('renders 2 active export buttons (CSV + Markdown) plus 1 PDF placeholder', () => {
+  it('renders 3 active export buttons (CSV + PDF + Markdown) with no placeholder attribute', () => {
     const { container } = render(Log);
     const csvBtn = container.querySelector('[data-export="csv"]');
     const pdfBtn = container.querySelector('[data-export="pdf"]');
@@ -53,11 +57,8 @@ describe('Log (Predictions Log screen)', () => {
     expect(pdfBtn).toBeTruthy();
     expect(mdBtn).toBeTruthy();
     expect(csvBtn?.hasAttribute('data-export-placeholder')).toBe(false);
-    expect(csvBtn?.hasAttribute('disabled')).toBe(false);
+    expect(pdfBtn?.hasAttribute('data-export-placeholder')).toBe(false);
     expect(mdBtn?.hasAttribute('data-export-placeholder')).toBe(false);
-    expect(mdBtn?.hasAttribute('disabled')).toBe(false);
-    expect(pdfBtn?.hasAttribute('data-export-placeholder')).toBe(true);
-    expect(pdfBtn?.hasAttribute('disabled')).toBe(true);
   });
 
   it('CSV button click calls exportCsv with the loaded rows', async () => {
@@ -66,6 +67,26 @@ describe('Log (Predictions Log screen)', () => {
     const csvBtn = container.querySelector('[data-export="csv"]') as HTMLButtonElement;
     await fireEvent.click(csvBtn);
     expect(exportCsv).toHaveBeenCalledOnce();
+  });
+
+  it('PDF button click calls exportPdf with the log-table element when rows are populated', async () => {
+    const { exportPdf } = await import('../../lib/export/pdf');
+    const { predictionTracker } = await import('../../services/predictionTracker');
+    const now = new Date();
+    (predictionTracker.getRecentPredictions as ReturnType<typeof vi.fn>).mockReturnValueOnce([
+      { id: 'p1', matchId: 'm1', homeTeam: 'Liverpool FC', awayTeam: 'Arsenal FC',
+        predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 1, confidence: 0.62,
+        timestamp: now.toISOString(), matchDate: now.toISOString(),
+        poissonProbs: { homeWin: 0.5, draw: 0.3, awayWin: 0.2 } },
+    ]);
+    const { container } = render(Log);
+    const pdfBtn = container.querySelector('[data-export="pdf"]') as HTMLButtonElement;
+    expect(pdfBtn.hasAttribute('disabled')).toBe(false);
+    await fireEvent.click(pdfBtn);
+    expect(exportPdf).toHaveBeenCalledOnce();
+    const [opts] = (exportPdf as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(opts.kind).toBe('log');
+    expect(opts.target).toBeInstanceOf(HTMLElement);
   });
 
   it('renders [data-card-row] per stored prediction once getRecentPredictions populates', async () => {
