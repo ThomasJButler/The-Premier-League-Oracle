@@ -6,6 +6,18 @@ vi.mock('svelte-routing', () => ({
   navigate: vi.fn(),
 }));
 
+vi.mock('../../services/dataService', () => ({
+  dataService: {
+    getMatches: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('../../services/betting/value', () => ({
+  ValueBettingEngine: {
+    identifyValueBets: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 describe('Tools (Predictions Tools screen)', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/predictions/tools');
@@ -41,7 +53,7 @@ describe('Tools (Predictions Tools screen)', () => {
     const { container } = render(Tools);
     const value = container.querySelector('[data-utility="value"]');
     expect(value?.getAttribute('aria-selected')).toBe('true');
-    expect(container.querySelector('[data-tool-placeholder="value"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="value-scanner"]')).toBeTruthy();
   });
 
   it('clicking a utility button swaps the active branch AND calls navigate()', async () => {
@@ -49,7 +61,7 @@ describe('Tools (Predictions Tools screen)', () => {
     const { container } = render(Tools);
     const valueBtn = container.querySelector('[data-utility="value"]')!;
     await fireEvent.click(valueBtn);
-    expect(container.querySelector('[data-tool-placeholder="value"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="value-scanner"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="kelly-calculator"]')).toBeNull();
     expect(navigate).toHaveBeenCalledWith('/predictions/tools?utility=value', { replace: false });
   });
