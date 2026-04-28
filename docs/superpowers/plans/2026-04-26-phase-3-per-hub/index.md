@@ -42,11 +42,11 @@ Phase 3 is sub-divided by hub. Plans for the **Fixtures sub-phase** are detailed
 | P4f — Export binary (PDF + PNG card) | [`p4f-export-binary.md`](./p4f-export-binary.md) | Manual | `v3.13` |
 | P4-cp — Predictions checkpoint | [`p4-cp-predictions-checkpoint.md`](./p4-cp-predictions-checkpoint.md) | Manual + auto Playwright | `v3.14` |
 
-### Sub-phase 3.3 — Oracle Chat (1 slice, plan drafted before slice picks up)
+### Sub-phase 3.3 — Oracle Chat (1 slice, plan-ready)
 
 | Slice | Plan file | Gate | Tag at sign-off |
 |---|---|---|---|
-| P5a — Oracle Chat | `p5a-oracle-chat.md` *(TBD)* | Manual | `v3.15` |
+| P5a — Oracle Chat | [`p5a-oracle-chat.md`](./p5a-oracle-chat.md) | Manual | `v3.15` |
 
 ### Sub-phase 3.4 — Insights hub (4 slices, plans drafted before each picks up)
 
