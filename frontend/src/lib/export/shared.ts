@@ -72,6 +72,31 @@ export function buildFilename(kind: 'csv' | 'markdown', now: Date): string {
   return `predictions-log-${formatExportTimestamp(now)}.${ext}`;
 }
 
+export type BinaryFilenameOpts =
+  | { kind: 'log' | 'this-week'; gameweek?: number }
+  | { kind: 'gw-grid'; gameweek: number }
+  | { kind: 'single-fixture'; matchId: string };
+
+export function buildBinaryFilename(
+  format: 'png' | 'pdf',
+  now: Date,
+  opts: BinaryFilenameOpts,
+): string {
+  const date = formatExportTimestamp(now);
+  switch (opts.kind) {
+    case 'log':
+      return `predictions-log-${date}.${format}`;
+    case 'this-week':
+      return opts.gameweek !== undefined
+        ? `predictions-gw${opts.gameweek}-${date}.${format}`
+        : `predictions-this-week-${date}.${format}`;
+    case 'gw-grid':
+      return `predictions-gw${opts.gameweek}-${date}.${format}`;
+    case 'single-fixture':
+      return `predictions-${opts.matchId}-${date}.${format}`;
+  }
+}
+
 export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

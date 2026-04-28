@@ -6,6 +6,7 @@ import {
   formatHitFlag,
   formatExportTimestamp,
   buildFilename,
+  buildBinaryFilename,
   triggerBlobDownload,
   EXPORT_COLUMNS,
   MODEL_VERSION,
@@ -85,6 +86,25 @@ describe('export/shared', () => {
     const d = new Date(2026, 3, 28);
     expect(buildFilename('csv', d)).toBe('predictions-log-2026-04-28.csv');
     expect(buildFilename('markdown', d)).toBe('predictions-log-2026-04-28.md');
+  });
+
+  describe('buildBinaryFilename', () => {
+    const d = new Date(2026, 3, 28);
+    it('emits Log surface filename', () => {
+      expect(buildBinaryFilename('pdf', d, { kind: 'log' })).toBe('predictions-log-2026-04-28.pdf');
+    });
+    it('emits ThisWeek surface filename with gameweek', () => {
+      expect(buildBinaryFilename('pdf', d, { kind: 'this-week', gameweek: 35 }))
+        .toBe('predictions-gw35-2026-04-28.pdf');
+    });
+    it('emits gw-grid PNG filename', () => {
+      expect(buildBinaryFilename('png', d, { kind: 'gw-grid', gameweek: 35 }))
+        .toBe('predictions-gw35-2026-04-28.png');
+    });
+    it('emits single-fixture PNG filename with matchId', () => {
+      expect(buildBinaryFilename('png', d, { kind: 'single-fixture', matchId: 'm123' }))
+        .toBe('predictions-m123-2026-04-28.png');
+    });
   });
 
   it('triggerBlobDownload creates an object URL, clicks <a>, and revokes', () => {
