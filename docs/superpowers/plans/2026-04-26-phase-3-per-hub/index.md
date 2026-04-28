@@ -40,7 +40,7 @@ Phase 3 is sub-divided by hub. Plans for the **Fixtures sub-phase** are detailed
 | P4d — Tools (Kelly + Value) | [`p4d-predictions-tools.md`](./p4d-predictions-tools.md) | Manual | `v3.11` |
 | P4e — Export text (CSV + Markdown) | [`p4e-export-text.md`](./p4e-export-text.md) | Auto | `v3.12` |
 | P4f — Export binary (PDF + PNG card) | [`p4f-export-binary.md`](./p4f-export-binary.md) | Manual | `v3.13` |
-| P4-cp — Predictions checkpoint | `p4-cp-predictions-checkpoint.md` *(TBD)* | Manual + auto Playwright | `v3.14` |
+| P4-cp — Predictions checkpoint | [`p4-cp-predictions-checkpoint.md`](./p4-cp-predictions-checkpoint.md) | Manual + auto Playwright | `v3.14` |
 
 ### Sub-phase 3.3 — Oracle Chat (1 slice, plan drafted before slice picks up)
 
