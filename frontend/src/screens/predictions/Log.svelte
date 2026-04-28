@@ -2,6 +2,8 @@
   import { predictionTracker, type StoredPrediction } from '../../services/predictionTracker';
   import { storedPredictionToFixture, predictionToV3 } from '../../lib/adapters/v3';
   import { filterPredictionLog, type LogFilterId } from '../../lib/predictionFilters';
+  import { exportCsv } from '../../lib/export/csv';
+  import { exportMarkdown } from '../../lib/export/markdown';
   import SectionHeader from '../../components/atoms/SectionHeader.svelte';
   import MatchRow from '../../components/matchcard/MatchRow.svelte';
   import LogFilterChips from '../../components/predictions/LogFilterChips.svelte';
@@ -25,11 +27,9 @@
     <svelte:fragment slot="right">
       <button
         type="button"
-        class="text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1.5"
         data-export="csv"
+        on:click={() => exportCsv(rows)}
       >
         Export CSV
       </button>
@@ -45,11 +45,9 @@
       </button>
       <button
         type="button"
-        class="ml-2 text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="ml-2 text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1.5"
         data-export="markdown"
+        on:click={() => exportMarkdown(rows)}
       >
         Export Markdown
       </button>

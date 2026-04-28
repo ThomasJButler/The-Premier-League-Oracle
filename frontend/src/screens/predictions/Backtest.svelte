@@ -1,6 +1,7 @@
 <script lang="ts">
   import { predictionTracker } from '../../services/predictionTracker';
   import { calibrationIndex } from '../../lib/calibrationIndex';
+  import { exportCsv } from '../../lib/export/csv';
   import SectionHeader from '../../components/atoms/SectionHeader.svelte';
   import KpiTile from '../../components/atoms/KpiTile.svelte';
   import Spark from '../../components/atoms/Spark.svelte';
@@ -19,11 +20,9 @@
     <svelte:fragment slot="right">
       <button
         type="button"
-        class="text-body-sm text-text-dim border border-border rounded px-3 py-1.5 cursor-not-allowed opacity-60"
-        disabled
-        aria-disabled="true"
-        data-export-placeholder
+        class="text-body-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1.5"
         data-export="csv"
+        on:click={() => exportCsv(predictionTracker.getRecentPredictions(1000))}
       >
         Export CSV
       </button>

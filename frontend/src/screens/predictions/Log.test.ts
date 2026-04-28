@@ -1,4 +1,4 @@
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Log from './Log.svelte';
 
@@ -6,6 +6,14 @@ vi.mock('../../services/predictionTracker', () => ({
   predictionTracker: {
     getRecentPredictions: vi.fn().mockReturnValue([]),
   },
+}));
+
+vi.mock('../../lib/export/csv', () => ({
+  exportCsv: vi.fn(),
+}));
+
+vi.mock('../../lib/export/markdown', () => ({
+  exportMarkdown: vi.fn(),
 }));
 
 describe('Log (Predictions Log screen)', () => {
@@ -36,15 +44,28 @@ describe('Log (Predictions Log screen)', () => {
     expect(last30?.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('renders 3 export placeholder buttons (CSV/PDF/Markdown), all disabled', () => {
+  it('renders 2 active export buttons (CSV + Markdown) plus 1 PDF placeholder', () => {
     const { container } = render(Log);
-    const buttons = container.querySelectorAll('[data-export-placeholder]');
-    expect(buttons).toHaveLength(3);
-    const kinds = Array.from(buttons).map((b) => b.getAttribute('data-export'));
-    expect(kinds).toEqual(['csv', 'pdf', 'markdown']);
-    buttons.forEach((b) => {
-      expect(b.getAttribute('disabled')).not.toBeNull();
-    });
+    const csvBtn = container.querySelector('[data-export="csv"]');
+    const pdfBtn = container.querySelector('[data-export="pdf"]');
+    const mdBtn = container.querySelector('[data-export="markdown"]');
+    expect(csvBtn).toBeTruthy();
+    expect(pdfBtn).toBeTruthy();
+    expect(mdBtn).toBeTruthy();
+    expect(csvBtn?.hasAttribute('data-export-placeholder')).toBe(false);
+    expect(csvBtn?.hasAttribute('disabled')).toBe(false);
+    expect(mdBtn?.hasAttribute('data-export-placeholder')).toBe(false);
+    expect(mdBtn?.hasAttribute('disabled')).toBe(false);
+    expect(pdfBtn?.hasAttribute('data-export-placeholder')).toBe(true);
+    expect(pdfBtn?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('CSV button click calls exportCsv with the loaded rows', async () => {
+    const { exportCsv } = await import('../../lib/export/csv');
+    const { container } = render(Log);
+    const csvBtn = container.querySelector('[data-export="csv"]') as HTMLButtonElement;
+    await fireEvent.click(csvBtn);
+    expect(exportCsv).toHaveBeenCalledOnce();
   });
 
   it('renders [data-card-row] per stored prediction once getRecentPredictions populates', async () => {

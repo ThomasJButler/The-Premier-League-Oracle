@@ -1,4 +1,4 @@
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Backtest from './Backtest.svelte';
 
@@ -33,7 +33,12 @@ vi.mock('../../services/predictionTracker', () => ({
         sampleCount: 0,
       })),
     ),
+    getRecentPredictions: vi.fn().mockReturnValue([]),
   },
+}));
+
+vi.mock('../../lib/export/csv', () => ({
+  exportCsv: vi.fn(),
 }));
 
 describe('Backtest (Predictions Backtest screen)', () => {
@@ -74,11 +79,20 @@ describe('Backtest (Predictions Backtest screen)', () => {
     expect(container.querySelector('[data-spark-empty]')).toBeTruthy();
   });
 
-  it('renders [Export CSV] as a disabled placeholder button', () => {
+  it('renders [Export CSV] as an active button (no placeholder, no disabled)', () => {
     const { container } = render(Backtest);
-    const btn = container.querySelector('[data-export-placeholder][data-export="csv"]');
+    const btn = container.querySelector('[data-export="csv"]');
     expect(btn).toBeTruthy();
-    expect(btn?.getAttribute('disabled')).not.toBeNull();
+    expect(btn?.hasAttribute('data-export-placeholder')).toBe(false);
+    expect(btn?.hasAttribute('disabled')).toBe(false);
     expect(btn?.textContent).toMatch(/Export CSV/i);
+  });
+
+  it('CSV button click calls exportCsv with the loaded predictions', async () => {
+    const { exportCsv } = await import('../../lib/export/csv');
+    const { container } = render(Backtest);
+    const csvBtn = container.querySelector('[data-export="csv"]') as HTMLButtonElement;
+    await fireEvent.click(csvBtn);
+    expect(exportCsv).toHaveBeenCalledOnce();
   });
 });
