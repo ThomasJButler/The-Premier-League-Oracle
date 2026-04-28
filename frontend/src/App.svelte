@@ -11,7 +11,7 @@
   import ThisWeek from './screens/predictions/ThisWeek.svelte';
   import Backtest from './screens/predictions/Backtest.svelte';
   import Log from './screens/predictions/Log.svelte';
-  import KellyCalculator from './components/betting/KellyCalculator.svelte';
+  import Tools from './screens/predictions/Tools.svelte';
   import Settings from './components/Settings.svelte';
   import ApiSetupWizard from './components/ApiSetupWizard.svelte';
   import Help from './components/Help.svelte';
@@ -74,7 +74,7 @@
     <Route path="/predictions/this-week"><ThisWeek /></Route>
     <Route path="/predictions/backtest"><Backtest /></Route>
     <Route path="/predictions/log"><Log /></Route>
-    <Route path="/predictions/tools"><KellyCalculator /></Route>
+    <Route path="/predictions/tools"><Tools /></Route>
     <Route path="/oracle"><ChatBot /></Route>
     <Route path="/insights/scorers"><TopScorers /></Route>
     <Route path="/insights/stats"><SeasonStats /></Route>
