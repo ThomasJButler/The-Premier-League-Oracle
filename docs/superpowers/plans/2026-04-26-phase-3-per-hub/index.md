@@ -38,7 +38,7 @@ Phase 3 is sub-divided by hub. Plans for the **Fixtures sub-phase** are detailed
 | P4b — Backtest | [`p4b-predictions-backtest.md`](./p4b-predictions-backtest.md) | Manual | `v3.9` |
 | P4c — Log | [`p4c-predictions-log.md`](./p4c-predictions-log.md) | Manual | `v3.10` |
 | P4d — Tools (Kelly + Value) | [`p4d-predictions-tools.md`](./p4d-predictions-tools.md) | Manual | `v3.11` |
-| P4e — Export text (CSV + Markdown) | `p4e-export-text.md` *(TBD)* | Auto | `v3.12` |
+| P4e — Export text (CSV + Markdown) | [`p4e-export-text.md`](./p4e-export-text.md) | Auto | `v3.12` |
 | P4f — Export binary (PDF + PNG card) | `p4f-export-binary.md` *(TBD)* | Manual | `v3.13` |
 | P4-cp — Predictions checkpoint | `p4-cp-predictions-checkpoint.md` *(TBD)* | Manual + auto Playwright | `v3.14` |
 
