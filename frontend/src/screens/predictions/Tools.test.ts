@@ -32,7 +32,7 @@ describe('Tools (Predictions Tools screen)', () => {
     const { container } = render(Tools);
     const kelly = container.querySelector('[data-utility="kelly"]');
     expect(kelly?.getAttribute('aria-selected')).toBe('true');
-    expect(container.querySelector('[data-tool-placeholder="kelly"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="kelly-calculator"]')).toBeTruthy();
     expect(container.querySelector('[data-tool-placeholder="value"]')).toBeNull();
   });
 
@@ -50,7 +50,7 @@ describe('Tools (Predictions Tools screen)', () => {
     const valueBtn = container.querySelector('[data-utility="value"]')!;
     await fireEvent.click(valueBtn);
     expect(container.querySelector('[data-tool-placeholder="value"]')).toBeTruthy();
-    expect(container.querySelector('[data-tool-placeholder="kelly"]')).toBeNull();
+    expect(container.querySelector('[data-testid="kelly-calculator"]')).toBeNull();
     expect(navigate).toHaveBeenCalledWith('/predictions/tools?utility=value', { replace: false });
   });
 });

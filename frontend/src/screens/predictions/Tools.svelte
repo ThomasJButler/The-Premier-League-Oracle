@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { navigate } from 'svelte-routing';
+  import KellyCalculator from '../../components/predictions/KellyCalculator.svelte';
 
   type UtilityId = 'kelly' | 'value';
 
@@ -52,7 +53,7 @@
   </div>
 
   {#if active === 'kelly'}
-    <div data-tool-placeholder="kelly">Kelly Calculator placeholder (Task 2)</div>
+    <KellyCalculator />
   {:else}
     <div data-tool-placeholder="value">Value Scanner placeholder (Task 3)</div>
   {/if}
