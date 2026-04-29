@@ -15,7 +15,7 @@ No install, no setup, no CLI. You'll be asked for a free Football-Data.org API k
 
 | Desktop | Mobile |
 | ------- | ------ |
-| <img alt="Desktop" src="https://github.com/user-attachments/assets/3da3aa0e-013f-4463-807b-29767b348144" width="1450" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/7c9821d8-cc02-46b3-865a-1b0cd848ec73" width="500" /> |
+| <img alt="Desktop" src="https://github.com/user-attachments/assets/724f3522-2f68-4791-9c17-1aaf3850704f" width="1450" /> | <img alt="Mobile" src="https://github.com/user-attachments/assets/a43b44d9-19ef-43ff-87df-756f2d2ea665" width="500" /> |
 
 ## Why the code is public
 
