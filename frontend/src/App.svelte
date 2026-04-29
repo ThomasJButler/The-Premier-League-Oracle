@@ -18,7 +18,7 @@
   import TopScorers from './components/TopScorers.svelte';
   import SeasonStats from './components/SeasonStats.svelte';
   import SeasonTimeline from './components/SeasonTimeline.svelte';
-  import ChatBot from './components/ChatBot.svelte';
+  import OracleChat from './screens/oracle/OracleChat.svelte';
   import { dataService } from './services/dataService';
   import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
@@ -75,7 +75,7 @@
     <Route path="/predictions/backtest"><Backtest /></Route>
     <Route path="/predictions/log"><Log /></Route>
     <Route path="/predictions/tools"><Tools /></Route>
-    <Route path="/oracle"><ChatBot /></Route>
+    <Route path="/oracle"><OracleChat /></Route>
     <Route path="/insights/scorers"><TopScorers /></Route>
     <Route path="/insights/stats"><SeasonStats /></Route>
     <Route path="/insights/timeline"><SeasonTimeline /></Route>
