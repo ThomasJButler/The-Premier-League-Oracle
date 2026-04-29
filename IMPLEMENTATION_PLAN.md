@@ -17,7 +17,13 @@
 
 ## Active phase
 
-Phase 3 (Per-hub screens) — **kicked off 2026-04-26 after Phase 2 sign-off.** P2b + P2c both signed off, checkboxes flipped to `[x]`, retroactively tagged `v3.2` (de45aff) and `v3.3` (b08d670) at the sign-off moment. Phase 2 is closed; tag sequence `v3.1` → `v3.2` → `v3.3` covers every Phase 2 slice. Phase 3 spans **17 slices across 5 hubs**: Fixtures (P3a/P3b/P3c/P3-fixtures-cp = 4 slices), Predictions (P4a–P4f + P4-cp = 7 slices, includes the export pair P4e/P4f), Oracle Chat (P5a = 1), Insights (P7a/P7b/P7c/P7-cp = 4), Settings (P8a = 1). The **Fixtures sub-phase** is plan-ready: `docs/superpowers/plans/2026-04-26-phase-3-per-hub/index.md` + detailed per-slice files for P3a/P3b/P3c/P3-fixtures-cp. Plans for the remaining sub-phases (Predictions hub, Oracle, Insights, Settings) get ralph-drafted as the loop reaches each — same self-grooming pattern that worked through Phase 2's grooming iterations.
+Phase 3 (Per-hub screens) — **kicked off 2026-04-26 after Phase 2 sign-off; mid-phase as of 2026-04-29.** Phase 3 spans **17 slices across 5 hubs**: Fixtures (P3a/P3b/P3c/P3-fixtures-cp = 4 slices), Predictions (P4a–P4f + P4-cp = 7 slices, includes the export pair P4e/P4f), Oracle Chat (P5a = 1), Insights (P7a/P7b/P7c/P7-cp = 4), Settings (P8a = 1).
+
+**Sub-phase 3.2 (Predictions hub) — closed 2026-04-29.** All 7 slices (P4a–P4f + P4-cp) signed off. P4d → `v3.11`, P4e → `v3.12`, P4f → `v3.13`, P4-cp → `v3.14`. P4a/P4b/P4c were earlier closures whose `v3.8`/`v3.9`/`v3.10` tags still need backfilling — see `## Notes / discoveries` follow-up.
+
+**Sub-phase 3.3 (Oracle Chat) — closed 2026-04-29.** P5a signed off → `v3.15`. `/oracle` 3-column chat layout swept and confirmed.
+
+**Next sub-phase queued: 3.4 — Insights (P7a/P7b/P7c/P7-cp = 4 slices).** Plans not yet groomed; the next ralph iteration drafts the Insights sub-phase index + per-slice plan files (`docs/superpowers/plans/2026-04-26-phase-3-per-hub/p7a-insights-top-scorers.md` etc.) before any code commits, same self-grooming pattern that worked through Phase 2 and the Predictions sub-phase. After Insights closes, only Sub-phase 3.5 (P8a — Settings) remains in Phase 3.
 
 **Tagging policy (refined 2026-04-26 after Phase 2 sign-off):** every ralph slice gets a sequential `v3.x` tag, but the tag is applied at the **sign-off moment** rather than at the slice commit. Rationale: a committed-but-unsigned-off slice can still regress under the manual eyeball; binding the tag to sign-off makes each `v3.x` a "this is good" stamp instead of just "this was committed." For auto-gated slices (`v3.x` examples: P3-fixtures-cp's auto half, P4e text exports), commit-time = sign-off so the tag is created in the same iteration. For manual-gated slices, ralph leaves the tag uncreated; the human applies it (`git tag v3.N <commit>`) at the moment they flip `[x]`. Sub-slice commits stay **untagged** so the `v3.x` sequence cleanly maps onto top-level checklist items. Tags are local-only — push policy unchanged. Phase 2 mapping: P2a → `v3.1` (committed), P2b → `v3.2` (signed off), P2c → `v3.3` (signed off). Phase 3 expectation: P3a → `v3.4`, P3b → `v3.5`, P3c → `v3.6`, P3-fixtures-cp → `v3.7`, then P4a → `v3.8`, etc.
 
@@ -48,11 +54,11 @@ Phase 3 (Per-hub screens) — **kicked off 2026-04-26 after Phase 2 sign-off.** 
 - [ ] **P4a — Predictions This Week** *(Manual-gated)*
 - [ ] **P4b — Predictions Backtest** *(Manual-gated)*
 - [ ] **P4c — Predictions Log** *(Manual-gated)*
-- [ ] **P4d — Predictions Tools (Kelly + Value, relocated to components/predictions/)** *(Manual-gated, code-complete 2026-04-28 — awaiting human eyeball)*
-- [x] **P4e — Export text (CSV + Markdown)** *(Auto-gated, signed off 2026-04-28)*
-- [ ] **P4f — Export binary (PDF + PNG card via html2canvas + jsPDF)** *(Manual-gated)*
-- [ ] **P4-cp — Predictions checkpoint** *(Manual-gated)*
-- [ ] **P5a — Oracle Chat** *(Manual-gated)*
+- [x] **P4d — Predictions Tools (Kelly + Value, relocated to components/predictions/)** *(Manual-gated, signed off 2026-04-29 — tag `v3.11`)*
+- [x] **P4e — Export text (CSV + Markdown)** *(Auto-gated, signed off 2026-04-28 — tag `v3.12`)*
+- [x] **P4f — Export binary (PDF + PNG card via html2canvas + jsPDF)** *(Manual-gated, signed off 2026-04-29 — tag `v3.13`)*
+- [x] **P4-cp — Predictions checkpoint** *(Manual-gated, signed off 2026-04-29 — tag `v3.14`)*
+- [x] **P5a — Oracle Chat** *(Manual-gated, signed off 2026-04-29 — tag `v3.15`)*
 - [ ] **P7a — Insights Top Scorers** *(Manual-gated)*
 - [ ] **P7b — Insights Season Stats** *(Manual-gated)*
 - [ ] **P7c — Insights Timeline (uses Instrument Serif italic)** *(Manual-gated)*
@@ -537,11 +543,35 @@ Sign-off action: flip P4c's `[ ]` → `[x]` in the Phase 3 checklist above, then
 
 *(Drop notes here mid-run. The next ralph build iteration consumes them as part of the slice contract: address every note OR explain in `## Notes / discoveries` why a note doesn't apply. Once addressed, ralph moves the consumed note to `## Notes / discoveries` prefixed with `(addressed) ` and a one-line summary of how it was addressed.)*
 
+- **2026-04-29 — Sub-phases 3.2 + 3.3 signed off; Sub-phase 3.4 (Insights) is the next active target.** Tags `v3.11` (P4d) / `v3.13` (P4f) / `v3.14` (P4-cp) / `v3.15` (P5a) applied; checklist boxes flipped to `[x]`. Active phase block + "Next recommended build slice" section both rewritten to point at Insights plan grooming. **Action for the next ralph iteration:** plan-grooming-only commit drafting `docs/superpowers/plans/2026-04-26-phase-3-per-hub/p7-insights-index.md` + `p7a-insights-top-scorers.md` (and optionally `p7b`/`p7c` if context budget allows). No code commits this iteration. The iteration after that picks up P7a Task 1.
+
+- **2026-04-29 — Pre-existing tag-backfill gap (v3.4–v3.10).** Sub-phase 3.1 (Fixtures: P3a/P3b/P3c/P3-fixtures-cp) and the early Predictions sub-phase slices (P4a/P4b/P4c) all show "code-complete — awaiting human eyeball" status lines but their checklist boxes are still `[ ]` and tags `v3.4`–`v3.10` were never applied. Either (a) the human swept these and the boxes/tags simply got forgotten — backfill `git tag v3.4 …` through `v3.10 …` and flip the boxes — or (b) some of those still need an actual sweep. The next iteration should NOT silently flip these; surface them to the human at the next sign-off touchpoint. Suggested commit mapping for case (a): `v3.4 → P3a sign-off commit (look up in plan)`, `v3.5 → P3b`, `v3.6 → P3c (Tasks 2+3 commit)`, `v3.7 → P3-fixtures-cp`, `v3.8 → P4a Task 3`, `v3.9 → P4b Task 3 (a141e5c)`, `v3.10 → P4c Task 3 (932be79)`. The Predictions ones are precise (commits identified above); Fixtures commits need the plan trail re-walked.
+
 - *(empty — drop notes between iterations as needed)*
 
 ## Next recommended build slice
 
-**Phase 2 closed 2026-04-26.** All Phase 2 slices signed off + tagged: P2a → `v3.1`, P2b → `v3.2`, P2c → `v3.3`. Phase 3 (per-hub screens) is now the active phase, and the Fixtures sub-phase is plan-ready.
+**Sub-phase 3.2 (Predictions hub) closed 2026-04-29 — all 7 slices signed off + tagged.** Sub-phase 3.3 (Oracle Chat) also closed same day → P5a tagged `v3.15`.
+
+**The next ralph iteration grooms Sub-phase 3.4 (Insights).** Plans do not yet exist for P7a/P7b/P7c/P7-cp — the loop's job in the next iteration is **plan grooming only** (no code commits), following the same pattern used to groom the Predictions sub-phase mid-loop:
+
+1. **Draft `docs/superpowers/plans/2026-04-26-phase-3-per-hub/p7-insights-index.md`** — sub-phase index, slice ordering, contract markers, decision-needed questions answered up front (analogous to the existing Predictions/Oracle indexes).
+2. **Draft `p7a-insights-top-scorers.md`** — per-slice plan: tasks, contract markers (`[data-screen="insights-top-scorers"]`, etc.), test list, manual sweep checklist, dependency on `dataService.getTopScorers()` (verify whether the helper exists; if not, the plan flags it as Task 0).
+3. **Optionally draft `p7b-insights-season-stats.md` and `p7c-insights-timeline.md`** if context budget allows in the same iteration; otherwise queue for the iteration after.
+4. Plan-only commit(s); untagged.
+
+**The iteration AFTER plan grooming starts P7a Task 1** — Insights Top Scorers, the first code-bearing slice of Sub-phase 3.4. Tag at sign-off → `v3.16`.
+
+**Phase 3 status as of 2026-04-29:**
+- Sub-phase 3.1 (Fixtures): code-complete, manual sweep + `v3.4`–`v3.7` tag backfill outstanding (see `## Notes / discoveries`).
+- Sub-phase 3.2 (Predictions hub): **CLOSED** — all 7 slices signed off.
+- Sub-phase 3.3 (Oracle Chat): **CLOSED** — P5a signed off.
+- Sub-phase 3.4 (Insights): plan-grooming pending (next iteration).
+- Sub-phase 3.5 (Settings): plan-grooming pending (after Insights closes).
+
+---
+
+**Reference — completed Phase 3 slices below this line are kept for historical traceability and should not gate new work:**
 
 **Already in the codebase from Phase 2** (carry-overs reusable in Phase 3):
 - `frontend/src/lib/adapters/v3.ts` — `matchToFixture`, `predictionToV3`, `storedPredictionToFixture`. Expect every Phase 3 hub screen that renders fixtures to lean on these adapters.
