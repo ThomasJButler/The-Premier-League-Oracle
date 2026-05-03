@@ -19,6 +19,7 @@
   import SeasonStats from './components/SeasonStats.svelte';
   import SeasonTimeline from './components/SeasonTimeline.svelte';
   import OracleChat from './screens/oracle/OracleChat.svelte';
+  import HubRedirect from './components/layout/HubRedirect.svelte';
   import { dataService } from './services/dataService';
   import { footballDataAPI } from './services/api/footballData';
   import { onMount } from 'svelte';
@@ -68,17 +69,21 @@
     <LiveTicker />
 
     <Route path="/today"><Today /></Route>
+    <Route path="/fixtures"><HubRedirect to="/fixtures/matches" /></Route>
     <Route path="/fixtures/live"><Live /></Route>
     <Route path="/fixtures/matches"><Matches /></Route>
     <Route path="/fixtures/standings"><Standings /></Route>
+    <Route path="/predictions"><HubRedirect to="/predictions/this-week" /></Route>
     <Route path="/predictions/this-week"><ThisWeek /></Route>
     <Route path="/predictions/backtest"><Backtest /></Route>
     <Route path="/predictions/log"><Log /></Route>
     <Route path="/predictions/tools"><Tools /></Route>
     <Route path="/oracle"><OracleChat /></Route>
+    <Route path="/insights"><HubRedirect to="/insights/scorers" /></Route>
     <Route path="/insights/scorers"><TopScorers /></Route>
     <Route path="/insights/stats"><SeasonStats /></Route>
     <Route path="/insights/timeline"><SeasonTimeline /></Route>
+    <Route path="/settings"><HubRedirect to="/settings/account" /></Route>
     <Route path="/settings/account"><Settings /></Route>
     <Route path="/settings/api-data"><Settings /></Route>
     <Route path="/settings/display"><Settings /></Route>

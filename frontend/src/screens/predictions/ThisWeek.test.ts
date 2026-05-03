@@ -1,6 +1,10 @@
 import { act, fireEvent, render } from '@testing-library/svelte';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ThisWeek from './ThisWeek.svelte';
+
+vi.mock('svelte-routing', () => ({
+  navigate: vi.fn(),
+}));
 
 vi.mock('../../services/dataService', () => ({
   dataService: {
@@ -60,6 +64,11 @@ describe('ThisWeek (Predictions This Week screen)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, '', '/predictions/this-week');
+  });
+
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
   });
 
   it('renders [data-screen="predictions-this-week"] root unconditionally', () => {
@@ -122,6 +131,64 @@ describe('ThisWeek (Predictions This Week screen)', () => {
     expect(pngBtn.hasAttribute('disabled')).toBe(false);
     expect(pdfBtn.textContent?.trim()).toMatch(/Export PDF/i);
     expect(pngBtn.textContent?.trim()).toMatch(/Share PNG/i);
+  });
+
+  it('renders [data-gw-prev] and [data-gw-next] navigation buttons', async () => {
+    const { dataService } = await import('../../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkUpcomingMatch('m1', 35, 2),
+      mkUpcomingMatch('m2', 36, 9),
+    ]);
+    const { container, component } = render(ThisWeek);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    expect(container.querySelector('[data-gw-prev]')).toBeTruthy();
+    expect(container.querySelector('[data-gw-next]')).toBeTruthy();
+  });
+
+  it('Next button calls navigate() and switches the rendered gameweek', async () => {
+    const { navigate } = await import('svelte-routing');
+    const { dataService } = await import('../../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkUpcomingMatch('m1', 35, 2),
+      mkUpcomingMatch('m2', 36, 9),
+    ]);
+    const { container, component } = render(ThisWeek);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const nextBtn = container.querySelector('[data-gw-next]') as HTMLButtonElement;
+    await fireEvent.click(nextBtn);
+    expect(navigate).toHaveBeenCalledWith('/predictions/this-week?gw=36', { replace: false });
+    const kicker = container.querySelector('[data-kicker]');
+    expect(kicker?.textContent).toContain('GAMEWEEK 36');
+  });
+
+  it('honours ?gw=N on initial render (deep-link)', async () => {
+    window.history.replaceState({}, '', '/predictions/this-week?gw=36');
+    const { dataService } = await import('../../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkUpcomingMatch('m1', 35, 2),
+      mkUpcomingMatch('m2', 36, 9),
+    ]);
+    const { container, component } = render(ThisWeek);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const kicker = container.querySelector('[data-kicker]');
+    expect(kicker?.textContent).toContain('GAMEWEEK 36');
+    expect(container.querySelectorAll('[data-card-row]')).toHaveLength(1);
+  });
+
+  it('disables [data-gw-prev] when on the earliest available gameweek', async () => {
+    const { dataService } = await import('../../services/dataService');
+    (dataService.getCurrentSeasonMatches as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mkUpcomingMatch('m1', 35, 2),
+      mkUpcomingMatch('m2', 36, 9),
+    ]);
+    const { container, component } = render(ThisWeek);
+    await (component as { load(): Promise<void> }).load();
+    await act();
+    const prevBtn = container.querySelector('[data-gw-prev]') as HTMLButtonElement;
+    expect(prevBtn.hasAttribute('disabled')).toBe(true);
   });
 
   it('PDF + PNG button clicks call exportPdf + exportPngCard with the grid element and gameweek', async () => {
