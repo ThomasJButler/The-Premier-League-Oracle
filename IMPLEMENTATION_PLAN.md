@@ -17,15 +17,25 @@
 
 ## Active phase
 
-Phase 3 (Per-hub screens) — **kicked off 2026-04-26 after Phase 2 sign-off; mid-phase as of 2026-04-29.** Phase 3 spans **17 slices across 5 hubs**: Fixtures (P3a/P3b/P3c/P3-fixtures-cp = 4 slices), Predictions (P4a–P4f + P4-cp = 7 slices, includes the export pair P4e/P4f), Oracle Chat (P5a = 1), Insights (P7a/P7b/P7c/P7-cp = 4), Settings (P8a = 1).
+**🔀 PIVOT 2026-05-03 — The Kicker.** The v3 broadcast redesign is being superseded by a tabloid/newsprint redesign called **The Kicker**: same backend, same prediction engine, same Football-Data feed — completely different UX (newsprint broadsheet aesthetic + 10 AI columnist personalities). The live deployment continues to serve v3 unchanged until The Kicker MVP is ready and manually cut over. There is no urgency.
 
-**Sub-phase 3.2 (Predictions hub) — closed 2026-04-29.** All 7 slices (P4a–P4f + P4-cp) signed off. P4d → `v3.11`, P4e → `v3.12`, P4f → `v3.13`, P4-cp → `v3.14`. P4a/P4b/P4c were earlier closures whose `v3.8`/`v3.9`/`v3.10` tags still need backfilling — see `## Notes / discoveries` follow-up.
+**Master plan:** `/Users/tombutler/.claude/plans/sleepy-moseying-ripple.md` — the user-approved Kicker pivot plan, reviewed and signed off in plan mode. Read this in full before executing the bootstrap slice below.
 
-**Sub-phase 3.3 (Oracle Chat) — closed 2026-04-29.** P5a signed off → `v3.15`. `/oracle` 3-column chat layout swept and confirmed.
+**Handoff folder (gitignored, read-only reference):** `the_kicker_handoff/` — README, CLAUDE.md, JSX prototypes, HTML preview snapshots, screenshots. Do NOT commit any of this; do NOT delete it.
 
-**Next sub-phase queued: 3.4 — Insights (P7a/P7b/P7c/P7-cp = 4 slices).** Plans not yet groomed; the next ralph iteration drafts the Insights sub-phase index + per-slice plan files (`docs/superpowers/plans/2026-04-26-phase-3-per-hub/p7a-insights-top-scorers.md` etc.) before any code commits, same self-grooming pattern that worked through Phase 2 and the Predictions sub-phase. After Insights closes, only Sub-phase 3.5 (P8a — Settings) remains in Phase 3.
+**Three locked-in architectural decisions** (per the master plan):
+1. **Replace `frontend/` in-place with a SvelteKit migration** — clean cutover, no parallel codebase
+2. **Editorial + predictions as columnist context** — drop prediction UIs, keep `optimizedPredictions`/`predictionTracker`/`kelly`/`value`/`calibrationIndex` as headless data engines feeding Claude's system-prompt context
+3. **Apply v3.4–v3.10 tags retroactively** — close v3 cleanly through `v3.15` before the pivot
 
-**Tagging policy (refined 2026-04-26 after Phase 2 sign-off):** every ralph slice gets a sequential `v3.x` tag, but the tag is applied at the **sign-off moment** rather than at the slice commit. Rationale: a committed-but-unsigned-off slice can still regress under the manual eyeball; binding the tag to sign-off makes each `v3.x` a "this is good" stamp instead of just "this was committed." For auto-gated slices (`v3.x` examples: P3-fixtures-cp's auto half, P4e text exports), commit-time = sign-off so the tag is created in the same iteration. For manual-gated slices, ralph leaves the tag uncreated; the human applies it (`git tag v3.N <commit>`) at the moment they flip `[x]`. Sub-slice commits stay **untagged** so the `v3.x` sequence cleanly maps onto top-level checklist items. Tags are local-only — push policy unchanged. Phase 2 mapping: P2a → `v3.1` (committed), P2b → `v3.2` (signed off), P2c → `v3.3` (signed off). Phase 3 expectation: P3a → `v3.4`, P3b → `v3.5`, P3c → `v3.6`, P3-fixtures-cp → `v3.7`, then P4a → `v3.8`, etc.
+**Loop slice order from here:**
+1. **K-bootstrap** (this iteration) — close v3, archive plans, scaffold a fresh Kicker-scoped `IMPLEMENTATION_PLAN.md`
+2. **R0** — research-only pass through `the_kicker_handoff/`, enriches the new plan with verbatim persona prompts, component contracts, screen layout grammars (no code, no commits, plan-file edit only)
+3. **K0a–K0h** — MVP build (handoff Steps 1–6) ending at `k1.0` cutover
+4. **K1a–K1d** — polish (handoff Steps 7–9 + Settings)
+5. **K2a–K2d** — Phase 2 (mobile + audio + paywall)
+
+**v3 archived state (don't re-process these as next slices):** P3a/P3b/P3c/P3-fixtures-cp/P4a/P4b/P4c remain `[ ]` because they were never sweep-signed-off — the bootstrap slice applies their tags retroactively (`v3.4`–`v3.10`) and flips boxes as part of the close-out, then archives the whole file. After bootstrap, the new plan will not reference these slices at all; v3 is sealed.
 
 ## Ordered checklist
 
@@ -46,7 +56,36 @@ Phase 3 (Per-hub screens) — **kicked off 2026-04-26 after Phase 2 sign-off; mi
 - [x] **P2b — KPI strip + predictions grid** *(Manual-gated, signed off 2026-04-26, tagged `v3.2`)* — 4 `KpiTile`s (`Picks · Accuracy · Brier · Avg Confidence`); 2-col grid (1-col mobile) of standard `MatchCard`s for remaining gameweek fixtures. Extends `predictionTracker.getAccuracyStats()` with a `brierScore` field (reusable by P4b Backtest). Plan: `docs/superpowers/plans/2026-04-26-phase-2-today/p2b-kpi-strip-grid.md`.
 - [x] **P2c — Below-fold + Phase 2 checkpoint** *(Manual-gated, signed off 2026-04-26, tagged `v3.3`)* — `<SectionHeader>` + `<Spark>` of accuracy-by-gameweek; "How we predict →" link to `/settings/help`; 5 `<MatchRow>` rows from `predictionTracker.getRecentPredictions(5)`. Phase 2 Playwright checkpoint at `e2e/checkpoint-p2.spec.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-2-today/p2c-below-fold.md`.
 
-### Phase 3 — Per-hub
+### 🔀 Phase Pivot — The Kicker bootstrap (NEXT ACTIVE SLICE)
+- [ ] **K-bootstrap — Close v3 + scaffold The Kicker plan** *(Auto-gated, single bookkeeping commit, no code changes)* — Loop must execute the following operations atomically in one commit:
+  1. **Apply seven v3 sign-off tags retroactively** (these slices were code-complete but never tagged):
+     ```
+     git tag v3.4  49b3459    # P3a Fixtures Live
+     git tag v3.5  921ca23    # P3b Fixtures Matches
+     git tag v3.6  fa8646c    # P3c Fixtures Standings
+     git tag v3.7  45339b0    # P3-fixtures-cp
+     git tag v3.8  b8cf80e    # P4a Predictions This Week
+     git tag v3.9  a141e5c    # P4b Predictions Backtest
+     git tag v3.10 932be79    # P4c Predictions Log
+     ```
+     Tags are local-only; do NOT push. Continues the existing `v3.x` series (already at `v3.11`–`v3.15`) so v3 covers `v3.1` → `v3.15` continuously.
+  2. **Flip seven `[ ]` → `[x]` boxes** in this file at the items: P3a, P3b, P3c, P3-fixtures-cp, P4a, P4b, P4c (lines just below this section). Add ` *(Auto-archived 2026-05-03 during Kicker pivot bootstrap; tag vN.N already applied)*` to each.
+  3. **Archive v3 plan tree:**
+     - `mkdir -p docs/archive/v3-broadcast/`
+     - `git mv IMPLEMENTATION_PLAN.md docs/archive/v3-broadcast/IMPLEMENTATION_PLAN.md`
+     - `git mv docs/superpowers/plans/2026-04-26-phase-3-per-hub docs/archive/v3-broadcast/2026-04-26-phase-3-per-hub`
+     - Leave `docs/superpowers/plans/2026-04-26-phase-2-today/`, `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`, `docs/superpowers/plans/2026-04-26-phase-0-foundation/` in place (those are signed-off historical refs, not active).
+  4. **Create a fresh `IMPLEMENTATION_PLAN.md` at the repo root**, scoped to The Kicker. Source of truth: `/Users/tombutler/.claude/plans/sleepy-moseying-ripple.md` — read it in full and translate its sections into a ralph-loop-friendly plan with the same structure (`## Current status`, `## Active phase`, `## Ordered checklist`, `## Notes / discoveries`, `## Human notes for next iteration`). The new file's first unchecked checklist item must be **R0 — Deep research pass** (read-only, no code, no commits, plan-file edit only). Subsequent items: K0a → K0h → K1a–K1d → K2a–K2d, in that order, with the same descriptions as the master plan.
+  5. **Commit message:** `chore: close v3, archive plans, scaffold Kicker plan with R0 next` — single commit, all changes staged together. Tag at sign-off → none (this is bookkeeping).
+  6. **Validation:**
+     - `git tag --sort=-v:refname | grep "^v3\." | head -16` shows `v3.1`–`v3.15` continuously
+     - `ls IMPLEMENTATION_PLAN.md` shows the new Kicker plan
+     - `ls docs/archive/v3-broadcast/IMPLEMENTATION_PLAN.md` shows the archived v3 plan
+     - `head -100 IMPLEMENTATION_PLAN.md` confirms R0 is described as next active slice
+     - `git status` clean
+  7. **Stop after this slice.** Do not start R0 in the same iteration; R0 is the next loop's first slice.
+
+### Phase 3 — Per-hub *(superseded by Kicker pivot — bootstrap slice closes these out)*
 - [ ] **P3a — Fixtures Live** *(Manual-gated)* — `screens/fixtures/Live.svelte` mounting at `/fixtures/live`; in-play `<MatchCard>`s with `<LiveBanner>` rows above each. 30s polling that pauses on `document.hidden`. Plan: `docs/superpowers/plans/2026-04-26-phase-3-per-hub/p3a-fixtures-live.md`. Tag at sign-off → `v3.4`.
 - [ ] **P3b — Fixtures Matches** *(Manual-gated)* — `screens/fixtures/Matches.svelte` mounting at `/fixtures/matches`; replaces legacy `MatchList`. Date-grouped `<SectionHeader>` + `<MatchCard>`s, with a `<FilterChips>` row (All · Top 6 · Relegation · TV picks). Plan: `docs/superpowers/plans/2026-04-26-phase-3-per-hub/p3b-fixtures-matches.md`. Tag at sign-off → `v3.5`.
 - [ ] **P3c — Fixtures Standings** *(Manual-gated, supplemented by auto column-count + qualification-zone class assertions)* — `screens/fixtures/Standings.svelte` mounting at `/fixtures/standings`; replaces legacy `StandingsTable`. 20-row 13-col table with FormDot + PPG Spark + qualification-zone tints; click row → `/match/[next-id]`. Plan: `docs/superpowers/plans/2026-04-26-phase-3-per-hub/p3c-fixtures-standings.md`. Tag at sign-off → `v3.6`.
