@@ -57,28 +57,18 @@
 - [x] **P2c — Below-fold + Phase 2 checkpoint** *(Manual-gated, signed off 2026-04-26, tagged `v3.3`)* — `<SectionHeader>` + `<Spark>` of accuracy-by-gameweek; "How we predict →" link to `/settings/help`; 5 `<MatchRow>` rows from `predictionTracker.getRecentPredictions(5)`. Phase 2 Playwright checkpoint at `e2e/checkpoint-p2.spec.ts`. Plan: `docs/superpowers/plans/2026-04-26-phase-2-today/p2c-below-fold.md`.
 
 ### 🔀 Phase Pivot — The Kicker bootstrap (NEXT ACTIVE SLICE)
-- [ ] **K-bootstrap — Close v3 + scaffold The Kicker plan** *(Auto-gated, single bookkeeping commit, no code changes)* — Loop must execute the following operations atomically in one commit:
-  1. **Apply seven v3 sign-off tags retroactively** (these slices were code-complete but never tagged):
-     ```
-     git tag v3.4  49b3459    # P3a Fixtures Live
-     git tag v3.5  921ca23    # P3b Fixtures Matches
-     git tag v3.6  fa8646c    # P3c Fixtures Standings
-     git tag v3.7  45339b0    # P3-fixtures-cp
-     git tag v3.8  b8cf80e    # P4a Predictions This Week
-     git tag v3.9  a141e5c    # P4b Predictions Backtest
-     git tag v3.10 932be79    # P4c Predictions Log
-     ```
-     Tags are local-only; do NOT push. Continues the existing `v3.x` series (already at `v3.11`–`v3.15`) so v3 covers `v3.1` → `v3.15` continuously.
-  2. **Flip seven `[ ]` → `[x]` boxes** in this file at the items: P3a, P3b, P3c, P3-fixtures-cp, P4a, P4b, P4c (lines just below this section). Add ` *(Auto-archived 2026-05-03 during Kicker pivot bootstrap; tag vN.N already applied)*` to each.
+- [ ] **K-bootstrap — Close v3 + scaffold The Kicker plan** *(Auto-gated, single bookkeeping commit, no code changes, no tag operations)* — Tags `v3.4`–`v3.10` were applied manually in a prior session (per Ralph rule "do not auto-tag from the loop") — verify with `git tag --sort=v:refname | grep "^v3\."` showing `v3.1` through `v3.15` continuously, then proceed. Loop must execute the following operations atomically in one commit:
+  1. **Verify v3 tags already applied** — run `git tag --sort=v:refname | grep "^v3\."` and confirm the output is exactly `v3.1` through `v3.15` (15 tags, no gaps). If any are missing, STOP and surface the gap to the user; do NOT attempt to create tags from the loop.
+  2. **Flip seven `[ ]` → `[x]` boxes** in this file at the items: P3a, P3b, P3c, P3-fixtures-cp, P4a, P4b, P4c (lines just below this section). Append ` *(Auto-archived 2026-05-03 during Kicker pivot bootstrap; tag vN.N applied retroactively)*` to each, where vN.N is the slice's target tag (`v3.4`/`v3.5`/`v3.6`/`v3.7`/`v3.8`/`v3.9`/`v3.10` respectively).
   3. **Archive v3 plan tree:**
      - `mkdir -p docs/archive/v3-broadcast/`
      - `git mv IMPLEMENTATION_PLAN.md docs/archive/v3-broadcast/IMPLEMENTATION_PLAN.md`
      - `git mv docs/superpowers/plans/2026-04-26-phase-3-per-hub docs/archive/v3-broadcast/2026-04-26-phase-3-per-hub`
      - Leave `docs/superpowers/plans/2026-04-26-phase-2-today/`, `docs/superpowers/plans/2026-04-26-phase-1-matchcard/`, `docs/superpowers/plans/2026-04-26-phase-0-foundation/` in place (those are signed-off historical refs, not active).
   4. **Create a fresh `IMPLEMENTATION_PLAN.md` at the repo root**, scoped to The Kicker. Source of truth: `/Users/tombutler/.claude/plans/sleepy-moseying-ripple.md` — read it in full and translate its sections into a ralph-loop-friendly plan with the same structure (`## Current status`, `## Active phase`, `## Ordered checklist`, `## Notes / discoveries`, `## Human notes for next iteration`). The new file's first unchecked checklist item must be **R0 — Deep research pass** (read-only, no code, no commits, plan-file edit only). Subsequent items: K0a → K0h → K1a–K1d → K2a–K2d, in that order, with the same descriptions as the master plan.
-  5. **Commit message:** `chore: close v3, archive plans, scaffold Kicker plan with R0 next` — single commit, all changes staged together. Tag at sign-off → none (this is bookkeeping).
+  5. **Commit message:** `chore: close v3, archive plans, scaffold Kicker plan with R0 next` — single commit, all changes staged together. **No tag at sign-off** (this is bookkeeping).
   6. **Validation:**
-     - `git tag --sort=-v:refname | grep "^v3\." | head -16` shows `v3.1`–`v3.15` continuously
+     - `git tag --sort=v:refname | grep "^v3\."` shows `v3.1`–`v3.15` continuously (already verified in step 1)
      - `ls IMPLEMENTATION_PLAN.md` shows the new Kicker plan
      - `ls docs/archive/v3-broadcast/IMPLEMENTATION_PLAN.md` shows the archived v3 plan
      - `head -100 IMPLEMENTATION_PLAN.md` confirms R0 is described as next active slice
