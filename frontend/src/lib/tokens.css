@@ -1,0 +1,36 @@
+/*
+ * The Kicker — design tokens
+ * Mirror of docs/the-kicker-spec/tokens.md (single source of truth: that doc).
+ * Components consume var(--token-name) or the tailwind aliases in tailwind.config.js.
+ */
+
+:root {
+  --paper: #f4ecdb;
+  --paper-deep: #ebe1c9;
+  --paper-inset: #e1d6ba;
+  --paper-warm: #f8f0df;
+  --ink: #1a1611;
+  --ink-soft: #3d362a;
+  --ink-dim: #6b6249;
+  --ink-faint: #a39a7e;
+  --ink-ghost: #cdc4a8;
+  --rule: #c9bf9f;
+  --rule-strong: #9a8f6c;
+  --red: #9c1a1a;
+  --amber: #c47a14;
+  --green: #4a7c2a;
+
+  /* Default persona accent — overridden per persona below. */
+  --persona-accent: var(--ink);
+}
+
+[data-persona='voice'] { --persona-accent: #1a1611; }
+[data-persona='scouser'] { --persona-accent: #c8102e; }
+[data-persona='manc'] { --persona-accent: #da291c; }
+[data-persona='charmer'] { --persona-accent: #1a4f7a; }
+[data-persona='hardman'] { --persona-accent: #2c4d18; }
+[data-persona='volcano'] { --persona-accent: #c47a14; }
+[data-persona='wanderer'] { --persona-accent: #7a4a08; }
+[data-persona='philosopher'] { --persona-accent: #3d362a; }
+[data-persona='chaos'] { --persona-accent: #ef9b1f; }
+[data-persona='optimist'] { --persona-accent: #4a7c2a; }
