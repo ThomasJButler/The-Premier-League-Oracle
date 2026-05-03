@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { personaStore, STORAGE_KEY } from '$lib/stores/persona';
+  import MobileTicker from '$lib/components/shell/MobileTicker.svelte';
   import { shouldRedirectToOnboarding } from '$lib/utils/onboardingGate';
 
   let { children } = $props();
@@ -20,5 +21,10 @@
     }
   });
 </script>
+
+<!-- Mobile ticker: visible on mobile only. Desktop gets GeoffTicker inside KickerShell. -->
+<div class="lg:hidden">
+  <MobileTicker />
+</div>
 
 {@render children()}
