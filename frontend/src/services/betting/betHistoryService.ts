@@ -46,6 +46,7 @@ class BetHistoryService {
   }
 
   private loadBets(): void {
+    if (typeof localStorage === 'undefined') return;
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
@@ -59,6 +60,7 @@ class BetHistoryService {
   }
 
   private saveBets(): void {
+    if (typeof localStorage === 'undefined') return;
     try {
       const toStore = Object.fromEntries(this.bets);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
