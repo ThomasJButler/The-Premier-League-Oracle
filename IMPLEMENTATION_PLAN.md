@@ -74,7 +74,7 @@
 
 ## Human notes for next iteration
 
-*(Empty.)*
+- **2026-05-03 — all reference assets are in place — start R0.** User confirmed in chat that `the_kicker_handoff/screenshots/`, `the_kicker_handoff/design_reference/previews/`, and the rest of the handoff folder are complete and no further pixel/preview drops are pending. The R0 pre-flight gate at `## Active phase` (lines 22–24) is satisfied. Next ralph iteration should proceed directly to executing R0.
 
 ## Open follow-ups (not blocking MVP)
 
