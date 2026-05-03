@@ -117,7 +117,9 @@ class FootballDataAPI {
 
   constructor() {
     const envKey = import.meta.env.VITE_FOOTBALL_DATA_API_KEY;
-    const savedApiKey = localStorage.getItem('football_data_api_key');
+    const savedApiKey = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('football_data_api_key')
+      : null;
     const apiKey = envKey || savedApiKey || '';
     
     // Always route through the same-origin /api/football-data proxy.
@@ -139,7 +141,7 @@ class FootballDataAPI {
   
   public setApiKey(apiKey: string): void {
     this.config.apiKey = apiKey;
-    localStorage.setItem('football_data_api_key', apiKey);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('football_data_api_key', apiKey);
     // Clear cache when API key changes
     this.cache.clear();
     // Football-Data API: API key updated
@@ -151,7 +153,7 @@ class FootballDataAPI {
 
   public clearApiKey(): void {
     this.config.apiKey = '';
-    localStorage.removeItem('football_data_api_key');
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('football_data_api_key');
     this.cache.clear();
   }
   
