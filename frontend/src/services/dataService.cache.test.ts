@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * IndexedDB cache layer tests for DataService.
  *

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PredictionTracker, MODEL_VERSION, type StoredPrediction, type AccuracyStats, type CalibrationFactors } from './predictionTracker';
 

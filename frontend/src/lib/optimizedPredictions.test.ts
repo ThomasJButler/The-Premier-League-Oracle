@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OptimizedPredictor, MODEL_WEIGHTS, getActiveModelWeights, saveModelWeights, resetModelWeights, hasCustomWeights, orthogonaliseFormVsElo, argmaxScoreline } from './optimizedPredictions';
 import { EloRatingSystem, sharedEloSystem, PoissonPredictor } from './advancedPredictions';
