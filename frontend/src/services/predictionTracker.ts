@@ -101,6 +101,7 @@ class PredictionTracker {
 
   // Load predictions from localStorage
   private loadPredictions(): void {
+    if (typeof localStorage === 'undefined') return;
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
@@ -115,6 +116,7 @@ class PredictionTracker {
 
   // Save predictions to localStorage
   private savePredictions(): void {
+    if (typeof localStorage === 'undefined') return;
     try {
       const toStore = Object.fromEntries(this.predictions);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
