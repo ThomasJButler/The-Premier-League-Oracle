@@ -43,13 +43,13 @@ Open the app at the URL the dev server prints (usually `http://localhost:5173`).
 
 **Sweep checklist:**
 
-- [ ] `/fixtures/live` — at least one in-play MatchCard if matches are currently live (or empty-state copy if not)
-- [ ] `/fixtures/live` — LiveBanner above each card: pulsing red dot, MIN value, score, xG (when present)
-- [ ] `/fixtures/live` — leave the tab open for 60s — DevTools Network shows `getLiveMatches` firing every 30s
-- [ ] `/fixtures/live` — switch to a different tab for 30s, switch back — no extra fetches fired while hidden
-- [ ] `/fixtures/live` — toggle theme — every banner + MatchCard flips cleanly
-- [ ] Resize <1024px — banners stay legible, MatchCards stack vertically
-- [ ] Empty state: when no live matches, "No matches in play right now" copy renders centered
+- [X] `/fixtures/live` — at least one in-play MatchCard if matches are currently live (or empty-state copy if not)
+- [x] `/fixtures/live` — LiveBanner above each card: pulsing red dot, MIN value, score, xG (when present)
+- [X] `/fixtures/live` — leave the tab open for 60s — DevTools Network shows `getLiveMatches` firing every 30s
+- [X] `/fixtures/live` — switch to a different tab for 30s, switch back — no extra fetches fired while hidden
+- [X] `/fixtures/live` — toggle theme — every banner + MatchCard flips cleanly
+- [X] Resize <1024px — banners stay legible, MatchCards stack vertically
+- [X] Empty state: when no live matches, "No matches in play right now" copy renders centered
 
 **DO NOT flag** (known limitations, not regressions):
 - xG values may be absent on some live cards — football-data.org doesn't always populate them.
@@ -65,13 +65,13 @@ Open the app at the URL the dev server prints (usually `http://localhost:5173`).
 
 **Sweep checklist:**
 
-- [ ] `/fixtures/matches` — fixtures grouped by date, headers show "SAT 12 APR" + count
-- [ ] Filter chip "All" active by default; click "Top 6" — only fixtures involving a Top 6 team remain
-- [ ] Click "Relegation" — bottom-3 candidates filter applies (set is hardcoded; verify it makes sense)
-- [ ] Click "TV picks" — currently all matches (placeholder; OK for MVP per spec)
-- [ ] Toggle theme — chips + section headers + cards flip cleanly
-- [ ] Resize <1024px — chips stay legible, MatchCards stack vertically
-- [ ] Empty filter result: pick a filter that excludes everything (or clear cache) — empty-state copy renders
+- [X] `/fixtures/matches` — fixtures grouped by date, headers show "SAT 12 APR" + count
+- [X] Filter chip "All" active by default; click "Top 6" — only fixtures involving a Top 6 team remain
+- [X] Click "Relegation" — bottom-3 candidates filter applies (set is hardcoded; verify it makes sense)
+- [X] Click "TV picks" — currently all matches (placeholder; OK for MVP per spec)
+- [X] Toggle theme — chips + section headers + cards flip cleanly
+- [X] Resize <1024px — chips stay legible, MatchCards stack vertically
+- [X] Empty filter result: pick a filter that excludes everything (or clear cache) — empty-state copy renders
 
 **DO NOT flag** (known limitations, not regressions):
 - Relegation set is hardcoded for the MVP — P3c follow-up will derive it from standings.
@@ -85,14 +85,14 @@ Open the app at the URL the dev server prints (usually `http://localhost:5173`).
 
 **Sweep checklist:**
 
-- [ ] `/fixtures/standings` — 20 rows render, header row legible
-- [ ] Rows 1-4: subtle UCL tint (`bg-accent/8`); row 5: lighter UEL tint (`bg-accent/4`); rows 18-20: red destructive tint (`bg-destructive/6`)
-- [ ] Each row Form column shows exactly 5 dots; null-form rows show 5 muted "pending" dots
-- [ ] PPG Spark renders as a single-point line (proper history pending Phase 5 follow-up)
-- [ ] Click a row with an upcoming fixture — URL changes to `/match/[id]` (placeholder route currently)
-- [ ] Click a row with no upcoming fixture (e.g. season-end) — no navigation, no error
-- [ ] Toggle theme — zone bands flip cleanly, no contrast issues
-- [ ] Resize <1024px — table scrolls horizontally OR collapses gracefully (acceptable degradation; mobile-specific table treatment is P9b polish)
+- [X] `/fixtures/standings` — 20 rows render, header row legible
+- [X] Rows 1-4: subtle UCL tint (`bg-accent/8`); row 5: lighter UEL tint (`bg-accent/4`); rows 18-20: red destructive tint (`bg-destructive/6`)
+- [X] Each row Form column shows exactly 5 dots; null-form rows show 5 muted "pending" dots
+- [X] PPG Spark renders as a single-point line (proper history pending Phase 5 follow-up)
+- [X] Click a row with an upcoming fixture — URL changes to `/match/[id]` (placeholder route currently)
+- [X] Click a row with no upcoming fixture (e.g. season-end) — no navigation, no error
+- [X] Toggle theme — zone bands flip cleanly, no contrast issues
+- [X] Resize <1024px — table scrolls horizontally OR collapses gracefully (acceptable degradation; mobile-specific table treatment is P9b polish)
 
 **DO NOT flag** (known limitations, not regressions):
 - PPG Spark is single-point because per-gameweek standings history isn't stored yet — multi-point spark is a Phase 5 follow-up.
