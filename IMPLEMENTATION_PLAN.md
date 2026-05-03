@@ -21,14 +21,17 @@
 
 **Loop slice order:**
 
-1. ~~R0~~ ✓ (completed 2026-05-03, 9m27s, $3.30, +483 lines to master plan)
-2. ~~R0+~~ ✓ (completed 2026-05-03, +160 lines to master plan; expanded scope to 14 routes + 28 components, revised K1.0 cutover gate)
-3. **K0a (next active slice)** — first code-bearing slice, scaffold + tokens, auto-gated → `k0.1`
-4. **K0a–K0f** — auto-gated foundations (scaffold, persona data, desktop chrome, mobile chrome, parser+context, API layer)
-5. **K0g–K0l** — MVP screens (onboarding, persona UI, Today, Fixtures, Predictions, Settings); K0i / K0k / K0l are MVP-gate manual-sweeps
-6. **K0-cp** — K1.0 cutover sweep → tag `k1.0`, live deployment swaps v3 → The Kicker
-7. **K1a–K1i** — post-MVP screens (Oracle, Match-detail, Live, Insights/Archive, Column/Broadsheet, Notifications/Search, Roster, Landing, Rumours)
-8. **K2a–K2d** — Phase 2 (mobile responsive pass, audio, paywall, print)
+1. ~~R0~~ ✓ (completed 2026-05-03)
+2. ~~R0+~~ ✓ (completed 2026-05-03)
+3. ~~K0a–K0f~~ ✓ (all auto-gated foundations complete — scaffold, persona data, desktop chrome, mobile chrome, parser+context, API layer; tags `k0.1`–`k0.6`)
+4. ~~K0g~~ ✓ (onboarding 3-screen flow + first-run gate → `k0.7`)
+5. ~~K0h~~ ✓ (persona UI primitives → `k0.8`)
+6. ~~K0i~~ ✓ (Today screen + primitives → `k0.9`; double-ticker fixed; SSR localStorage guards shipped)
+7. **K0j (next active slice)** — Fixtures screen (manual-gated, MVP gate → `k0.10`)
+8. **K0k / K0l** — Predictions (moat, MVP gate) + Settings shell
+9. **K0-cp** — K1.0 cutover sweep → tag `k1.0`, live deployment swaps v3 → The Kicker
+10. **K1a–K1i** — post-MVP screens (Oracle, Match-detail, Live, Insights/Archive, Column/Broadsheet, Notifications/Search, Roster, Landing, Rumours)
+11. **K2a–K2d** — Phase 2 (mobile responsive pass, audio, paywall, print)
 
 ## Ordered checklist
 
@@ -149,7 +152,7 @@
 
 - **(K0i-beta Vitest working-directory rule, 2026-05-03)** Vitest must be invoked from the frontend/ directory (where vite.config.ts lives) for the SvelteKit vite plugin to resolve the $lib alias. Running node from the repo root without --root frontend bypasses the vite config; the SvelteKit plugin never registers, so all Svelte components that import from $lib/stores or $lib/personas fail to resolve. Rule: All future ralph loops must validate with: npm run test --prefix frontend -- --run. The test command in ClaudeRalph/CLAUDE.md should be updated to reflect this.
 
-- **(K0i-beta double-ticker cosmetic debt, 2026-05-03)** The root +layout.svelte renders GeoffTicker unconditionally, and KickerShell.svelte also renders GeoffTicker at the top of its grid. On desktop (where KickerShell is visible), both tickers appear in the DOM. This is tolerable for the MVP manual sweep (K0-cp) but should be resolved at K2a: add class="lg:hidden" to the layout GeoffTicker so it only shows on mobile.
+- **(addressed — K0i-β double-ticker, 2026-05-03)** Root `+layout.svelte` was mounting `<GeoffTicker />` globally AND `KickerShell.svelte` mounted its own — two tickers on desktop. **Fixed in this session:** removed `<GeoffTicker />` from `+layout.svelte` entirely; replaced with `<div class="lg:hidden"><MobileTicker /></div>` so mobile gets the 22px tape without KickerShell, and desktop gets the full `<GeoffTicker />` inside KickerShell's top-bar chrome. **Contract for all future screens:** never mount `<GeoffTicker />` or `<MobileTicker />` in a route's own markup — the layout + KickerShell combo handles it. Routes on mobile that use `<MobileHeader>` + `<MobileNav>` don't need to think about tickers at all.
 
 - **(K0f model IDs locked to plan strings, 2026-05-03)** Routes reference `claude-haiku-4-5` (chat, max_tokens 256) and `claude-sonnet-4-5` (broadsheet, max_tokens 4096) verbatim from the plan. Session-context ledger names Sonnet 4.6 as latest, but plan strings stand until the user calls a model bump (separate slice). If the SDK rejects either ID at runtime, that's a fix-slice, not a K0f change.
 
@@ -184,6 +187,10 @@
 - **(addressed) 2026-05-03 — plan-file relocation considered, reverted.** Tried co-locating `IMPLEMENTATION_PLAN.md` with the operating files at `ClaudeRalph/IMPLEMENTATION_PLAN.md`, but `.gitignore` line 49 (`/ClaudeRalph`) silently excludes the whole folder from git, which broke "git-tracked loop state" — exactly what an earlier commit (`125e896`) had restored. Plan stayed at repo root; gitignore left as-is. If the user later wants colocation with operating files, refine `.gitignore` to ignore only `/ClaudeRalph/.claude-run/` + `/ClaudeRalph/.claude/` rather than the whole folder, then move plan + run `git add ClaudeRalph/`.
 
 ## Human notes for next iteration
+
+- **2026-05-03 — K0i swept and signed off → `k0.9` tagged.** Today screen is live in the browser. Reviewed: cream newsprint aesthetic ✓, ticker ✓ (double-ticker resolved), KPI tiles (MODEL EDGE / STREAK red-accent) ✓, hero MatchSheetCard ✓, PunditQuoteBlock with "VOICE, POSSIBLY SURREY" attribution ✓, REST OF SLATE grid ✓, mobile bottom-nav 5 tabs ✓. Bug fixes shipped in-session: `footballData.ts` SSR localStorage guard, `betHistoryService.ts` SSR guard, Vite football-data proxy, `MODEL ACCURACY` percentage formatting (× 100 removed), double-ticker (layout → `lg:hidden MobileTicker` only). **Next slice is K0j — Fixtures screen** (auto-gated → `k0.10`). Loop should execute K0j on next iteration.
+
+*(Historical K0g/K0f/K0i-α notes below retained for reference — all addressed.)*
 
 - **2026-05-03 — K0i-α complete (Today primitives landed, tag deferred to K0i-β).** Shipped the four pure-SSR primitives that K0i-β's route will compose: `lib/components/today/KpiTile.svelte` (+ test, 4 cases — label/value/sub markers, optional red-accent value flip), `lib/components/match/MatchSheetCard.svelte` (+ test, 9 cases — corner ornaments, VERSUS prob readout rounded to whole percentages, 3-segment prob bar with team-color inline styles + ink-faint draw segment, optional headline/byline/pick/conf footer, screen-reader `aria-label` on the bar), `lib/components/match/PunditQuoteBlock.svelte` (+ test, 3 cases — 3px red left border, italic serif body, ink-dim attribution caption with `0.25em` tracking; accepts a `Snippet` for body content so consumers can format), `lib/components/match/CheersGeoffCallout.svelte` (+ test, 4 cases — dashed amber border, mono extrabold amber stat, italic serif body, GLORIOUSLY USELESS kicker label). **Validated:** `npm run check` 0/0/0 (418 files, +8 vs K0h's 410) + `npm run test -- --run` 438/438 (41 test files, +20 tests vs K0h). **No tag** (K0i-α is the alpha-half of `k0.9`; tag applies at K0i-β commit). Surfaced one re-usable discovery: SSR regex tests of `data-foo[^>]*` silently prefix-match `data-foo-block` siblings — anchor with `data-foo="` (see Notes/discoveries). **Next slice: K0i-β — Today route + data wiring + daily Cheers cache** (manual-gated, MVP gate → `k0.9`). When K0i-β fires it should: (1) ship `frontend/src/routes/+page.svelte` redirecting to `/today` (use SvelteKit's `redirect(307, '/today')` from a `+page.server.ts`); (2) ship `frontend/src/routes/today/+page.svelte` wrapping `<KickerShell active="today" kicker="…">` with a 4-up KPI strip (`NEXT KICKOFF`, `MODEL ACCURACY`, `MODEL EDGE` red-accent, `STREAK` red-accent — NOT `VALUE BETS` or `BANKROLL`), hero `MatchSheetCard` from `dataService.getMatches({days:1, hero:true})` with persona-voiced `<PunditQuoteBlock>` next to it, "REST OF SLATE" `<Rule>` divider + 3-up `MatchSheetCard` grid for remaining today fixtures, closing `<CheersGeoffCallout>` from a Haiku call cached for the day in localStorage keyed `kicker:cheers:YYYY-MM-DD:{personaId}`; (3) wire mobile variant via `<MobileNav active="today" />` + `<MobileHeader title="Today" action={pill} />` per K0h's reuse contract; (4) ~6 route tests on top of the 20 primitive tests already shipped (KPI strip renders 4 tiles in correct order, hero card receives correct fixture, persona switch updates pull-quote attribution, no betting copy `/value bets|bankroll/i`, mobile collapses KPI strip to horizontal scroll); (5) manual sweep checklist at `docs/the-kicker-spec/sweep-k0i.md`. **API contract for K0i-β:** primitives are locked — `MatchSheetCard` props shape, `KpiTile` accent flag, `PunditQuoteBlock` Snippet body, `CheersGeoffCallout` (stat, label, gloriouslyUseless). Don't refactor; consume.
 
