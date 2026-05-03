@@ -140,7 +140,7 @@
 
 ## Human notes for next iteration
 
-*(Empty — R0+ instructions are fully specified in its checklist line; no further human-channel input needed before the next loop iteration.)*
+- **2026-05-03 — go on K0a-ii.** User has reviewed the K0a-i mirror docs (`docs/the-kicker-spec/{tokens,personas,build-order,screens-inventory}.md`, all four landed in `0545f3c`) and authorises the destructive `frontend/` wipe + SvelteKit scaffold per K0a-ii. The loop should execute K0a-ii's full instruction set: (1) push `archive/v3-frontend` side-branch first as the durable safety net, (2) wipe and scaffold, (3) install deps, (4) write `tokens.css` from `docs/the-kicker-spec/tokens.md`, (5) wire fonts, (6) extend tailwind config, (7) salvage 11 v3 prediction/data-layer files into `frontend/src/lib/preserved/` read-only. Tag `k0.1` at slice commit. **Pre-flight verification before destruction:** the loop must run `git rev-parse origin/archive/v3-frontend 2>/dev/null` to confirm the archive branch exists on the remote after the push step, and abort with a discovery note if the push silently failed (no remote, etc.). The wipe step only runs if the verification passes.
 
 ## Open follow-ups (not blocking MVP)
 
