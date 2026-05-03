@@ -3,7 +3,6 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import GeoffTicker from '$lib/components/atoms/GeoffTicker.svelte';
   import { personaStore, STORAGE_KEY } from '$lib/stores/persona';
   import { shouldRedirectToOnboarding } from '$lib/utils/onboardingGate';
 
@@ -22,5 +21,4 @@
   });
 </script>
 
-<GeoffTicker />
 {@render children()}
