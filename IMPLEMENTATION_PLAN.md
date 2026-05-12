@@ -86,7 +86,9 @@
 
 - **2026-05-03 — K0k swept and signed off → `k0.11` tagged.** Predictions screen ships the moat surface: 4 KPI tiles (MODEL ACCURACY / BRIER / CALIBRATION / MODEL EDGE-red), per-row marketImplied ghost-bar overlay + valueEdge chip on the THIS WEEK'S PICKS grid, SETTLED RESULTS log with hit/exact ticks. K0j (Fixtures) also sweep-confirmed → `k0.10` tag applied. **Plan streamlined this iteration:** completed slices moved to `COMPLETED_ITEMS.md`; addressed Notes/discoveries also relocated. **Project-root `CLAUDE.md` added** (different concern from `ClaudeRalph/CLAUDE.md`): root explains "what this repo is" for fresh Claude sessions, ClaudeRalph explains "how to run the loop".
 
-- **2026-05-12 — K0l fully signed off → `k0.12` tagged.** K0l-α + K0l-β both `[x]`. Settings route ships full functionality: sub-tab routing via URL hash, live pundit picker, Save & reload + Remove buttons on both API keys, 3 PrefToggles on the Notifications panel. 508 tests, svelte-check 0/0. **Next slice is K0-cp — K1.0 cutover sweep.** This is the gate that flips the live deployment from v3 to The Kicker.
+- **2026-05-12 — K0-cp deliverables landed + swept clean.** Playwright checkpoint `frontend/e2e/checkpoint-k1-0.spec.ts` ships 5 sub-tests × 2 projects (desktop-chrome + mobile-chrome) = 10 total, all green (13.3s incl. build). Manual sweep doc `docs/the-kicker-spec/sweep-k1-0.md` (54 items) walked top-to-bottom by user, sign-off received. One discovery surfaced during sweep, logged as `K1j — Predict GW button` follow-up below. **Ready for the production cutover** — `kicker-mvp` → `main` rebase + push + Vercel auto-deploy + `k1.0` tag. Awaiting explicit user "go" on the push.
+
+- **2026-05-12 — K0l fully signed off → `k0.12` tagged.** K0l-α + K0l-β both `[x]`. Settings route ships full functionality: sub-tab routing via URL hash, live pundit picker, Save & reload + Remove buttons on both API keys, 3 PrefToggles on the Notifications panel. 508 tests, svelte-check 0/0.
 
 - **2026-05-12 — K0-cp terminator condition for the next loop:**
   - **Two distinct deliverables, ship in order:**
@@ -106,5 +108,6 @@
 - **Legal:** "Cheers, Geoff is cultural parody — clear with a lawyer before monetising" — K2c blocker, not K1.0 blocker.
 - **SEO / OG / structured data:** out of scope for MVP; landing (K1h) gets basic meta tags; deeper SEO is Phase 3.
 - **Cutover communication:** at K1.0 land, decide whether to redirect old v3 routes (`/today`, `/fixtures/*`, `/predictions/*`) → 404 or 301 to `/`. Recommend 301 to `/` for first 90 days, then drop redirects.
+- **Predict GW button (user-flagged at K0-cp sweep, 2026-05-12):** v3's `CommandStrip` had a `[Predict GW NN]` button that batched persisted predictions for all current-GW fixtures via `predictionTracker.storePrediction()`. The Kicker silently computes predictions on render but doesn't persist them, so the SETTLED RESULTS log on `/predictions` stays empty until matches finish + someone runs the v3 path. **Add as `K1j — Predict GW button` (post-K1.0 polish slice):** small slice (~30 LoC + 4 tests), drops a `[Predict GW NN]` chip into the `/today` KPI strip area (or its own row above `REST OF SLATE`), wires a `bulkPersistGameweekPredictions()` helper that iterates `gameweek.fixturesForGameweek` and calls `predictionTracker.storePrediction()` per fixture. Disabled when GW already fully predicted (`predictionTracker.getMatchPredictions(matchId).length > 0`). Could land alongside K1a Oracle since both touch the operator flow.
 </content>
 </invoke>
