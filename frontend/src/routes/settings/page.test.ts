@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { render } from 'svelte/server';
 import SettingsPage from './+page.svelte';
+import PrefToggle from '$lib/components/settings/PrefToggle.svelte';
+
+const ROUTE_SRC = readFileSync(
+  fileURLToPath(new URL('./+page.svelte', import.meta.url)),
+  'utf-8'
+);
 
 // Body snippet renders once per shell (desktop + mobile), so structural counts double.
 
@@ -81,5 +89,63 @@ describe('Settings route — K0l-α (shell + sub-tab routing + sections)', () =>
     expect(body).not.toMatch(/value bets/i);
     expect(body).not.toMatch(/bankroll/i);
     expect(body).not.toMatch(/kelly/i);
+  });
+});
+
+describe('Settings route — K0l-β (API-key persistence + PrefToggle)', () => {
+  it('wires real (non-disabled) bound inputs for both API keys', () => {
+    expect(ROUTE_SRC).toMatch(/data-input-football-data[^>]*bind:value=\{footballDataKey\}/);
+    expect(ROUTE_SRC).toMatch(/data-input-anthropic[^>]*bind:value=\{anthropicKey\}/);
+    expect(ROUTE_SRC).not.toMatch(/data-input-football-data[^>]*\bdisabled\b/);
+    expect(ROUTE_SRC).not.toMatch(/data-input-anthropic[^>]*\bdisabled\b/);
+  });
+
+  it('persists API keys to the documented localStorage keys', () => {
+    expect(ROUTE_SRC).toContain("'football_data_api_key'");
+    expect(ROUTE_SRC).toContain('ANTHROPIC_API_KEY_STORAGE_KEY');
+    expect(ROUTE_SRC).toContain("'kicker:notifications'");
+  });
+
+  it('declares the 3 notification toggles (match-start / model-edge / broadsheet-ready)', () => {
+    expect(ROUTE_SRC).toContain('id="match-start"');
+    expect(ROUTE_SRC).toContain('id="model-edge"');
+    expect(ROUTE_SRC).toContain('id="broadsheet-ready"');
+  });
+
+  it('PrefToggle primitive renders with documented data-pref-* markers when checked', () => {
+    const { body } = render(PrefToggle, {
+      props: {
+        id: 'sample',
+        label: 'Sample',
+        checked: true,
+        onchange: () => {}
+      }
+    });
+    expect(body).toContain('data-pref-toggle="sample"');
+    expect(body).toContain('data-pref-checked="true"');
+    expect(body).toContain('data-pref-switch="sample"');
+    expect(body).toContain('aria-checked="true"');
+    expect(body).toContain('role="switch"');
+  });
+
+  it('PrefToggle reflects checked=false in markers and aria', () => {
+    const { body } = render(PrefToggle, {
+      props: {
+        id: 'off-sample',
+        label: 'Off Sample',
+        checked: false,
+        onchange: () => {}
+      }
+    });
+    expect(body).toContain('data-pref-checked="false"');
+    expect(body).toContain('aria-checked="false"');
+  });
+
+  it('still renders no betting / Kelly / bankroll copy after β additions', () => {
+    const { body } = render(SettingsPage);
+    expect(body).not.toMatch(/value bets/i);
+    expect(body).not.toMatch(/bankroll/i);
+    expect(body).not.toMatch(/kelly/i);
+    expect(body).not.toMatch(/value edge/i);
   });
 });

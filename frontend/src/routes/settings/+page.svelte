@@ -5,9 +5,70 @@
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
   import MobilePersonaPill from '$lib/components/persona/MobilePersonaPill.svelte';
   import PunditPickerCard from '$lib/components/persona/PunditPickerCard.svelte';
+  import PrefToggle from '$lib/components/settings/PrefToggle.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
   import { personaStore } from '$lib/stores/persona';
   import { KICKER_PERSONA_ORDER, PERSONAS, type PersonaId } from '$lib/personas';
+  import { ANTHROPIC_API_KEY_STORAGE_KEY } from '$lib/constants';
+
+  const FOOTBALL_DATA_KEY = 'football_data_api_key';
+  const NOTIFICATIONS_KEY = 'kicker:notifications';
+
+  interface NotificationPrefs {
+    matchStart: boolean;
+    modelEdge: boolean;
+    broadsheetReady: boolean;
+  }
+
+  const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
+    matchStart: false,
+    modelEdge: false,
+    broadsheetReady: false
+  };
+
+  let footballDataKey = $state('');
+  let anthropicKey = $state('');
+  let notifications = $state<NotificationPrefs>({ ...DEFAULT_NOTIFICATIONS });
+
+  function persistFootballDataKey(value: string): void {
+    if (typeof localStorage === 'undefined') return;
+    if (value) localStorage.setItem(FOOTBALL_DATA_KEY, value);
+    else localStorage.removeItem(FOOTBALL_DATA_KEY);
+  }
+
+  function persistAnthropicKey(value: string): void {
+    if (typeof localStorage === 'undefined') return;
+    if (value) localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, value);
+    else localStorage.removeItem(ANTHROPIC_API_KEY_STORAGE_KEY);
+  }
+
+  function persistNotifications(next: NotificationPrefs): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(next));
+  }
+
+  function setNotification<K extends keyof NotificationPrefs>(
+    key: K,
+    value: NotificationPrefs[K]
+  ): void {
+    notifications = { ...notifications, [key]: value };
+    persistNotifications(notifications);
+  }
+
+  function hydrateFromStorage(): void {
+    if (typeof localStorage === 'undefined') return;
+    footballDataKey = localStorage.getItem(FOOTBALL_DATA_KEY) ?? '';
+    anthropicKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) ?? '';
+    const rawNotif = localStorage.getItem(NOTIFICATIONS_KEY);
+    if (rawNotif) {
+      try {
+        const parsed = JSON.parse(rawNotif) as Partial<NotificationPrefs>;
+        notifications = { ...DEFAULT_NOTIFICATIONS, ...parsed };
+      } catch {
+        notifications = { ...DEFAULT_NOTIFICATIONS };
+      }
+    }
+  }
 
   type TabId = 'pundit' | 'api' | 'display' | 'account' | 'notifications' | 'privacy';
 
@@ -51,6 +112,7 @@
 
   onMount(() => {
     syncFromHash();
+    hydrateFromStorage();
     window.addEventListener('hashchange', syncFromHash);
   });
 
@@ -137,11 +199,12 @@
           placeholder="paste key — saved to this device only"
           class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper-inset"
           data-input-football-data
-          disabled
+          bind:value={footballDataKey}
+          oninput={(e) => persistFootballDataKey((e.currentTarget as HTMLInputElement).value)}
         />
         <span class="font-serif italic text-[11px] text-ink-dim">
-          Persistence wires up in K0l-β. Configure via
-          <code class="font-mono">VITE_FOOTBALL_DATA_API_KEY</code> for now.
+          Stored in this browser only. Falls back to
+          <code class="font-mono">VITE_FOOTBALL_DATA_API_KEY</code> when empty.
         </span>
       </label>
       <label class="flex flex-col gap-1" data-field="anthropic">
@@ -154,10 +217,11 @@
           placeholder="bring-your-own-key (Touchline tier)"
           class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper-inset"
           data-input-anthropic
-          disabled
+          bind:value={anthropicKey}
+          oninput={(e) => persistAnthropicKey((e.currentTarget as HTMLInputElement).value)}
         />
         <span class="font-serif italic text-[11px] text-ink-dim">
-          Server-held key used by default; user override lands in K0l-β.
+          Server-held key used by default. Saved locally for future bring-your-own-key support.
         </span>
       </label>
     </div>
@@ -186,10 +250,30 @@
 
 {#snippet panelNotifications()}
   <section data-tab-panel="notifications">
-    <Rule kicker="NOTIFICATIONS" title="Match alerts" action="OFF · MVP" />
-    <p class="font-serif italic text-[12px] text-ink-dim" data-notifications-stub>
-      Preference toggles land in K0l-β; full notification feed at K1f.
-    </p>
+    <Rule kicker="NOTIFICATIONS" title="Match alerts" action="DEVICE LOCAL" />
+    <div class="flex flex-col divide-y divide-rule" data-notifications-toggles>
+      <PrefToggle
+        id="match-start"
+        label="Match start"
+        sub="Ping me when kick-off is imminent."
+        checked={notifications.matchStart}
+        onchange={(next) => setNotification('matchStart', next)}
+      />
+      <PrefToggle
+        id="model-edge"
+        label="Model edge"
+        sub="Surface fixtures where the model disagrees with the market."
+        checked={notifications.modelEdge}
+        onchange={(next) => setNotification('modelEdge', next)}
+      />
+      <PrefToggle
+        id="broadsheet-ready"
+        label="Broadsheet ready"
+        sub="Alert me when this gameweek's paper is generated."
+        checked={notifications.broadsheetReady}
+        onchange={(next) => setNotification('broadsheetReady', next)}
+      />
+    </div>
   </section>
 {/snippet}
 
