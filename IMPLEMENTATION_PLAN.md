@@ -8,7 +8,7 @@
 - **Completed items:** see `COMPLETED_ITEMS.md` for K0a–K0k slices, R0/R0+, and addressed discoveries.
 - **Live deployment:** still serving v3 from `main`. K1.0 cutover happens after K0-cp sign-off.
 - **Stack:** SvelteKit 2 + Svelte 5 (runes mode) + Vite 6 + Vitest 3 + Tailwind 3 + `@anthropic-ai/sdk` + `@sveltejs/adapter-vercel`.
-- **Test count baseline:** 492+ tests across 47+ files (svelte-check 0/0).
+- **Test count baseline:** 502 tests across 48 files (svelte-check 0/0).
 - **Tag track:** `k0.1`–`k0.11` applied. K1.0 lands at K0-cp; `k1.x` for polish, `k2.x` for Phase 2.
 - **Validation gates:**
   - **Auto-gated** = `npm run check --prefix frontend` 0/0 + `npm run test --prefix frontend -- --run` green → ralph commits + flips `[x]` autonomously.
@@ -21,7 +21,7 @@
 
 **Loop slice order (remaining):**
 
-1. **K0l (next active slice)** — Settings shell (manual-gated → `k0.12`)
+1. **K0l (active, two-phase)** — Settings shell. α shipped (shell + sub-tab routing + sections + live pundit picker, manual sweep pending). **β is the next active slice**: API-key persistence + `PrefToggle` (manual-gated → `k0.12`)
 2. **K0-cp** — K1.0 cutover sweep → `k1.0`, live deployment swaps v3 → Kicker
 3. **K1a–K1i** — post-MVP screens (Oracle, Match-detail, Live, Insights/Archive, Column/Broadsheet, Notifications/Search, Roster, Landing, Rumours)
 4. **K2a–K2d** — Phase 2 (mobile responsive pass, audio, paywall, print)
@@ -30,7 +30,8 @@
 
 ### Phase K0 — MVP screens (final pre-K1.0 slice)
 
-- [ ] **K0l — Settings shell** *(Manual-gated, MVP gate)* → `k0.12` — `frontend/src/routes/settings/+page.svelte` per `kicker-settings.html`. Wraps KickerShell/MobileNav with `active="settings"`. Sub-tabs (URL hash or query param): `pundit / api / display / account / notifications / privacy`. Pundit tab uses `PunditPickerCard` from K0h (canonical persona switch — render `<div class="grid grid-cols-2 gap-2">{#each KICKER_PERSONA_ORDER as id}<PunditPickerCard persona={PERSONAS[id]} selected={$personaStore===id} onclick={personaStore.set} />{/each}</div>`). API tab: Football-Data API key input + bring-your-own-Anthropic-key option (saved to localStorage, used by `/api/chat` if present, else server-held key fallback). Notifications tab: simple `PrefToggle` list (not full notification feed — that's K1f). Account tab: minimal (no auth at MVP — sign-in stub goes here in K2c). **Tests:** ~8 covering persona switch via picker card, API key persistence, sub-tab navigation via hash, notification toggles persist. **Manual sweep checklist** at `docs/the-kicker-spec/sweep-k0l.md`: persona switch via settings reflects across Today/Predictions/sidebar within one render frame.
+- [ ] **K0l-α — Settings shell + sub-tab routing + sections** *(Manual-gated, sweep pending)* → tag held until β — `frontend/src/routes/settings/+page.svelte` per `kicker-settings.html`. Wraps KickerShell (desktop, `active="settings"`) + MobileHeader/MobileNav (mobile, `active="more"`). Sub-tabs via URL hash: `pundit / api / display / account / notifications / privacy`; left rail buttons drive `activeTab` state and `history.replaceState`; `hashchange` listener syncs back/forward navigation; SSR default `pundit` (no hash visible at render). Pundit tab renders the canonical 10×`PunditPickerCard` grid wired straight to `personaStore.set` (live switch, no save button — onclick = mutation). API/Display/Account/Notifications/Privacy panels render their `Rule` headers + descriptive copy; API inputs render disabled (persistence shipped in β). **10 tests** (`src/routes/settings/page.test.ts`) covering: desktop+mobile shells, settings active in KickerShell, `more` active in MobileNav, all 6 sub-nav rows by `data-subnav-id`, default-active `pundit`, 10 picker cards rendered, default-selected card matches `voice`, no other panels render initially, no betting copy. **Manual sweep checklist:** `docs/the-kicker-spec/sweep-k0l.md`.
+- [ ] **K0l-β — Settings persistence (next active slice)** *(Manual-gated, MVP gate)* → `k0.12` — Build on α: enable the two disabled API inputs (`data-input-football-data`, `data-input-anthropic`) and persist to `localStorage` (`football_data_api_key` already wired in `services/api/footballData.ts`; `anthropic_api_key` already wired via `ANTHROPIC_API_KEY_STORAGE_KEY` in `$lib/constants`). Ship `PrefToggle` primitive (two-tone slider, proper Svelte component — do NOT replicate the inline-`useState`-in-`.map()` hook-rule violation from the JSX prototype) + 3-toggle list on the Notifications panel (match-start / value-edge → renamed `model-edge` / broadsheet-ready), persisted to `localStorage` key `kicker:notifications`. `/api/chat` already reads `ANTHROPIC_API_KEY_STORAGE_KEY` via the server-held fallback path — verify the bring-your-own-key flow forwards the user's key as a header (or short-circuit on the client when present). **Tests:** ~6 covering API-key round-trip, `PrefToggle` persistence, notifications panel toggle count.
 
 ### Phase K0-cp — K1.0 cutover sweep (manual)
 
@@ -76,6 +77,8 @@
 - **K-restructure mapping** — slice IDs deviate from R0+'s exact proposal: R0+ K0i (match-detail) → this K1b, R0+ K0j (live) → K1c, R0+ K0k → K0k preserved, R0+ K0l → K1d/K1e split, R0+ K0m → K0l/K1f split, R0+ K1e (rumours) → K1i. K0j (Fixtures) added explicitly for mobile bottom-nav.
 
 ## Human notes for next iteration
+
+- **2026-05-12 — K0l-α shipped (commit pending sweep).** Settings route lives at `/settings`, sub-tab routing via URL hash, all 6 panels render, pundit picker is live-wired (clicking a `PunditPickerCard` calls `personaStore.set` directly — no save button, matches the K0d "switch is immediate" UX). Test count 492 → 502 (10 new tests in `src/routes/settings/page.test.ts`). svelte-check 0/0. **Tag deliberately not applied** — `k0.12` holds until K0l-β lands so the user gets one cutover sweep covering the full settings surface. **Next loop runs K0l-β** (API-key persistence + `PrefToggle`) per the slice description above. **Sweep doc:** `docs/the-kicker-spec/sweep-k0l.md` already gates α (manual sweep can be folded into the K0l-β sweep at user discretion).
 
 - **2026-05-03 — K0k swept and signed off → `k0.11` tagged.** Predictions screen ships the moat surface: 4 KPI tiles (MODEL ACCURACY / BRIER / CALIBRATION / MODEL EDGE-red), per-row marketImplied ghost-bar overlay + valueEdge chip on the THIS WEEK'S PICKS grid, SETTLED RESULTS log with hit/exact ticks. K0j (Fixtures) also sweep-confirmed → `k0.10` tag applied. **Plan streamlined this iteration:** completed slices moved to `COMPLETED_ITEMS.md`; addressed Notes/discoveries also relocated. **Project-root `CLAUDE.md` added** (different concern from `ClaudeRalph/CLAUDE.md`): root explains "what this repo is" for fresh Claude sessions, ClaudeRalph explains "how to run the loop".
 
