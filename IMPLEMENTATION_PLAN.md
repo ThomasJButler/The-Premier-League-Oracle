@@ -2,14 +2,14 @@
 
 ## Current status
 
-- **Branch:** `kicker-mvp`
+- **Branch:** `Kicker-Development` (active dev = `kicker-mvp`; stable preview = `Kicker-Development`; live Oracle = `main` — untouched).
 - **Source spec:** `/Users/tombutler/.claude/plans/sleepy-moseying-ripple.md` — master plan with verbatim persona prompts, component contracts, and screen layout grammars. Read in full before any K-slice.
 - **Handoff folder (gitignored, read-only reference):** `the_kicker_handoff/` — JSX prototypes + HTML preview snapshots. Do NOT commit; do NOT delete.
-- **Completed items:** see `COMPLETED_ITEMS.md` for K0a–K0k slices, R0/R0+, and addressed discoveries.
-- **Live deployment:** still serving v3 from `main`. K1.0 cutover happens after K0-cp sign-off.
+- **Completed items:** see `COMPLETED_ITEMS.md` for K0a–K0l slices + K0-cp, R0/R0+, and addressed discoveries.
+- **Live deployment:** `main` continues serving v3 Oracle — UNTOUCHED until full Kicker post-K2 launch (per user 2026-05-12: "I won't merge into main until we are mostly done with the whole Kicker project"). Kicker preview lives on `Kicker-Development` via Vercel auto-deploy.
 - **Stack:** SvelteKit 2 + Svelte 5 (runes mode) + Vite 6 + Vitest 3 + Tailwind 3 + `@anthropic-ai/sdk` + `@sveltejs/adapter-vercel`.
-- **Test count baseline:** 508 tests across 48 files (svelte-check 0/0).
-- **Tag track:** `k0.1`–`k0.12` applied (all MVP pre-cutover slices). K1.0 lands at K0-cp; `k1.x` for polish, `k2.x` for Phase 2.
+- **Test count baseline:** 508 tests across 48 files + 10 Playwright cases (svelte-check 0/0).
+- **Tag track:** `k0.1`–`k0.12` + `k1.0` applied (k1.0 at `b2d29b2` on `Kicker-Development`, NOT on `main` — production cutover deferred). `k1.x` for post-MVP screens, `k2.x` for Phase 2.
 - **Validation gates:**
   - **Auto-gated** = `npm run check --prefix frontend` 0/0 + `npm run test --prefix frontend -- --run` green → ralph commits + flips `[x]` autonomously.
   - **Manual-gated** = ralph commits when validation passes, then stops with a one-paragraph summary. Human flips `[x]` after sweep.
@@ -17,14 +17,16 @@
 
 ## Active phase
 
-**Pivot to The Kicker** is in execution. MVP is 6 routes (Today + Fixtures + Predictions + Settings + Onboarding + Oracle stub) with the predictions moat surfacing on `/predictions`. After K0l (Settings) ships, K0-cp manual sweep gates the K1.0 cutover that swaps the live deployment from v3 to The Kicker.
+**Pivot to The Kicker** is in execution. MVP shipped + K1.0 tagged on `Kicker-Development` (b2d29b2). Production `main` cutover deferred until post-K2. Active work: K1a–K1i post-MVP screens, building toward the full Kicker experience before any main-cutover decision.
 
 **Loop slice order (remaining):**
 
-1. ~~K0l~~ ✓ (α+β signed off 2026-05-12 → `k0.12`; Save/Remove buttons fix for API keys landed at `bed1d4a`)
-2. **K0-cp (next active slice)** — K1.0 cutover sweep → `k1.0`, live deployment swaps v3 → Kicker
-3. **K1a–K1i** — post-MVP screens (Oracle, Match-detail, Live, Insights/Archive, Column/Broadsheet, Notifications/Search, Roster, Landing, Rumours)
-4. **K2a–K2d** — Phase 2 (mobile responsive pass, audio, paywall, print)
+1. ~~K0l~~ ✓ (α+β signed off 2026-05-12 → `k0.12`)
+2. ~~K0-cp~~ ✓ (sweep signed off 2026-05-12; `k1.0` tagged at `b2d29b2` on `Kicker-Development` — production cutover to `main` deferred indefinitely per user)
+3. **K1a (next active slice)** — Oracle chat home → `k1.1`
+4. **K1b–K1i** — Match-detail, Live, Insights/Archive, Column/Broadsheet, Notifications/Search, Roster, Landing, Rumours
+5. **K1j** — Predict GW button (post-MVP polish, user-flagged at K0-cp sweep)
+6. **K2a–K2d** — Phase 2 (mobile responsive pass, audio, paywall, print)
 
 ## Ordered checklist
 
@@ -35,7 +37,7 @@
 
 ### Phase K0-cp — K1.0 cutover sweep (manual)
 
-- [~] **K0-cp — K1.0 cutover sweep** *(Manual-gated, sign-off via spec sweep at `docs/the-kicker-spec/sweep-k1-0.md`)* → `k1.0` — **First user-shippable slice; live deployment cuts over from v3 to The Kicker after sweep passes.** **Auto-half shipped 2026-05-12:** `frontend/e2e/checkpoint-k1-0.spec.ts` (5 sub-tests × 2 projects = 10 cases, all green; spec uses `:visible` pseudo to scope to active mobile/desktop shell) + `frontend/playwright.config.ts` extended with `desktop-chrome` (Desktop Chrome, 1440×900) + `mobile-chrome` (Pixel 7) projects + `baseURL` + `reuseExistingServer` + `frontend/docs/the-kicker-spec/sweep-k1-0.md` (~70-item sweep + cutover playbook + rollback). **Manual-half remaining:** user runs the sweep doc top-to-bottom against `npm run dev`, ticks every box, then executes the cutover playbook (rebase → ff → push → Vercel deploys → smoke-test → tag `k1.0`). **Loop must NOT run cutover commands** (no `git push origin main`, no `vercel deploy`, no `git tag k1.0` — those are human actions in this chat after sweep sign-off). After cutover, flip K0-cp to `[x]`, move into `COMPLETED_ITEMS.md`, promote K1a as the next active slice.
+- [x] **K0-cp — K1.0 cutover sweep** *(Manual-gated; signed off 2026-05-12 → `k1.0` at `b2d29b2`)* — **Cutover semantics revised:** production `main` swap deferred indefinitely per user instruction ("I won't merge into main until we are mostly done with the whole Kicker project"). Instead, `Kicker-Development` branch was created at the post-sweep HEAD and tagged `k1.0`; Vercel auto-deploys it as a preview. `main` remains on v3 Oracle. Shipped: `frontend/e2e/checkpoint-k1-0.spec.ts` (5 sub-tests × 2 projects = 10 cases, all green) + `frontend/playwright.config.ts` extended with `desktop-chrome` + `mobile-chrome` + `baseURL` + `reuseExistingServer` + `docs/the-kicker-spec/sweep-k1-0.md` (54-item checklist walked top-to-bottom by user). One follow-up surfaced: see `K1j — Predict GW button` in Open follow-ups.
 
 ### Phase K1 — Post-MVP screens
 
