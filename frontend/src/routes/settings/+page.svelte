@@ -42,6 +42,32 @@
     else localStorage.removeItem(ANTHROPIC_API_KEY_STORAGE_KEY);
   }
 
+  // API keys are read by the salvaged services in their constructors
+  // (footballData.ts, etc.) so changes only take effect on next page load.
+  // Save + Remove both write localStorage and then reload so the user
+  // sees the new state reflected app-wide immediately.
+  function saveFootballDataKey(): void {
+    persistFootballDataKey(footballDataKey.trim());
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+
+  function removeFootballDataKey(): void {
+    footballDataKey = '';
+    persistFootballDataKey('');
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+
+  function saveAnthropicKey(): void {
+    persistAnthropicKey(anthropicKey.trim());
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+
+  function removeAnthropicKey(): void {
+    anthropicKey = '';
+    persistAnthropicKey('');
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+
   function persistNotifications(next: NotificationPrefs): void {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(next));
@@ -189,41 +215,81 @@
   <section data-tab-panel="api">
     <Rule kicker="API & DATA" title="Connections" action="LOCAL ONLY" />
     <div class="grid grid-cols-1 gap-4 mb-6" data-api-fields>
-      <label class="flex flex-col gap-1" data-field="football-data">
-        <span class="font-sans text-[9px] tracking-[0.25em] font-bold text-red">
+      <div class="flex flex-col gap-1" data-field="football-data">
+        <label for="kicker-input-football-data" class="font-sans text-[9px] tracking-[0.25em] font-bold text-red">
           FOOTBALL-DATA.ORG API KEY
-        </span>
+        </label>
         <input
+          id="kicker-input-football-data"
           type="password"
           autocomplete="off"
           placeholder="paste key — saved to this device only"
           class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper-inset"
           data-input-football-data
           bind:value={footballDataKey}
-          oninput={(e) => persistFootballDataKey((e.currentTarget as HTMLInputElement).value)}
         />
-        <span class="font-serif italic text-[11px] text-ink-dim">
+        <div class="flex gap-2 mt-1" data-actions="football-data">
+          <button
+            type="button"
+            class="font-sans text-[10px] tracking-[0.25em] font-bold uppercase bg-ink text-paper px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            data-action="save-football-data"
+            disabled={!footballDataKey.trim()}
+            onclick={saveFootballDataKey}
+          >
+            Save & reload
+          </button>
+          <button
+            type="button"
+            class="font-sans text-[10px] tracking-[0.25em] font-bold uppercase bg-paper-inset text-ink-dim border border-rule px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            data-action="remove-football-data"
+            disabled={!footballDataKey.trim()}
+            onclick={removeFootballDataKey}
+          >
+            Remove
+          </button>
+        </div>
+        <span class="font-serif italic text-[11px] text-ink-dim mt-1">
           Stored in this browser only. Falls back to
           <code class="font-mono">VITE_FOOTBALL_DATA_API_KEY</code> when empty.
         </span>
-      </label>
-      <label class="flex flex-col gap-1" data-field="anthropic">
-        <span class="font-sans text-[9px] tracking-[0.25em] font-bold text-red">
+      </div>
+      <div class="flex flex-col gap-1" data-field="anthropic">
+        <label for="kicker-input-anthropic" class="font-sans text-[9px] tracking-[0.25em] font-bold text-red">
           ANTHROPIC API KEY · OPTIONAL
-        </span>
+        </label>
         <input
+          id="kicker-input-anthropic"
           type="password"
           autocomplete="off"
           placeholder="bring-your-own-key (Touchline tier)"
           class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper-inset"
           data-input-anthropic
           bind:value={anthropicKey}
-          oninput={(e) => persistAnthropicKey((e.currentTarget as HTMLInputElement).value)}
         />
-        <span class="font-serif italic text-[11px] text-ink-dim">
+        <div class="flex gap-2 mt-1" data-actions="anthropic">
+          <button
+            type="button"
+            class="font-sans text-[10px] tracking-[0.25em] font-bold uppercase bg-ink text-paper px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            data-action="save-anthropic"
+            disabled={!anthropicKey.trim()}
+            onclick={saveAnthropicKey}
+          >
+            Save & reload
+          </button>
+          <button
+            type="button"
+            class="font-sans text-[10px] tracking-[0.25em] font-bold uppercase bg-paper-inset text-ink-dim border border-rule px-3 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            data-action="remove-anthropic"
+            disabled={!anthropicKey.trim()}
+            onclick={removeAnthropicKey}
+          >
+            Remove
+          </button>
+        </div>
+        <span class="font-serif italic text-[11px] text-ink-dim mt-1">
           Server-held key used by default. Saved locally for future bring-your-own-key support.
         </span>
-      </label>
+      </div>
     </div>
   </section>
 {/snippet}
