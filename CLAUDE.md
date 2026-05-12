@@ -8,7 +8,11 @@ A Premier League prediction platform with two faces:
 
 **The Kicker** (currently being built on `kicker-mvp` branch) — A newspaper-styled rebuild of the Oracle as a tabloid broadsheet with 10 AI columnist personas (Macca from Birkenhead, Mickey from Dagenham, The Gaffer, Rupes, etc.). Same backend, same prediction engine, completely different UX metaphor. Each columnist is a system-prompt + voice-fingerprint; the chat surface (Oracle) becomes one feature in a larger newspaper app with Today / Fixtures / Predictions / Insights / Settings hubs.
 
-The Kicker is the MVP target. After K1.0 cutover, `main` swaps from v3 to The Kicker; the old v3 broadcast redesign is preserved on the `archive/v3-frontend` branch for history.
+The Kicker MVP is complete (tag `k1.0` at `b2d29b2`). Branch model:
+- **`main`** — live Oracle (v3), still serving production traffic. **Not touched until full Kicker post-K2 launch decision.**
+- **`Kicker-Development`** — stable Kicker MVP snapshot. Vercel auto-deploys preview URL for sharing/testing.
+- **`kicker-mvp`** — active development; K1.x post-MVP polish slices land here, promoted to `Kicker-Development` periodically.
+- **`archive/v3-frontend`** — v3 broadsheet codebase preserved for history + rollback safety-net.
 
 ## Architecture
 
@@ -55,6 +59,6 @@ The Kicker is the MVP target. After K1.0 cutover, `main` swaps from v3 to The Ki
 
 ## Loop status (high-level)
 
-- **Tag track:** `k0.1`–`k0.11` applied. Next slice ships `k0.12` (K0l Settings shell), then K0-cp manual sweep gates `k1.0` cutover.
-- **MVP routes shipped on `kicker-mvp`:** `/onboarding`, `/today`, `/fixtures`, `/predictions`. Remaining for MVP: `/settings` (K0l). After cutover: Oracle / Match-detail / Live / Insights / Column / Broadsheet / Roster / Landing / Rumours over K1a–K1i.
+- **Tag track:** `k0.1`–`k0.12` + `k1.0` applied (MVP-complete on `Kicker-Development`). `k1.x` continues for post-MVP polish slices; production main-cutover tag TBD when launch chosen.
+- **MVP routes shipped on `Kicker-Development`:** `/onboarding`, `/today`, `/fixtures`, `/predictions`, `/settings`. **Next:** K1a Oracle (chat home), then Match-detail / Live / Insights / Column / Broadsheet / Roster / Landing / Rumours over K1b–K1i.
 - **Phase 2 (post-MVP):** mobile responsive pass + ElevenLabs audio per persona + Stripe paywall + Print Run logistics (K2a–K2d).
