@@ -8,6 +8,9 @@
   import UserMessage from '$lib/components/chat/UserMessage.svelte';
   import GeoffComposer from '$lib/components/chat/GeoffComposer.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
+  import ThreadListRail from '$lib/components/oracle/ThreadListRail.svelte';
+  import WatchlistRail from '$lib/components/oracle/WatchlistRail.svelte';
+  import TodayFixtureRail from '$lib/components/oracle/TodayFixtureRail.svelte';
   import { personaStore } from '$lib/stores/persona';
   import { threadsStore, toApiMessages, type OracleMessage } from '$lib/stores/threads';
   import { streamChat } from '$lib/oracle/streamChat';
@@ -91,9 +94,26 @@
 
 <div class="hidden lg:block" data-desktop-shell>
   <KickerShell active="oracle" kicker="ASK · LISTEN · LEARN" title="ORACLE">
-    {@render body()}
+    <div class="kicker-oracle__layout grid gap-6" data-oracle-layout>
+      <div data-oracle-left-rail>
+        <ThreadListRail />
+        <WatchlistRail />
+      </div>
+      <div class="min-w-0">
+        {@render body()}
+      </div>
+      <div data-oracle-right-rail>
+        <TodayFixtureRail />
+      </div>
+    </div>
   </KickerShell>
 </div>
+
+<style>
+  .kicker-oracle__layout {
+    grid-template-columns: 240px minmax(0, 1fr) 320px;
+  }
+</style>
 
 <div class="lg:hidden flex flex-col min-h-screen" data-mobile-shell data-oracle-mobile>
   <MobileHeader title="Oracle" sub={persona.short.toUpperCase()}>

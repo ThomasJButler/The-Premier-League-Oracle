@@ -72,6 +72,16 @@ describe('Oracle route — K1a-β.2 (composer wired to /api/chat)', () => {
     expect(body).not.toMatch(/kelly/i);
   });
 
+  it('mounts the three desktop rails exactly once (desktop-only layout)', () => {
+    const { body } = render(OraclePage);
+    expect((body.match(/data-oracle-layout/g) ?? []).length).toBe(1);
+    expect((body.match(/data-oracle-left-rail/g) ?? []).length).toBe(1);
+    expect((body.match(/data-oracle-right-rail/g) ?? []).length).toBe(1);
+    expect((body.match(/data-thread-rail(?![-\w])/g) ?? []).length).toBe(1);
+    expect((body.match(/data-watchlist-rail(?![-\w])/g) ?? []).length).toBe(1);
+    expect((body.match(/data-today-fixture-rail/g) ?? []).length).toBe(1);
+  });
+
   it('drives the GeoffMessage avatar from var(--persona-accent), not inline hex', () => {
     expect(GEOFF_MSG_SRC).toContain('var(--persona-accent');
     const styleBlock = GEOFF_MSG_SRC.match(/<style>[\s\S]*<\/style>/)?.[0] ?? '';
