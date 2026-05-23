@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
   import KickerShell from '$lib/components/shell/KickerShell.svelte';
   import MobileHeader from '$lib/components/shell/MobileHeader.svelte';
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
@@ -8,27 +9,48 @@
   import GeoffComposer from '$lib/components/chat/GeoffComposer.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
   import { personaStore } from '$lib/stores/persona';
+  import { threadsStore, toApiMessages, type OracleMessage } from '$lib/stores/threads';
+  import { streamChat } from '$lib/oracle/streamChat';
   import { getPersona, type PersonaId } from '$lib/personas';
 
   const persona = $derived(getPersona($personaStore as PersonaId));
+  const activeThread = $derived(
+    $threadsStore.threads.find((t) => t.id === $threadsStore.activeThreadId) ?? null
+  );
+  const messages = $derived<readonly OracleMessage[]>(activeThread?.messages ?? []);
 
-  interface SeedTurn {
-    role: 'user' | 'geoff';
-    body: string;
-    sublabel?: string;
-    marginalia?: string;
-  }
+  function handleSubmit(text: string): void {
+    const trimmed = text.trim();
+    if (trimmed.length === 0) return;
 
-  // Seed conversation is presentational only — K1a-β wires real /api/chat streaming.
-  const SEED: readonly SeedTurn[] = [
-    { role: 'user', body: 'Talk me through Saturday.' },
-    {
-      role: 'geoff',
-      body: "Right then. Liverpool at home to Tottenham — five-game streak at Anfield, haven't conceded since February. Spurs? Three losses on the road in their last six. Looks like a stroll on paper. Football, of course, has read the script and torn it up before now.",
-      sublabel: 'GW35',
-      marginalia: 'Geoff has been right 64% of the time this season. Make of that what you will.'
+    let threadId = $threadsStore.activeThreadId;
+    if (!threadId) {
+      threadId = threadsStore.createThread().id;
     }
-  ] as const;
+
+    const now = Date.now();
+    threadsStore.appendMessage(threadId, { role: 'user', content: trimmed, timestamp: now });
+    threadsStore.appendMessage(threadId, {
+      role: 'assistant',
+      content: '',
+      timestamp: now,
+      streaming: true
+    });
+
+    const fresh = get(threadsStore).threads.find((t) => t.id === threadId);
+    if (!fresh) return;
+    const assistantIndex = fresh.messages.length - 1;
+    const wireMessages = toApiMessages(fresh.messages);
+
+    void streamChat(
+      {
+        personaId: $personaStore,
+        messages: wireMessages,
+        threadId
+      },
+      assistantIndex
+    );
+  }
 </script>
 
 {#snippet body()}
@@ -37,27 +59,32 @@
       <Rule
         kicker="THE ORACLE · LIVE CONVERSATION"
         title="In conversation with {persona.name}"
-        action="STREAMING SOON"
+        action={messages.length === 0 ? 'READY' : 'STREAMING'}
       />
     </div>
 
     <div class="kicker-oracle__thread flex-1 px-1" data-oracle-thread aria-live="polite">
-      {#each SEED as turn, i (i)}
-        {#if turn.role === 'user'}
-          <UserMessage body={turn.body} />
-        {:else}
-          <GeoffMessage
-            body={turn.body}
-            {persona}
-            sublabel={turn.sublabel}
-            marginalia={turn.marginalia}
-          />
-        {/if}
-      {/each}
+      {#if messages.length === 0}
+        <p
+          class="kicker-oracle__empty font-serif italic text-[13px] text-ink-dim pt-6"
+          data-oracle-empty
+        >
+          Right then — ask {persona.name} anything. Saturday's slate, Tuesday's
+          ghosts, last season's heartbreaks. Pick a prompt or type your own.
+        </p>
+      {:else}
+        {#each messages as msg, i (i)}
+          {#if msg.role === 'user'}
+            <UserMessage body={msg.content} />
+          {:else}
+            <GeoffMessage body={msg.content} {persona} />
+          {/if}
+        {/each}
+      {/if}
     </div>
 
     <div class="kicker-oracle__composer mt-4" data-oracle-composer-host>
-      <GeoffComposer {persona} />
+      <GeoffComposer {persona} onsubmit={handleSubmit} />
     </div>
   </div>
 {/snippet}
