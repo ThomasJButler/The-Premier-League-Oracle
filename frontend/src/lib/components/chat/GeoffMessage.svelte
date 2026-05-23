@@ -1,5 +1,8 @@
 <script lang="ts">
   import type { PersonaConfig } from '$lib/personas';
+  import { parseInlineTokens } from '$lib/oracle/parseInlineTokens';
+  import CheersGeoffCallout from '$lib/components/match/CheersGeoffCallout.svelte';
+  import FixtureChip from '$lib/components/chat/FixtureChip.svelte';
 
   interface Props {
     body: string;
@@ -13,6 +16,7 @@
 
   const prefix = $derived(persona.short.toUpperCase());
   const mono = $derived(persona.short.charAt(0).toUpperCase());
+  const segments = $derived(parseInlineTokens(body));
 </script>
 
 <article
@@ -53,12 +57,24 @@
         <span class="font-serif italic text-[10px]">— glorious irrelevance follows</span>
       </div>
     {/if}
-    <p
-      class="font-serif text-[15px] leading-[1.65] text-ink whitespace-pre-line"
+    <div
+      class="font-serif text-[15px] leading-[1.65] text-ink"
       data-geoff-body
     >
-      {body}
-    </p>
+      {#each segments as seg, i (i)}
+        {#if seg.kind === 'text'}
+          <span class="whitespace-pre-line" data-geoff-text>{seg.value}</span>
+        {:else if seg.kind === 'fixture'}
+          <FixtureChip home={seg.home} away={seg.away} />
+        {:else}
+          <CheersGeoffCallout
+            stat={seg.stat}
+            label={seg.label}
+            gloriouslyUseless={seg.text}
+          />
+        {/if}
+      {/each}
+    </div>
   </div>
 
   <aside class="kicker-geoff-msg__marginalia pt-1" data-geoff-marginalia-cell>
