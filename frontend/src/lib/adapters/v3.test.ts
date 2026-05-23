@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { matchToFixture, predictionToV3, storedPredictionToFixture } from './v3';
+import {
+  deriveFormLast5,
+  enhancedPredictionToV3,
+  matchToFixture,
+  predictionToV3,
+  storedPredictionToFixture,
+} from './v3';
 import type { Match } from '../../types';
 import type { StoredPrediction } from '../../services/predictionTracker';
+import type { EnhancedPredictionModel } from '../optimizedPredictions';
 
 function mkMatch(over: Partial<Match> = {}): Match {
   return {
@@ -79,6 +86,162 @@ describe('matchToFixture', () => {
   it('falls back to FINISHED when status missing but a result is present', () => {
     const fx = matchToFixture(mkMatch({ status: undefined, result: 'H' }));
     expect(fx.status).toBe('FINISHED');
+  });
+});
+
+describe('deriveFormLast5 + matchToFixture history', () => {
+  const subjectDate = '2026-05-01T15:00:00Z';
+
+  function mkPriorMatch(over: Partial<Match>): Match {
+    return mkMatch({
+      id: `${Math.random()}`,
+      date: '2026-04-25T15:00:00Z',
+      home_team: 'Arsenal FC',
+      away_team: 'Chelsea FC',
+      result: 'H',
+      home_goals: 2,
+      away_goals: 1,
+      status: 'FINISHED',
+      ...over,
+    });
+  }
+
+  it('returns newest-first W/D/L for the target team', () => {
+    const history: Match[] = [
+      mkPriorMatch({ date: '2026-04-10T15:00:00Z', home_team: 'Arsenal FC', away_team: 'Spurs', result: 'H' }), // W
+      mkPriorMatch({ date: '2026-04-17T15:00:00Z', home_team: 'Brighton', away_team: 'Arsenal FC', result: 'D' }), // D
+      mkPriorMatch({ date: '2026-04-24T15:00:00Z', home_team: 'Arsenal FC', away_team: 'West Ham', result: 'A' }), // L
+    ];
+    const form = deriveFormLast5(history, 'Arsenal FC', subjectDate);
+    expect(form).toEqual(['L', 'D', 'W']);
+  });
+
+  it('ignores matches dated on or after the cutoff', () => {
+    const history: Match[] = [
+      mkPriorMatch({ date: '2026-04-20T15:00:00Z', home_team: 'Arsenal FC', away_team: 'Spurs', result: 'H' }),
+      mkPriorMatch({ date: subjectDate, home_team: 'Arsenal FC', away_team: 'Spurs', result: 'H' }),
+      mkPriorMatch({ date: '2026-05-05T15:00:00Z', home_team: 'Arsenal FC', away_team: 'Spurs', result: 'H' }),
+    ];
+    expect(deriveFormLast5(history, 'Arsenal FC', subjectDate)).toEqual(['W']);
+  });
+
+  it('skips matches without a recorded result', () => {
+    const history: Match[] = [
+      mkPriorMatch({ result: null, home_goals: null, away_goals: null }),
+    ];
+    expect(deriveFormLast5(history, 'Arsenal FC', subjectDate)).toEqual([]);
+  });
+
+  it('caps at five matches', () => {
+    const history: Match[] = Array.from({ length: 8 }, (_, i) =>
+      mkPriorMatch({
+        id: `m-${i}`,
+        date: `2026-04-${10 + i}T15:00:00Z`,
+        home_team: 'Arsenal FC',
+        away_team: 'Spurs',
+        result: 'H',
+      })
+    );
+    expect(deriveFormLast5(history, 'Arsenal FC', subjectDate)).toHaveLength(5);
+  });
+
+  it('returns [] for unknown team', () => {
+    expect(deriveFormLast5([mkPriorMatch({})], 'Zorblax United', subjectDate)).toEqual([]);
+  });
+
+  it('matchToFixture populates home.formLast5 + away.formLast5 when history is supplied', () => {
+    const subject = mkMatch({
+      id: 's-1',
+      date: subjectDate,
+      home_team: 'Arsenal FC',
+      away_team: 'Liverpool FC',
+    });
+    const history: Match[] = [
+      subject,
+      mkPriorMatch({ date: '2026-04-20T15:00:00Z', home_team: 'Arsenal FC', away_team: 'Spurs', result: 'H' }),
+      mkPriorMatch({ date: '2026-04-22T15:00:00Z', home_team: 'Liverpool FC', away_team: 'City', result: 'A' }),
+    ];
+    const fx = matchToFixture(subject, history);
+    expect(fx.home.formLast5).toEqual(['W']);
+    expect(fx.away.formLast5).toEqual(['L']);
+  });
+
+  it('matchToFixture omits formLast5 when history is not supplied (backwards compatible)', () => {
+    const fx = matchToFixture(mkMatch());
+    expect(fx.home.formLast5).toBeUndefined();
+    expect(fx.away.formLast5).toBeUndefined();
+  });
+});
+
+describe('enhancedPredictionToV3', () => {
+  function mkEnhanced(over: Partial<EnhancedPredictionModel> = {}): EnhancedPredictionModel {
+    return {
+      predictedResult: 'H',
+      confidence: 0.62,
+      predictedHomeGoals: 2,
+      predictedAwayGoals: 1,
+      homeForm: 'WWDLW',
+      awayForm: 'DLWWL',
+      modelWeights: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+      insights: ['Arsenal in excellent form'],
+      modelOutputs: {
+        elo: { home: 0.55, draw: 0.25, away: 0.20 },
+        poisson: { home: 0.50, draw: 0.27, away: 0.23 },
+        form: { home: 0.48, draw: 0.30, away: 0.22 },
+        h2h: { home: 0.40, draw: 0.35, away: 0.25 },
+        standings: { home: 0.52, draw: 0.26, away: 0.22 },
+      },
+      topScorelines: [
+        { score: '2-1', probability: 0.12 },
+        { score: '1-1', probability: 0.11 },
+        { score: '2-0', probability: 0.09 },
+      ],
+      ...over,
+    };
+  }
+
+  it('returns undefined when modelOutputs is missing', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced({ modelOutputs: undefined }));
+    expect(v3).toBeUndefined();
+  });
+
+  it('maps the four core sub-models into the v3 models[] array with lean + confidence', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced());
+    expect(v3?.models.map((m) => m.name)).toEqual(['ELO', 'POISSON', 'FORM', 'H2H']);
+    const elo = v3!.models.find((m) => m.name === 'ELO')!;
+    expect(elo.lean).toBe('H');
+    expect(elo.confidence).toBeCloseTo(0.55);
+  });
+
+  it('appends an XGBOOST row only when modelWeights.ml > 0', () => {
+    const withMl = enhancedPredictionToV3(mkEnhanced({
+      modelWeights: { elo: 0.175, poisson: 0.21, form: 0.14, h2h: 0.07, standings: 0.105, ml: 0.30 },
+    }));
+    expect(withMl?.models.map((m) => m.name)).toContain('XGBOOST');
+    const ml = withMl!.models.find((m) => m.name === 'XGBOOST')!;
+    expect(ml.lean).toBe('H');
+    expect(ml.confidence).toBeCloseTo(0.62);
+  });
+
+  it('parses topScorelines from "H-A" strings into {home, away, prob}', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced());
+    expect(v3?.topScorelines).toEqual([
+      { home: 2, away: 1, prob: 0.12 },
+      { home: 1, away: 1, prob: 0.11 },
+      { home: 2, away: 0, prob: 0.09 },
+    ]);
+  });
+
+  it('reconstructs the ensemble triple as a weighted blend that sums to 1', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced())!;
+    const sum = v3.ensemble.home + v3.ensemble.draw + v3.ensemble.away;
+    expect(sum).toBeCloseTo(1, 5);
+  });
+
+  it('threads predictedResult into pick and predicted goals into xg', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced({ predictedResult: 'A' }))!;
+    expect(v3.pick).toBe('AWAY');
+    expect(v3.xg).toEqual({ home: 2, away: 1 });
   });
 });
 

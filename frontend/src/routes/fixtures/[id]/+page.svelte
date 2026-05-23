@@ -6,10 +6,13 @@
   import MobilePersonaPill from '$lib/components/persona/MobilePersonaPill.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
   import MatchHero from '$lib/components/match/MatchHero.svelte';
-  import { matchToFixture } from '$lib/adapters/v3';
+  import EnsembleBars from '$lib/components/match/EnsembleBars.svelte';
+  import ScorelineBars from '$lib/components/match/ScorelineBars.svelte';
+  import { matchToFixture, enhancedPredictionToV3 } from '$lib/adapters/v3';
+  import { OptimizedPredictor } from '$lib/optimizedPredictions';
   import { dataService } from '../../../services/dataService';
   import type { Match } from '../../../types';
-  import type { Fixture } from '../../../types/redesign';
+  import type { Fixture, MatchPrediction } from '../../../types/redesign';
 
   interface PageData {
     id: string;
@@ -18,6 +21,7 @@
   const { data }: { data: PageData } = $props();
 
   let fixture = $state<Fixture | null>(null);
+  let prediction = $state<MatchPrediction | null>(null);
   let loaded = $state(false);
 
   const heroKind = $derived<'preview' | 'live'>(
@@ -32,7 +36,23 @@
     try {
       const matches: Match[] = await dataService.getCurrentSeasonMatches();
       const found = matches.find((m) => String(m.id) === String(data.id));
-      fixture = found ? matchToFixture(found) : null;
+      if (!found) {
+        fixture = null;
+        return;
+      }
+      fixture = matchToFixture(found, matches);
+      try {
+        const enhanced = await OptimizedPredictor.predictMatch(
+          found.home_team,
+          found.away_team,
+          matches,
+          found.referee ?? null,
+          found.date,
+        );
+        prediction = enhancedPredictionToV3(enhanced) ?? null;
+      } catch {
+        prediction = null;
+      }
     } catch {
       fixture = null;
     } finally {
@@ -44,10 +64,34 @@
 {#snippet body()}
   {#if fixture}
     <MatchHero {fixture} kind={heroKind} />
+    {#if prediction}
+      <div
+        class="mt-8 grid gap-6 lg:grid-cols-2"
+        data-match-detail-prediction
+      >
+        <EnsembleBars
+          models={prediction.models}
+          homeAbbr={fixture.home.abbr}
+          awayAbbr={fixture.away.abbr}
+        />
+        <ScorelineBars
+          scorelines={prediction.topScorelines}
+          homeAbbr={fixture.home.abbr}
+          awayAbbr={fixture.away.abbr}
+        />
+      </div>
+    {:else if loaded}
+      <div class="mt-8" data-match-detail-no-prediction>
+        <Rule kicker="PREDICTIONS" title="Model warming up" />
+        <p class="font-serif italic text-ink-dim text-[14px] mt-3">
+          The ensemble couldn't read enough history for this fixture. Refresh once the slate fully loads.
+        </p>
+      </div>
+    {/if}
     <div class="mt-8" data-match-detail-stub>
       <Rule kicker="MATCH DETAIL" title="More to follow" />
       <p class="font-serif italic text-ink-dim text-[14px] mt-3" data-match-detail-stub-copy>
-        Ensemble bars, scoreline grid, head-to-head and venue notes land in the next slice.
+        Form, head-to-head and venue notes land in the next slice.
       </p>
     </div>
   {:else if loaded}
