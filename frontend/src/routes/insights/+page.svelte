@@ -114,9 +114,13 @@
     {/if}
   </section>
 
-  <p class="font-mono text-[10px] tracking-[0.2em] uppercase text-ink-dim" data-insights-archive-hint>
-    Archive · 33 seasons of detail · coming in K1d-β
-  </p>
+  <a
+    href="/insights/archive"
+    class="inline-block font-mono text-[10px] tracking-[0.2em] uppercase text-red font-bold border-b border-red pb-0.5 hover:text-ink"
+    data-insights-archive-link
+  >
+    Open archive · 33 seasons of detail →
+  </a>
 {/snippet}
 
 <div class="hidden lg:block" data-desktop-shell>
