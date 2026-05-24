@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import SearchPage from './+page.svelte';
 
-describe('Search route — K1f-β.1', () => {
+describe('Search route — K1f-β.2', () => {
   it('renders without error', () => {
     const { body } = render(SearchPage);
     expect(body).toBeTruthy();
@@ -32,6 +32,7 @@ describe('Search route — K1f-β.1', () => {
     expect((body.match(/data-search-loading/g) ?? []).length).toBe(2);
     expect(body).not.toContain('data-search-empty');
     expect(body).not.toContain('data-search-results-stub');
+    expect(body).not.toContain('data-search-results-list');
     expect(body).not.toContain('data-recent-chips');
   });
 

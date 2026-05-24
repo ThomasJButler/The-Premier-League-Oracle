@@ -7,34 +7,59 @@
   import Rule from '$lib/components/atoms/Rule.svelte';
   import SearchInput from '$lib/components/search/SearchInput.svelte';
   import RecentChips from '$lib/components/search/RecentChips.svelte';
+  import SearchResultRow from '$lib/components/search/SearchResultRow.svelte';
   import {
     readRecent,
     addRecent,
     removeRecent,
     clearRecent
   } from '$lib/stores/recentSearches';
+  import { loadSearchSources } from '$lib/search/loadSearchSources';
+  import { searchIndex, type SearchItem, type SearchResult } from '$lib/search/buildIndex';
+
+  // Module-level cache: built once per session on first non-empty submit, reused
+  // across persona switches and chip picks so we don't burn the API key for every
+  // keystroke. Cleared only when the tab is reloaded.
+  let cachedIndex: SearchItem[] | null = null;
+  let pendingBuild: Promise<SearchItem[]> | null = null;
 
   let query = $state('');
   let lastQuery = $state<string | null>(null);
+  let results = $state<SearchResult[] | null>(null);
   let recent = $state<string[]>([]);
   let hydrated = $state(false);
+  let searching = $state(false);
 
   onMount(() => {
     recent = readRecent();
     hydrated = true;
   });
 
-  function runSearch(q: string): void {
+  async function ensureIndex(): Promise<SearchItem[]> {
+    if (cachedIndex) return cachedIndex;
+    if (!pendingBuild) pendingBuild = loadSearchSources();
+    cachedIndex = await pendingBuild;
+    return cachedIndex;
+  }
+
+  async function runSearch(q: string): Promise<void> {
     const trimmed = q.trim();
     if (!trimmed) return;
     query = trimmed;
     lastQuery = trimmed;
     recent = addRecent(trimmed);
+    searching = true;
+    try {
+      const index = await ensureIndex();
+      results = searchIndex(index, trimmed);
+    } finally {
+      searching = false;
+    }
   }
 
   function handlePick(q: string): void {
     query = q;
-    runSearch(q);
+    void runSearch(q);
   }
 
   function handleRemove(q: string): void {
@@ -48,15 +73,16 @@
 
   function handleClearInput(): void {
     lastQuery = null;
+    results = null;
   }
 </script>
 
 {#snippet body()}
-  <Rule kicker="SEARCH" title="The morgue" action="K1f · β.1" />
+  <Rule kicker="SEARCH" title="The morgue" action="K1f · β.2" />
 
   <SearchInput
     bind:value={query}
-    onsubmit={runSearch}
+    onsubmit={(q) => void runSearch(q)}
     onclear={handleClearInput}
   />
 
@@ -73,23 +99,33 @@
     />
 
     {#if lastQuery}
-      <div class="mt-8 border-t border-rule pt-6" data-search-results-stub>
-        <p class="font-mono text-[10px] tracking-[0.2em] uppercase text-ink-dim mb-2">
-          Searched for
+      <div class="mt-8 border-t border-rule pt-6" data-search-results>
+        <p class="font-mono text-[10px] tracking-[0.2em] uppercase text-ink-dim mb-3">
+          {searching ? 'Searching…' : `Results for “${lastQuery}”`}
         </p>
-        <p class="font-serif text-[22px] text-ink mb-3">
-          “{lastQuery}”
-        </p>
-        <p class="font-serif italic text-[13px] text-ink-dim">
-          The full-text index lands in K1f-β.2. Your search has been saved to the recent
-          chips above so the recall path works end-to-end already.
-        </p>
+        {#if searching}
+          <p class="font-serif italic text-[13px] text-ink-dim py-4" data-search-results-pending>
+            Combing the morgue…
+          </p>
+        {:else if results && results.length > 0}
+          <ul data-search-results-list>
+            {#each results as r (r.item.id)}
+              <li>
+                <SearchResultRow item={r.item} />
+              </li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="font-serif italic text-[14px] text-ink-dim py-4" data-search-results-none>
+            No filings on “{lastQuery}”. Try a team abbreviation, a season (e.g. <span class="font-mono text-[12px]">2003/04</span>), or a player surname.
+          </p>
+        {/if}
       </div>
     {:else}
       <div class="mt-8 py-6 border-t border-rule" data-search-empty>
         <p class="font-serif italic text-[15px] text-ink-dim">
-          Type a query and press <span class="font-mono text-[12px]">Enter</span> to log it. Results
-          across fixtures, players, seasons, and threads arrive in K1f-β.2.
+          Type a query and press <span class="font-mono text-[12px]">Enter</span> to search across
+          fixtures, top scorers, the 33-season archive, and your Oracle threads.
         </p>
       </div>
     {/if}
