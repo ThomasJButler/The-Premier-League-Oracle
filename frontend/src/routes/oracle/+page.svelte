@@ -1,5 +1,6 @@
 <script lang="ts">
   import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import KickerShell from '$lib/components/shell/KickerShell.svelte';
   import MobileHeader from '$lib/components/shell/MobileHeader.svelte';
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
@@ -14,9 +15,19 @@
   import { personaStore } from '$lib/stores/persona';
   import { threadsStore, toApiMessages, type OracleMessage } from '$lib/stores/threads';
   import { streamChat } from '$lib/oracle/streamChat';
+  import { applyThreadDeepLink } from '$lib/oracle/applyThreadDeepLink';
   import { getPersona, type PersonaId } from '$lib/personas';
 
+  interface Props {
+    data?: { thread: string | null };
+  }
+  let { data }: Props = $props();
+
   const persona = $derived(getPersona($personaStore as PersonaId));
+
+  onMount(() => {
+    applyThreadDeepLink(data?.thread);
+  });
   const activeThread = $derived(
     $threadsStore.threads.find((t) => t.id === $threadsStore.activeThreadId) ?? null
   );
