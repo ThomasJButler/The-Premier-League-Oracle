@@ -11,6 +11,7 @@
   import { findCurrentGameweek } from '$lib/gameweek';
   import { readBroadsheet, writeBroadsheet, clearBroadsheet } from '$lib/stores/broadsheetStore';
   import { requestBroadsheet } from '$lib/broadsheet/requestBroadsheet';
+  import { notifyBroadsheetReady } from '$lib/broadsheet/notifyBroadsheetReady';
   import type { BroadsheetJson } from '$lib/server/broadsheetPrompt';
 
   interface PageData {
@@ -68,6 +69,12 @@
       const entry = writeBroadsheet(gameweek, personaId, result.broadsheet, result.generatedAt);
       broadsheet = entry.broadsheet;
       generatedAt = entry.generatedAt;
+      notifyBroadsheetReady({
+        personaId,
+        personaName: persona.name,
+        gameweek,
+        headline: entry.broadsheet.headline
+      });
     } else {
       error = result.error;
     }
