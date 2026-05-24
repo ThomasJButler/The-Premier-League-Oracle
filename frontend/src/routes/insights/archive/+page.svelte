@@ -9,7 +9,8 @@
   import SeasonDetail from '$lib/components/insights/SeasonDetail.svelte';
   import { LEAGUE_HISTORY, getSeasonRecord, seasonStartYear } from '$lib/fixtures/leagueHistory';
   import { statsPack } from '$lib/data/statsPack';
-  import { readVerdict } from '$lib/stores/verdictsStore';
+  import { readVerdict, writeVerdict } from '$lib/stores/verdictsStore';
+  import { requestSeasonVerdict } from '$lib/broadsheet/requestSeasonVerdict';
   import { personaStore } from '$lib/stores/persona';
   import { getPersona, type PersonaId } from '$lib/personas';
   import { dataService } from '../../../services/dataService';
@@ -21,16 +22,37 @@
   const DEFAULT_SEASON = SEASONS_DESC[0].season;
 
   let activeSeason = $state(DEFAULT_SEASON);
+  let verdictTick = $state(0);
+  let generating = $state(false);
+  let generateError = $state<string | null>(null);
 
   const record = $derived(getSeasonRecord(activeSeason) ?? SEASONS_DESC[0]);
   const seasonStats = $derived(statsPack.seasonStats?.[activeSeason]);
   const verdictBody = $derived.by(() => {
+    verdictTick; // reactive dep — bumped after a successful generation
     const entry = readVerdict(activeSeason, personaId);
     return entry ? entry.body : null;
   });
 
+  async function generateVerdict() {
+    if (generating) return;
+    generating = true;
+    generateError = null;
+    const season = activeSeason;
+    const pid = personaId;
+    const result = await requestSeasonVerdict({ personaId: pid, season });
+    if (result.ok) {
+      writeVerdict(season, pid, result.verdict);
+      verdictTick++;
+    } else {
+      generateError = result.error;
+    }
+    generating = false;
+  }
+
   function selectSeason(season: string) {
     activeSeason = season;
+    generateError = null;
     if (typeof window !== 'undefined') {
       const search = `?season=${encodeURIComponent(season)}`;
       history.replaceState(null, '', `${window.location.pathname}${search}`);
@@ -82,12 +104,15 @@
           {seasonStats}
           verdictBody={verdictBody}
           personaName={persona.name}
+          onGenerate={generateVerdict}
+          generating={generating}
+          generateError={generateError}
         />
       </div>
     </div>
 
     <p class="font-mono text-[10px] tracking-[0.2em] uppercase text-ink-dim mt-6" data-archive-footer>
-      Verdict copy generated per persona via /api/broadsheet · cached locally · live generation lands in K1e
+      Verdict copy generated per persona via /api/broadsheet · cached locally at kicker:verdict:{`{season}`}:{`{personaId}`}
     </p>
   </section>
 {/snippet}

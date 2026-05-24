@@ -52,10 +52,16 @@ describe('Insights archive route — K1d-β (33-season archive + persona verdict
     expect(body).toContain('No verdict on file');
   });
 
-  it('exposes the archive footer hint pointing at K1e for live verdict generation', () => {
+  it('exposes the archive footer pointing at the cache layer', () => {
     const { body } = render(ArchivePage);
     expect(body).toContain('data-archive-footer');
-    expect(body).toContain('K1e');
+    expect(body).toContain('kicker:verdict:');
+  });
+
+  it('renders a Generate verdict CTA per shell when no verdict is cached', () => {
+    const { body } = render(ArchivePage);
+    expect((body.match(/data-verdict-generate/g) ?? []).length).toBe(2);
+    expect(body).toContain('Generate verdict');
   });
 
   it('has no betting copy on the page', () => {

@@ -3,6 +3,8 @@
 
 import type { PersonaConfig } from '$lib/personas';
 import type { KickerContext } from '$lib/context/types';
+import type { SeasonRecord } from '$lib/fixtures/leagueHistory';
+import type { SeasonStats } from '$lib/data/statsPack';
 
 export interface BroadsheetSection {
   heading: string;
@@ -55,6 +57,42 @@ OUTPUT FORMAT — return ONLY a single JSON object, no prose, no code fences:
 }`;
 
   const userMessage = `Write the Gameweek ${gameweek} broadsheet now. JSON only.`;
+
+  return { system, userMessage };
+}
+
+export function buildSeasonVerdictPrompt(
+  persona: PersonaConfig,
+  season: string,
+  record: SeasonRecord | undefined,
+  seasonStats: SeasonStats | undefined
+): { system: string; userMessage: string } {
+  const championLine = record?.champion
+    ? `Champion: ${record.champion.team} on ${record.champion.points} pts (GD ${record.champion.goalDifference >= 0 ? '+' : ''}${record.champion.goalDifference}).`
+    : record?.inProgress
+      ? 'This season is still in progress — no champion yet.'
+      : 'Champion data not on file.';
+  const runnerUpLine = record?.runnerUp
+    ? `Runner-up: ${record.runnerUp.team} on ${record.runnerUp.points} pts.`
+    : '';
+  const statsLine = seasonStats
+    ? `Stats: ${seasonStats.matches} matches, ${seasonStats.avgTotalGoals.toFixed(2)} goals/match, home win rate ${Math.round(seasonStats.homeWinRate * 100)}%, BTTS ${Math.round(seasonStats.bttsRate * 100)}%.`
+    : '';
+  const anomalyLine =
+    seasonStats?.isAnomalous && seasonStats.anomalyReasons.length > 0
+      ? `Outlier flags: ${seasonStats.anomalyReasons.join('; ')}.`
+      : '';
+
+  const factLines = [championLine, runnerUpLine, statsLine, anomalyLine].filter(Boolean).join('\n');
+
+  const system = `${persona.systemPrompt}
+
+You are filing a single-paragraph verdict on the ${season} Premier League season for The Kicker archive. Stay in character (${persona.voice}). Use only the facts below; never invent stats. Keep it tight: 80–140 words, one paragraph of plain prose, no headings, no surrounding quotation marks.
+
+SEASON FACTS:
+${factLines}`;
+
+  const userMessage = `File your verdict on the ${season} season now. One paragraph, plain prose only.`;
 
   return { system, userMessage };
 }

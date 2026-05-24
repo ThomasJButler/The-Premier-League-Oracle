@@ -104,6 +104,47 @@ describe('POST /api/broadsheet', () => {
     expect(res.status).toBe(400);
   });
 
+  describe('kind: season-verdict', () => {
+    it('returns the trimmed verdict on the happy path', async () => {
+      _setAnthropic(fakeAnthropic('  The Invincibles never lost.  '));
+      const res = await POST(
+        makeEvent({ kind: 'season-verdict', personaId: 'voice', season: '2003/04' })
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.verdict).toBe('The Invincibles never lost.');
+      expect(typeof body.generatedAt).toBe('string');
+    });
+
+    it('rejects a malformed season string with 400', async () => {
+      _setAnthropic(fakeAnthropic('anything'));
+      const res = await POST(
+        makeEvent({ kind: 'season-verdict', personaId: 'voice', season: 'last-year' })
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('invalid_season');
+    });
+
+    it('rejects an unknown kind with 400', async () => {
+      _setAnthropic(fakeAnthropic('x'));
+      const res = await POST(makeEvent({ kind: 'rumours', personaId: 'voice', season: '2003/04' }));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('unknown_kind');
+    });
+
+    it('returns 500 when the model returns an empty verdict', async () => {
+      _setAnthropic(fakeAnthropic('   '));
+      const res = await POST(
+        makeEvent({ kind: 'season-verdict', personaId: 'voice', season: '2003/04' })
+      );
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.error).toBe('empty_verdict');
+    });
+  });
+
   it('returns 502 when the Anthropic call itself throws', async () => {
     _setAnthropic({
       streamText: async function* () {

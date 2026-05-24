@@ -8,9 +8,23 @@
     /** Cached persona-voiced verdict body, or null when no verdict on file. */
     verdictBody?: string | null;
     personaName: string;
+    /** Click handler for the "Generate verdict" / "Regenerate" CTA. */
+    onGenerate?: () => void;
+    /** When true, the CTA renders a disabled "Filing copy…" label. */
+    generating?: boolean;
+    /** Surfaced inline under the verdict when the last generation attempt failed. */
+    generateError?: string | null;
   }
 
-  const { record, seasonStats, verdictBody, personaName }: Props = $props();
+  const {
+    record,
+    seasonStats,
+    verdictBody,
+    personaName,
+    onGenerate,
+    generating = false,
+    generateError = null
+  }: Props = $props();
 
   const formatPct = (v: number): string => `${Math.round(v * 100)}%`;
 </script>
@@ -82,14 +96,38 @@
   {/if}
 
   <section class="border-t border-rule pt-4" data-detail-verdict>
-    <p class="font-mono text-[10px] tracking-[0.25em] uppercase text-ink-dim mb-2">
-      Verdict · {personaName}
-    </p>
+    <div class="flex items-baseline justify-between gap-3 mb-2">
+      <p class="font-mono text-[10px] tracking-[0.25em] uppercase text-ink-dim">
+        Verdict · {personaName}
+      </p>
+      {#if onGenerate}
+        <button
+          type="button"
+          class="font-mono text-[10px] tracking-[0.25em] uppercase text-red font-bold disabled:text-ink-dim disabled:cursor-not-allowed"
+          data-verdict-generate
+          disabled={generating}
+          onclick={onGenerate}
+        >
+          {#if generating}
+            <span data-verdict-generating>Filing copy…</span>
+          {:else if verdictBody}
+            Regenerate
+          {:else}
+            Generate verdict
+          {/if}
+        </button>
+      {/if}
+    </div>
     {#if verdictBody}
       <p class="font-serif text-[16px] leading-snug text-ink" data-verdict-body>{verdictBody}</p>
     {:else}
       <p class="font-serif italic text-ink-dim text-[14px]" data-verdict-empty>
-        No verdict on file yet. {personaName} hasn't filed copy for this season — check back once the column ships.
+        No verdict on file yet. {personaName} hasn't filed copy for this season — tap Generate verdict to commission one.
+      </p>
+    {/if}
+    {#if generateError}
+      <p class="font-mono text-[11px] uppercase tracking-[0.15em] text-red mt-2" data-verdict-error>
+        ⚠ {generateError}
       </p>
     {/if}
   </section>

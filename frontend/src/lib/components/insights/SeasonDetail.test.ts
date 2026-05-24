@@ -105,6 +105,73 @@ describe('SeasonDetail', () => {
     expect(body).not.toContain('data-detail-champion');
   });
 
+  it('renders the Generate verdict CTA when onGenerate is supplied and no cache exists', () => {
+    const { body } = render(SeasonDetail, {
+      props: {
+        record: RECORD,
+        seasonStats: STATS,
+        verdictBody: null,
+        personaName: 'Cheers, Geoff',
+        onGenerate: () => {}
+      }
+    });
+    expect(body).toContain('data-verdict-generate');
+    expect(body).toContain('Generate verdict');
+    expect(body).not.toContain('Regenerate');
+  });
+
+  it('flips the CTA label to "Regenerate" when a verdict is already cached', () => {
+    const { body } = render(SeasonDetail, {
+      props: {
+        record: RECORD,
+        seasonStats: STATS,
+        verdictBody: 'A taut season.',
+        personaName: 'Cheers, Geoff',
+        onGenerate: () => {}
+      }
+    });
+    expect(body).toContain('data-verdict-generate');
+    expect(body).toContain('Regenerate');
+  });
+
+  it('shows the generating state when generating=true', () => {
+    const { body } = render(SeasonDetail, {
+      props: {
+        record: RECORD,
+        seasonStats: STATS,
+        verdictBody: null,
+        personaName: 'Cheers, Geoff',
+        onGenerate: () => {},
+        generating: true
+      }
+    });
+    expect(body).toContain('data-verdict-generating');
+    expect(body).toContain('Filing copy');
+    expect(body).toContain('disabled');
+  });
+
+  it('surfaces generateError inline', () => {
+    const { body } = render(SeasonDetail, {
+      props: {
+        record: RECORD,
+        seasonStats: STATS,
+        verdictBody: null,
+        personaName: 'Cheers, Geoff',
+        onGenerate: () => {},
+        generateError: 'rate_limited'
+      }
+    });
+    expect(body).toContain('data-verdict-error');
+    expect(body).toContain('rate_limited');
+  });
+
+  it('omits the CTA when no onGenerate prop is supplied', () => {
+    const { body } = render(SeasonDetail, {
+      props: { record: RECORD, seasonStats: STATS, verdictBody: null, personaName: 'Cheers, Geoff' }
+    });
+    expect(body).not.toContain('data-verdict-generate');
+  });
+
   it('has no betting copy', () => {
     const { body } = render(SeasonDetail, {
       props: { record: RECORD, seasonStats: STATS, verdictBody: null, personaName: 'Cheers, Geoff' }
