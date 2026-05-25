@@ -49,6 +49,24 @@ describe('ColumnHero', () => {
     expect(body).toContain('LONDON, FRIDAY');
   });
 
+  it('byline grid stacks meta below name on mobile and inlines it from sm: up (K2a-β.4)', () => {
+    const { body } = render(ColumnHero, { props: baseProps });
+    const wrapper = body.match(/<div\b[^>]*data-column-byline[^>]*>/);
+    expect(wrapper).not.toBeNull();
+    // Mobile: 2-col (monogram + name/sub), meta drops to its own row.
+    expect(wrapper![0]).toMatch(/grid-cols-\[auto_1fr\]/);
+    // sm+: re-add the right-side meta column.
+    expect(wrapper![0]).toMatch(/sm:grid-cols-\[auto_1fr_auto\]/);
+    const meta = body.match(/<div\b[^>]*data-byline-meta[^>]*>/);
+    expect(meta).not.toBeNull();
+    // Meta spans both mobile cols then collapses to its own cell at sm:
+    expect(meta![0]).toMatch(/col-span-2/);
+    expect(meta![0]).toMatch(/sm:col-span-1/);
+    // Text alignment flips left → right above sm to match desktop's right-rail meta block.
+    expect(meta![0]).toMatch(/text-left/);
+    expect(meta![0]).toMatch(/sm:text-right/);
+  });
+
   it('drives accent colour via CSS variable, not inline hex', () => {
     const { body, head } = render(ColumnHero, { props: baseProps });
     const composite = `${body}\n${head ?? ''}`;

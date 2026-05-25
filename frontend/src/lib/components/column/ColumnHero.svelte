@@ -47,7 +47,7 @@
   </h1>
 
   <div
-    class="mt-6 pt-4 border-t border-rule grid grid-cols-[auto_1fr_auto] items-center gap-4"
+    class="mt-6 pt-4 border-t border-rule grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-2 sm:gap-y-0"
     data-column-byline
   >
     <span
@@ -66,7 +66,7 @@
       >{bylineSub}</p>
     </div>
     <div
-      class="text-right font-mono text-[10px] tracking-[0.25em] uppercase font-bold text-ink-dim"
+      class="col-span-2 sm:col-span-1 text-left sm:text-right font-mono text-[10px] tracking-[0.25em] uppercase font-bold text-ink-dim"
       data-byline-meta
     >
       <p data-byline-readtime>{readTimeMinutes} min read</p>
