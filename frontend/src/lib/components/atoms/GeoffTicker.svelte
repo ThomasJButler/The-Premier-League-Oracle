@@ -32,6 +32,8 @@
 <style>
   .kicker-ticker {
     height: 28px;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
   }
   .kicker-ticker__track {
     display: flex;

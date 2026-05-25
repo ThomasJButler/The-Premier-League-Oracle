@@ -31,6 +31,11 @@ describe('GeoffTicker', () => {
     expect(occurrences).toBe(2);
   });
 
+  it('source declares a right-edge mask-image fade so cropped content reads as intentional', () => {
+    expect(SOURCE).toMatch(/mask-image:\s*linear-gradient\(to right,\s*black calc\(100% - 32px\),\s*transparent\)/);
+    expect(SOURCE).toMatch(/-webkit-mask-image:\s*linear-gradient\(to right,\s*black calc\(100% - 32px\),\s*transparent\)/);
+  });
+
   it('source declares a prefers-reduced-motion rule that cancels the marquee animation', () => {
     expect(SOURCE).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
     const reducedBlock = SOURCE.match(
