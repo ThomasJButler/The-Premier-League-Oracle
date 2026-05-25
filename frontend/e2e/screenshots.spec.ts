@@ -29,27 +29,32 @@ interface RouteSpec {
   waitFor?: string; // optional selector to wait for before snap
 }
 
+// Bounded resolver: when no API key is seeded, /fixtures renders an empty state
+// with no `a[href^="/fixtures/"]` anchors. Playwright's locator.getAttribute()
+// auto-waits up to the full test timeout for an element to attach, which hung
+// routes 03/04 forever in earlier runs. Wait a bounded window, then bail to the
+// stub path so the spec still produces a screenshot of the not-found branch.
+async function resolveFirstFixtureHref(page: Page): Promise<string> {
+  await page.goto('/fixtures');
+  const link = page.locator('a[href^="/fixtures/"]').first();
+  const attached = await link
+    .waitFor({ state: 'attached', timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!attached) return '/fixtures/sample-fixture';
+  return (await link.getAttribute('href')) ?? '/fixtures/sample-fixture';
+}
+
 const ROUTES: RouteSpec[] = [
   { name: '01-today', path: '/today', waitFor: '[data-kicker-shell], [data-mobile-header]' },
   { name: '02-fixtures', path: '/fixtures' },
   {
     name: '03-fixtures-detail',
-    path: async (page) => {
-      // Resolve first real fixture id from /fixtures so the screenshot
-      // hits a populated MatchHero rather than a 404 block.
-      await page.goto('/fixtures');
-      const firstHref = await page.locator('a[href^="/fixtures/"]').first().getAttribute('href');
-      return firstHref ?? '/fixtures/sample-fixture';
-    }
+    path: async (page) => resolveFirstFixtureHref(page)
   },
   {
     name: '04-fixtures-detail-live',
-    path: async (page) => {
-      await page.goto('/fixtures');
-      const firstHref = await page.locator('a[href^="/fixtures/"]').first().getAttribute('href');
-      const base = firstHref ?? '/fixtures/sample-fixture';
-      return `${base}/live`;
-    }
+    path: async (page) => `${await resolveFirstFixtureHref(page)}/live`
   },
   { name: '05-predictions', path: '/predictions' },
   { name: '06-oracle', path: '/oracle' },
@@ -72,16 +77,22 @@ const ROUTES: RouteSpec[] = [
 
 test.describe('Kicker route screenshots', () => {
   // Stable persona for every snap — keeps the contact sheet visually consistent.
-  test.beforeEach(async ({ page, context }) => {
-    await context.addInitScript(() => {
+  // Optionally seed a Football-Data API key from env so /fixtures + /fixtures/[id]
+  // resolve real data instead of empty states (key name matches footballData.ts:
+  // localStorage 'football_data_api_key' — no kicker: prefix).
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY ?? process.env.VITE_FOOTBALL_DATA_API_KEY ?? '';
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript((seededKey: string) => {
       try {
         localStorage.setItem('kicker:personaId', 'voice');
-        // Skip onboarding gate so /today renders directly.
+        // kicker:onboardedAt is informational; the onboarding gate only reads
+        // kicker:personaId, but seeding both keeps intent explicit.
         localStorage.setItem('kicker:onboardedAt', new Date().toISOString());
+        if (seededKey) localStorage.setItem('football_data_api_key', seededKey);
       } catch {
         /* SSR-safe no-op */
       }
-    });
+    }, apiKey);
   });
 
   for (const route of ROUTES) {
