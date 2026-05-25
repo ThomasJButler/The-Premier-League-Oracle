@@ -19,6 +19,8 @@
   import { dataService } from '../../../services/dataService';
   import type { Match } from '../../../types';
   import type { Fixture, MatchPrediction } from '../../../types/redesign';
+  import { requestFixtureAnalysis } from '$lib/broadsheet/requestFixtureAnalysis';
+  import { readAnalysis, writeAnalysis } from '$lib/stores/analysisStore';
 
   interface PageData {
     id: string;
@@ -44,6 +46,8 @@
   let foundMatch = $state<Match | null>(null);
   let loaded = $state(false);
   let activeTab = $state<SectionId>('analysis');
+  let analysisBody = $state<string | null>(null);
+  let analysisLoading = $state(false);
 
   const heroKind = $derived<'preview' | 'live'>(
     fixture && fixture.status === 'LIVE' ? 'live' : 'preview'
@@ -97,6 +101,58 @@
     return 'The model has enough to call it, but not enough to shout about it.';
   }
 
+  async function loadPersonaAnalysis(
+    f: Fixture,
+    p: MatchPrediction,
+    pid: PersonaId
+  ): Promise<void> {
+    const cached = readAnalysis(data.id, pid);
+    if (cached) {
+      analysisBody = cached.body;
+      return;
+    }
+    analysisLoading = true;
+    try {
+      const result = await requestFixtureAnalysis({
+        personaId: pid,
+        fixtureId: data.id,
+        fixture: {
+          home: f.home.name,
+          away: f.away.name,
+          venue: f.venue ?? undefined
+        },
+        prediction: {
+          ensemble: p.ensemble,
+          pick: p.pick,
+          pickConfidence: p.pickConfidence,
+          keyFactors: p.keyFactors
+        }
+      });
+      if (result.ok) {
+        writeAnalysis(data.id, pid, result.analysis);
+        analysisBody = result.analysis;
+      }
+    } catch {
+      // swallow — Analysis tab falls back to engine keyFactors via analyseBody()
+    } finally {
+      analysisLoading = false;
+    }
+  }
+
+  $effect(() => {
+    const f = fixture;
+    const p = prediction;
+    if (!f || !p) return;
+    const pid = personaId;
+    const cached = readAnalysis(data.id, pid);
+    if (cached) {
+      analysisBody = cached.body;
+      return;
+    }
+    analysisBody = null;
+    void loadPersonaAnalysis(f, p, pid);
+  });
+
   onMount(async () => {
     syncFromHash();
     if (typeof window !== 'undefined') {
@@ -142,8 +198,13 @@
   <section data-section-panel="analysis" class="mt-4">
     {#if prediction}
       <PunditQuoteBlock attribution={activePersona.name}>
-        {analyseBody(prediction)}
+        {analysisBody ?? analyseBody(prediction)}
       </PunditQuoteBlock>
+      {#if analysisLoading && !analysisBody}
+        <p class="font-serif italic text-ink-dim text-[12px] mt-2" data-analysis-loading>
+          {activePersona.name} is filing…
+        </p>
+      {/if}
     {:else if loaded}
       <p class="font-serif italic text-ink-dim text-[14px]" data-analysis-empty>
         {activePersona.name} hasn't filed on this one yet — the model is still

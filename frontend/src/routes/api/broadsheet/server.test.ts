@@ -145,6 +145,48 @@ describe('POST /api/broadsheet', () => {
     });
   });
 
+  describe('kind: fixture-analysis', () => {
+    const fixturePayload = {
+      kind: 'fixture-analysis',
+      personaId: 'voice',
+      fixtureId: 'm-99',
+      fixture: { home: 'Arsenal', away: 'Liverpool', venue: 'Emirates' },
+      prediction: {
+        ensemble: { home: 0.45, draw: 0.25, away: 0.3 },
+        pick: 'HOME',
+        pickConfidence: 0.45,
+        keyFactors: ['Arsenal unbeaten at home in 8']
+      }
+    } as const;
+
+    it('returns the trimmed analysis on the happy path', async () => {
+      _setAnthropic(fakeAnthropic('  Arsenal edge it on the model.  '));
+      const res = await POST(makeEvent(fixturePayload));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.analysis).toBe('Arsenal edge it on the model.');
+      expect(typeof body.generatedAt).toBe('string');
+    });
+
+    it('rejects a missing fixtureId with 400', async () => {
+      _setAnthropic(fakeAnthropic('x'));
+      const res = await POST(makeEvent({ ...fixturePayload, fixtureId: '' }));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('invalid_fixture_id');
+    });
+
+    it('rejects a malformed prediction with 400', async () => {
+      _setAnthropic(fakeAnthropic('x'));
+      const res = await POST(
+        makeEvent({ ...fixturePayload, prediction: { pick: 'HOME' } as unknown })
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('invalid_prediction');
+    });
+  });
+
   it('returns 502 when the Anthropic call itself throws', async () => {
     _setAnthropic({
       streamText: async function* () {

@@ -97,6 +97,54 @@ ${factLines}`;
   return { system, userMessage };
 }
 
+export interface FixtureAnalysisFixture {
+  home: string;
+  away: string;
+  kickoff?: string;
+  venue?: string;
+}
+
+export interface FixtureAnalysisPrediction {
+  ensemble: { home: number; draw: number; away: number };
+  pick: 'HOME' | 'DRAW' | 'AWAY';
+  pickConfidence: number;
+  keyFactors?: string[];
+}
+
+export function buildFixtureAnalysisPrompt(
+  persona: PersonaConfig,
+  fixture: FixtureAnalysisFixture,
+  prediction: FixtureAnalysisPrediction
+): { system: string; userMessage: string } {
+  const pct = (n: number): string => `${Math.round(n * 100)}`;
+  const pickTeam =
+    prediction.pick === 'HOME' ? fixture.home : prediction.pick === 'AWAY' ? fixture.away : 'a draw';
+  const factorsLine =
+    prediction.keyFactors && prediction.keyFactors.length > 0
+      ? `Key factors the model is leaning on: ${prediction.keyFactors.slice(0, 4).join('; ')}.`
+      : '';
+  const venueLine = fixture.venue ? `Venue: ${fixture.venue}.` : '';
+
+  const system = `${persona.systemPrompt}
+
+You are filing a single short paragraph of pre-match analysis on ${fixture.home} v ${fixture.away} for The Kicker match-detail page. Stay in character (${persona.voice}). 60–110 words, one paragraph, plain prose, no headings, no surrounding quotes, no lists.
+
+Hard rules:
+- Use only the model facts below. Do not invent stats, injuries, or quotes.
+- Never mention betting, odds, value, edges, bookmakers, stakes, or Kelly. This is editorial analysis, not a tip.
+- Lean on the model probabilities and the named factors — explain what the engine likes about ${pickTeam} (or why it's split), in your voice.
+
+MODEL FACTS:
+- Ensemble probability: ${fixture.home} ${pct(prediction.ensemble.home)}% · draw ${pct(prediction.ensemble.draw)}% · ${fixture.away} ${pct(prediction.ensemble.away)}%.
+- Model pick: ${pickTeam} (confidence ${pct(prediction.pickConfidence)}%).
+${factorsLine}
+${venueLine}`.replace(/\n{2,}\n/g, '\n\n');
+
+  const userMessage = `File your pre-match read on ${fixture.home} v ${fixture.away} now. One paragraph, plain prose only.`;
+
+  return { system, userMessage };
+}
+
 export function parseBroadsheetJson(raw: string): BroadsheetJson {
   // Models occasionally wrap JSON in code fences despite instructions; strip
   // them defensively so a well-formed payload isn't lost to ``` chrome.
