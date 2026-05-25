@@ -14,6 +14,11 @@
   import { dataService } from '../../services/dataService';
   import { predictionTracker } from '../../services/predictionTracker';
   import { parseGeoffResponse } from '$lib/utils/parseGeoffResponse';
+  import {
+    bulkPersistGameweekPredictions,
+    isGameweekFullyPredicted,
+  } from '$lib/bulkPersistGameweekPredictions';
+  import { findCurrentGameweek, fixturesForGameweek } from '$lib/gameweek';
   import { getTeamColor } from '../../utils/teamLogos';
   import type { Match } from '../../types';
 
@@ -33,9 +38,32 @@
   let modelEdge = $state('—');
   let streak = $state('—');
   let cheers = $state<{ stat: string; label: string; gloriouslyUseless: string } | null>(null);
+  let predictBusy = $state(false);
+  let predictTick = $state(0);
 
   const heroMatch = $derived(matches[0] ?? null);
   const slateMatches = $derived(matches.slice(1, 4));
+  const currentGw = $derived(findCurrentGameweek(matches));
+  const gwFixtures = $derived(
+    currentGw !== null ? fixturesForGameweek(matches, currentGw) : [],
+  );
+  const gwFullyPredicted = $derived(
+    predictTick >= 0 && gwFixtures.length > 0 && isGameweekFullyPredicted(gwFixtures),
+  );
+  const predictDisabled = $derived(
+    predictBusy || gwFixtures.length === 0 || gwFullyPredicted,
+  );
+
+  async function handlePredictGw(): Promise<void> {
+    if (predictDisabled) return;
+    predictBusy = true;
+    try {
+      await bulkPersistGameweekPredictions(gwFixtures);
+    } finally {
+      predictBusy = false;
+      predictTick += 1;
+    }
+  }
 
   function formatKickoff(date: string): string {
     const d = new Date(date);
@@ -150,6 +178,27 @@
 </script>
 
 {#snippet body()}
+  <div class="mb-3 flex justify-end">
+    <button
+      type="button"
+      class="border border-black px-3 py-1 text-[10px] font-mono uppercase tracking-widest hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-black"
+      data-predict-gw
+      data-predict-gw-disabled={predictDisabled ? 'true' : 'false'}
+      disabled={predictDisabled}
+      aria-disabled={predictDisabled}
+      onclick={handlePredictGw}
+    >
+      {#if predictBusy}
+        Predicting…
+      {:else if gwFullyPredicted}
+        GW {currentGw ?? ''} predicted
+      {:else if currentGw !== null}
+        Predict GW {currentGw}
+      {:else}
+        Predict GW
+      {/if}
+    </button>
+  </div>
   <div
     class="kicker-today-kpi flex overflow-x-auto snap-x snap-mandatory gap-px pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0 mb-8"
     data-kpi-strip

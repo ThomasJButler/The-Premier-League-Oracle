@@ -69,6 +69,21 @@ describe('Today route', () => {
     expect(body).toContain('data-mobile-shell');
   });
 
+  it('renders a [Predict GW] button per shell, disabled in the empty-SSR state', () => {
+    const { body } = render(TodayPage);
+    const buttons = body.match(/<button[^>]*data-predict-gw[^>]*>/g) ?? [];
+    // 1 button per shell * 2 shells = 2
+    expect(buttons.length).toBe(2);
+    for (const btn of buttons) {
+      expect(btn).toContain('data-predict-gw-disabled="true"');
+      expect(btn).toContain('aria-disabled="true"');
+      expect(btn).toContain('disabled');
+    }
+    // No betting copy in the chip label
+    expect(body).not.toMatch(/\bbet\b/i);
+    expect(body).not.toMatch(/odds/i);
+  });
+
   it('marks today as the active nav link in the desktop KickerShell', () => {
     const { body } = render(TodayPage);
     const todayLink = body.match(/<a[^>]*data-nav-id="today"[^>]*>/);
