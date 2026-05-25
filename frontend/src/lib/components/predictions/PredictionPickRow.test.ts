@@ -100,6 +100,41 @@ describe('PredictionPickRow', () => {
     expect(body).toContain('background-color: #132257');
   });
 
+  it('renders both mobile and desktop row templates with layout markers', () => {
+    const { body } = render(PredictionPickRow, { props: { ...baseProps } });
+    expect(body).toContain('data-prediction-layout="mobile"');
+    expect(body).toContain('data-prediction-layout="desktop"');
+    const mobile = body.match(/<div\b[^>]*data-prediction-layout="mobile"[^>]*>/);
+    const desktop = body.match(/<div\b[^>]*data-prediction-layout="desktop"[^>]*>/);
+    expect(mobile).not.toBeNull();
+    expect(desktop).not.toBeNull();
+    expect(mobile![0]).toContain('lg:hidden');
+    expect(desktop![0]).toContain('hidden');
+    expect(desktop![0]).toContain('lg:grid');
+  });
+
+  it('mobile template stacks fixture+pick on row 1, bars below, status chip last', () => {
+    const { body } = render(PredictionPickRow, { props: { ...baseProps } });
+    const mobileBlock = body
+      .split('data-prediction-layout="mobile"')[1]
+      ?.split('data-prediction-layout="desktop"')[0];
+    expect(mobileBlock).toBeDefined();
+    // Order of markers inside the mobile block: fixture → pick → conf → bars → status chip
+    const order = [
+      'data-prediction-fixture',
+      'data-prediction-pick',
+      'data-prediction-conf',
+      'data-prediction-bars',
+      'data-prediction-status-chip'
+    ];
+    let cursor = -1;
+    for (const marker of order) {
+      const next = mobileBlock!.indexOf(marker, cursor + 1);
+      expect(next).toBeGreaterThan(cursor);
+      cursor = next;
+    }
+  });
+
   it('contains no betting/value-bets/bankroll copy', () => {
     const { body } = render(PredictionPickRow, {
       props: { ...baseProps, valueEdge: 0.04 }

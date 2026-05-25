@@ -48,6 +48,23 @@ describe('Predictions route', () => {
     expect(strip![0]).toContain('lg:grid-cols-4');
   });
 
+  it('mounts KpiSnapDots wrapped in lg:hidden, with 4 dots per shell (8 total)', () => {
+    const { body } = render(PredictionsPage);
+    const wrappers = body.match(/<div[^>]*data-kpi-dots-wrapper[^>]*>/g) ?? [];
+    expect(wrappers.length).toBe(2);
+    expect(wrappers[0]).toContain('lg:hidden');
+    const dotCount = (body.match(/data-kpi-dot=/g) ?? []).length;
+    expect(dotCount).toBe(8);
+  });
+
+  it('dots default to the first one being active before any scroll happens', () => {
+    const { body } = render(PredictionsPage);
+    const active = (body.match(/data-kpi-dot-active="true"/g) ?? []).length;
+    const inactive = (body.match(/data-kpi-dot-active="false"/g) ?? []).length;
+    expect(active).toBe(2);
+    expect(inactive).toBe(6);
+  });
+
   it('renders THIS WEEK\'S PICKS and SETTLED RESULTS rule headings', () => {
     const { body } = render(PredictionsPage);
     expect(body).toContain("THIS WEEK'S PICKS");

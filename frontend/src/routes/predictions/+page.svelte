@@ -5,6 +5,7 @@
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
   import MobilePersonaPill from '$lib/components/persona/MobilePersonaPill.svelte';
   import KpiTile from '$lib/components/today/KpiTile.svelte';
+  import KpiSnapDots from '$lib/components/predictions/KpiSnapDots.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
   import PredictionPickRow from '$lib/components/predictions/PredictionPickRow.svelte';
   import SettledResultRow from '$lib/components/predictions/SettledResultRow.svelte';
@@ -23,6 +24,9 @@
 
   let fixtures = $state<FixtureContext[]>([]);
   let settled = $state<StoredPrediction[]>([]);
+  let activeKpi = $state(0);
+
+  const KPI_COUNT = 4;
 
   const PICK_LETTER = { H: 'HOME', D: 'DRAW', A: 'AWAY' } as const;
 
@@ -119,6 +123,25 @@
         .slice(0, 10);
     } catch {}
   });
+
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const strips = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-kpi-strip]')
+    );
+    const handlers: Array<() => void> = [];
+    for (const strip of strips) {
+      const onScroll = () => {
+        const tileWidth = strip.clientWidth;
+        if (tileWidth <= 0) return;
+        const idx = Math.round(strip.scrollLeft / tileWidth);
+        activeKpi = Math.max(0, Math.min(KPI_COUNT - 1, idx));
+      };
+      strip.addEventListener('scroll', onScroll, { passive: true });
+      handlers.push(() => strip.removeEventListener('scroll', onScroll));
+    }
+    return () => handlers.forEach((cleanup) => cleanup());
+  });
 </script>
 
 {#snippet body()}
@@ -138,6 +161,10 @@
     <div class="flex-none w-[55vw] snap-center lg:w-auto">
       <KpiTile label="MODEL EDGE" value={modelEdge} sub="high-conf vs random" accent />
     </div>
+  </div>
+
+  <div class="lg:hidden mb-6" data-kpi-dots-wrapper>
+    <KpiSnapDots count={KPI_COUNT} activeIndex={activeKpi} />
   </div>
 
   <Rule kicker="GW" title="THIS WEEK'S PICKS" action="UPDATED LIVE" />
