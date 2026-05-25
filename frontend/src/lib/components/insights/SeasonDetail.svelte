@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SeasonRecord } from '$lib/fixtures/leagueHistory';
   import type { SeasonStats } from '$lib/data/statsPack';
+  import type { DerivedStandingRow } from '$lib/insights/deriveStandings';
 
   interface Props {
     record: SeasonRecord;
@@ -14,6 +15,14 @@
     generating?: boolean;
     /** Surfaced inline under the verdict when the last generation attempt failed. */
     generateError?: string | null;
+    /** Top-6 standings derived on demand from historical matches; null until requested. */
+    topStandings?: DerivedStandingRow[] | null;
+    /** Click handler for the "Load top 6" CTA. */
+    onLoadStandings?: () => void;
+    /** When true, the standings CTA renders a disabled "Loading…" label. */
+    loadingStandings?: boolean;
+    /** Surfaced inline under the standings block when derivation failed or produced no rows. */
+    standingsError?: string | null;
   }
 
   const {
@@ -23,7 +32,11 @@
     personaName,
     onGenerate,
     generating = false,
-    generateError = null
+    generateError = null,
+    topStandings = null,
+    onLoadStandings,
+    loadingStandings = false,
+    standingsError = null
   }: Props = $props();
 
   const formatPct = (v: number): string => `${Math.round(v * 100)}%`;
@@ -93,6 +106,61 @@
         </ul>
       </section>
     {/if}
+  {/if}
+
+  {#if onLoadStandings}
+    <section class="border-t border-rule pt-4" data-detail-standings>
+      <div class="flex items-baseline justify-between gap-3 mb-2">
+        <p class="font-mono text-[10px] tracking-[0.25em] uppercase text-ink-dim">
+          Final standings · top 6
+        </p>
+        <button
+          type="button"
+          class="font-mono text-[10px] tracking-[0.25em] uppercase text-red font-bold disabled:text-ink-dim disabled:cursor-not-allowed"
+          data-standings-load
+          disabled={loadingStandings}
+          onclick={onLoadStandings}
+        >
+          {#if loadingStandings}
+            <span data-standings-loading>Loading…</span>
+          {:else if topStandings && topStandings.length > 0}
+            Refresh
+          {:else}
+            Load top 6
+          {/if}
+        </button>
+      </div>
+      {#if topStandings && topStandings.length > 0}
+        <ol class="space-y-1" data-standings-list>
+          {#each topStandings as r (r.team)}
+            <li
+              class="grid items-baseline gap-2 font-mono text-[12px] text-ink tabular-nums"
+              style="grid-template-columns: 24px minmax(0, 1fr) auto auto;"
+              data-standings-row
+              data-standings-position={r.position}
+            >
+              <span class="text-ink-dim">{r.position}</span>
+              <span class="font-serif text-[14px] text-ink truncate" data-standings-team>{r.team}</span>
+              <span class="text-ink-soft">GD {r.goalDifference >= 0 ? '+' : ''}{r.goalDifference}</span>
+              <span class="text-ink font-bold" data-standings-points>{r.points} pts</span>
+            </li>
+          {/each}
+        </ol>
+      {:else if topStandings && topStandings.length === 0}
+        <p class="font-serif italic text-ink-dim text-[14px]" data-standings-empty>
+          No completed matches on file for this season yet.
+        </p>
+      {:else}
+        <p class="font-serif italic text-ink-dim text-[14px]" data-standings-prompt>
+          Standings derive on demand from the historical match archive — tap Load top 6 to compute.
+        </p>
+      {/if}
+      {#if standingsError}
+        <p class="font-mono text-[11px] uppercase tracking-[0.15em] text-red mt-2" data-standings-error>
+          ⚠ {standingsError}
+        </p>
+      {/if}
+    </section>
   {/if}
 
   <section class="border-t border-rule pt-4" data-detail-verdict>

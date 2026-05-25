@@ -14,6 +14,7 @@
   import { personaStore } from '$lib/stores/persona';
   import { getPersona, type PersonaId } from '$lib/personas';
   import { dataService } from '../../../services/dataService';
+  import { deriveStandings, type DerivedStandingRow } from '$lib/insights/deriveStandings';
 
   const personaId = $derived($personaStore as PersonaId);
   const persona = $derived(getPersona(personaId));
@@ -25,6 +26,9 @@
   let verdictTick = $state(0);
   let generating = $state(false);
   let generateError = $state<string | null>(null);
+  let standingsBySeason = $state<Record<string, DerivedStandingRow[]>>({});
+  let loadingStandings = $state(false);
+  let standingsError = $state<string | null>(null);
 
   const record = $derived(getSeasonRecord(activeSeason) ?? SEASONS_DESC[0]);
   const seasonStats = $derived(statsPack.seasonStats?.[activeSeason]);
@@ -50,9 +54,32 @@
     generating = false;
   }
 
+  const topStandings = $derived(standingsBySeason[activeSeason] ?? null);
+
+  async function loadStandings() {
+    if (loadingStandings) return;
+    const season = activeSeason;
+    const year = seasonStartYear(season);
+    if (year === null) {
+      standingsError = 'Unable to parse season year';
+      return;
+    }
+    loadingStandings = true;
+    standingsError = null;
+    try {
+      const matches = await dataService.getHistoricalMatches(year);
+      standingsBySeason = { ...standingsBySeason, [season]: deriveStandings(matches, 6) };
+    } catch (err) {
+      standingsError = err instanceof Error ? err.message : 'Failed to load standings';
+    } finally {
+      loadingStandings = false;
+    }
+  }
+
   function selectSeason(season: string) {
     activeSeason = season;
     generateError = null;
+    standingsError = null;
     if (typeof window !== 'undefined') {
       const search = `?season=${encodeURIComponent(season)}`;
       history.replaceState(null, '', `${window.location.pathname}${search}`);
@@ -107,6 +134,10 @@
           onGenerate={generateVerdict}
           generating={generating}
           generateError={generateError}
+          topStandings={topStandings}
+          onLoadStandings={loadStandings}
+          loadingStandings={loadingStandings}
+          standingsError={standingsError}
         />
       </div>
     </div>
