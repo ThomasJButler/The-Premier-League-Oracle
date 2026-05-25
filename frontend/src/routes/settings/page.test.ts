@@ -149,3 +149,26 @@ describe('Settings route — K0l-β (API-key persistence + PrefToggle)', () => {
     expect(body).not.toMatch(/value edge/i);
   });
 });
+
+describe('Settings route — K2c-α (paywall UI + mock entitlements)', () => {
+  it('mounts UpgradeModal once at the page root (closed by default → not in body)', () => {
+    expect(ROUTE_SRC).toContain('<UpgradeModal bind:open={upgradeOpen}');
+    const { body } = render(SettingsPage);
+    expect(body).not.toContain('data-upgrade-modal');
+  });
+
+  it('wires the pundit grid to lock all but voice when active tier is touchline', () => {
+    expect(ROUTE_SRC).toMatch(/locked=\{activeTier === 'touchline' && id !== 'voice'\}/);
+    expect(ROUTE_SRC).toContain('onLockedClick={() => (upgradeOpen = true)}');
+  });
+
+  it("declares the account-tab tier panel that opens the UpgradeModal", () => {
+    expect(ROUTE_SRC).toContain('data-account-tier-panel');
+    expect(ROUTE_SRC).toContain('data-account-upgrade-cta');
+    expect(ROUTE_SRC).toContain('onclick={() => (upgradeOpen = true)}');
+  });
+
+  it("doesn't ship the legacy 'unlock at K2c' placeholder copy", () => {
+    expect(ROUTE_SRC).not.toMatch(/unlock at K2c/i);
+  });
+});

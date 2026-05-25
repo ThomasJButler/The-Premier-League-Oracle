@@ -34,6 +34,26 @@ describe('PunditPickerCard', () => {
     expect(body).toContain('is-selected');
   });
 
+  it('locked variant exposes lock marker + aria-disabled and suppresses the checkmark', () => {
+    const { body } = render(PunditPickerCard, {
+      props: { persona: voice, selected: true, locked: true }
+    });
+    expect(body).toContain('data-picker-locked="true"');
+    expect(body).toContain('data-picker-lock');
+    expect(body).toContain('aria-disabled="true"');
+    expect(body).toContain('is-locked');
+    // selected+locked → the locked treatment wins; checkmark hidden so the
+    // visual remains unambiguous (you can't be "active and locked" simultaneously).
+    expect(body).not.toContain('data-picker-check');
+  });
+
+  it('unlocked card has data-picker-locked="false" and no lock badge', () => {
+    const { body } = render(PunditPickerCard, { props: { persona: voice } });
+    expect(body).toContain('data-picker-locked="false"');
+    expect(body).not.toMatch(/data-picker-lock\b(?!ed)/);
+    expect(body).not.toContain('aria-disabled="true"');
+  });
+
   it('derives the shield monogram from the persona short label', () => {
     const macca = getPersona('scouser');
     const { body } = render(PunditPickerCard, { props: { persona: macca } });

@@ -7,7 +7,10 @@
   import PunditPickerCard from '$lib/components/persona/PunditPickerCard.svelte';
   import PrefToggle from '$lib/components/settings/PrefToggle.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
+  import TierBadge from '$lib/components/paywall/TierBadge.svelte';
+  import UpgradeModal from '$lib/components/paywall/UpgradeModal.svelte';
   import { personaStore } from '$lib/stores/persona';
+  import { entitlementsStore, TIERS } from '$lib/stores/entitlementsStore';
   import { KICKER_PERSONA_ORDER, PERSONAS, type PersonaId } from '$lib/personas';
   import { ANTHROPIC_API_KEY_STORAGE_KEY } from '$lib/constants';
 
@@ -150,6 +153,10 @@
 
   const personaId = $derived($personaStore as PersonaId);
   const activePersona = $derived(PERSONAS[personaId]);
+
+  let upgradeOpen = $state(false);
+  const activeTier = $derived($entitlementsStore);
+  const activeTierSpec = $derived(TIERS.find((t) => t.id === activeTier) ?? TIERS[0]);
 </script>
 
 {#snippet subNav()}
@@ -197,7 +204,9 @@
         <PunditPickerCard
           persona={PERSONAS[id]}
           selected={personaId === id}
+          locked={activeTier === 'touchline' && id !== 'voice'}
           onclick={(next) => personaStore.set(next)}
+          onLockedClick={() => (upgradeOpen = true)}
         />
       {/each}
     </div>
@@ -306,10 +315,59 @@
 
 {#snippet panelAccount()}
   <section data-tab-panel="account">
-    <Rule kicker="ACCOUNT" title="Touchline tier" action="FREE · MVP" />
-    <p class="font-serif text-[14px] leading-relaxed text-ink-soft" data-account-copy>
-      No sign-in required at MVP. Press Box (£4/mo) and Print Run (£20/mo)
-      tiers unlock at K2c once the paywall ships.
+    <Rule kicker="ACCOUNT" title="Your tier" action="MOCK · MVP" />
+    <div
+      class="flex flex-col gap-3 mb-4 border border-rule bg-paper-warm p-4"
+      data-account-tier-panel
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p
+            class="font-sans text-[9px] tracking-[0.3em] font-bold text-red uppercase"
+            data-account-tier-kicker
+          >
+            CURRENT TIER
+          </p>
+          <p
+            class="font-serif text-[22px] font-bold leading-tight text-ink mt-0.5"
+            data-account-tier-label
+          >
+            {activeTierSpec.label}
+          </p>
+          <p
+            class="font-serif italic text-[12px] text-ink-soft mt-0.5"
+            data-account-tier-tagline
+          >
+            {activeTierSpec.tagline}
+          </p>
+        </div>
+        <TierBadge tier={activeTier} size="md" />
+      </div>
+      <ul
+        class="flex flex-col gap-1 font-serif text-[13px] text-ink-soft"
+        data-account-tier-perks
+      >
+        {#each activeTierSpec.perks as perk}
+          <li class="flex gap-2">
+            <span aria-hidden="true">·</span>
+            <span>{perk}</span>
+          </li>
+        {/each}
+      </ul>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="font-sans text-[10px] tracking-[0.25em] font-bold uppercase bg-ink text-paper px-3 py-1.5"
+          data-account-upgrade-cta
+          onclick={() => (upgradeOpen = true)}
+        >
+          {activeTier === 'print-run' ? 'Manage tier' : 'Upgrade'}
+        </button>
+      </div>
+    </div>
+    <p class="font-serif italic text-[12px] text-ink-dim" data-account-copy>
+      Mock entitlements at MVP — Stripe + Clerk wire in at K2c. Selecting a
+      tier persists to this device only.
     </p>
   </section>
 {/snippet}
@@ -382,6 +440,8 @@
     {@render body()}
   </KickerShell>
 </div>
+
+<UpgradeModal bind:open={upgradeOpen} />
 
 <div class="lg:hidden flex flex-col min-h-screen" data-mobile-shell data-settings-page>
   <MobileHeader title="Settings" sub="THE KICKER">
