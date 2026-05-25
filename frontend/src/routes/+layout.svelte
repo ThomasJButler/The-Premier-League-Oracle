@@ -6,6 +6,7 @@
   import { personaStore, STORAGE_KEY } from '$lib/stores/persona';
   import MobileTicker from '$lib/components/shell/MobileTicker.svelte';
   import PersonaBottomSheet from '$lib/components/persona/PersonaBottomSheet.svelte';
+  import PersistentAudioPlayer from '$lib/components/audio/PersistentAudioPlayer.svelte';
   import { shouldRedirectToOnboarding } from '$lib/utils/onboardingGate';
 
   let { children } = $props();
@@ -34,3 +35,6 @@
 <div class="lg:hidden">
   <PersonaBottomSheet />
 </div>
+
+<!-- Persistent audio player. Renders only when a track is loaded (audioStore). -->
+<PersistentAudioPlayer />
