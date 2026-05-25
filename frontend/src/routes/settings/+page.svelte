@@ -161,15 +161,18 @@
 
 {#snippet subNav()}
   <nav aria-label="Settings sections" data-settings-subnav>
-    <ul class="flex flex-col gap-0.5">
+    <ul
+      class="flex lg:flex-col gap-2 lg:gap-0.5 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0"
+      data-settings-subnav-list
+    >
       {#each TABS as tab (tab.id)}
         {@const isActive = tab.id === activeTab}
-        <li>
+        <li class="shrink-0 lg:shrink lg:w-full">
           <button
             type="button"
             data-subnav-id={tab.id}
             aria-current={isActive ? 'page' : undefined}
-            class="kicker-subnav__row w-full text-left px-3 py-2.5 transition-colors"
+            class="kicker-subnav__row w-auto lg:w-full text-left px-3 py-2.5 transition-colors"
             class:is-active={isActive}
             onclick={() => setTab(tab.id)}
           >

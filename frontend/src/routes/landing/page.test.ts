@@ -60,4 +60,20 @@ describe('Landing route — K1h.1', () => {
     const { body } = render(LandingPage);
     expect(body).not.toMatch(/value bet|bankroll|kelly/i);
   });
+
+  it('K2a-β.7 — pricing cards reorder so press-box (MOST POPULAR) is first on mobile, middle on desktop', () => {
+    const { body } = render(LandingPage);
+    const pressBox = body.match(/<article\b[^>]*data-landing-plan-tier="press-box"[^>]*>/);
+    const touchline = body.match(/<article\b[^>]*data-landing-plan-tier="touchline"[^>]*>/);
+    const printRun = body.match(/<article\b[^>]*data-landing-plan-tier="print-run"[^>]*>/);
+    expect(pressBox).not.toBeNull();
+    expect(touchline).not.toBeNull();
+    expect(printRun).not.toBeNull();
+    expect(pressBox![0]).toContain('order-1');
+    expect(pressBox![0]).toContain('md:order-2');
+    expect(touchline![0]).toContain('order-2');
+    expect(touchline![0]).toContain('md:order-1');
+    expect(printRun![0]).toContain('order-3');
+    expect(printRun![0]).toContain('md:order-3');
+  });
 });

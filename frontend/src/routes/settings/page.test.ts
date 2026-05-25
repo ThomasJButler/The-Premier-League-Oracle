@@ -172,3 +172,29 @@ describe('Settings route — K2c-α (paywall UI + mock entitlements)', () => {
     expect(ROUTE_SRC).not.toMatch(/unlock at K2c/i);
   });
 });
+
+describe('Settings route — K2a-β.7 (subnav mobile horizontal scroll)', () => {
+  it('subnav <ul> stacks horizontally on mobile, vertically on lg+', () => {
+    const { body } = render(SettingsPage);
+    const lists = body.match(/<ul\b[^>]*data-settings-subnav-list[^>]*>/g) ?? [];
+    expect(lists.length).toBe(2);
+    for (const list of lists) {
+      expect(list).toContain('flex');
+      expect(list).toContain('lg:flex-col');
+      expect(list).toContain('overflow-x-auto');
+      expect(list).toContain('lg:overflow-visible');
+      expect(list).toContain('-mx-4');
+      expect(list).toContain('lg:mx-0');
+    }
+  });
+
+  it('subnav buttons size to content on mobile and fill width on lg+', () => {
+    const { body } = render(SettingsPage);
+    const punditBtns = body.match(/<button\b[^>]*data-subnav-id="pundit"[^>]*>/g) ?? [];
+    expect(punditBtns.length).toBe(2);
+    for (const btn of punditBtns) {
+      expect(btn).toContain('w-auto');
+      expect(btn).toContain('lg:w-full');
+    }
+  });
+});

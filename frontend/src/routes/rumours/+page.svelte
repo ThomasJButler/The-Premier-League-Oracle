@@ -162,6 +162,31 @@
         The window opens June 9. The full rumour table reads best on a bigger screen — open
         <span class="font-mono">/rumours</span> on desktop to see Macca's early takes.
       </p>
+      <ul
+        class="mt-6 flex flex-col gap-2 text-left max-w-xs mx-auto"
+        data-rumours-mobile-features
+      >
+        {#each [
+          { l: 'DEAL PROBABILITY', d: 'Model scores 0–100% per rumour.' },
+          { l: "MACCA'S DESK", d: 'Pundit takes on every major link.' },
+          { l: 'IMPACT RATING', d: 'How much each signing moves the title odds.' }
+        ] as feature (feature.l)}
+          <li class="kicker-rumours-feature px-3 py-2" data-rumours-mobile-feature>
+            <div class="font-sans text-[9px] tracking-[0.25em] font-bold text-amber">
+              {feature.l}
+            </div>
+            <p class="font-serif italic text-[11px] text-ink-ghost leading-[1.4]">
+              {feature.d}
+            </p>
+          </li>
+        {/each}
+      </ul>
+      <p
+        class="mt-4 font-mono text-[10px] tracking-[0.3em] text-ink-faint"
+        data-rumours-mobile-count
+      >
+        6 EARLY RUMOURS · WAITING
+      </p>
       <button
         type="button"
         class="mt-6 px-6 py-3 font-sans font-extrabold text-[11px] tracking-widest bg-paper text-ink"

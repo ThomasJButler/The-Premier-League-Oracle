@@ -56,4 +56,15 @@ describe('Rumours route — K1i', () => {
     const { body } = render(RumoursPage);
     expect(body).not.toMatch(/value bet|bankroll|kelly/i);
   });
+
+  it('K2a-β.7 — mobile stub renders 3 compressed feature rows + early-rumour count', () => {
+    const { body } = render(RumoursPage);
+    expect(body).toContain('data-rumours-mobile-features');
+    expect((body.match(/data-rumours-mobile-feature(?![-\w])/g) ?? []).length).toBe(3);
+    expect(body).toContain('data-rumours-mobile-count');
+    expect(body).toContain('6 EARLY RUMOURS · WAITING');
+    expect(body).toContain('DEAL PROBABILITY');
+    expect(body).toContain("MACCA'S DESK");
+    expect(body).toContain('IMPACT RATING');
+  });
 });

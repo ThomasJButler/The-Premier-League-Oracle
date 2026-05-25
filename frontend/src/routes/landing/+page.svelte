@@ -344,6 +344,12 @@
       {#each plans as plan (plan.name)}
         <article
           class="relative flex flex-col border-2 border-ink"
+          class:order-2={plan.variant === 'touchline'}
+          class:md:order-1={plan.variant === 'touchline'}
+          class:order-1={plan.variant === 'press-box'}
+          class:md:order-2={plan.variant === 'press-box'}
+          class:order-3={plan.variant === 'print-run'}
+          class:md:order-3={plan.variant === 'print-run'}
           class:bg-ink={plan.variant === 'touchline'}
           class:text-paper={plan.variant === 'touchline' || plan.variant === 'press-box'}
           class:bg-red={plan.variant === 'press-box'}
