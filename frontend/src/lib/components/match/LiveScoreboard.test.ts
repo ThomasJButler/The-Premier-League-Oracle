@@ -54,4 +54,27 @@ describe('LiveScoreboard', () => {
     expect(body).not.toMatch(/bankroll/i);
     expect(body).not.toMatch(/kelly/i);
   });
+
+  describe('mobile template', () => {
+    it('emits a mobile wrapper alongside the desktop wrapper', () => {
+      const { body } = render(LiveScoreboard, { props: { fixture } });
+      expect(body).toContain('data-live-mobile');
+      expect(body).toContain('data-live-desktop');
+    });
+
+    it('mobile wrapper uses lg:hidden and desktop wrapper uses hidden lg:block', () => {
+      const { body } = render(LiveScoreboard, { props: { fixture } });
+      expect(body).toMatch(/lg:hidden[^"]*"[^>]*data-live-mobile/);
+      expect(body).toMatch(/hidden lg:block[^"]*"[^>]*data-live-desktop/);
+    });
+
+    it('mobile slice contains the live minute, big score and team blocks', () => {
+      const { body } = render(LiveScoreboard, { props: { fixture } });
+      const mobileSlice = body.split('data-live-mobile')[1] ?? '';
+      expect(mobileSlice).toContain("LIVE · 67'");
+      expect(mobileSlice).toContain('2 — 1');
+      expect(mobileSlice).toContain('HOME · ARS');
+      expect(mobileSlice).toContain('AWAY · LIV');
+    });
+  });
 });

@@ -44,7 +44,7 @@
   data-match-hero-kind={kind}
   data-match-hero-id={fixture.id}
 >
-  <div class="px-8 py-7">
+  <div class="hidden lg:block px-8 py-7" data-hero-desktop>
     <div
       class="flex items-center justify-between text-[10px] tracking-[0.3em] font-bold uppercase pb-3 mb-5 border-b border-ink"
       data-hero-meta
@@ -116,5 +116,83 @@
         {fixture.venue}
       </div>
     {/if}
+  </div>
+
+  <div class="lg:hidden px-4 py-5" data-hero-mobile>
+    <div class="flex items-center justify-between mb-3">
+      <span
+        class="inline-flex items-center gap-1.5 bg-ink px-2 py-1 text-[9px] tracking-[0.3em] font-bold uppercase"
+        style="color: var(--paper);"
+      >
+        {statusLabel}
+      </span>
+      <span class="font-mono text-[9px] tracking-[0.2em] font-bold text-ink-dim uppercase">
+        {fixture.competition} · GW {fixture.gameweek}
+      </span>
+    </div>
+
+    <div class="text-center font-sans text-[10px] tracking-[0.25em] font-bold uppercase text-red mb-2">
+      {#if hasScore && fixture.score}
+        {fixture.home.name} {fixture.score.home} — {fixture.score.away} {fixture.away.name}
+      {:else}
+        {fixture.home.name} v {fixture.away.name}
+      {/if}
+    </div>
+
+    <div class="text-center mb-4">
+      {#if hasScore && fixture.score}
+        <div class="font-mono font-extrabold text-[64px] leading-none tracking-[-0.05em] text-ink">
+          {fixture.score.home} — {fixture.score.away}
+        </div>
+        <div class="mt-1 font-sans text-[9px] tracking-[0.3em] font-bold text-ink-dim">
+          {isLive ? 'LIVE SCORE' : 'FINAL SCORE'}
+        </div>
+      {:else}
+        <div class="font-mono font-extrabold text-[56px] leading-none tracking-[-0.05em] text-ink">
+          v
+        </div>
+        <div class="mt-1 font-sans text-[9px] tracking-[0.3em] font-bold text-ink-dim">
+          FIXTURE
+        </div>
+      {/if}
+    </div>
+
+    <div class="grid grid-cols-2 border-y border-ink divide-x divide-ink">
+      <div class="px-3 py-4 flex flex-col items-center text-center">
+        <div
+          class="w-14 h-14 rounded-full flex items-center justify-center font-serif font-bold text-[22px] mb-2"
+          style="background: var(--persona-accent, var(--red)); color: var(--paper);"
+        >
+          {fixture.home.abbr.charAt(0)}
+        </div>
+        <div class="font-serif text-[17px] leading-tight text-ink">
+          {fixture.home.name}
+        </div>
+        <div class="mt-1 font-sans text-[9px] tracking-[0.25em] font-bold uppercase text-ink-dim">
+          HOME · {fixture.home.abbr}
+        </div>
+      </div>
+      <div class="px-3 py-4 flex flex-col items-center text-center">
+        <div
+          class="w-14 h-14 rounded-full flex items-center justify-center font-serif font-bold text-[22px] mb-2"
+          style="background: var(--ink); color: var(--paper);"
+        >
+          {fixture.away.abbr.charAt(0)}
+        </div>
+        <div class="font-serif text-[17px] leading-tight text-ink">
+          {fixture.away.name}
+        </div>
+        <div class="mt-1 font-sans text-[9px] tracking-[0.25em] font-bold uppercase text-ink-dim">
+          AWAY · {fixture.away.abbr}
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="mt-3 font-serif italic text-[12px] text-ink-dim text-center"
+      data-hero-mobile-meta
+    >
+      {#if fixture.venue}{fixture.venue} · {/if}{kickoffDate} · {kickoffTime}
+    </div>
   </div>
 </section>
