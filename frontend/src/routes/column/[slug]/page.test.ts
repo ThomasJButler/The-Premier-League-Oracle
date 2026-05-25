@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import ColumnPage from './+page.svelte';
 import { listColumnSlugs } from '$lib/fixtures/columns';
 
@@ -65,6 +67,16 @@ describe('Column route — K1e-α (/column/[slug])', () => {
   it('has no betting copy on a known column page', () => {
     const { body } = render(ColumnPage, { props: { data: { slug: KNOWN_SLUG } } });
     expect(body).not.toMatch(/value bet|bankroll|kelly/i);
+  });
+
+  it('onMount syncs personaStore to the column byline personaId (K2-fix.1)', () => {
+    const src = readFileSync(
+      fileURLToPath(new URL('./+page.svelte', import.meta.url)),
+      'utf-8'
+    );
+    expect(src).toMatch(/import\s*\{\s*personaStore\s*\}\s*from\s*['"]\$lib\/stores\/persona['"]/);
+    expect(src).toMatch(/import\s*\{\s*onMount\s*\}\s*from\s*['"]svelte['"]/);
+    expect(src).toMatch(/onMount\(\(\)\s*=>\s*\{[\s\S]*personaStore\.set\(column\.byline\.personaId\)[\s\S]*\}\)/);
   });
 
   it('every fixture slug renders without throwing', () => {

@@ -9,6 +9,8 @@
   import CheersGeoffCallout from '$lib/components/match/CheersGeoffCallout.svelte';
   import { getColumn } from '$lib/fixtures/columns';
   import { PERSONAS } from '$lib/personas';
+  import { personaStore } from '$lib/stores/persona';
+  import { onMount } from 'svelte';
 
   interface PageData {
     slug: string;
@@ -18,6 +20,10 @@
 
   const column = $derived(getColumn(data.slug));
   const persona = $derived(column ? PERSONAS[column.byline.personaId] : null);
+
+  onMount(() => {
+    if (column) personaStore.set(column.byline.personaId);
+  });
 
   const titleLine = $derived(
     column ? column.headline.map((s) => s.text).join('') : 'Column'
