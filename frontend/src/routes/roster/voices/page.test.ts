@@ -28,9 +28,28 @@ describe('Roster · Voice range route — K1g', () => {
     expect(count).toBe(20);
   });
 
-  it('renders 2 voices grids (one per shell)', () => {
+  it('renders 2 voices grids (one per shell — desktop grid + mobile carousel)', () => {
     const { body } = render(VoicesPage);
     expect((body.match(/data-voices-grid/g) ?? []).length).toBe(2);
+  });
+
+  it('renders the mobile carousel chrome (avatar strip, snap carousel, dots, swipe hint)', () => {
+    const { body } = render(VoicesPage);
+    expect(body).toContain('data-voices-carousel');
+    expect(body).toContain('data-voices-strip');
+    expect(body).toContain('data-voices-swipe-hint');
+    expect(body).toContain('data-kpi-dots');
+    expect((body.match(/data-voices-avatar-id="/g) ?? []).length).toBe(10);
+    expect((body.match(/data-voices-carousel-slide/g) ?? []).length).toBe(10);
+  });
+
+  it('mobile carousel uses scroll-snap classes', () => {
+    const { body } = render(VoicesPage);
+    const carousel = body.match(/<div\b[^>]*data-voices-carousel[^>]*>/);
+    expect(carousel).not.toBeNull();
+    expect(carousel![0]).toContain('overflow-x-auto');
+    expect(carousel![0]).toContain('snap-x');
+    expect(carousel![0]).toContain('snap-mandatory');
   });
 
   it('renders the roster cross-link', () => {
