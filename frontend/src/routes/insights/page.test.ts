@@ -56,6 +56,15 @@ describe('Insights route — K1d-α (read-only insights screen)', () => {
     expect((body.match(/data-anomaly-row/g) ?? []).length).toBe(6);
   });
 
+  it('stacks the stats grid into single-col on mobile (K2a-β.3)', () => {
+    const { body } = render(InsightsPage);
+    const grid = body.match(/<div\b[^>]*data-stats-grid[^>]*>/);
+    expect(grid).not.toBeNull();
+    expect(grid![0]).toContain('grid-cols-1');
+    expect(grid![0]).toContain('sm:grid-cols-2');
+    expect(grid![0]).toContain('lg:grid-cols-3');
+  });
+
   it('has no betting copy on the page', () => {
     const { body } = render(InsightsPage);
     expect(body).not.toMatch(/value bet|bankroll|kelly/i);

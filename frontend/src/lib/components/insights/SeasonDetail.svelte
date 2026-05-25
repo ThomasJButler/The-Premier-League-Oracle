@@ -77,7 +77,7 @@
   {/if}
 
   {#if seasonStats}
-    <section class="grid grid-cols-2 sm:grid-cols-4 gap-2" data-detail-stats>
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" data-detail-stats>
       <div class="border border-rule p-3" data-detail-stat="matches">
         <p class="font-sans text-[10px] tracking-[0.22em] uppercase text-ink-dim">MATCHES</p>
         <p class="font-serif text-[22px] leading-none text-ink tabular-nums">{seasonStats.matches}</p>

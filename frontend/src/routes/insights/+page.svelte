@@ -92,7 +92,7 @@
 
   <section class="mb-10" data-insights-section="stats">
     <Rule kicker="THE NUMBERS" title="33-season league baseline" />
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3" data-stats-grid>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-stats-grid>
       {#each STAT_TILES as tile (tile.label)}
         <StatTile label={tile.label} value={tile.value} sub={tile.sub} />
       {/each}

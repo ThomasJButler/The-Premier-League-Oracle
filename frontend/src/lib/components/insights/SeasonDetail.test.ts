@@ -172,6 +172,17 @@ describe('SeasonDetail', () => {
     expect(body).not.toContain('data-verdict-generate');
   });
 
+  it('stacks the detail-stats grid into single-col on mobile (K2a-β.3)', () => {
+    const { body } = render(SeasonDetail, {
+      props: { record: RECORD, seasonStats: STATS, verdictBody: null, personaName: 'Cheers, Geoff' }
+    });
+    const grid = body.match(/<section\b[^>]*data-detail-stats[^>]*>/);
+    expect(grid).not.toBeNull();
+    expect(grid![0]).toContain('grid-cols-1');
+    expect(grid![0]).toContain('sm:grid-cols-2');
+    expect(grid![0]).toContain('lg:grid-cols-4');
+  });
+
   it('has no betting copy', () => {
     const { body } = render(SeasonDetail, {
       props: { record: RECORD, seasonStats: STATS, verdictBody: null, personaName: 'Cheers, Geoff' }
