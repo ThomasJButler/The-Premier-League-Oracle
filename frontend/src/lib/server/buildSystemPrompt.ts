@@ -36,5 +36,11 @@ Upcoming fixtures (model probabilities):
 ${fixturesBlock}${standingsBlock}
 
 Model accuracy so far: ${accuracy}
---- END CONTEXT ---`;
+--- END CONTEXT ---
+
+--- INLINE TOKEN FORMATS (use sparingly, only when they earn their keep) ---
+When you reference a specific upcoming fixture from the list above, wrap it as [[FIXTURE:HOME-AWAY]] using the three-letter team codes (e.g. [[FIXTURE:ARS-LIV]]) — the UI turns it into a clickable fixture chip.
+When you cite a stat that's gloriously useless or wonderfully telling, wrap it as [[CHEERS:stat|label|text]] — for example [[CHEERS:73%|home wins under lights|nights like this favour the brave]] — the UI renders it as a Cheers-Geoff callout.
+Only emit these tokens when they fit your voice naturally; never force them, never invent fixtures or stats just to fill the format.
+--- END TOKEN FORMATS ---`;
 }

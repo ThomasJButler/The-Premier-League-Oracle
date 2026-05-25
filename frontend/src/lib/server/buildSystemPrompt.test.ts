@@ -60,4 +60,21 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Brier 0.193');
     expect(prompt).toContain('n=152');
   });
+
+  it('teaches every persona how to emit [[FIXTURE:…]] and [[CHEERS:…]] tokens', () => {
+    const personaIds = ['voice', 'scouser', 'manc', 'hardman', 'philosopher', 'optimist', 'volcano', 'chaos', 'charmer', 'wanderer'] as const;
+    for (const id of personaIds) {
+      const prompt = buildSystemPrompt(getPersona(id), fixtureContext());
+      expect(prompt).toContain('[[FIXTURE:HOME-AWAY]]');
+      expect(prompt).toContain('[[CHEERS:stat|label|text]]');
+    }
+  });
+
+  it('places token instructions after the live model context so personas see fixtures first', () => {
+    const prompt = buildSystemPrompt(getPersona('voice'), fixtureContext());
+    const contextEnd = prompt.indexOf('--- END CONTEXT ---');
+    const tokenBlock = prompt.indexOf('--- INLINE TOKEN FORMATS');
+    expect(contextEnd).toBeGreaterThan(-1);
+    expect(tokenBlock).toBeGreaterThan(contextEnd);
+  });
 });
