@@ -10,7 +10,10 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "screenshots": "playwright test screenshots",
+    "screenshots:desktop": "playwright test screenshots --project=desktop-chrome",
+    "screenshots:mobile": "playwright test screenshots --project=mobile-chrome"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
