@@ -5,6 +5,7 @@
   import { page } from '$app/stores';
   import { personaStore, STORAGE_KEY } from '$lib/stores/persona';
   import MobileTicker from '$lib/components/shell/MobileTicker.svelte';
+  import PersonaBottomSheet from '$lib/components/persona/PersonaBottomSheet.svelte';
   import { shouldRedirectToOnboarding } from '$lib/utils/onboardingGate';
 
   let { children } = $props();
@@ -28,3 +29,8 @@
 </div>
 
 {@render children()}
+
+<!-- Mobile-only bottom-sheet persona switcher. Desktop swaps via /settings or /roster. -->
+<div class="lg:hidden">
+  <PersonaBottomSheet />
+</div>
