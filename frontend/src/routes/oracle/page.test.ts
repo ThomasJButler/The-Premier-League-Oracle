@@ -82,6 +82,19 @@ describe('Oracle route — K1a-β.2 (composer wired to /api/chat)', () => {
     expect((body.match(/data-today-fixture-rail/g) ?? []).length).toBe(1);
   });
 
+  it('makes the composer host sticky-bottom on mobile (K2a-β.5)', () => {
+    const { body } = render(OraclePage);
+    const hosts = body.match(/<div\b[^>]*data-oracle-composer-host[^>]*>/g) ?? [];
+    // Body snippet renders once per shell, so we get one host wrapper each.
+    expect(hosts.length).toBe(2);
+    for (const host of hosts) {
+      expect(host).toContain('sticky');
+      expect(host).toContain('lg:static');
+      expect(host).toContain('bottom-16');
+      expect(host).toContain('lg:bottom-auto');
+    }
+  });
+
   it('drives the GeoffMessage avatar from var(--persona-accent), not inline hex', () => {
     expect(GEOFF_MSG_SRC).toContain('var(--persona-accent');
     const styleBlock = GEOFF_MSG_SRC.match(/<style>[\s\S]*<\/style>/)?.[0] ?? '';

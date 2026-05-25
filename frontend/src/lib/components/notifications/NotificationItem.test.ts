@@ -51,6 +51,19 @@ describe('NotificationItem — K1f-α', () => {
     expect(label![0]).not.toMatch(/#[0-9a-f]{3,6}/i);
   });
 
+  it('renders mobile + desktop templates with both wrappers (K2a-β.5)', () => {
+    const { body } = render(NotificationItem, { props: { item: make() } });
+    expect(body).toContain('data-notification-mobile');
+    expect(body).toContain('data-notification-desktop');
+    const mobileWrap = body.match(/<div\b[^>]*data-notification-mobile[^>]*>/);
+    expect(mobileWrap).not.toBeNull();
+    expect(mobileWrap![0]).toContain('lg:hidden');
+    const desktopWrap = body.match(/<div\b[^>]*data-notification-desktop[^>]*>/);
+    expect(desktopWrap).not.toBeNull();
+    expect(desktopWrap![0]).toContain('hidden');
+    expect(desktopWrap![0]).toContain('lg:grid');
+  });
+
   it('has no betting copy', () => {
     const { body } = render(NotificationItem, {
       props: { item: make({ title: 'Edge on the model', body: 'Plain analysis text.' }) }

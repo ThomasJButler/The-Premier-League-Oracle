@@ -44,6 +44,21 @@ describe('SearchInput — K1f-β.1', () => {
     expect(glyph![0]).not.toMatch(/#[0-9a-f]{3,6}/i);
   });
 
+  it('stacks input row + actions row on mobile, restores single row at lg (K2a-β.5)', () => {
+    const { body } = render(SearchInput, { props: { value: 'arsenal' } });
+    expect(body).toContain('data-search-input-row');
+    expect(body).toContain('data-search-input-actions');
+    const form = body.match(/<form\b[^>]*data-search-input(?!-)[^>]*>/);
+    expect(form).not.toBeNull();
+    // Form is column-by-default on mobile, switches to flex row at lg.
+    expect(form![0]).toContain('lg:flex');
+    const actions = body.match(/<div\b[^>]*data-search-input-actions[^>]*>/);
+    expect(actions).not.toBeNull();
+    // Actions row has mobile top margin that collapses at lg.
+    expect(actions![0]).toContain('mt-2');
+    expect(actions![0]).toContain('lg:mt-0');
+  });
+
   it('honours a custom placeholder prop', () => {
     const { body } = render(SearchInput, {
       props: { placeholder: 'Find a thread…' }

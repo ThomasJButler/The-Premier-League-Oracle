@@ -97,7 +97,10 @@
       {/if}
     </div>
 
-    <div class="kicker-oracle__composer mt-4" data-oracle-composer-host>
+    <div
+      class="kicker-oracle__composer mt-4 sticky lg:static bottom-16 lg:bottom-auto z-10 -mx-4 lg:mx-0"
+      data-oracle-composer-host
+    >
       <GeoffComposer {persona} onsubmit={handleSubmit} />
     </div>
   </div>
