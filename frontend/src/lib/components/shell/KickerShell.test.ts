@@ -41,12 +41,14 @@ describe('KickerShell', () => {
     expect(body).toContain('aria-label="Live model ticker"');
   });
 
-  it('renders the MODEL LIVE pill and TODAY\'S PAPER CTA in the topbar', () => {
+  it("renders the TODAY'S PAPER CTA in the topbar without a duplicate MODEL LIVE pill", () => {
     const { body } = render(KickerShell);
-    expect(body).toContain('data-model-pill');
-    expect(body).toMatch(/data-model-pill[\s\S]*Model Live/);
     expect(body).toContain('data-todays-paper-cta');
     expect(body).toMatch(/Today's Paper\s*→/);
+    expect(body).not.toContain('data-model-pill');
+    expect(body).not.toContain('Model Live');
+    expect(body).not.toContain('kicker-shell__model-pill');
+    expect(body).not.toContain('kicker-shell__pulse');
   });
 
   it('renders the optional kicker eyebrow when supplied', () => {

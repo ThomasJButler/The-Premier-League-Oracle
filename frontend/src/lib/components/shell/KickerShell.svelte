@@ -110,13 +110,6 @@
           </h1>
         </div>
         <div class="flex items-center gap-4">
-          <span
-            class="kicker-shell__model-pill inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] uppercase font-bold border border-ink px-2 py-1"
-            data-model-pill
-          >
-            <span class="kicker-shell__pulse" aria-hidden="true"></span>
-            Model Live
-          </span>
           <a
             href="/today"
             class="font-mono text-[10px] tracking-[0.25em] uppercase font-bold text-red"
@@ -156,22 +149,5 @@
     background: var(--persona-accent);
     display: inline-block;
     flex-shrink: 0;
-  }
-  .kicker-shell__pulse {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--red);
-    display: inline-block;
-    animation: kicker-shell-pulse 1.6s ease-in-out infinite;
-  }
-  @keyframes kicker-shell-pulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.3; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .kicker-shell__pulse {
-      animation: none;
-    }
   }
 </style>
