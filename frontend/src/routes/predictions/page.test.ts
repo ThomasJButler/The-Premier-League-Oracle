@@ -80,10 +80,37 @@ describe('Predictions route', () => {
     expect(picksKicker).not.toMatch(/>\s*GW\s*<\/p>/);
   });
 
-  it('renders empty-state copy when no fixtures or settled rows are present', () => {
+  it('renders empty-state markers when no fixtures or settled rows are present', () => {
     const { body } = render(PredictionsPage);
     expect(body).toContain('data-picks-empty');
     expect(body).toContain('data-settled-empty');
+  });
+
+  it('renders demo picks under a "Sample picks · demo data" eyebrow chip in the empty state (K2-fix.8.1)', () => {
+    const { body } = render(PredictionsPage);
+    // Dual-shell convention: chip + grid render once per shell.
+    const chips = (body.match(/data-picks-demo-chip(?=[\s>=])/g) ?? []).length;
+    expect(chips).toBe(2);
+    expect(body).toContain('Sample picks · demo data');
+    const grids = (body.match(/data-picks-demo-grid(?=[\s>=])/g) ?? []).length;
+    expect(grids).toBe(2);
+  });
+
+  it('demo picks render with at least 6 PredictionPickRow elements per shell (12 total)', () => {
+    const { body } = render(PredictionsPage);
+    // PredictionPickRow has both a mobile and desktop template gated by `lg:hidden`
+    // / `hidden lg:grid` (K2a-β.1) — each row emits 2 `data-prediction-layout`
+    // markers. 6 demo picks × 2 layouts × 2 shells = 24 layout markers.
+    const layouts = (body.match(/data-prediction-layout=/g) ?? []).length;
+    expect(layouts).toBeGreaterThanOrEqual(24);
+  });
+
+  it('renders no stale persona-empty-state line when demo picks are showing', () => {
+    const { body } = render(PredictionsPage);
+    // K2-fix.12 line was a single italic paragraph; K2-fix.8.1 replaces it with
+    // the demo-pick grid. Anchor on the unique `getEmptyStateCopy('predictions', …)`
+    // 'voice' default copy fragment so a future revert is caught.
+    expect(body).not.toContain('Nothing to call this week — picks resume next gameweek.');
   });
 
   it('renders no betting / Kelly / bankroll copy', () => {

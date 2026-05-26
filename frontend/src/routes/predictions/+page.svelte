@@ -11,9 +11,7 @@
   import SettledResultRow from '$lib/components/predictions/SettledResultRow.svelte';
   import { buildKickerContext } from '$lib/context/buildKickerContext';
   import { defaultPorts } from '$lib/context/defaultPorts';
-  import { personaStore } from '$lib/stores/persona';
-  import type { PersonaId } from '$lib/personas';
-  import { getEmptyStateCopy } from '$lib/copy/emptyStates';
+  import { DEMO_PICKS } from '$lib/fixtures/demoPicks';
   import type { FixtureContext } from '$lib/context/types';
   import { predictionTracker, type StoredPrediction } from '../../services/predictionTracker';
   import { calibrationIndex } from '$lib/calibrationIndex';
@@ -185,9 +183,19 @@
   <Rule kicker={gwKicker} title="THIS WEEK'S PICKS" action="UPDATED LIVE" />
 
   {#if fixtures.length === 0}
-    <p class="font-serif italic text-ink-dim mb-8" data-picks-empty>
-      {getEmptyStateCopy('predictions', $personaStore as PersonaId)}
-    </p>
+    <div class="mb-10" data-picks-empty data-picks-demo>
+      <span
+        class="inline-block font-mono text-[10px] tracking-[0.3em] uppercase font-bold border border-ink px-2 py-1 mb-4"
+        data-picks-demo-chip
+      >
+        ● Sample picks · demo data
+      </span>
+      <div class="flex flex-col gap-2" data-picks-demo-grid>
+        {#each DEMO_PICKS as f (f.id)}
+          <PredictionPickRow {...rowProps(f)} />
+        {/each}
+      </div>
+    </div>
   {:else}
     <div class="flex flex-col gap-2 mb-10" data-picks-grid>
       {#each fixtures as f (f.id)}
