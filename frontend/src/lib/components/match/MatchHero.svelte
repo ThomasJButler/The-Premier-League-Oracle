@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Fixture } from '../../../types/redesign';
+  import { displayTeam } from '$lib/utils/displayTeam';
 
   interface Props {
     fixture: Fixture;
@@ -7,6 +8,9 @@
   }
 
   const { fixture, kind = 'preview' }: Props = $props();
+
+  const homeName = $derived(displayTeam(fixture.home.name));
+  const awayName = $derived(displayTeam(fixture.away.name));
 
   const kickoffDate = $derived(
     new Intl.DateTimeFormat('en-GB', {
@@ -64,7 +68,7 @@
           class="font-serif font-bold text-[56px] leading-none tracking-[-0.03em] text-ink"
           data-hero-home-name
         >
-          {fixture.home.name}
+          {homeName}
         </div>
         <div class="mt-2 font-sans text-[11px] tracking-[0.3em] font-bold uppercase text-ink-dim">
           HOME · {fixture.home.abbr}
@@ -100,7 +104,7 @@
           class="font-serif font-bold text-[56px] leading-none tracking-[-0.03em] text-ink"
           data-hero-away-name
         >
-          {fixture.away.name}
+          {awayName}
         </div>
         <div class="mt-2 font-sans text-[11px] tracking-[0.3em] font-bold uppercase text-ink-dim">
           AWAY · {fixture.away.abbr}
@@ -133,9 +137,9 @@
 
     <div class="text-center font-sans text-[10px] tracking-[0.25em] font-bold uppercase text-red mb-2">
       {#if hasScore && fixture.score}
-        {fixture.home.name} {fixture.score.home} — {fixture.score.away} {fixture.away.name}
+        {homeName} {fixture.score.home} — {fixture.score.away} {awayName}
       {:else}
-        {fixture.home.name} v {fixture.away.name}
+        {homeName} v {awayName}
       {/if}
     </div>
 
@@ -166,7 +170,7 @@
           {fixture.home.abbr.charAt(0)}
         </div>
         <div class="font-serif text-[17px] leading-tight text-ink">
-          {fixture.home.name}
+          {homeName}
         </div>
         <div class="mt-1 font-sans text-[9px] tracking-[0.25em] font-bold uppercase text-ink-dim">
           HOME · {fixture.home.abbr}
@@ -180,7 +184,7 @@
           {fixture.away.abbr.charAt(0)}
         </div>
         <div class="font-serif text-[17px] leading-tight text-ink">
-          {fixture.away.name}
+          {awayName}
         </div>
         <div class="mt-1 font-sans text-[9px] tracking-[0.25em] font-bold uppercase text-ink-dim">
           AWAY · {fixture.away.abbr}

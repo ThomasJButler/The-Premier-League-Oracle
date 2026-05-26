@@ -12,6 +12,7 @@
   import FormChips from '$lib/components/match/FormChips.svelte';
   import PunditQuoteBlock from '$lib/components/match/PunditQuoteBlock.svelte';
   import { matchToFixture, enhancedPredictionToV3 } from '$lib/adapters/v3';
+  import { displayTeam } from '$lib/utils/displayTeam';
   import { OptimizedPredictor } from '$lib/optimizedPredictions';
   import { recentH2H, type H2HMeeting } from '$lib/match/h2h';
   import { personaStore } from '$lib/stores/persona';
@@ -54,7 +55,7 @@
   );
 
   const titleLine = $derived(
-    fixture ? `${fixture.home.name} v ${fixture.away.name}` : 'Match'
+    fixture ? `${displayTeam(fixture.home.name)} v ${displayTeam(fixture.away.name)}` : 'Match'
   );
 
   const personaId = $derived($personaStore as PersonaId);

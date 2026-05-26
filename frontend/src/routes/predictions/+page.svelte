@@ -21,6 +21,7 @@
   import { findCurrentGameweek } from '$lib/gameweek';
   import type { Match } from '../../types';
   import { getTeamColor } from '../../utils/teamLogos';
+  import { displayTeam } from '$lib/utils/displayTeam';
 
   let modelAccuracy = $state('—');
   let modelAccuracySub = $state<string | undefined>(undefined);
@@ -52,8 +53,8 @@
   function rowProps(f: FixtureContext) {
     const { letter, conf } = bestPick(f.ourProb);
     return {
-      home: f.home,
-      away: f.away,
+      home: displayTeam(f.home),
+      away: displayTeam(f.away),
       homeColor: getTeamColor(f.home),
       awayColor: getTeamColor(f.away),
       probH: f.ourProb.home,
@@ -92,7 +93,7 @@
       p.actualHomeGoals === p.predictedHomeGoals &&
       p.actualAwayGoals === p.predictedAwayGoals;
     return {
-      fixture: `${p.homeTeam} v ${p.awayTeam}`,
+      fixture: `${displayTeam(p.homeTeam)} v ${displayTeam(p.awayTeam)}`,
       predicted: predictedScore,
       actual: actualScore,
       hit,
