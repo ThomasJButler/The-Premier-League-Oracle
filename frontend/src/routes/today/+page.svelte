@@ -200,21 +200,13 @@
     </button>
   </div>
   <div
-    class="kicker-today-kpi flex overflow-x-auto snap-x snap-mandatory gap-px pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0 mb-8"
+    class="kicker-today-kpi grid grid-cols-2 gap-px lg:grid-cols-4 mb-8"
     data-kpi-strip
   >
-    <div class="flex-none w-[55vw] snap-center lg:w-auto">
-      <KpiTile label="NEXT KICKOFF" value={nextKickoff} />
-    </div>
-    <div class="flex-none w-[55vw] snap-center lg:w-auto">
-      <KpiTile label="MODEL ACCURACY" value={modelAccuracy} sub={modelAccuracySub} />
-    </div>
-    <div class="flex-none w-[55vw] snap-center lg:w-auto">
-      <KpiTile label="MODEL EDGE" value={modelEdge} sub="vs market · L10 GW" accent />
-    </div>
-    <div class="flex-none w-[55vw] snap-center lg:w-auto">
-      <KpiTile label="STREAK" value={streak} accent />
-    </div>
+    <KpiTile label="NEXT KICKOFF" value={nextKickoff} />
+    <KpiTile label="MODEL ACCURACY" value={modelAccuracy} sub={modelAccuracySub} />
+    <KpiTile label="MODEL EDGE" value={modelEdge} sub="vs market · L10 GW" accent />
+    <KpiTile label="STREAK" value={streak} accent />
   </div>
 
   {#if heroMatch}

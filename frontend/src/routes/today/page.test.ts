@@ -36,12 +36,14 @@ describe('Today route', () => {
     expect(accentFalse).toBe(4);
   });
 
-  it('KPI strip has overflow-x-auto and snap-x classes for mobile horizontal scroll', () => {
+  it('KPI strip lays out as a 2x2 grid on mobile (no horizontal scroll)', () => {
     const { body } = render(TodayPage);
     const strip = body.match(/<div[^>]*data-kpi-strip[^>]*>/);
     expect(strip).not.toBeNull();
-    expect(strip![0]).toContain('overflow-x-auto');
-    expect(strip![0]).toContain('snap-x');
+    expect(strip![0]).toContain('grid-cols-2');
+    // Regression pin: must not revert to the cropped horizontal-scroll strip.
+    expect(strip![0]).not.toContain('overflow-x-auto');
+    expect(strip![0]).not.toContain('snap-x');
   });
 
   it('KPI strip upgrades to lg:grid-cols-4 on large screens', () => {
