@@ -7,6 +7,7 @@
   import Rule from '$lib/components/atoms/Rule.svelte';
   import { personaStore } from '$lib/stores/persona';
   import { getPersona, type PersonaId } from '$lib/personas';
+  import { getEmptyStateCopy } from '$lib/copy/emptyStates';
   import { dataService } from '../../services/dataService';
   import { findCurrentGameweek } from '$lib/gameweek';
   import { readBroadsheet, writeBroadsheet, clearBroadsheet } from '$lib/stores/broadsheetStore';
@@ -180,7 +181,7 @@
       </p>
     {:else if gameweek === null}
       <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-no-gw>
-        No active gameweek on file. Add a Football-Data API key on Settings to populate the slate.
+        {getEmptyStateCopy('broadsheet', personaId)}
       </p>
     {:else}
       <div class="mt-6" data-broadsheet-empty>
@@ -322,7 +323,7 @@
       </p>
     {:else if gameweek === null}
       <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-no-gw>
-        No active gameweek on file. Add a Football-Data API key on Settings to populate the slate.
+        {getEmptyStateCopy('broadsheet', personaId)}
       </p>
     {:else}
       <div class="mt-6" data-broadsheet-empty>

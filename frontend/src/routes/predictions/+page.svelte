@@ -11,6 +11,9 @@
   import SettledResultRow from '$lib/components/predictions/SettledResultRow.svelte';
   import { buildKickerContext } from '$lib/context/buildKickerContext';
   import { defaultPorts } from '$lib/context/defaultPorts';
+  import { personaStore } from '$lib/stores/persona';
+  import type { PersonaId } from '$lib/personas';
+  import { getEmptyStateCopy } from '$lib/copy/emptyStates';
   import type { FixtureContext } from '$lib/context/types';
   import { predictionTracker, type StoredPrediction } from '../../services/predictionTracker';
   import { calibrationIndex } from '$lib/calibrationIndex';
@@ -182,7 +185,7 @@
 
   {#if fixtures.length === 0}
     <p class="font-serif italic text-ink-dim mb-8" data-picks-empty>
-      No upcoming fixtures in the next 7 days.
+      {getEmptyStateCopy('predictions', $personaStore as PersonaId)}
     </p>
   {:else}
     <div class="flex flex-col gap-2 mb-10" data-picks-grid>

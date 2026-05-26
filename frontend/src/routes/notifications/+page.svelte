@@ -6,6 +6,9 @@
   import MobilePersonaPill from '$lib/components/persona/MobilePersonaPill.svelte';
   import Rule from '$lib/components/atoms/Rule.svelte';
   import NotificationItem from '$lib/components/notifications/NotificationItem.svelte';
+  import { personaStore } from '$lib/stores/persona';
+  import type { PersonaId } from '$lib/personas';
+  import { getEmptyStateCopy } from '$lib/copy/emptyStates';
   import {
     readNotifications,
     markRead,
@@ -55,7 +58,7 @@
   {:else if items.length === 0}
     <div class="py-10 text-center" data-notifications-empty>
       <p class="font-serif italic text-ink-dim text-[15px] mb-2">
-        Nothing on the wire yet.
+        {getEmptyStateCopy('notifications', $personaStore as PersonaId)}
       </p>
       <p class="font-serif text-[13px] text-ink-soft">
         Match kick-offs, model edges, and broadsheet drops will surface here once the engine starts

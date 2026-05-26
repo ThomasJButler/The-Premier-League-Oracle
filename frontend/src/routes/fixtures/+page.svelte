@@ -6,9 +6,14 @@
   import MobilePersonaPill from "$lib/components/persona/MobilePersonaPill.svelte";
   import Rule from "$lib/components/atoms/Rule.svelte";
   import MatchRow from "$lib/components/fixtures/MatchRow.svelte";
+  import { personaStore } from "$lib/stores/persona";
+  import type { PersonaId } from "$lib/personas";
+  import { getEmptyStateCopy } from "$lib/copy/emptyStates";
   import { dataService } from "../../services/dataService";
   import { getTeamColor } from "../../utils/teamLogos";
   import type { Match, Standing } from "../../types";
+
+  const emptyCopy = $derived(getEmptyStateCopy("fixtures", $personaStore as PersonaId));
 
   type FilterId = "all" | "top6" | "relegation" | "tv";
 
@@ -96,7 +101,7 @@
 
   {#if groupedByDate.length === 0}
     <div class="font-serif italic text-ink-dim text-[14px] py-8 text-center" data-fixtures-empty>
-      No fixtures found.
+      {emptyCopy}
     </div>
   {:else}
     {#each groupedByDate as group (group.dateKey)}
