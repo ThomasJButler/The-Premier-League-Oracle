@@ -41,7 +41,21 @@ function readEnvFlag(): boolean {
   }
 }
 
+function isTestEnv(): boolean {
+  // Vitest sets `import.meta.env.MODE === 'test'`. Demo mode must stay OFF
+  // during unit tests — otherwise the singleton dataService / predictionTracker
+  // overlays leak demo data into tests that expect a clean empty state.
+  // E2E (Playwright) seeds demo via `?demo=1`, which still flows through the
+  // URL flag in the browser context where MODE is 'production'/'development'.
+  try {
+    return import.meta.env?.MODE === 'test';
+  } catch {
+    return false;
+  }
+}
+
 export function isDemoMode(): boolean {
+  if (isTestEnv()) return false;
   return readEnvFlag() || readUrlFlag() || readLocalStorageFlag();
 }
 
