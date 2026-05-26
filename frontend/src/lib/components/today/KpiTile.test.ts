@@ -47,4 +47,36 @@ describe('KpiTile', () => {
     });
     expect(body).not.toContain('data-kpi-sub');
   });
+
+  // K2-fix.10: when value is the em-dash sentinel ('—'), the tile must not surface
+  // a stale caption that implies live data. Swap the value+sub block for a single
+  // italic "no data yet" line.
+  it('renders the no-data line and suppresses value + sub when value is "—"', () => {
+    const { body } = render(KpiTile, {
+      props: { label: 'MODEL EDGE', value: '—', sub: 'vs market · L10 GW', accent: true }
+    });
+    expect(body).toContain('data-kpi-tile');
+    expect(body).toContain('data-kpi-nodata="true"');
+    expect(body).toContain('data-kpi-nodata-line');
+    expect(body).toContain('no data yet');
+    // Stale caption must not leak through alongside the em-dash.
+    expect(body).not.toContain('data-kpi-value');
+    expect(body).not.toContain('data-kpi-sub');
+    expect(body).not.toContain('vs market · L10 GW');
+    // Italic ink-dim styling for the replacement line.
+    const noDataTag = body.match(/<div\b[^>]*data-kpi-nodata-line[^>]*>/);
+    expect(noDataTag).not.toBeNull();
+    expect(noDataTag![0]).toMatch(/italic/);
+    expect(noDataTag![0]).toMatch(/text-ink-dim/);
+  });
+
+  it('marks data-kpi-nodata="false" when value is anything other than the em-dash', () => {
+    const { body } = render(KpiTile, {
+      props: { label: 'STREAK', value: '3W', accent: true }
+    });
+    expect(body).toContain('data-kpi-nodata="false"');
+    expect(body).not.toContain('data-kpi-nodata-line');
+    expect(body).not.toMatch(/no data yet/);
+    expect(body).toContain('data-kpi-value');
+  });
 });
