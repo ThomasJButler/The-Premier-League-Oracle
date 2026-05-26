@@ -195,7 +195,7 @@
       {:else if currentGw !== null}
         Predict GW {currentGw}
       {:else}
-        Predict GW
+        AWAITING SCHEDULE
       {/if}
     </button>
   </div>

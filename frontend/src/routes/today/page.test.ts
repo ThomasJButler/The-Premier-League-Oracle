@@ -84,6 +84,15 @@ describe('Today route', () => {
     expect(body).not.toMatch(/odds/i);
   });
 
+  it('Predict GW button shows AWAITING SCHEDULE copy in null-GW SSR state, not a bare "Predict GW"', () => {
+    const { body } = render(TodayPage);
+    // Null-GW state (SSR) must surface the scheduled-fallback label, once per shell.
+    const awaitingMatches = body.match(/AWAITING SCHEDULE/g) ?? [];
+    expect(awaitingMatches.length).toBe(2);
+    // Regression pin: the previous bare "Predict GW" (no number, no fallback context) must not reappear.
+    expect(body).not.toMatch(/>\s*Predict GW\s*</);
+  });
+
   it('marks today as the active nav link in the desktop KickerShell', () => {
     const { body } = render(TodayPage);
     const todayLink = body.match(/<a[^>]*data-nav-id="today"[^>]*>/);
