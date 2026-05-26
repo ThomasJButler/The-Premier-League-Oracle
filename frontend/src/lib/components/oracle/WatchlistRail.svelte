@@ -11,6 +11,6 @@
     </span>
   </div>
   <p class="font-serif italic text-[12px] text-ink-dim">
-    Pin clubs, players, or rivalries from Search — arrives with the Notifications &amp; Search slice.
+    Pin clubs, players, or rivalries you want to follow — they&rsquo;ll surface here.
   </p>
 </section>
