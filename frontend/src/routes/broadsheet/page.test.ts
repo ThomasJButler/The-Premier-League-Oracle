@@ -33,11 +33,15 @@ describe('Broadsheet route — K1e-β (/broadsheet)', () => {
     expect(active.length).toBe(2);
   });
 
-  it('SSRs the "no gameweek on file" empty state by default (no cache + no client gw resolution)', () => {
+  it('SSRs the demo broadsheet in the no-gameweek state (K2-fix.8 — replaces the persona-voiced one-liner so the no-API-key preview never reads as empty)', () => {
     const { body } = render(BroadsheetPage);
     // The route's SSR-default (no initialGameweek prop, no client onMount) is
-    // gameweek === null → no-gw hint per shell.
+    // gameweek === null → demo broadsheet per shell. Keep the data-broadsheet-no-gw
+    // wrapper marker so any future "is this the no-API-key state?" probe still works.
     expect((body.match(/data-broadsheet-no-gw/g) ?? []).length).toBe(2);
+    expect((body.match(/data-broadsheet-demo(?=[\s>=])/g) ?? []).length).toBe(2);
+    // Live-broadsheet markers stay distinct from demo markers so downstream tests
+    // can disambiguate "real loaded broadsheet" from "demo placeholder".
     expect(body).not.toContain('data-broadsheet-headline');
     expect(body).not.toContain('data-broadsheet-empty');
   });
@@ -60,6 +64,30 @@ describe('Broadsheet route — K1e-β (/broadsheet)', () => {
     expect(empty.body).not.toMatch(/value bet|bankroll|kelly/i);
     const gw = render(BroadsheetPage, { props: { data: { initialGameweek: 34 } } });
     expect(gw.body).not.toMatch(/value bet|bankroll|kelly/i);
+  });
+
+  describe('K2-fix.8 — demo broadsheet for no-API-key state', () => {
+    it('renders the "Sample broadsheet · demo data" eyebrow chip in both shells', () => {
+      const { body } = render(BroadsheetPage);
+      expect((body.match(/data-broadsheet-demo-chip/g) ?? []).length).toBe(2);
+      expect(body).toContain('Sample broadsheet');
+      expect(body).toContain('demo data');
+    });
+
+    it('renders the demo headline, standfirst, byline and all three demo sections in both shells', () => {
+      const { body } = render(BroadsheetPage);
+      expect((body.match(/data-broadsheet-demo-headline/g) ?? []).length).toBe(2);
+      expect((body.match(/data-broadsheet-demo-standfirst/g) ?? []).length).toBe(2);
+      expect((body.match(/data-broadsheet-demo-byline/g) ?? []).length).toBe(2);
+      // Three sections × two shells = six section blocks rendered server-side.
+      expect((body.match(/data-broadsheet-demo-section(?=[\s>=])/g) ?? []).length).toBe(6);
+      expect(body).toContain('THE KICKER STAFF · SAMPLE EDITION');
+    });
+
+    it('demo broadsheet carries no betting copy (parody-safe, K2c-α legal posture)', () => {
+      const { body } = render(BroadsheetPage);
+      expect(body).not.toMatch(/value bet|bankroll|kelly|stake|accumulator/i);
+    });
   });
 
   describe('K2a-γ — mobile vertical-stack grammar', () => {

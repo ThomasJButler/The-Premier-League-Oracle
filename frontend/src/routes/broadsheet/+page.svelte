@@ -7,7 +7,7 @@
   import Rule from '$lib/components/atoms/Rule.svelte';
   import { personaStore } from '$lib/stores/persona';
   import { getPersona, type PersonaId } from '$lib/personas';
-  import { getEmptyStateCopy } from '$lib/copy/emptyStates';
+  import { DEMO_BROADSHEET } from '$lib/fixtures/demoBroadsheet';
   import { dataService } from '../../services/dataService';
   import { findCurrentGameweek } from '$lib/gameweek';
   import { readBroadsheet, writeBroadsheet, clearBroadsheet } from '$lib/stores/broadsheetStore';
@@ -91,6 +91,67 @@
 
   const titleLine = $derived(broadsheet?.headline ?? 'The Broadsheet');
 </script>
+
+{#snippet demoBroadsheet()}
+  <div class="mt-6" data-broadsheet-no-gw data-broadsheet-demo>
+    <span
+      class="inline-block font-mono text-[10px] tracking-[0.3em] uppercase font-bold border border-ink px-2 py-1 mb-4"
+      data-broadsheet-demo-chip
+    >
+      ● Sample broadsheet · demo data
+    </span>
+    <h2
+      class="font-serif font-bold tracking-[-0.02em] text-ink text-[32px] lg:text-[44px] leading-[1.05]"
+      data-broadsheet-demo-headline
+    >
+      {DEMO_BROADSHEET.headline}
+    </h2>
+    <p
+      class="font-serif italic text-ink-soft text-[16px] lg:text-[18px] leading-[1.4] mt-3"
+      data-broadsheet-demo-standfirst
+    >
+      {DEMO_BROADSHEET.standfirst}
+    </p>
+    <p
+      class="font-sans text-[10px] tracking-[0.3em] uppercase font-bold mt-4"
+      data-broadsheet-demo-byline
+    >
+      {DEMO_BROADSHEET.byline}
+    </p>
+    <div
+      class="grid gap-6 mt-6 font-serif text-ink text-[15px] lg:text-[16px] leading-[1.6]"
+      data-broadsheet-demo-body
+    >
+      {#each DEMO_BROADSHEET.sections as section, i (i)}
+        <section data-broadsheet-demo-section>
+          <h3
+            class="font-sans text-[11px] tracking-[0.3em] uppercase font-bold text-red mb-2"
+            data-broadsheet-demo-section-heading
+          >
+            {section.heading}
+          </h3>
+          <p data-broadsheet-demo-section-body>{section.body}</p>
+        </section>
+      {/each}
+    </div>
+    {#if DEMO_BROADSHEET.pullQuote}
+      <blockquote
+        class="kicker-broadsheet__pull mt-6 pt-4 border-t-2 font-serif italic text-ink text-[18px] lg:text-[22px] leading-[1.35]"
+        data-broadsheet-demo-pull
+      >
+        {DEMO_BROADSHEET.pullQuote}
+      </blockquote>
+    {/if}
+    {#if DEMO_BROADSHEET.closingLine}
+      <p
+        class="font-serif italic text-ink-soft text-[13px] lg:text-[14px] mt-5"
+        data-broadsheet-demo-closing
+      >
+        {DEMO_BROADSHEET.closingLine}
+      </p>
+    {/if}
+  </div>
+{/snippet}
 
 {#snippet body()}
   <article class="kicker-broadsheet max-w-[900px] mx-auto" data-broadsheet>
@@ -180,9 +241,7 @@
         {persona.name} is filing copy… (Sonnet 4.5)
       </p>
     {:else if gameweek === null}
-      <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-no-gw>
-        {getEmptyStateCopy('broadsheet', personaId)}
-      </p>
+      {@render demoBroadsheet()}
     {:else}
       <div class="mt-6" data-broadsheet-empty>
         <p class="font-serif italic text-ink-soft text-[14px]">
@@ -322,9 +381,7 @@
         {persona.name} is filing copy… (Sonnet 4.5)
       </p>
     {:else if gameweek === null}
-      <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-no-gw>
-        {getEmptyStateCopy('broadsheet', personaId)}
-      </p>
+      {@render demoBroadsheet()}
     {:else}
       <div class="mt-6" data-broadsheet-empty>
         <p class="font-serif italic text-ink-soft text-[14px]">
