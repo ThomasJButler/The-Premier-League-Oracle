@@ -14,6 +14,9 @@
   import type { FixtureContext } from '$lib/context/types';
   import { predictionTracker, type StoredPrediction } from '../../services/predictionTracker';
   import { calibrationIndex } from '$lib/calibrationIndex';
+  import { dataService } from '../../services/dataService';
+  import { findCurrentGameweek } from '$lib/gameweek';
+  import type { Match } from '../../types';
   import { getTeamColor } from '../../utils/teamLogos';
 
   let modelAccuracy = $state('—');
@@ -24,9 +27,13 @@
 
   let fixtures = $state<FixtureContext[]>([]);
   let settled = $state<StoredPrediction[]>([]);
+  let matches = $state<Match[]>([]);
   let activeKpi = $state(0);
 
   const KPI_COUNT = 4;
+
+  const currentGw = $derived(findCurrentGameweek(matches));
+  const gwKicker = $derived(currentGw !== null ? `GW ${currentGw}` : 'AWAITING SCHEDULE');
 
   const PICK_LETTER = { H: 'HOME', D: 'DRAW', A: 'AWAY' } as const;
 
@@ -117,6 +124,10 @@
     } catch {}
 
     try {
+      matches = await dataService.getMatches({ upcoming: true, days: 14 });
+    } catch {}
+
+    try {
       settled = predictionTracker
         .getRecentPredictions(50)
         .filter((p) => p.actualResult !== undefined)
@@ -167,7 +178,7 @@
     <KpiSnapDots count={KPI_COUNT} activeIndex={activeKpi} />
   </div>
 
-  <Rule kicker="GW" title="THIS WEEK'S PICKS" action="UPDATED LIVE" />
+  <Rule kicker={gwKicker} title="THIS WEEK'S PICKS" action="UPDATED LIVE" />
 
   {#if fixtures.length === 0}
     <p class="font-serif italic text-ink-dim mb-8" data-picks-empty>

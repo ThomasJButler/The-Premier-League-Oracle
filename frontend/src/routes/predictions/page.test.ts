@@ -71,6 +71,15 @@ describe('Predictions route', () => {
     expect(body).toContain('SETTLED RESULTS');
   });
 
+  it('falls back to AWAITING SCHEDULE in the GW eyebrow when no gameweek is on file (K2-fix.6)', () => {
+    const { body } = render(PredictionsPage);
+    const kickers = body.match(/<p[^>]*data-rule-kicker[^>]*>([\s\S]*?)<\/p>/g) ?? [];
+    expect(kickers.length).toBeGreaterThan(0);
+    const picksKicker = kickers.find((k) => /AWAITING SCHEDULE/.test(k));
+    expect(picksKicker).toBeTruthy();
+    expect(picksKicker).not.toMatch(/>\s*GW\s*<\/p>/);
+  });
+
   it('renders empty-state copy when no fixtures or settled rows are present', () => {
     const { body } = render(PredictionsPage);
     expect(body).toContain('data-picks-empty');
