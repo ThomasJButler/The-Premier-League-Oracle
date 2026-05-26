@@ -10,8 +10,18 @@
   import type { PersonaId } from "$lib/personas";
   import { getEmptyStateCopy } from "$lib/copy/emptyStates";
   import { dataService } from "../../services/dataService";
+  import { predictionTracker } from "../../services/predictionTracker";
   import { getTeamColor } from "../../utils/teamLogos";
   import type { Match, Standing } from "../../types";
+
+  const DEFAULT_PROBS = { home: 0.4, draw: 0.3, away: 0.3 };
+
+  function probsFor(matchId: string): { home: number; draw: number; away: number } {
+    const stored = predictionTracker.getMatchPredictions(matchId)[0];
+    const pp = stored?.poissonProbs;
+    if (pp) return { home: pp.homeWin, draw: pp.draw, away: pp.awayWin };
+    return DEFAULT_PROBS;
+  }
 
   const emptyCopy = $derived(getEmptyStateCopy("fixtures", $personaStore as PersonaId));
 
@@ -109,11 +119,13 @@
         <Rule kicker={group.label} title="{group.matches.length} fixture{group.matches.length !== 1 ? 's' : ''}" />
         <div class="space-y-2" data-match-list>
           {#each group.matches as match (match.id)}
+            {@const p = probsFor(match.id)}
             <MatchRow
               {match}
-              probH={0.4}
-              probD={0.3}
-              probA={0.3}
+              probH={p.home}
+              probD={p.draw}
+              probA={p.away}
+              standings={standings}
               homeColor={getTeamColor(match.home_team)}
               awayColor={getTeamColor(match.away_team)}
             />

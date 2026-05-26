@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Match } from '../../../types';
+  import type { Match, Standing } from '../../../types';
+  import { displayTeam } from '$lib/utils/displayTeam';
 
   interface Props {
     match: Match;
@@ -8,11 +9,15 @@
     probA: number;
     homeColor: string;
     awayColor: string;
+    standings?: Standing[];
     pick?: string;
     conf?: number;
   }
 
-  const { match, probH, probD, probA, homeColor, awayColor, pick, conf }: Props = $props();
+  const { match, probH, probD, probA, homeColor, awayColor, standings, pick, conf }: Props = $props();
+
+  const homeName = $derived(displayTeam(match.home_team, standings));
+  const awayName = $derived(displayTeam(match.away_team, standings));
 
   const kickoffTime = $derived(
     new Intl.DateTimeFormat('en-GB', {
@@ -43,9 +48,9 @@
       <div class="font-mono text-[11px] font-bold text-red tracking-widest">{kickoffTime}</div>
     </div>
     <div class="flex items-center justify-between gap-2" data-match-teams>
-      <div class="font-serif text-[18px] font-bold text-ink leading-none" data-match-home={match.home_team}>{match.home_team}</div>
+      <div class="font-serif text-[18px] font-bold text-ink leading-none" data-match-home={match.home_team}>{homeName}</div>
       <div class="font-mono text-[11px] text-ink-dim">v</div>
-      <div class="font-serif text-[18px] font-bold text-ink leading-none" data-match-away={match.away_team}>{match.away_team}</div>
+      <div class="font-serif text-[18px] font-bold text-ink leading-none" data-match-away={match.away_team}>{awayName}</div>
     </div>
     <div class="text-center" data-prediction-col>
       {#if pick}
@@ -72,7 +77,7 @@
         <div data-match-bar-away style="width: {probA * 100}%; background-color: {awayColor};"></div>
       </div>
     </div>
-    <div class="font-serif text-[11px] italic text-ink-dim text-center" data-match-venue>{match.home_team}</div>
+    <div class="font-serif text-[11px] italic text-ink-dim text-center" data-match-venue>{homeName}</div>
     <div class="text-center">
       <span class="inline-block px-2 py-1.5 font-sans text-[9px] tracking-widest font-bold bg-ink text-paper" data-match-open>OPEN →</span>
     </div>
@@ -87,11 +92,11 @@
       {/if}
     </div>
     <div class="flex items-center justify-between">
-      <span class="font-serif text-[16px] font-bold text-ink">{match.home_team}</span>
+      <span class="font-serif text-[16px] font-bold text-ink">{homeName}</span>
       <span class="font-mono font-extrabold text-[14px] text-ink" data-match-prob-mobile>
         {homeProb}<span class="text-ink-faint text-[11px]">·{drawProb}·</span>{awayProb}
       </span>
-      <span class="font-serif text-[16px] font-bold text-ink">{match.away_team}</span>
+      <span class="font-serif text-[16px] font-bold text-ink">{awayName}</span>
     </div>
     <div class="mt-1.5 h-1 flex overflow-hidden border border-rule-strong" data-match-prob-bar-mobile>
       <div style="width: {probH * 100}%; background-color: {homeColor};"></div>

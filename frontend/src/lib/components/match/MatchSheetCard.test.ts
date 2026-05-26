@@ -93,6 +93,32 @@ describe('MatchSheetCard', () => {
     expect(body).not.toContain('data-match-conf');
   });
 
+  it('renders an actual scoreline (not the prob readout) when score is supplied', () => {
+    const { body } = render(MatchSheetCard, {
+      props: { ...liverpoolTottenham, score: { home: 3, away: 1 } }
+    });
+    expect(body).toContain('data-match-score');
+    expect(body).toContain('data-match-score-home="3"');
+    expect(body).toContain('data-match-score-away="1"');
+    // Prob readout must not double up alongside the score.
+    expect(body).not.toContain('data-match-prob-readout');
+    expect(body).not.toContain('VERSUS');
+    // The default FINAL label is shown.
+    expect(body).toContain('FINAL');
+  });
+
+  it('uses the supplied scoreLabel (e.g. LIVE · 67\') when present', () => {
+    const { body } = render(MatchSheetCard, {
+      props: {
+        ...liverpoolTottenham,
+        score: { home: 1, away: 2 },
+        scoreLabel: "LIVE · 67'"
+      }
+    });
+    expect(body).toContain("LIVE · 67'");
+    expect(body).not.toContain('FINAL');
+  });
+
   it('renders four corner ornaments in tl/tr/bl/br order', () => {
     const { body } = render(MatchSheetCard, { props: liverpoolTottenham });
     expect(body).toContain('data-corner="tl"');

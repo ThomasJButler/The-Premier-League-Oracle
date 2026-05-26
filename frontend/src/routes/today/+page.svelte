@@ -19,6 +19,7 @@
     isGameweekFullyPredicted,
   } from '$lib/bulkPersistGameweekPredictions';
   import { findCurrentGameweek, fixturesForGameweek } from '$lib/gameweek';
+  import { displayTeam } from '$lib/utils/displayTeam';
   import { getTeamColor } from '../../utils/teamLogos';
   import type { Match } from '../../types';
 
@@ -80,18 +81,28 @@
   }
 
   function matchToCardProps(m: Match) {
+    const isLive = m.status === 'IN_PLAY' || m.status === 'PAUSED' || m.status === 'EXTRA_TIME';
+    const isFinished = m.status === 'FINISHED' || m.result !== null;
+    const hasGoals = m.home_goals !== null && m.away_goals !== null;
+    const score =
+      hasGoals && (isFinished || isLive)
+        ? { home: m.home_goals as number, away: m.away_goals as number }
+        : null;
+    const scoreLabel = isLive ? (m.minute ? `LIVE · ${m.minute}'` : 'LIVE') : 'FINAL';
     return {
-      home: m.home_team,
+      home: displayTeam(m.home_team),
       homeAbbr: m.home_team.slice(0, 3).toUpperCase(),
       homeColor: getTeamColor(m.home_team),
-      away: m.away_team,
+      away: displayTeam(m.away_team),
       awayAbbr: m.away_team.slice(0, 3).toUpperCase(),
       awayColor: getTeamColor(m.away_team),
       kickoff: formatKickoff(m.date),
       venue: 'PREMIER LEAGUE',
       probH: 0.4,
       probD: 0.3,
-      probA: 0.3
+      probA: 0.3,
+      score,
+      scoreLabel
     };
   }
 
@@ -158,7 +169,8 @@
     modelAccuracySub =
       stats.totalPredictions > 0 ? stats.totalPredictions + ' predictions' : undefined;
 
-    const edgePp = Math.round((stats.highConfidenceAccuracy - 0.5) * 100);
+    // `highConfidenceAccuracy` is already a percentage (0–100), not a 0–1 fraction.
+    const edgePp = Math.round(stats.highConfidenceAccuracy - 50);
     modelEdge =
       stats.totalPredictions > 0
         ? (edgePp >= 0 ? '+' : '') + edgePp + 'pp'
@@ -212,7 +224,7 @@
   {#if heroMatch}
     <div data-hero-match><MatchSheetCard {...matchToCardProps(heroMatch)} /></div>
     <PunditQuoteBlock {attribution}>
-      If there's one game I'm fancying this week, it's {heroMatch.home_team} vs {heroMatch.away_team}.
+      If there's one game I'm fancying this week, it's {displayTeam(heroMatch.home_team)} vs {displayTeam(heroMatch.away_team)}.
       {persona.tic}
     </PunditQuoteBlock>
   {/if}

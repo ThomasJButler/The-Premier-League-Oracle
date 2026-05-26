@@ -15,6 +15,8 @@
     conf?: number;
     headline?: string;
     byline?: string;
+    score?: { home: number; away: number } | null;
+    scoreLabel?: string;
   }
 
   const {
@@ -32,12 +34,15 @@
     pick,
     conf,
     headline,
-    byline
+    byline,
+    score = null,
+    scoreLabel = 'FINAL'
   }: Props = $props();
 
   const probHpct = $derived(Math.round(probH * 100));
   const probDpct = $derived(Math.round(probD * 100));
   const probApct = $derived(Math.round(probA * 100));
+  const hasScore = $derived(score !== null && score !== undefined);
   const showFooter = $derived(Boolean(headline || pick));
 </script>
 
@@ -75,18 +80,35 @@
       </div>
 
       <div class="flex flex-col items-center" data-match-probs>
-        <div class="font-mono text-[11px] tracking-widest font-extrabold mb-1 text-ink-dim">
-          VERSUS
-        </div>
-        <div
-          class="font-mono font-extrabold text-[38px] leading-none tracking-[-0.04em] text-ink"
-          data-match-prob-readout
-        >
-          {probHpct}<span class="text-ink-faint text-[22px]">·{probDpct}·</span>{probApct}
-        </div>
-        <div class="text-[9px] tracking-[0.3em] font-bold mt-0.5 text-ink-dim">
-          HOME · DRAW · AWAY
-        </div>
+        {#if hasScore && score}
+          <div class="font-mono text-[11px] tracking-widest font-extrabold mb-1 text-red" data-match-score-label>
+            {scoreLabel}
+          </div>
+          <div
+            class="font-serif font-extrabold text-[38px] leading-none tracking-[-0.04em] text-ink"
+            data-match-score
+            data-match-score-home={score.home}
+            data-match-score-away={score.away}
+          >
+            {score.home}<span class="text-ink-faint mx-2">–</span>{score.away}
+          </div>
+          <div class="text-[9px] tracking-[0.3em] font-bold mt-0.5 text-ink-dim">
+            HOME · AWAY
+          </div>
+        {:else}
+          <div class="font-mono text-[11px] tracking-widest font-extrabold mb-1 text-ink-dim">
+            VERSUS
+          </div>
+          <div
+            class="font-mono font-extrabold text-[38px] leading-none tracking-[-0.04em] text-ink"
+            data-match-prob-readout
+          >
+            {probHpct}<span class="text-ink-faint text-[22px]">·{probDpct}·</span>{probApct}
+          </div>
+          <div class="text-[9px] tracking-[0.3em] font-bold mt-0.5 text-ink-dim">
+            HOME · DRAW · AWAY
+          </div>
+        {/if}
       </div>
 
       <div class="text-left">
