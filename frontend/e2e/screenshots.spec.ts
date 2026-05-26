@@ -88,6 +88,10 @@ test.describe('Kicker route screenshots', () => {
         // kicker:onboardedAt is informational; the onboarding gate only reads
         // kicker:personaId, but seeding both keeps intent explicit.
         localStorage.setItem('kicker:onboardedAt', new Date().toISOString());
+        // Demo mode ON: every route renders against $lib/demo fixtures
+        // (10 GW35 matches, 20-row standings, 20 scorers, 10 predictions)
+        // so screenshots are never empty even without a Football-Data key.
+        localStorage.setItem('kicker:demoMode', 'on');
         if (seededKey) localStorage.setItem('football_data_api_key', seededKey);
       } catch {
         /* SSR-safe no-op */

@@ -5,6 +5,13 @@ import { betHistoryService } from './betting/betHistoryService';
 import { sharedEloSystem } from '../lib/advancedPredictions';
 import { getSeasonYear } from '../lib/utils';
 import { setCrestUrl } from '../utils/teamLogos';
+import { isDemoMode } from '../lib/demo/demoMode';
+import {
+  DEMO_MATCHES,
+  DEMO_STANDINGS,
+  DEMO_SCORERS,
+  DEMO_SEASON
+} from '../lib/demo';
 
 interface DataSource {
   type: 'api';
@@ -175,6 +182,7 @@ class DataService {
 
   // Main data fetching methods - API only
   public async getCurrentSeason(): Promise<Season | null> {
+    if (isDemoMode()) return DEMO_SEASON;
     await this.ensureReady();
     const cacheKey = 'current_season';
     
@@ -206,6 +214,15 @@ class DataService {
     days?: number;
     matchday?: number;
   } = {}): Promise<Match[]> {
+    if (isDemoMode()) {
+      const { upcoming = false, recent = false, matchday } = options;
+      if (matchday !== undefined) {
+        return DEMO_MATCHES.filter((m) => m.matchday === matchday);
+      }
+      if (upcoming) return DEMO_MATCHES.filter((m) => m.result === null);
+      if (recent) return DEMO_MATCHES.filter((m) => m.result !== null);
+      return DEMO_MATCHES;
+    }
     await this.ensureReady();
     const { upcoming = false, recent = false, days = 7, matchday } = options;
     const cacheKey = `matches_${upcoming ? 'upcoming' : 'recent'}_${days}_${matchday || 'all'}`;
@@ -263,6 +280,7 @@ class DataService {
   }
   
   public async getStandings(): Promise<Standing[]> {
+    if (isDemoMode()) return DEMO_STANDINGS;
     await this.ensureReady();
     const cacheKey = 'current_standings';
     
@@ -303,6 +321,13 @@ class DataService {
   }
 
   public async getTopScorers(limit: number = 20): Promise<FDScorer[]> {
+    if (isDemoMode()) {
+      // Demo scorers carry only the fields the UI reads (player.name, team.name,
+      // goals, assists, penalties). Cast through unknown to satisfy the wider
+      // canonical FDScorer shape — unread fields like firstName/dateOfBirth
+      // would be noise in demo content.
+      return DEMO_SCORERS.slice(0, limit) as unknown as FDScorer[];
+    }
     await this.ensureReady();
     const cacheKey = `top_scorers_${limit}`;
 
@@ -497,6 +522,7 @@ class DataService {
 
   // Get live matches currently in play — delegates to footballData with 60s IndexedDB cache
   public async getLiveMatches(): Promise<Match[]> {
+    if (isDemoMode()) return DEMO_MATCHES.filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED');
     await this.ensureReady();
     const cacheKey = 'live_matches';
     const LIVE_CACHE_TTL = 60 * 1000; // 60 seconds for live data

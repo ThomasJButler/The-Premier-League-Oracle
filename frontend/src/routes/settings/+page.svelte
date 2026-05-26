@@ -13,6 +13,7 @@
   import { entitlementsStore, TIERS } from '$lib/stores/entitlementsStore';
   import { KICKER_PERSONA_ORDER, PERSONAS, type PersonaId } from '$lib/personas';
   import { ANTHROPIC_API_KEY_STORAGE_KEY } from '$lib/constants';
+  import { demoModeStore, setDemoMode } from '$lib/demo/demoMode';
 
   const FOOTBALL_DATA_KEY = 'football_data_api_key';
   const NOTIFICATIONS_KEY = 'kicker:notifications';
@@ -313,6 +314,31 @@
       The Kicker is a daylight publication. Dark mode is intentionally not
       shipped — newsprint cream is the design contract.
     </p>
+    <div class="mt-6 border border-rule bg-paper-warm p-4" data-demo-mode-row>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="font-mono text-[10px] tracking-[0.18em] text-red mb-1">DEMO MODE</div>
+          <div class="font-serif text-[15px] text-ink mb-1">Sample fixtures &amp; standings</div>
+          <p class="font-serif text-[13px] italic leading-relaxed text-ink-soft m-0">
+            Renders every route against bundled sample data — 10 Gameweek 35 fixtures,
+            full table, top scorers, predictions. Useful for screenshots and previewing
+            the paper before adding a Football-Data API key.
+          </p>
+        </div>
+        <button
+          type="button"
+          onclick={() => setDemoMode(!$demoModeStore)}
+          class="shrink-0 border-2 border-ink px-4 py-2 font-mono text-[11px] tracking-[0.18em]"
+          class:bg-ink={$demoModeStore}
+          class:text-paper={$demoModeStore}
+          class:bg-paper={!$demoModeStore}
+          class:text-ink={!$demoModeStore}
+          data-demo-mode-toggle
+        >
+          {$demoModeStore ? 'ON' : 'OFF'}
+        </button>
+      </div>
+    </div>
   </section>
 {/snippet}
 

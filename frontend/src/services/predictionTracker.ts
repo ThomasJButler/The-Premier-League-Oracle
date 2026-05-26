@@ -1,3 +1,6 @@
+import { isDemoMode as demoModeActive } from '../lib/demo/demoMode';
+import { DEMO_PREDICTIONS } from '../lib/demo';
+
 /**
  * Bumped whenever the prediction pipeline changes in a way that would make
  * stored scoreline / result / confidence values disagree with what the current
@@ -93,10 +96,24 @@ class PredictionTracker {
   /** Minimum settled predictions per band before calibration applies */
   private static readonly MIN_CALIBRATION_SAMPLES = 10;
   private predictions: Map<string, StoredPrediction>;
+  private demoOverlayActive = false;
   constructor() {
     this.predictions = new Map();
     this.loadPredictions();
+    this.applyDemoOverlay();
     this.cleanOldPredictions();
+  }
+
+  // When demo mode is active, layer DEMO_PREDICTIONS on top of whatever was
+  // loaded from localStorage so the Predictions / Today / Insights surfaces
+  // have realistic content for screenshots. Persistence is suppressed while
+  // the overlay is active so we don't pollute real-user localStorage.
+  private applyDemoOverlay(): void {
+    if (!demoModeActive()) return;
+    this.demoOverlayActive = true;
+    for (const p of DEMO_PREDICTIONS) {
+      this.predictions.set(p.matchId, p);
+    }
   }
 
   // Load predictions from localStorage
@@ -116,6 +133,7 @@ class PredictionTracker {
 
   // Save predictions to localStorage
   private savePredictions(): void {
+    if (this.demoOverlayActive) return; // never persist demo overlay
     if (typeof localStorage === 'undefined') return;
     try {
       const toStore = Object.fromEntries(this.predictions);
