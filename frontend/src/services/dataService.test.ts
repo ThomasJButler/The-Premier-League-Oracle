@@ -33,11 +33,6 @@ vi.mock('./betting/betHistoryService', () => ({
 }));
 
 // Mock sharedEloSystem
-vi.mock('../lib/advancedPredictions', () => ({
-  sharedEloSystem: {
-    processCompletedMatches: vi.fn(() => 0)
-  }
-}));
 
 // Mock the dependencies
 vi.mock('./api/footballData', () => ({

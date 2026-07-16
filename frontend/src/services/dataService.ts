@@ -2,7 +2,6 @@ import type { Match, Season, TeamStats, Standing, TeamForm } from '../types';
 import { footballDataAPI, type FDScorer } from './api/footballData';
 import { predictionTracker } from './predictionTracker';
 import { betHistoryService } from './betting/betHistoryService';
-import { sharedEloSystem } from '../lib/advancedPredictions';
 import { getSeasonYear } from '../lib/utils';
 import { setCrestUrl } from '../utils/teamLogos';
 import { isDemoMode } from '../lib/demo/demoMode';
@@ -589,17 +588,8 @@ class DataService {
         await this.getHistoricalMatches(season);
       }
 
-      // Warm up ELO ratings from historical data — processCompletedMatches is
-      // idempotent (skips already-processed match IDs), so this is safe to call
-      // even if current-season matches have already been processed.
-      const allHistorical = await this.getAllHistoricalMatches();
-      const finished = allHistorical.filter(m => m.result !== null);
-      if (finished.length > 0) {
-        const processed = sharedEloSystem.processCompletedMatches(finished);
-        if (processed > 0) {
-          console.warn(`ELO warm-up: processed ${processed} historical matches across ${DataService.HISTORICAL_SEASONS.length} seasons`);
-        }
-      }
+      // (The Butler engine needs no rating warm-up here — its coefficients
+      // ship fitted, and runtimeFit folds fresh results in on demand.)
 
       // Mark as loaded so we don't re-trigger until the TTL expires
       localStorage.setItem(DataService.SEASONS_LOADED_KEY, String(Date.now()));
@@ -699,11 +689,6 @@ class DataService {
         match.away_goals
       );
     }
-
-    // Update ELO ratings from completed matches so the ensemble
-    // model has current ratings for future predictions.
-    // processCompletedMatches is idempotent — it skips already-processed matches.
-    sharedEloSystem.processCompletedMatches(completedMatches);
 
     return reconciled;
   }
