@@ -19,7 +19,7 @@ const sampleContext = (): KickerContext => ({
     }
   ],
   standings: [],
-  accuracyStats: { brier: 0.19, calibration: 1.0, sampleSize: 100 },
+  accuracyStats: { brier: 0.19, rps: 0.185, calibration: 1.0, sampleSize: 100, scoredSampleSize: 100 },
   generatedAt: '2026-05-03T12:00:00Z'
 });
 

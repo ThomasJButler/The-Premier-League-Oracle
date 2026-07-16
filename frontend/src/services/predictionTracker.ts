@@ -1,5 +1,6 @@
 import { isDemoMode as demoModeActive } from '../lib/demo/demoMode';
 import { DEMO_PREDICTIONS } from '../lib/demo';
+import { brier, rps, type ProbTriple } from '../lib/engine/metrics';
 
 /**
  * Bumped whenever the prediction pipeline changes in a way that would make
@@ -9,8 +10,16 @@ import { DEMO_PREDICTIONS } from '../lib/demo';
  * treated as stale for unplayed fixtures — the card reverts to "pending" so
  * the user gets a fresh forecast. Completed-match history (those with
  * actualResult set) is preserved regardless for accuracy tracking.
+ *
+ * v3.6-probs: bulk persistence stores the final combined probability triple
+ * on every prediction (poissonProbs — historical field name, kept for
+ * localStorage compatibility), so Brier/RPS scoring covers real predictions.
+ *
+ * butler-1.0: the Butler model (time-decayed Dixon-Coles, walk-forward
+ * calibrated) replaced the five-heuristic ensemble after winning the
+ * backtest gate on every proper score (see lib/backtest/pins.json).
  */
-export const MODEL_VERSION = 'v3.5-MVP';
+export const MODEL_VERSION = 'butler-1.0';
 
 export interface StoredPrediction {
   id: string;
@@ -32,6 +41,14 @@ export interface StoredPrediction {
   homeForm?: string; // Last-5 form string e.g. "WWDLL"
   awayForm?: string;
   keyFactors?: string[]; // Insight bullets shown in detailed analysis
+  /**
+   * The final combined H/D/A probability triple at prediction time.
+   * Historical field name (it once held the raw Poisson triple) retained so
+   * previously stored predictions keep parsing; since v3.6-probs it carries
+   * the full ensemble output and is written on every bulk-persisted
+   * prediction. Predictions without it (legacy) count toward hit-rate but
+   * cannot be Brier/RPS-scored.
+   */
   poissonProbs?: { homeWin: number; draw: number; awayWin: number };
 }
 
@@ -48,6 +65,14 @@ export interface AccuracyStats {
   accuracy: number;
   /** Mean Brier score across settled predictions with poissonProbs. Range [0, 2]. Lower is better. */
   brierScore: number;
+  /** Mean ranked probability score across the same scored set. Range [0, 1]. Lower is better. */
+  rps: number;
+  /**
+   * How many settled predictions actually carried a probability triple —
+   * the denominator behind brierScore/rps. When 0, those metrics are
+   * meaningless (not "perfect") and consumers must say so.
+   */
+  scoredSampleSize: number;
   scoreAccuracy: number; // Exact score accuracy
   highConfidenceAccuracy: number; // Accuracy when confidence > 70%
   mediumConfidenceAccuracy: number; // Accuracy when confidence 50-70%
@@ -102,6 +127,24 @@ class PredictionTracker {
     this.loadPredictions();
     this.applyDemoOverlay();
     this.cleanOldPredictions();
+    this.cleanOrphanedEngineKeys();
+  }
+
+  /**
+   * One-time hygiene: the pre-Butler engine persisted per-browser state that
+   * no longer has an owner (ELO ratings, processed-match ids, custom ensemble
+   * weights). Removing it reclaims storage and guarantees nothing ever reads
+   * stale ratings again.
+   */
+  private cleanOrphanedEngineKeys(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      for (const key of ['elo_ratings', 'elo_processed_match_ids', 'oracle_model_weights']) {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // Storage unavailable — nothing to clean
+    }
   }
 
   // When demo mode is active, layer DEMO_PREDICTIONS on top of whatever was
@@ -265,10 +308,10 @@ class PredictionTracker {
     // Average confidence
     const averageConfidence = relevantPredictions.reduce((sum, p) => sum + p.confidence, 0) / totalPredictions;
 
-    // Brier score across settled predictions that carry a probability vector.
-    // Predictions stored before poissonProbs was added (or via paths that omit it)
-    // can't contribute — they have no probability distribution to score.
-    const brierScore = this.computeBrier(relevantPredictions);
+    // Proper scores across settled predictions that carry a probability
+    // vector. Predictions stored before poissonProbs was added (or via paths
+    // that omit it) can't contribute — no distribution to score.
+    const { brierScore, rpsScore, scoredSampleSize } = this.computeProperScores(relevantPredictions);
 
     // Calculate streaks
     const streak = this.calculateStreaks(relevantPredictions);
@@ -278,6 +321,8 @@ class PredictionTracker {
       correctPredictions,
       accuracy,
       brierScore,
+      rps: rpsScore,
+      scoredSampleSize,
       scoreAccuracy,
       highConfidenceAccuracy,
       mediumConfidenceAccuracy,
@@ -291,27 +336,37 @@ class PredictionTracker {
   }
 
   /**
-   * Mean Brier score for 3-class (H/D/A) outcome predictions.
-   * Brier per match = (p_home - 1{H})^2 + (p_draw - 1{D})^2 + (p_away - 1{A})^2.
-   * Range [0, 2]; calibrated random ≈ 0.667; perfect = 0.
-   * Skips predictions without poissonProbs — they have no probability vector to score.
+   * Mean Brier (range [0, 2]) and RPS (range [0, 1]) across settled
+   * predictions that carry a probability vector, plus the count actually
+   * scored. Formulas delegate to lib/engine/metrics — the same functions the
+   * backtest harness uses, so live tracking and offline evaluation can never
+   * disagree on a definition.
    */
-  private computeBrier(predictions: StoredPrediction[]): number {
+  private computeProperScores(predictions: StoredPrediction[]): {
+    brierScore: number;
+    rpsScore: number;
+    scoredSampleSize: number;
+  } {
     const scored = predictions.filter(p => p.actualResult && p.poissonProbs);
-    if (scored.length === 0) return 0;
+    if (scored.length === 0) return { brierScore: 0, rpsScore: 0, scoredSampleSize: 0 };
 
-    const total = scored.reduce((sum, p) => {
-      const probs = p.poissonProbs!;
-      const homeBit = p.actualResult === 'H' ? 1 : 0;
-      const drawBit = p.actualResult === 'D' ? 1 : 0;
-      const awayBit = p.actualResult === 'A' ? 1 : 0;
-      return sum
-        + (probs.homeWin - homeBit) ** 2
-        + (probs.draw    - drawBit) ** 2
-        + (probs.awayWin - awayBit) ** 2;
-    }, 0);
+    let brierTotal = 0;
+    let rpsTotal = 0;
+    for (const p of scored) {
+      const triple: ProbTriple = {
+        home: p.poissonProbs!.homeWin,
+        draw: p.poissonProbs!.draw,
+        away: p.poissonProbs!.awayWin
+      };
+      brierTotal += brier(triple, p.actualResult!);
+      rpsTotal += rps(triple, p.actualResult!);
+    }
 
-    return total / scored.length;
+    return {
+      brierScore: brierTotal / scored.length,
+      rpsScore: rpsTotal / scored.length,
+      scoredSampleSize: scored.length
+    };
   }
 
   // Get accuracy broken down by gameweek
@@ -488,6 +543,8 @@ class PredictionTracker {
       correctPredictions: 0,
       accuracy: 0,
       brierScore: 0,
+      rps: 0,
+      scoredSampleSize: 0,
       scoreAccuracy: 0,
       highConfidenceAccuracy: 0,
       mediumConfidenceAccuracy: 0,

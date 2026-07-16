@@ -14,6 +14,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildKickerContext } from './buildKickerContext';
 import { defaultPorts } from './defaultPorts';
+import { coefficients, getLiveParams, predictFixture } from '../engine';
 
 describe('KickerContext SSR safety', () => {
   beforeAll(() => {
@@ -36,11 +37,27 @@ describe('KickerContext SSR safety', () => {
     // empty", not "crashes".
     expect(context.fixtures).toEqual([]);
     expect(context.standings).toEqual([]);
-    // accuracyStats reads from predictionTracker (localStorage-backed). With no
-    // stored predictions it returns sampleSize=0 — that's the only invariant
-    // the SSR contract cares about; brier/calibration may be 0 or 1 depending
-    // on how the tracker degrades, neither of which would crash a render.
-    expect(context.accuracyStats.sampleSize).toBe(0);
+    // accuracyStats: with no live tracked predictions, the context falls back
+    // to the Butler coefficients' fit-time walk-forward evidence — labelled
+    // 'backtest' so prompts cite it with provenance. (Before the engine was
+    // fitted this used to be zeros; real evidence beats "no data".)
+    expect(context.accuracyStats.source).toBe('backtest');
+    expect(context.accuracyStats.scoredSampleSize).toBeGreaterThan(1000);
+    expect(context.accuracyStats.rps).toBeGreaterThan(0.15);
     expect(context.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('the Butler engine predicts under bare SSR — no browser API in the whole path', () => {
+    // The engine is pure by design: a static coefficients import plus math.
+    // If anyone ever threads localStorage/fetch/window into the engine,
+    // this is the test that catches it (window/indexedDB stripped above).
+    const live = getLiveParams(coefficients, []);
+    const p = predictFixture(coefficients, live, {
+      home: 'Arsenal FC',
+      away: 'Liverpool FC',
+      kickoff: '2026-08-15T15:00:00Z',
+    });
+    expect(p.triple.home + p.triple.draw + p.triple.away).toBeCloseTo(1, 10);
+    expect(p.entropy).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,7 @@ import type { PersonaConfig } from '$lib/personas';
 import type { KickerContext } from '$lib/context/types';
 import type { SeasonRecord } from '$lib/fixtures/leagueHistory';
 import type { SeasonStats } from '$lib/data/statsPack';
+import { describeAccuracy } from './accuracyLine';
 
 export interface BroadsheetSection {
   heading: string;
@@ -44,7 +45,7 @@ invent fixtures or numbers.
 
 LIVE MODEL CONTEXT:
 ${fixtureSummary || '(no fixtures available)'}
-Model accuracy: Brier ${context.accuracyStats.brier.toFixed(3)}, calibration ${context.accuracyStats.calibration.toFixed(3)} over ${context.accuracyStats.sampleSize} predictions.
+Model accuracy: ${describeAccuracy(context.accuracyStats)}
 
 OUTPUT FORMAT — return ONLY a single JSON object, no prose, no code fences:
 {

@@ -22,7 +22,7 @@ const sampleStanding: StandingsRow = {
   goalDifference: 42
 };
 
-const sampleAccuracy: AccuracyStats = { brier: 0.18, calibration: 0.95, sampleSize: 320 };
+const sampleAccuracy: AccuracyStats = { brier: 0.18, rps: 0.19, calibration: 0.95, sampleSize: 320, scoredSampleSize: 300 };
 
 function makePorts(overrides: Partial<KickerContextPorts> = {}): KickerContextPorts {
   return {
@@ -93,7 +93,7 @@ describe('buildKickerContext', () => {
       })
     });
     const ctx = await buildKickerContext(ports);
-    expect(ctx.accuracyStats).toEqual({ brier: 0, calibration: 0, sampleSize: 0 });
+    expect(ctx.accuracyStats).toEqual({ brier: 0, rps: 0, calibration: 0, sampleSize: 0, scoredSampleSize: 0 });
   });
 
   it('preserves the absence of marketImplied for fixtures with no odds', async () => {

@@ -4,6 +4,7 @@
 
 import type { PersonaConfig } from '$lib/personas';
 import type { KickerContext } from '$lib/context/types';
+import { describeAccuracy } from './accuracyLine';
 
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 const signedPp = (x: number): string => {
@@ -27,7 +28,7 @@ export function buildSystemPrompt(persona: PersonaConfig, context: KickerContext
   );
   const standingsBlock = standingsLines.length > 0 ? `\n\nTop of table:\n${standingsLines.join('\n')}` : '';
 
-  const accuracy = `Brier ${context.accuracyStats.brier.toFixed(3)}, calibration ${context.accuracyStats.calibration.toFixed(3)}, n=${context.accuracyStats.sampleSize}`;
+  const accuracy = describeAccuracy(context.accuracyStats);
 
   return `${persona.systemPrompt}
 

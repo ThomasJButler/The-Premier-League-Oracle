@@ -522,4 +522,81 @@ describe('FootballDataAPI', () => {
       expect(fetch).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('getTeamForm ordering (recency-inversion regression)', () => {
+    // Element 0 MUST be the most recent match — consumers render form strings
+    // newest-first and (pre-Butler) weighted element 0 heaviest. The original
+    // implementation returned `.slice(-5)` of an ascending array — oldest
+    // first — which gave the stalest result the heaviest weight and printed
+    // form strings backwards relative to the match-detail caption.
+    const mkMatch = (id: string, date: string, result: 'H' | 'D' | 'A', opponent: string) => ({
+      id,
+      season_id: 's1',
+      date,
+      home_team: 'Arsenal',
+      away_team: opponent,
+      home_goals: result === 'H' ? 2 : result === 'D' ? 1 : 0,
+      away_goals: result === 'A' ? 2 : result === 'D' ? 1 : 0,
+      result,
+      home_odds: null, draw_odds: null, away_odds: null,
+      first_half_home_goals: null, first_half_away_goals: null,
+      full_time_result: result, half_time_result: null,
+      referee: null,
+      home_shots: null, away_shots: null,
+      home_shots_target: null, away_shots_target: null,
+      home_fouls: null, away_fouls: null,
+      home_corners: null, away_corners: null,
+      home_yellows: null, away_yellows: null,
+      home_reds: null, away_reds: null,
+      created_at: date,
+      status: 'FINISHED' as const,
+    });
+
+    it('returns newest-first when given an ascending (API-order) match array', async () => {
+      // Ascending by date: the OLDEST is a win, the NEWEST is a loss.
+      const ascending = [
+        mkMatch('m1', '2026-03-01T15:00:00Z', 'H', 'Oldest FC'),   // W (oldest)
+        mkMatch('m2', '2026-03-08T15:00:00Z', 'H', 'Mid1 FC'),     // W
+        mkMatch('m3', '2026-03-15T15:00:00Z', 'D', 'Mid2 FC'),     // D
+        mkMatch('m4', '2026-03-22T15:00:00Z', 'A', 'Mid3 FC'),     // L
+        mkMatch('m5', '2026-04-01T15:00:00Z', 'A', 'Newest FC'),   // L (newest)
+      ];
+
+      const form = await api.getTeamForm('Arsenal', ascending);
+      expect(form).not.toBeNull();
+      // Element 0 = most recent match (the loss to Newest FC).
+      expect(form![0].opponent).toBe('Newest FC');
+      expect(form![0].result).toBe('L');
+      expect(form![4].opponent).toBe('Oldest FC');
+      expect(form![4].result).toBe('W');
+      // The rendered string therefore reads newest → oldest: LLDWW.
+      expect(form!.map((f) => f.result).join('')).toBe('LLDWW');
+    });
+
+    it('is insensitive to the input array order', async () => {
+      const shuffled = [
+        mkMatch('m3', '2026-03-15T15:00:00Z', 'D', 'Mid2 FC'),
+        mkMatch('m5', '2026-04-01T15:00:00Z', 'A', 'Newest FC'),
+        mkMatch('m1', '2026-03-01T15:00:00Z', 'H', 'Oldest FC'),
+        mkMatch('m4', '2026-03-22T15:00:00Z', 'A', 'Mid3 FC'),
+        mkMatch('m2', '2026-03-08T15:00:00Z', 'H', 'Mid1 FC'),
+      ];
+      const form = await api.getTeamForm('Arsenal', shuffled);
+      expect(form!.map((f) => f.result).join('')).toBe('LLDWW');
+    });
+
+    it('keeps only the 5 most recent when more completed matches exist', async () => {
+      const six = [
+        mkMatch('m0', '2026-02-20T15:00:00Z', 'A', 'Ancient FC'), // should drop
+        mkMatch('m1', '2026-03-01T15:00:00Z', 'H', 'Oldest FC'),
+        mkMatch('m2', '2026-03-08T15:00:00Z', 'H', 'Mid1 FC'),
+        mkMatch('m3', '2026-03-15T15:00:00Z', 'D', 'Mid2 FC'),
+        mkMatch('m4', '2026-03-22T15:00:00Z', 'A', 'Mid3 FC'),
+        mkMatch('m5', '2026-04-01T15:00:00Z', 'A', 'Newest FC'),
+      ];
+      const form = await api.getTeamForm('Arsenal', six);
+      expect(form).toHaveLength(5);
+      expect(form!.some((f) => f.opponent === 'Ancient FC')).toBe(false);
+    });
+  });
 });

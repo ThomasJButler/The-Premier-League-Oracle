@@ -23,8 +23,24 @@ export interface StandingsRow {
 
 export interface AccuracyStats {
   brier: number;
+  /** Mean ranked probability score over the scored set. Range [0, 1]. */
+  rps: number;
   calibration: number;
+  /** Settled predictions in the tracking window (hit-rate denominator). */
   sampleSize: number;
+  /**
+   * Settled predictions that carried a probability triple — the denominator
+   * behind brier/rps. 0 means those numbers are meaningless, not perfect;
+   * prompt builders must render "no scored sample yet" instead of citing them.
+   */
+  scoredSampleSize: number;
+  /**
+   * Where the numbers come from: 'live' = the user's tracked predictions;
+   * 'backtest' = the Butler model's fit-time walk-forward evidence (used
+   * until enough live predictions settle). Prompt builders label the two
+   * differently — evidence provenance is part of honesty.
+   */
+  source?: 'live' | 'backtest';
 }
 
 export interface KickerContext {

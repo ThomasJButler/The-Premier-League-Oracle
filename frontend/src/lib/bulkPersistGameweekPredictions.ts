@@ -80,6 +80,13 @@ export async function bulkPersistGameweekPredictions(
           homeForm: p.homeForm,
           awayForm: p.awayForm,
           keyFactors: p.insights,
+          // The final combined triple — without this, the stored prediction
+          // has no probability vector and can never be Brier/RPS-scored.
+          poissonProbs: {
+            homeWin: p.probabilities.home,
+            draw: p.probabilities.draw,
+            awayWin: p.probabilities.away,
+          },
         },
       );
       result.persisted += 1;

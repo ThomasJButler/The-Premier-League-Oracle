@@ -480,24 +480,35 @@ class FootballDataAPI {
     };
   }
 
-  // Get team form from recent matches
+  // Get team form from recent matches.
+  //
+  // CONTRACT: the returned array is NEWEST-FIRST — element 0 is the team's
+  // most recent completed match. Displayed form strings read newest-first
+  // (matching the match-detail "most recent first" caption), so this
+  // ordering is load-bearing. An earlier version returned API order
+  // (oldest-first) via `.slice(-5)`, which silently gave the stalest result
+  // the heaviest recency weight in the pre-Butler form model.
   public async getTeamForm(teamName: string, matches?: Match[]): Promise<TeamForm[] | null> {
     // When matches are provided, filter directly by team name — no need for
     // the standings lookup (team ID is only required for the API fallback).
     // This avoids rate-limited API calls when match data is already available.
     let teamMatches: Match[];
 
+    const newestFirst = (a: Match, b: Match) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime();
+
     if (matches && matches.length > 0) {
       teamMatches = matches.filter(m =>
         (m.home_team.toLowerCase() === teamName.toLowerCase() ||
          m.away_team.toLowerCase() === teamName.toLowerCase()) &&
         m.result
-      ).slice(-5);
+      ).sort(newestFirst).slice(0, 5);
       if (teamMatches.length === 0) return null;
     } else {
       const team = await this.getTeamByName(teamName);
       if (!team) return null;
-      teamMatches = await this.getTeamMatches(team.id, 5);
+      // The API returns finished matches oldest-first — normalise here too.
+      teamMatches = (await this.getTeamMatches(team.id, 5)).sort(newestFirst);
     }
 
     return teamMatches.map(match => {

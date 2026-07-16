@@ -18,7 +18,7 @@ const fixtureContext = (): KickerContext => ({
   standings: [
     { position: 1, team: 'Liverpool', played: 36, points: 84, goalDifference: 47 }
   ],
-  accuracyStats: { brier: 0.193, calibration: 1.02, sampleSize: 152 },
+  accuracyStats: { brier: 0.193, rps: 0.187, calibration: 1.02, sampleSize: 152, scoredSampleSize: 148 },
   generatedAt: '2026-05-03T12:00:00Z'
 });
 
@@ -58,7 +58,28 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(getPersona('voice'), ctx);
     expect(prompt).toContain('no upcoming fixtures available');
     expect(prompt).toContain('Brier 0.193');
-    expect(prompt).toContain('n=152');
+    expect(prompt).toContain('RPS 0.187');
+    expect(prompt).toContain('scored n=148 of 152 settled');
+  });
+
+  it('refuses to cite accuracy numbers when nothing has been probability-scored', () => {
+    const ctx = fixtureContext();
+    ctx.accuracyStats = { brier: 0, rps: 0, calibration: 0, sampleSize: 12, scoredSampleSize: 0 };
+    const prompt = buildSystemPrompt(getPersona('voice'), ctx);
+    expect(prompt).not.toContain('Brier 0.000');
+    expect(prompt).not.toContain('RPS 0.000');
+    expect(prompt).toContain('do not cite Brier/RPS numbers');
+  });
+
+  it('labels fit-time walk-forward evidence as such — provenance is honesty', () => {
+    const ctx = fixtureContext();
+    ctx.accuracyStats = {
+      brier: 0.6, rps: 0.2, calibration: 0.97,
+      sampleSize: 2660, scoredSampleSize: 2660, source: 'backtest',
+    };
+    const prompt = buildSystemPrompt(getPersona('voice'), ctx);
+    expect(prompt).toContain('walk-forward backtest evidence');
+    expect(prompt).toContain('2660 historical matches');
   });
 
   it('teaches every persona how to emit [[FIXTURE:…]] and [[CHEERS:…]] tokens', () => {

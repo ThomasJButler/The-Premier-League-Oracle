@@ -23,11 +23,16 @@ import { predictionTracker as defaultTracker } from '../../services/predictionTr
 import { OptimizedPredictor } from '../optimizedPredictions';
 import { calibrationIndex } from '../calibrationIndex';
 import { VALUE_ODDS_MARGIN } from '../constants';
+import { coefficients as butlerCoefficients, isFitted as butlerFitted } from '../engine';
+import type { Coefficients } from '../engine';
 
 interface PredictMatchPort {
   (homeTeam: string, awayTeam: string): Promise<{
     predictedResult: 'H' | 'D' | 'A';
     confidence: number;
+    /** The engine's final combined triple — used verbatim when present. */
+    probabilities?: { home: number; draw: number; away: number };
+    /** Legacy fallback only: inverted when a test port omits probabilities. */
     valueOdds?: { home: number; draw: number; away: number };
   }>;
 }
@@ -38,7 +43,12 @@ interface DataServicePort {
 }
 
 interface TrackerPort {
-  getAccuracyStats: () => { brierScore: number; totalPredictions: number };
+  getAccuracyStats: () => {
+    brierScore: number;
+    rps: number;
+    scoredSampleSize: number;
+    totalPredictions: number;
+  };
   getCalibrationFactors: () => { highBand: number; mediumBand: number; lowBand: number };
 }
 
@@ -95,7 +105,10 @@ async function matchToFixtureContext(
   let pick: 'H' | 'D' | 'A' = 'D';
   try {
     const prediction = await predictMatch(match.home_team, match.away_team);
-    ourProb = probsFromValueOdds(prediction.valueOdds);
+    // Use the engine's final triple directly. The valueOdds inversion is a
+    // legacy fallback for injected test ports only — it round-trips through a
+    // synthetic bookmaker margin and loses precision.
+    ourProb = prediction.probabilities ?? probsFromValueOdds(prediction.valueOdds);
     pick = prediction.predictedResult;
   } catch {
     ourProb = { home: 1 / 3, draw: 1 / 3, away: 1 / 3 };
@@ -116,6 +129,45 @@ async function matchToFixtureContext(
     fixture.valueEdge = ourProb[key] - marketImplied[key];
   }
   return fixture;
+}
+
+/**
+ * Choose the honesty source for the AI accuracy line: live tracked
+ * predictions when any have been probability-scored; otherwise the Butler
+ * model's fit-time walk-forward evidence (real numbers over thousands of
+ * historical matches beat "no data yet" — and the provenance is labelled).
+ */
+export function resolveAccuracyStats(
+  live: {
+    brierScore: number;
+    rps: number;
+    scoredSampleSize: number;
+    totalPredictions: number;
+    calibration: number;
+  },
+  fitted?: Pick<Coefficients, 'backtest'>
+): AccuracyStats {
+  if (live.scoredSampleSize > 0 || !fitted || fitted.backtest.sampleSize === 0) {
+    return {
+      brier: live.brierScore,
+      rps: live.rps,
+      calibration: live.calibration,
+      sampleSize: live.totalPredictions,
+      scoredSampleSize: live.scoredSampleSize,
+      source: 'live'
+    };
+  }
+  const bt = fitted.backtest;
+  return {
+    brier: bt.brier,
+    rps: bt.rps,
+    // ECE measures miscalibration; the context's calibration scalar means
+    // "1 = perfect", matching calibrationIndex's convention.
+    calibration: Math.max(0, Math.min(1, 1 - bt.ece)),
+    sampleSize: bt.sampleSize,
+    scoredSampleSize: bt.sampleSize,
+    source: 'backtest'
+  };
 }
 
 function standingToRow(s: Standing): StandingsRow {
@@ -150,11 +202,16 @@ export function defaultPorts(deps: DefaultPortsDeps = {}): KickerContextPorts {
     async getAccuracyStats(): Promise<AccuracyStats> {
       const stats = tracker.getAccuracyStats();
       const factors = tracker.getCalibrationFactors();
-      return {
-        brier: stats.brierScore,
-        calibration: calibrationIndex(factors),
-        sampleSize: stats.totalPredictions
-      };
+      return resolveAccuracyStats(
+        {
+          brierScore: stats.brierScore,
+          rps: stats.rps,
+          scoredSampleSize: stats.scoredSampleSize,
+          totalPredictions: stats.totalPredictions,
+          calibration: calibrationIndex(factors)
+        },
+        butlerFitted ? butlerCoefficients : undefined
+      );
     }
   };
 }

@@ -11,7 +11,7 @@ import type {
 } from './types';
 
 const DEFAULT_DAYS_AHEAD = 7;
-const ZERO_ACCURACY = { brier: 0, calibration: 0, sampleSize: 0 } as const;
+const ZERO_ACCURACY = { brier: 0, rps: 0, calibration: 0, sampleSize: 0, scoredSampleSize: 0 } as const;
 
 export async function buildKickerContext(
   ports: KickerContextPorts,

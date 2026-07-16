@@ -46,13 +46,24 @@ function mk(over: Partial<Match> = {}): Match {
 function fakePrediction(over: Partial<EnhancedPredictionModel> = {}): EnhancedPredictionModel {
   return {
     predictedResult: 'H',
+    probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
     confidence: 0.62,
     predictedHomeGoals: 2,
     predictedAwayGoals: 1,
     homeForm: 'WWDLW',
     awayForm: 'LDLWW',
-    modelWeights: { elo: 0.25, poisson: 0.3, form: 0.2, h2h: 0.1, standings: 0.15 },
+    modelWeights: { elo: 0, poisson: 1, form: 0, h2h: 0, standings: 0 },
     insights: ['Liverpool form trending'],
+    valueOdds: { home: 1 / 0.55, draw: 1 / 0.25, away: 1 / 0.2 },
+    modelOutputs: {
+      class: { home: 0.5, draw: 0.27, away: 0.23 },
+      form: { home: 0.56, draw: 0.24, away: 0.2 },
+      calibrated: { home: 0.55, draw: 0.25, away: 0.2 },
+    },
+    topScorelines: [{ score: '2-1', probability: 0.12 }],
+    scoreProbabilities: { '2-1': 0.12 },
+    expectedGoals: { home: 1.8, away: 1.1 },
+    divergenceFlag: false,
     ...over,
   };
 }
@@ -80,6 +91,17 @@ describe('bulkPersistGameweekPredictions', () => {
       predictedAwayGoals: 1,
       confidence: 0.62,
     });
+  });
+
+  it('forwards the probability triple so stored predictions are Brier/RPS-scoreable', async () => {
+    const store = vi.fn();
+    await bulkPersistGameweekPredictions([mk({ id: 'a' })], {
+      predict: async () => fakePrediction({ probabilities: { home: 0.5, draw: 0.3, away: 0.2 } }),
+      hasExistingPrediction: () => false,
+      store,
+    });
+    const extras = store.mock.calls[0][6];
+    expect(extras.poissonProbs).toEqual({ homeWin: 0.5, draw: 0.3, awayWin: 0.2 });
   });
 
   it('is idempotent — skips fixtures already persisted', async () => {

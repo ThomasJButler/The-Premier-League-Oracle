@@ -443,6 +443,83 @@ describe('PredictionTracker Service', () => {
     });
   });
 
+  describe('RPS and scored sample size', () => {
+    // RPS = ½[(p_H − o_H)² + ((p_H + p_D) − (o_H + o_D))²] — same formula as
+    // lib/engine/metrics (the tracker delegates to it, so this test pins the
+    // production wiring, not a reimplementation).
+
+    it('computes mean RPS across settled predictions with poissonProbs', () => {
+      // A — home won, probs (0.6, 0.25, 0.15):
+      //   RPS = ½[(0.6−1)² + (0.85−1)²] = ½[0.16 + 0.0225] = 0.09125
+      tracker.storePrediction(
+        'mA',
+        'Arsenal',
+        'Chelsea',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.6 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.6, draw: 0.25, awayWin: 0.15 } }
+      );
+      tracker.updateWithResult('mA', 'H', 2, 0);
+
+      // B — away won, probs (0.5, 0.3, 0.2):
+      //   RPS = ½[(0.5)² + (0.8)²] = ½[0.25 + 0.64] = 0.445
+      tracker.storePrediction(
+        'mB',
+        'Liverpool',
+        'Spurs',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.5 },
+        new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.5, draw: 0.3, awayWin: 0.2 } }
+      );
+      tracker.updateWithResult('mB', 'A', 0, 1);
+
+      const stats = tracker.getAccuracyStats(30);
+      // Mean of [0.09125, 0.445] = 0.268125
+      expect(stats.rps).toBeCloseTo(0.268125, 6);
+      expect(stats.scoredSampleSize).toBe(2);
+    });
+
+    it('reports scoredSampleSize separately from totalPredictions for legacy entries', () => {
+      // Settled WITH probs — scoreable.
+      tracker.storePrediction(
+        'mScored',
+        'Arsenal',
+        'Chelsea',
+        { predictedResult: 'H', predictedHomeGoals: 2, predictedAwayGoals: 0, confidence: 0.6 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        undefined,
+        { poissonProbs: { homeWin: 0.6, draw: 0.25, awayWin: 0.15 } }
+      );
+      tracker.updateWithResult('mScored', 'H', 2, 0);
+
+      // Settled WITHOUT probs (pre-v3.6 legacy shape) — counts toward
+      // hit-rate but not toward the proper-score denominator.
+      tracker.storePrediction(
+        'mLegacy',
+        'Team A',
+        'Team B',
+        { predictedResult: 'H', predictedHomeGoals: 1, predictedAwayGoals: 0, confidence: 0.5 },
+        new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      );
+      tracker.updateWithResult('mLegacy', 'H', 1, 0);
+
+      const stats = tracker.getAccuracyStats(30);
+      expect(stats.totalPredictions).toBe(2);
+      expect(stats.scoredSampleSize).toBe(1);
+      expect(stats.rps).toBeGreaterThan(0);
+    });
+
+    it('empty history reports zeroed proper scores with a zero denominator', () => {
+      localStorageMock = {};
+      const emptyTracker = new PredictionTracker();
+      const stats = emptyTracker.getAccuracyStats(30);
+      expect(stats.rps).toBe(0);
+      expect(stats.scoredSampleSize).toBe(0);
+    });
+  });
+
   describe('Streak Calculation', () => {
     it('should track prediction streaks correctly', () => {
       const tracker = new PredictionTracker();
