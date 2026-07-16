@@ -1,0 +1,1267 @@
+{
+  "evalFromSeason": "2018-2019",
+  "evalMatches": 2660,
+  "evalToSeason": "2024-2025",
+  "models": {
+    "always-home": {
+      "overall": {
+        "accuracy": 0.441353,
+        "brier": 1.084374,
+        "drawPredictedRate": 0,
+        "logLoss": 2.581579,
+        "n": 2660,
+        "outcomes": {
+          "A": {
+            "actual": 890,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "D": {
+            "actual": 596,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "H": {
+            "actual": 1174,
+            "correct": 1174,
+            "precision": 0.441353,
+            "predicted": 2660,
+            "recall": 1
+          }
+        },
+        "rps": 0.432348
+      },
+      "perSeason": {
+        "2018-2019": {
+          "accuracy": 0.476316,
+          "brier": 1.016547,
+          "drawPredictedRate": 0,
+          "logLoss": 2.421278,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 128,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 71,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 181,
+              "correct": 181,
+              "precision": 0.476316,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.416671
+        },
+        "2019-2020": {
+          "accuracy": 0.452632,
+          "brier": 1.062495,
+          "drawPredictedRate": 0,
+          "logLoss": 2.529869,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 116,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 92,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 172,
+              "correct": 172,
+              "precision": 0.452632,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.412566
+        },
+        "2020-2021": {
+          "accuracy": 0.378947,
+          "brier": 1.205442,
+          "drawPredictedRate": 0,
+          "logLoss": 2.867709,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 153,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 83,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 144,
+              "correct": 144,
+              "precision": 0.378947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.495645
+        },
+        "2021-2022": {
+          "accuracy": 0.428947,
+          "brier": 1.108442,
+          "drawPredictedRate": 0,
+          "logLoss": 2.63846,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 129,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 88,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 163,
+              "correct": 163,
+              "precision": 0.428947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.440697
+        },
+        "2022-2023": {
+          "accuracy": 0.484211,
+          "brier": 1.001232,
+          "drawPredictedRate": 0,
+          "logLoss": 2.385081,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 109,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 87,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 184,
+              "correct": 184,
+              "precision": 0.484211,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.388382
+        },
+        "2023-2024": {
+          "accuracy": 0.460526,
+          "brier": 1.047179,
+          "drawPredictedRate": 0,
+          "logLoss": 2.493672,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 123,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 82,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 175,
+              "correct": 175,
+              "precision": 0.460526,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.417803
+        },
+        "2024-2025": {
+          "accuracy": 0.407895,
+          "brier": 1.149284,
+          "drawPredictedRate": 0,
+          "logLoss": 2.734986,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 132,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 93,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 155,
+              "correct": 155,
+              "precision": 0.407895,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.454671
+        }
+      }
+    },
+    "butler": {
+      "overall": {
+        "accuracy": 0.544361,
+        "brier": 0.571886,
+        "drawPredictedRate": 0.003008,
+        "logLoss": 0.964839,
+        "n": 2660,
+        "outcomes": {
+          "A": {
+            "actual": 890,
+            "correct": 517,
+            "precision": 0.530256,
+            "predicted": 975,
+            "recall": 0.580899
+          },
+          "D": {
+            "actual": 596,
+            "correct": 1,
+            "precision": 0.125,
+            "predicted": 8,
+            "recall": 0.001678
+          },
+          "H": {
+            "actual": 1174,
+            "correct": 930,
+            "precision": 0.554562,
+            "predicted": 1677,
+            "recall": 0.792164
+          }
+        },
+        "rps": 0.200012
+      },
+      "perSeason": {
+        "2018-2019": {
+          "accuracy": 0.6,
+          "brier": 0.523177,
+          "drawPredictedRate": 0.005263,
+          "logLoss": 0.895475,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 128,
+              "correct": 78,
+              "precision": 0.629032,
+              "predicted": 124,
+              "recall": 0.609375
+            },
+            "D": {
+              "actual": 71,
+              "correct": 1,
+              "precision": 0.5,
+              "predicted": 2,
+              "recall": 0.014085
+            },
+            "H": {
+              "actual": 181,
+              "correct": 149,
+              "precision": 0.586614,
+              "predicted": 254,
+              "recall": 0.823204
+            }
+          },
+          "rps": 0.186344
+        },
+        "2019-2020": {
+          "accuracy": 0.531579,
+          "brier": 0.576276,
+          "drawPredictedRate": 0.005263,
+          "logLoss": 0.970721,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 116,
+              "correct": 63,
+              "precision": 0.512195,
+              "predicted": 123,
+              "recall": 0.543103
+            },
+            "D": {
+              "actual": 92,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 2,
+              "recall": 0
+            },
+            "H": {
+              "actual": 172,
+              "correct": 139,
+              "precision": 0.545098,
+              "predicted": 255,
+              "recall": 0.80814
+            }
+          },
+          "rps": 0.198742
+        },
+        "2020-2021": {
+          "accuracy": 0.510526,
+          "brier": 0.607512,
+          "drawPredictedRate": 0.002632,
+          "logLoss": 1.020824,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 153,
+              "correct": 82,
+              "precision": 0.539474,
+              "predicted": 152,
+              "recall": 0.535948
+            },
+            "D": {
+              "actual": 83,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 1,
+              "recall": 0
+            },
+            "H": {
+              "actual": 144,
+              "correct": 112,
+              "precision": 0.493392,
+              "predicted": 227,
+              "recall": 0.777778
+            }
+          },
+          "rps": 0.217526
+        },
+        "2021-2022": {
+          "accuracy": 0.544737,
+          "brier": 0.562742,
+          "drawPredictedRate": 0.005263,
+          "logLoss": 0.951048,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 129,
+              "correct": 81,
+              "precision": 0.529412,
+              "predicted": 153,
+              "recall": 0.627907
+            },
+            "D": {
+              "actual": 88,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 2,
+              "recall": 0
+            },
+            "H": {
+              "actual": 163,
+              "correct": 126,
+              "precision": 0.56,
+              "predicted": 225,
+              "recall": 0.773006
+            }
+          },
+          "rps": 0.194013
+        },
+        "2022-2023": {
+          "accuracy": 0.521053,
+          "brier": 0.593819,
+          "drawPredictedRate": 0.002632,
+          "logLoss": 0.99629,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 109,
+              "correct": 61,
+              "precision": 0.432624,
+              "predicted": 141,
+              "recall": 0.559633
+            },
+            "D": {
+              "actual": 87,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 1,
+              "recall": 0
+            },
+            "H": {
+              "actual": 184,
+              "correct": 137,
+              "precision": 0.57563,
+              "predicted": 238,
+              "recall": 0.744565
+            }
+          },
+          "rps": 0.208913
+        },
+        "2023-2024": {
+          "accuracy": 0.581579,
+          "brier": 0.546323,
+          "drawPredictedRate": 0,
+          "logLoss": 0.927571,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 123,
+              "correct": 78,
+              "precision": 0.557143,
+              "predicted": 140,
+              "recall": 0.634146
+            },
+            "D": {
+              "actual": 82,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 175,
+              "correct": 143,
+              "precision": 0.595833,
+              "predicted": 240,
+              "recall": 0.817143
+            }
+          },
+          "rps": 0.189364
+        },
+        "2024-2025": {
+          "accuracy": 0.521053,
+          "brier": 0.593352,
+          "drawPredictedRate": 0,
+          "logLoss": 0.991942,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 132,
+              "correct": 74,
+              "precision": 0.521127,
+              "predicted": 142,
+              "recall": 0.560606
+            },
+            "D": {
+              "actual": 93,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 155,
+              "correct": 124,
+              "precision": 0.521008,
+              "predicted": 238,
+              "recall": 0.8
+            }
+          },
+          "rps": 0.205186
+        }
+      }
+    },
+    "league-prior": {
+      "overall": {
+        "accuracy": 0.441353,
+        "brier": 0.647447,
+        "drawPredictedRate": 0,
+        "logLoss": 1.070056,
+        "n": 2660,
+        "outcomes": {
+          "A": {
+            "actual": 890,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "D": {
+            "actual": 596,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "H": {
+            "actual": 1174,
+            "correct": 1174,
+            "precision": 0.441353,
+            "predicted": 2660,
+            "recall": 1
+          }
+        },
+        "rps": 0.236178
+      },
+      "perSeason": {
+        "2018-2019": {
+          "accuracy": 0.476316,
+          "brier": 0.634358,
+          "drawPredictedRate": 0,
+          "logLoss": 1.051773,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 128,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 71,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 181,
+              "correct": 181,
+              "precision": 0.476316,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.23838
+        },
+        "2019-2020": {
+          "accuracy": 0.452632,
+          "brier": 0.644548,
+          "drawPredictedRate": 0,
+          "logLoss": 1.066549,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 116,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 92,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 172,
+              "correct": 172,
+              "precision": 0.452632,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.230358
+        },
+        "2020-2021": {
+          "accuracy": 0.378947,
+          "brier": 0.669843,
+          "drawPredictedRate": 0,
+          "logLoss": 1.100839,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 153,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 83,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 144,
+              "correct": 144,
+              "precision": 0.378947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.248726
+        },
+        "2021-2022": {
+          "accuracy": 0.428947,
+          "brier": 0.651881,
+          "drawPredictedRate": 0,
+          "logLoss": 1.076221,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 129,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 88,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 163,
+              "correct": 163,
+              "precision": 0.428947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.236608
+        },
+        "2022-2023": {
+          "accuracy": 0.484211,
+          "brier": 0.632374,
+          "drawPredictedRate": 0,
+          "logLoss": 1.049331,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 109,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 87,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 184,
+              "correct": 184,
+              "precision": 0.484211,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.227519
+        },
+        "2023-2024": {
+          "accuracy": 0.460526,
+          "brier": 0.639723,
+          "drawPredictedRate": 0,
+          "logLoss": 1.058994,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 123,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 82,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 175,
+              "correct": 175,
+              "precision": 0.460526,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.234434
+        },
+        "2024-2025": {
+          "accuracy": 0.407895,
+          "brier": 0.659402,
+          "drawPredictedRate": 0,
+          "logLoss": 1.086689,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 132,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 93,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 155,
+              "correct": 155,
+              "precision": 0.407895,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.23722
+        }
+      }
+    },
+    "market": {
+      "overall": {
+        "accuracy": 0.559023,
+        "brier": 0.559111,
+        "drawPredictedRate": 0,
+        "logLoss": 0.946388,
+        "n": 2660,
+        "outcomes": {
+          "A": {
+            "actual": 890,
+            "correct": 548,
+            "precision": 0.544191,
+            "predicted": 1007,
+            "recall": 0.61573
+          },
+          "D": {
+            "actual": 596,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "H": {
+            "actual": 1174,
+            "correct": 939,
+            "precision": 0.568058,
+            "predicted": 1653,
+            "recall": 0.79983
+          }
+        },
+        "rps": 0.193918
+      },
+      "perSeason": {
+        "2018-2019": {
+          "accuracy": 0.578947,
+          "brier": 0.520765,
+          "drawPredictedRate": 0,
+          "logLoss": 0.890662,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 128,
+              "correct": 78,
+              "precision": 0.565217,
+              "predicted": 138,
+              "recall": 0.609375
+            },
+            "D": {
+              "actual": 71,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 181,
+              "correct": 142,
+              "precision": 0.586777,
+              "predicted": 242,
+              "recall": 0.78453
+            }
+          },
+          "rps": 0.184922
+        },
+        "2019-2020": {
+          "accuracy": 0.536842,
+          "brier": 0.574427,
+          "drawPredictedRate": 0,
+          "logLoss": 0.972153,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 116,
+              "correct": 69,
+              "precision": 0.507353,
+              "predicted": 136,
+              "recall": 0.594828
+            },
+            "D": {
+              "actual": 92,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 172,
+              "correct": 135,
+              "precision": 0.553279,
+              "predicted": 244,
+              "recall": 0.784884
+            }
+          },
+          "rps": 0.198361
+        },
+        "2020-2021": {
+          "accuracy": 0.515789,
+          "brier": 0.592143,
+          "drawPredictedRate": 0,
+          "logLoss": 0.997052,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 153,
+              "correct": 86,
+              "precision": 0.52439,
+              "predicted": 164,
+              "recall": 0.562092
+            },
+            "D": {
+              "actual": 83,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 144,
+              "correct": 110,
+              "precision": 0.509259,
+              "predicted": 216,
+              "recall": 0.763889
+            }
+          },
+          "rps": 0.211065
+        },
+        "2021-2022": {
+          "accuracy": 0.584211,
+          "brier": 0.554334,
+          "drawPredictedRate": 0,
+          "logLoss": 0.936732,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 129,
+              "correct": 86,
+              "precision": 0.601399,
+              "predicted": 143,
+              "recall": 0.666667
+            },
+            "D": {
+              "actual": 88,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 163,
+              "correct": 136,
+              "precision": 0.57384,
+              "predicted": 237,
+              "recall": 0.834356
+            }
+          },
+          "rps": 0.189037
+        },
+        "2022-2023": {
+          "accuracy": 0.547368,
+          "brier": 0.571183,
+          "drawPredictedRate": 0,
+          "logLoss": 0.962152,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 109,
+              "correct": 66,
+              "precision": 0.458333,
+              "predicted": 144,
+              "recall": 0.605505
+            },
+            "D": {
+              "actual": 87,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 184,
+              "correct": 142,
+              "precision": 0.601695,
+              "predicted": 236,
+              "recall": 0.771739
+            }
+          },
+          "rps": 0.197503
+        },
+        "2023-2024": {
+          "accuracy": 0.597368,
+          "brier": 0.525848,
+          "drawPredictedRate": 0,
+          "logLoss": 0.89955,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 123,
+              "correct": 84,
+              "precision": 0.575342,
+              "predicted": 146,
+              "recall": 0.682927
+            },
+            "D": {
+              "actual": 82,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 175,
+              "correct": 143,
+              "precision": 0.611111,
+              "predicted": 234,
+              "recall": 0.817143
+            }
+          },
+          "rps": 0.180456
+        },
+        "2024-2025": {
+          "accuracy": 0.552632,
+          "brier": 0.575079,
+          "drawPredictedRate": 0,
+          "logLoss": 0.966412,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 132,
+              "correct": 79,
+              "precision": 0.580882,
+              "predicted": 136,
+              "recall": 0.598485
+            },
+            "D": {
+              "actual": 93,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 155,
+              "correct": 131,
+              "precision": 0.536885,
+              "predicted": 244,
+              "recall": 0.845161
+            }
+          },
+          "rps": 0.196085
+        }
+      }
+    },
+    "uniform": {
+      "overall": {
+        "accuracy": 0.441353,
+        "brier": 0.666667,
+        "drawPredictedRate": 0,
+        "logLoss": 1.098612,
+        "n": 2660,
+        "outcomes": {
+          "A": {
+            "actual": 890,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "D": {
+            "actual": 596,
+            "correct": 0,
+            "precision": 0,
+            "predicted": 0,
+            "recall": 0
+          },
+          "H": {
+            "actual": 1174,
+            "correct": 1174,
+            "precision": 0.441353,
+            "predicted": 2660,
+            "recall": 1
+          }
+        },
+        "rps": 0.240434
+      },
+      "perSeason": {
+        "2018-2019": {
+          "accuracy": 0.476316,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 128,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 71,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 181,
+              "correct": 181,
+              "precision": 0.476316,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.246637
+        },
+        "2019-2020": {
+          "accuracy": 0.452632,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 116,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 92,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 172,
+              "correct": 172,
+              "precision": 0.452632,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.237427
+        },
+        "2020-2021": {
+          "accuracy": 0.378947,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 153,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 83,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 144,
+              "correct": 144,
+              "precision": 0.378947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.241374
+        },
+        "2021-2022": {
+          "accuracy": 0.428947,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 129,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 88,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 163,
+              "correct": 163,
+              "precision": 0.428947,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.239181
+        },
+        "2022-2023": {
+          "accuracy": 0.484211,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 109,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 87,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 184,
+              "correct": 184,
+              "precision": 0.484211,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.23962
+        },
+        "2023-2024": {
+          "accuracy": 0.460526,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 123,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 82,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 175,
+              "correct": 175,
+              "precision": 0.460526,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.241813
+        },
+        "2024-2025": {
+          "accuracy": 0.407895,
+          "brier": 0.666667,
+          "drawPredictedRate": 0,
+          "logLoss": 1.098612,
+          "n": 380,
+          "outcomes": {
+            "A": {
+              "actual": 132,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "D": {
+              "actual": 93,
+              "correct": 0,
+              "precision": 0,
+              "predicted": 0,
+              "recall": 0
+            },
+            "H": {
+              "actual": 155,
+              "correct": 155,
+              "precision": 0.407895,
+              "predicted": 380,
+              "recall": 1
+            }
+          },
+          "rps": 0.236988
+        }
+      }
+    }
+  }
+}

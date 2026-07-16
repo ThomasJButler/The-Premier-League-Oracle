@@ -1,0 +1,49 @@
+{
+  "comment": "Quality ratchet for the CI pin spec (backtest.pin.test.ts). Models listed here must not regress beyond epsilon on the immutable pin window. Seed/ratchet with: npm run backtest:pins --prefix frontend. The pins diff in a commit IS the measure-first evidence for an engine change.",
+  "epsilon": {
+    "brier": 0.001,
+    "logLoss": 0.005,
+    "rps": 0.0005
+  },
+  "models": {
+    "butler": {
+      "accuracy": 0.540351,
+      "brier": 0.577642,
+      "logLoss": 0.971605,
+      "n": 1140,
+      "rps": 0.201163
+    },
+    "ensemble-v3.6": {
+      "accuracy": 0.538596,
+      "brier": 0.584025,
+      "logLoss": 0.983033,
+      "n": 1140,
+      "rps": 0.20398
+    },
+    "league-prior": {
+      "accuracy": 0.450877,
+      "brier": 0.643833,
+      "logLoss": 1.065005,
+      "n": 1140,
+      "rps": 0.233058
+    },
+    "market": {
+      "accuracy": 0.565789,
+      "brier": 0.55737,
+      "logLoss": 0.942704,
+      "n": 1140,
+      "rps": 0.191348
+    },
+    "uniform": {
+      "accuracy": 0.450877,
+      "brier": 0.666667,
+      "logLoss": 1.098612,
+      "n": 1140,
+      "rps": 0.239474
+    }
+  },
+  "window": {
+    "from": "2022-2023",
+    "to": "2024-2025"
+  }
+}

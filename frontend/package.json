@@ -11,6 +11,9 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "backtest": "BACKTEST=1 vitest run src/lib/backtest/backtest.full.test.ts",
+    "backtest:pins": "UPDATE_PINS=1 vitest run src/lib/backtest/backtest.pin.test.ts",
+    "engine:fit": "FIT=1 vitest run src/lib/backtest/fit.engine.test.ts",
     "screenshots": "playwright test screenshots",
     "screenshots:desktop": "playwright test screenshots --project=desktop-chrome",
     "screenshots:mobile": "playwright test screenshots --project=mobile-chrome"
