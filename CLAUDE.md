@@ -4,7 +4,7 @@
 
 A Premier League prediction platform with two faces:
 
-**The Premier League Oracle** (live at [the-premier-league-oracle.vercel.app](https://the-premier-league-oracle.vercel.app)) — A data-driven prediction app blending five statistical models (ELO, Poisson, form, head-to-head, standings) plus an XGBoost classifier into a weighted ensemble, with honest probability bars rather than over-confident scoreline claims. Live scores, Kelly-criterion betting math, value-bet detection, accumulator builder, 33-season historical archive, Oracle Chat for natural-language queries grounded in bundled match data. Built with Svelte 4 + Vite, currently serving from `main`.
+**The Premier League Oracle** (live at [the-premier-league-oracle.vercel.app](https://the-premier-league-oracle.vercel.app)) — A data-driven prediction app powered by **the Butler model** (time-decayed Dixon-Coles fitted over 33 seasons, walk-forward calibrated, optional XGBoost log-odds blend — see `docs/prediction-engine.md`; it replaced the historical five-model ensemble in July 2026), with honest probability bars rather than over-confident scoreline claims. Live scores, Kelly-criterion betting math, value-bet detection, accumulator builder, 33-season historical archive, Oracle Chat for natural-language queries grounded in bundled match data. Built with Svelte 4 + Vite, currently serving from `main`.
 
 **The Kicker** (currently being built on `kicker-mvp` branch) — A newspaper-styled rebuild of the Oracle as a tabloid broadsheet with 10 AI columnist personas (Macca from Birkenhead, Mickey from Dagenham, The Gaffer, Rupes, etc.). Same backend, same prediction engine, completely different UX metaphor. Each columnist is a system-prompt + voice-fingerprint; the chat surface (Oracle) becomes one feature in a larger newspaper app with Today / Fixtures / Predictions / Insights / Settings hubs.
 
@@ -18,7 +18,8 @@ The Kicker is the MVP target. After K1.0 cutover, `main` swaps from v3 to The Ki
 - Desktop chrome: `frontend/src/lib/components/shell/KickerShell.svelte`
 - Personas: `frontend/src/lib/personas/` (one `.ts` per persona + `index.ts` aggregator)
 - Persona store: `frontend/src/lib/stores/persona.ts` (Svelte writable, localStorage-backed at `kicker:personaId`, default `'voice'`)
-- Preserved data layer (salvaged from v3, SSR-safe): `frontend/src/services/` (`dataService`, `predictionTracker`, `betting/{kelly,value,betHistoryService}`, `api/footballData`, `backendService`) + `frontend/src/lib/{optimizedPredictions, advancedPredictions, calibrationIndex, gameweek, adapters/v3, utils, constants, data/statsPack}`
+- **Prediction engine: the Butler model** — `frontend/src/lib/engine/` (time-decayed Dixon-Coles, fitted `coefficients.json`, pure/deterministic/SSR-safe) behind the facade `frontend/src/lib/butlerFacade.ts`; legacy import path `frontend/src/lib/optimizedPredictions.ts` re-exports it. Measurement harness: `frontend/src/lib/backtest/` (walk-forward, pins gate in CI). Full docs: `docs/prediction-engine.md`.
+- Preserved data layer (salvaged from v3, SSR-safe): `frontend/src/services/` (`dataService`, `predictionTracker`, `betting/betHistoryService`, `api/footballData`, `backendService`) + `frontend/src/lib/{calibrationIndex, gameweek, adapters/v3, utils, constants, data/statsPack}`
 - API endpoints: `frontend/src/routes/api/chat/+server.ts` (streaming Haiku 4.5) + `frontend/src/routes/api/broadsheet/+server.ts` (one-shot Sonnet 4.5)
 
 **Backend**
@@ -43,6 +44,8 @@ The Kicker is the MVP target. After K1.0 cutover, `main` swaps from v3 to The Ki
 5. **API keys** — Football-Data.org key from `localStorage` (`football_data_api_key`) or `VITE_FOOTBALL_DATA_API_KEY` env. Anthropic key server-side only (`ANTHROPIC_API_KEY`).
 6. **SSR localStorage guards** — preserved services with `localStorage` in their constructor MUST guard with `typeof localStorage === 'undefined'`. Failure mode = SSR 500.
 7. **Ticker mount discipline** — never mount `<GeoffTicker />` or `<MobileTicker />` in a route's own markup. Layout owns mobile ticker (`lg:hidden`); KickerShell owns desktop ticker.
+8. **Engine changes go through the pin gate** — any change touching prediction quality must keep `npm run test` green (the pin spec asserts Butler ≥ frozen benchmarks + beats the retired ensemble) and ratchet via `npm run backtest:pins --prefix frontend`; commit the pins.json diff as evidence. Never average probabilities across models — blend in log-odds. Engine stays pure: no localStorage/fetch/wall-clock inside `lib/engine/`.
+9. **Refit cadence** — after refreshing `backend/spreadsheets/KnowledgeFilesCSV/`, run `npm run engine:fit --prefix frontend` (~3–6 min) and commit the regenerated `coefficients.json` (the schema test fails on stale fits).
 
 ## Where to look first
 
@@ -51,7 +54,7 @@ The Kicker is the MVP target. After K1.0 cutover, `main` swaps from v3 to The Ki
 - "How does the build loop work?" → `ClaudeRalph/CLAUDE.md` + `ClaudeRalph/PROMPT_build.md`
 - "What does The Kicker look like?" → `the_kicker_handoff/` (gitignored; ask user to point you at it)
 - "What's the persona system?" → `frontend/src/lib/personas/` + `docs/the-kicker-spec/personas.md`
-- "How does the prediction model work?" → `frontend/src/lib/optimizedPredictions.ts` + the v3 README
+- "How does the prediction model work?" → `docs/prediction-engine.md` (the Butler model) + `frontend/src/lib/engine/`
 
 ## Loop status (high-level)
 

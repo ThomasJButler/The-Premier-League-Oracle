@@ -73,3 +73,26 @@
        - **Betting screen is OUT OF SCOPE** — user removed betting tooling from product surface. Predictions screen (K0k) inherits the "where the model lives" ethos.
   - **Loop posts a one-paragraph summary** ("R0+ complete. Plan grew by N lines. Top 3 new components: …. Top 3 new screens: …. Top 3 proposed plan deltas: ….") and stops. User reviews + approves the master plan delta list before K0a fires.
   - **Slice contract**: when R0+ completes, the loop flips this checkbox to `[x]` in `ClaudeRalph/IMPLEMENTATION_PLAN.md` and commits the box-flip ONLY (single tiny commit, message `chore: R0+ research pass complete, plan reference enriched`). The substantive content lives in `/Users/tombutler/.claude/plans/sleepy-moseying-ripple.md` outside the repo.
+---
+
+## The Butler Model — prediction engine rebuild (2026-07-15, branch `butler-model`)
+
+- **Shipped**: replaced the five-heuristic ensemble (ELO/Poisson/form/H2H/standings,
+  probability-averaged) with **the Butler model** — a time-decayed, shrinkage-regularised
+  Dixon-Coles core fitted by penalised MLE over the 33-season archive, with walk-forward
+  calibration (T=0.901, cD=0.029), shipped as `frontend/src/lib/engine/coefficients.json`.
+- **Gate evidence** (walk-forward TEST 2018–2025, 2,660 matches): Butler RPS 0.2000 /
+  Brier 0.5719 / log-loss 0.9648 / acc 54.4% vs old ensemble 0.2062 / 0.5846 / 0.9843 /
+  53.7%; wins 6 of 7 seasons; bookmaker ceiling 0.1939. Frozen benchmarks live in
+  `frontend/src/lib/backtest/pins.json`; the gate is a standing CI assertion.
+- **Also fixed**: production Brier/RPS pipeline (probabilities persisted end-to-end; the
+  AI columnists no longer read "Brier 0.000"), UI bars = the actual prediction triple
+  (adapter re-blend deleted), form-recency inversion, per-browser ELO nondeterminism.
+- **Deleted** (~4,400 LOC): `advancedPredictions.ts`, `betting/{value,kelly}.ts`(+tests),
+  custom-weights machinery, `lambdaValidation` test, old `optimizedPredictions` internals.
+  `betHistoryService` retained. Betting chain removal user-approved.
+- **New surfaces**: `lib/engine/` (pure, deterministic, ~1k LOC), `lib/backtest/`
+  (leakage-proof walk-forward harness + pins), `lib/butlerFacade.ts`;
+  `ModelBreakdown` union → CLASS | FORM | MODEL | XGBOOST; MODEL_VERSION `butler-1.0`.
+- **Workflows**: `npm run backtest` / `backtest:pins` / `engine:fit` (see
+  `docs/prediction-engine.md` — full math, architecture, runbook).

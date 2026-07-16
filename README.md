@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API](https://img.shields.io/badge/API-Football--Data.org-orange)
 
-A live, data-driven Premier League prediction platform. It blends five statistical models into a weighted ensemble — ELO ratings, Poisson distribution, form analysis, head-to-head records, and league standings — together with a trained XGBoost model, and displays predictions with honest probability bars instead of over-confident single-scoreline claims.
+A live, data-driven Premier League prediction platform powered by **the Butler model** — a time-decayed, shrinkage-regularised Dixon-Coles engine fitted by penalised maximum likelihood over 33 seasons, calibrated on walk-forward out-of-sample forecasts, and shipped as a few kilobytes of fitted coefficients running entirely in your browser. An optional XGBoost backend blends in on the log-odds scale. Predictions display as honest calibrated probability bars, never over-confident single-scoreline claims — and the model's real track record (RPS/Brier, measured against bookmaker closing odds) ships with it.
 
 ## Try it
 
@@ -25,7 +25,7 @@ I'm not actively accepting feature PRs — issue reports on bugs or prediction-q
 
 ## What's inside
 
-**Prediction engine** — Five-model weighted ensemble with per-match confidence scores. The displayed exact scoreline is the **strict argmax of the Poisson grid** for the predicted outcome; no rounded-means tricks, no H2H tempo nudges. The Top-3 Most Likely Scorelines strip shows the surrounding cells so you can see the full distribution.
+**Prediction engine** — The Butler model (see `docs/prediction-engine.md` for the full mathematics). Walk-forward evidence over 2018–2025 (2,660 matches): RPS 0.2000 vs the bookmaker ceiling's 0.1939 — measured, committed, and enforced by a CI gate that fails any change making predictions worse. The displayed scoreline is the modal cell of a score grid that agrees with the probability bars *exactly, by construction*. Draws get picked when they're genuinely most likely.
 
 **Live data** — Real-time scores with adaptive polling (30s during live matches, 5min on matchdays, 30min otherwise). Live ticker + toast notifications for goals and status changes.
 
@@ -43,7 +43,7 @@ I'm not actively accepting feature PRs — issue reports on bugs or prediction-q
 
 ## Honest limitations
 
-- **Draw predictions** are underweighted — the backend's XGBoost model has AUC-ROC 0.601 for draws (it *can* identify draw-prone matches) but isotonic calibration compresses draw probabilities downward, so the modal-cell pick rarely surfaces a draw even when the aggregate probability is realistic (~25%). Known trade-off. The H/D/A bar still shows honest draw percentages.
+- **Draws are rarely the modal outcome** — that's football, not a bug: even evenly-matched fixtures usually leave a draw at ~28–32%. The Butler model picks draws when they genuinely top the calibrated triple (a few fixtures per season) and its draw *probabilities* are calibrated against three decades of outcomes (fitted draw intercept, ECE ≈ 0.015).
 - **Exact scorelines** are inherently noisy. Even the single most-likely scoreline in a typical Premier League fixture sits under 15% probability. Trust the H/D/A bar; treat the exact-score prediction as "if forced to pick" — which is what the UI now literally says.
 - **Free Football-Data.org tier** caps at 10 requests/minute, and the free tier doesn't include xG, shots, possession, cards, or corners. The backend ML model works around this with 114 engineered features from historical results + odds.
 
@@ -69,9 +69,10 @@ frontend/src/
 │   ├── ChatBot.svelte              Oracle Chat w/ client-side RAG
 │   └── betting/                    Kelly, Value Scanner, Accumulators
 ├── lib/
-│   ├── advancedPredictions.ts      ELO, Poisson, xG, Fatigue, Referee models
-│   ├── optimizedPredictions.ts     Weighted ensemble orchestrator
-│   ├── betBuilder.ts               Multi-market grid for combos
+│   ├── engine/                     THE BUTLER MODEL — Dixon-Coles core, fitted
+│   │                               coefficients.json, calibration, metrics
+│   ├── backtest/                   Walk-forward harness + CI quality pins
+│   ├── butlerFacade.ts             Engine → app contract seam
 │   └── data/                       Bundled 33-season stats pack + match index
 ├── services/
 │   ├── dataService.ts              Singleton data layer (cache + API + warm-up)
