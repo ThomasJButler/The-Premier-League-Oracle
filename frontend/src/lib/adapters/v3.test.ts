@@ -177,50 +177,63 @@ describe('enhancedPredictionToV3', () => {
   function mkEnhanced(over: Partial<EnhancedPredictionModel> = {}): EnhancedPredictionModel {
     return {
       predictedResult: 'H',
+      probabilities: { home: 0.51, draw: 0.27, away: 0.22 },
       confidence: 0.62,
       predictedHomeGoals: 2,
       predictedAwayGoals: 1,
       homeForm: 'WWDLW',
       awayForm: 'DLWWL',
-      modelWeights: { elo: 0.25, poisson: 0.30, form: 0.20, h2h: 0.10, standings: 0.15 },
+      modelWeights: { elo: 0, poisson: 1, form: 0, h2h: 0, standings: 0 },
       insights: ['Arsenal in excellent form'],
+      valueOdds: { home: 1 / 0.51, draw: 1 / 0.27, away: 1 / 0.22 },
       modelOutputs: {
-        elo: { home: 0.55, draw: 0.25, away: 0.20 },
-        poisson: { home: 0.50, draw: 0.27, away: 0.23 },
-        form: { home: 0.48, draw: 0.30, away: 0.22 },
-        h2h: { home: 0.40, draw: 0.35, away: 0.25 },
-        standings: { home: 0.52, draw: 0.26, away: 0.22 },
+        class: { home: 0.44, draw: 0.29, away: 0.27 },
+        form: { home: 0.53, draw: 0.26, away: 0.21 },
+        calibrated: { home: 0.51, draw: 0.27, away: 0.22 },
       },
       topScorelines: [
         { score: '2-1', probability: 0.12 },
         { score: '1-1', probability: 0.11 },
         { score: '2-0', probability: 0.09 },
       ],
+      scoreProbabilities: { '2-1': 0.12, '1-1': 0.11, '2-0': 0.09 },
+      expectedGoals: { home: 1.82, away: 1.13 },
+      divergenceFlag: false,
       ...over,
     };
   }
 
   it('returns undefined when modelOutputs is missing', () => {
-    const v3 = enhancedPredictionToV3(mkEnhanced({ modelOutputs: undefined }));
+    const v3 = enhancedPredictionToV3(
+      mkEnhanced({ modelOutputs: undefined as unknown as EnhancedPredictionModel['modelOutputs'] })
+    );
     expect(v3).toBeUndefined();
   });
 
-  it('maps the four core sub-models into the v3 models[] array with lean + confidence', () => {
+  it('maps the Butler decomposition into CLASS / FORM / MODEL rows with lean + confidence', () => {
     const v3 = enhancedPredictionToV3(mkEnhanced());
-    expect(v3?.models.map((m) => m.name)).toEqual(['ELO', 'POISSON', 'FORM', 'H2H']);
-    const elo = v3!.models.find((m) => m.name === 'ELO')!;
-    expect(elo.lean).toBe('H');
-    expect(elo.confidence).toBeCloseTo(0.55);
+    expect(v3?.models.map((m) => m.name)).toEqual(['CLASS', 'FORM', 'MODEL']);
+    const classRow = v3!.models.find((m) => m.name === 'CLASS')!;
+    expect(classRow.lean).toBe('H');
+    expect(classRow.confidence).toBeCloseTo(0.44);
+    const modelRow = v3!.models.find((m) => m.name === 'MODEL')!;
+    expect(modelRow.confidence).toBeCloseTo(0.51);
   });
 
   it('appends an XGBOOST row only when modelWeights.ml > 0', () => {
     const withMl = enhancedPredictionToV3(mkEnhanced({
-      modelWeights: { elo: 0.175, poisson: 0.21, form: 0.14, h2h: 0.07, standings: 0.105, ml: 0.30 },
+      modelWeights: { elo: 0, poisson: 1, form: 0, h2h: 0, standings: 0, ml: 0.25 },
     }));
     expect(withMl?.models.map((m) => m.name)).toContain('XGBOOST');
     const ml = withMl!.models.find((m) => m.name === 'XGBOOST')!;
     expect(ml.lean).toBe('H');
     expect(ml.confidence).toBeCloseTo(0.62);
+  });
+
+  it('threads real expected goals and the divergence flag through', () => {
+    const v3 = enhancedPredictionToV3(mkEnhanced({ divergenceFlag: true }))!;
+    expect(v3.xg).toEqual({ home: 1.82, away: 1.13 });
+    expect(v3.divergenceFlag).toBe(true);
   });
 
   it('parses topScorelines from "H-A" strings into {home, away, prob}', () => {
@@ -232,16 +245,25 @@ describe('enhancedPredictionToV3', () => {
     ]);
   });
 
-  it('reconstructs the ensemble triple as a weighted blend that sums to 1', () => {
+  it('passes the engine probabilities through verbatim — the coherence invariant', () => {
+    // The UI's ensemble bars must be the EXACT distribution that determined
+    // the pick. An earlier adapter re-blended modelOutputs × modelWeights,
+    // which silently dropped the ML term, referee shift, and form
+    // orthogonalisation — the bars framed a pick their numbers disagreed with.
     const v3 = enhancedPredictionToV3(mkEnhanced())!;
-    const sum = v3.ensemble.home + v3.ensemble.draw + v3.ensemble.away;
-    expect(sum).toBeCloseTo(1, 5);
+    expect(v3.ensemble).toEqual({ home: 0.51, draw: 0.27, away: 0.22 });
+
+    // And it must NOT equal the naive re-blend of the raw model outputs —
+    // proving we read probabilities, not a reconstruction.
+    const custom = enhancedPredictionToV3(
+      mkEnhanced({ probabilities: { home: 0.7, draw: 0.2, away: 0.1 } })
+    )!;
+    expect(custom.ensemble).toEqual({ home: 0.7, draw: 0.2, away: 0.1 });
   });
 
-  it('threads predictedResult into pick and predicted goals into xg', () => {
+  it('threads predictedResult into pick', () => {
     const v3 = enhancedPredictionToV3(mkEnhanced({ predictedResult: 'A' }))!;
     expect(v3.pick).toBe('AWAY');
-    expect(v3.xg).toEqual({ home: 2, away: 1 });
   });
 });
 

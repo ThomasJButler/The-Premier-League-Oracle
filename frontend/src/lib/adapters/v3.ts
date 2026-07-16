@@ -127,38 +127,39 @@ const PICK_FROM_RESULT: Record<'H' | 'D' | 'A', MatchPrediction['pick']> = {
   H: 'HOME', D: 'DRAW', A: 'AWAY',
 };
 
+/** The Butler decomposition rows, in narrative order: season-long class,
+ *  current form, and the published (calibrated) view. */
 const LEAN_NAMES: ReadonlyArray<{ key: keyof ModelOutputs; label: ModelBreakdown['name'] }> = [
-  { key: 'elo', label: 'ELO' },
-  { key: 'poisson', label: 'POISSON' },
+  { key: 'class', label: 'CLASS' },
   { key: 'form', label: 'FORM' },
-  { key: 'h2h', label: 'H2H' },
+  { key: 'calibrated', label: 'MODEL' },
 ];
 
-function deriveLean(probs: { home: number; draw: number; away: number }): ModelBreakdown {
+function deriveLean(
+  label: ModelBreakdown['name'],
+  probs: { home: number; draw: number; away: number }
+): ModelBreakdown {
   const { home, draw, away } = probs;
-  if (home >= draw && home >= away) return { name: 'ELO', lean: 'H', confidence: home };
-  if (away >= draw && away >= home) return { name: 'ELO', lean: 'A', confidence: away };
-  return { name: 'ELO', lean: 'D', confidence: draw };
+  if (home >= draw && home >= away) return { name: label, lean: 'H', confidence: home };
+  if (away >= draw && away >= home) return { name: label, lean: 'A', confidence: away };
+  return { name: label, lean: 'D', confidence: draw };
 }
 
 /**
- * Map the salvaged engine's `EnhancedPredictionModel` into the v3 redesign
+ * Map the Butler engine's `EnhancedPredictionModel` into the v3 redesign
  * `MatchPrediction` shape consumed by `EnsembleBars`, `ScorelineBars`, and
  * the match-detail hero footer. Returns `undefined` when the input lacks
- * the raw `modelOutputs` triples the bars depend on.
+ * the `modelOutputs` decomposition the bars depend on.
  */
 export function enhancedPredictionToV3(p: EnhancedPredictionModel): MatchPrediction | undefined {
   if (!p.modelOutputs) return undefined;
 
-  const models: ModelBreakdown[] = LEAN_NAMES.map(({ key, label }) => {
-    const lean = deriveLean(p.modelOutputs![key]);
-    return { name: label, lean: lean.lean, confidence: lean.confidence };
-  });
+  const models: ModelBreakdown[] = LEAN_NAMES.map(({ key, label }) =>
+    deriveLean(label, p.modelOutputs[key])
+  );
 
-  // The XGBoost row only appears when the ML backend contributed. Surface its
-  // contribution as a model row tagged with the ensemble pick + ml weight, so
-  // the bar reflects that ML was in the blend (not its raw triple — that isn't
-  // round-tripped in `modelOutputs`).
+  // The XGBoost row only appears when the ML backend contributed to the
+  // log-odds blend.
   if (typeof p.modelWeights.ml === 'number' && p.modelWeights.ml > 0) {
     models.push({
       name: 'XGBOOST',
@@ -166,30 +167,6 @@ export function enhancedPredictionToV3(p: EnhancedPredictionModel): MatchPredict
       confidence: p.confidence,
     });
   }
-
-  // Build the ensemble triple from `modelOutputs` weighted by `modelWeights`.
-  // This is the same blend the engine produced internally, reconstructed for
-  // the v3 shape without re-running the predictor.
-  const w = p.modelWeights;
-  const blendHome =
-    p.modelOutputs.elo.home * w.elo +
-    p.modelOutputs.poisson.home * w.poisson +
-    p.modelOutputs.form.home * w.form +
-    p.modelOutputs.h2h.home * w.h2h +
-    p.modelOutputs.standings.home * w.standings;
-  const blendDraw =
-    p.modelOutputs.elo.draw * w.elo +
-    p.modelOutputs.poisson.draw * w.poisson +
-    p.modelOutputs.form.draw * w.form +
-    p.modelOutputs.h2h.draw * w.h2h +
-    p.modelOutputs.standings.draw * w.standings;
-  const blendAway =
-    p.modelOutputs.elo.away * w.elo +
-    p.modelOutputs.poisson.away * w.poisson +
-    p.modelOutputs.form.away * w.form +
-    p.modelOutputs.h2h.away * w.h2h +
-    p.modelOutputs.standings.away * w.standings;
-  const total = blendHome + blendDraw + blendAway || 1;
 
   const topScorelines = (p.topScorelines ?? [])
     .map(({ score, probability }) => {
@@ -199,17 +176,21 @@ export function enhancedPredictionToV3(p: EnhancedPredictionModel): MatchPredict
     .filter(({ home, away }) => Number.isFinite(home) && Number.isFinite(away));
 
   return {
-    ensemble: {
-      home: blendHome / total,
-      draw: blendDraw / total,
-      away: blendAway / total,
-    },
+    // The engine's own final triple, verbatim — the exact distribution that
+    // determined `predictedResult`. Never re-derive it here: an earlier
+    // version reconstructed a weighted blend from `modelOutputs`, which
+    // silently omitted the ML term, the referee shift, and the form
+    // orthogonalisation, so the bars disagreed with the pick they framed.
+    ensemble: { ...p.probabilities },
     models,
     topScorelines,
-    xg: { home: p.predictedHomeGoals, away: p.predictedAwayGoals },
+    // Real expected goals — the fitted scoring rates, not the integer
+    // scoreline echo the old adapter faked this slot with.
+    xg: { ...p.expectedGoals },
     elo: { home: 0, away: 0 },
     pick: PICK_FROM_RESULT[p.predictedResult],
     pickConfidence: p.confidence,
+    divergenceFlag: p.divergenceFlag,
     keyFactors: p.insights,
   };
 }

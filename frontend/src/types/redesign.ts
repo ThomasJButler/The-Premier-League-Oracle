@@ -33,7 +33,10 @@ export interface Fixture {
 }
 
 export interface ModelBreakdown {
-  name: 'ELO' | 'POISSON' | 'FORM' | 'H2H' | 'XGBOOST';
+  // Butler decomposition: CLASS = season-long strength (slow-memory fit),
+  // FORM = current strength (decayed fit), MODEL = the published calibrated
+  // view, XGBOOST = the optional backend blend contribution.
+  name: 'CLASS' | 'FORM' | 'MODEL' | 'XGBOOST';
   lean: 'H' | 'D' | 'A';
   confidence: number;
 }

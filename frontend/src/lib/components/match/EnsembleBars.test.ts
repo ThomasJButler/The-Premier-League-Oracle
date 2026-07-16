@@ -3,11 +3,12 @@ import { render } from 'svelte/server';
 import EnsembleBars from './EnsembleBars.svelte';
 import type { ModelBreakdown } from '../../../types/redesign';
 
+// The Butler decomposition rows (season-long class / current form / the
+// published calibrated view) — the component renders whatever it's given.
 const models: ModelBreakdown[] = [
-  { name: 'ELO', lean: 'H', confidence: 0.55 },
-  { name: 'POISSON', lean: 'H', confidence: 0.50 },
-  { name: 'FORM', lean: 'D', confidence: 0.32 },
-  { name: 'H2H', lean: 'A', confidence: 0.40 },
+  { name: 'CLASS', lean: 'H', confidence: 0.55 },
+  { name: 'FORM', lean: 'A', confidence: 0.50 },
+  { name: 'MODEL', lean: 'D', confidence: 0.32 },
 ];
 
 describe('EnsembleBars', () => {
@@ -20,11 +21,10 @@ describe('EnsembleBars', () => {
   it('renders one row per model with the model name as a data attr', () => {
     const { body } = render(EnsembleBars, { props: { models, homeAbbr: 'ARS', awayAbbr: 'LIV' } });
     const rows = body.match(/data-ensemble-row(?![-\w])/g) ?? [];
-    expect(rows.length).toBe(4);
-    expect(body).toContain('data-ensemble-model="ELO"');
-    expect(body).toContain('data-ensemble-model="POISSON"');
+    expect(rows.length).toBe(3);
+    expect(body).toContain('data-ensemble-model="CLASS"');
     expect(body).toContain('data-ensemble-model="FORM"');
-    expect(body).toContain('data-ensemble-model="H2H"');
+    expect(body).toContain('data-ensemble-model="MODEL"');
   });
 
   it('maps lean H/A/D to home abbr / away abbr / DRAW', () => {
@@ -39,7 +39,6 @@ describe('EnsembleBars', () => {
     expect(body).toContain('55%');
     expect(body).toContain('50%');
     expect(body).toContain('32%');
-    expect(body).toContain('40%');
   });
 
   it('drives the bar fill width from the persona-accent CSS variable, not inline hex', () => {
@@ -52,7 +51,7 @@ describe('EnsembleBars', () => {
     const withMl: ModelBreakdown[] = [...models, { name: 'XGBOOST', lean: 'H', confidence: 0.65 }];
     const { body } = render(EnsembleBars, { props: { models: withMl, homeAbbr: 'ARS', awayAbbr: 'LIV' } });
     expect(body).toContain('data-ensemble-model="XGBOOST"');
-    expect(body).toContain('5 MODELS');
+    expect(body).toContain('4 MODELS');
   });
 
   it('does not render any betting copy', () => {
