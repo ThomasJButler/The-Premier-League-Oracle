@@ -7,9 +7,9 @@
   },
   "models": {
     "butler": {
-      "accuracy": 0.540351,
-      "brier": 0.577642,
-      "logLoss": 0.971605,
+      "accuracy": 0.541228,
+      "brier": 0.577674,
+      "logLoss": 0.971772,
       "n": 1140,
       "rps": 0.201163
     },
