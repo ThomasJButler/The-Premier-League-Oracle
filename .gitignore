@@ -41,6 +41,11 @@ frontend/test-results/
 backend/.coverage
 backend/htmlcov/
 
+# Python virtual environments (regenerate from requirements.txt; never commit)
+venv/
+.venv/
+env/
+
 # OS / IDE
 .DS_Store
 .claude/settings.json
