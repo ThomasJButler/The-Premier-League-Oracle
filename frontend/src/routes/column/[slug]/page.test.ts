@@ -7,6 +7,11 @@ import { listColumnSlugs } from '$lib/fixtures/columns';
 
 const KNOWN_SLUG = 'state-of-arsenal';
 
+const pageSource = readFileSync(
+  fileURLToPath(new URL('./+page.svelte', import.meta.url)),
+  'utf-8'
+);
+
 describe('Column route — K1e-α (/column/[slug])', () => {
   it('renders without error for a known slug', () => {
     const { body } = render(ColumnPage, { props: { data: { slug: KNOWN_SLUG } } });
@@ -84,5 +89,40 @@ describe('Column route — K1e-α (/column/[slug])', () => {
       const { body } = render(ColumnPage, { props: { data: { slug } } });
       expect(body).toContain('data-column-article');
     }
+  });
+
+  describe('T7 — cached broadsheet editions (gw{N}-{personaId})', () => {
+    it('SSR-renders the pending skeleton (NOT the not-found block) for a cached-shape slug', () => {
+      // Cache reads run in onMount, so at SSR the cached column is unresolved.
+      // The slug parses, so we must show a skeleton — never the 404 flash.
+      const { body } = render(ColumnPage, { props: { data: { slug: 'gw34-voice' } } });
+      expect(body).toContain('data-column-pending');
+      expect(body).toContain('data-column-pending-skeleton');
+      expect(body).not.toContain('data-column-missing');
+      // Article markers are absent until the cache resolves client-side.
+      expect(body).not.toContain('data-column-article');
+    });
+
+    it('pending skeleton renders once per shell (desktop + mobile)', () => {
+      const { body } = render(ColumnPage, { props: { data: { slug: 'gw12-scouser' } } });
+      expect((body.match(/data-column-pending(?=[\s>=])/g) ?? []).length).toBe(2);
+    });
+
+    it('an unknown-persona cached-shape slug is NOT treated as pending — falls to not-found', () => {
+      const { body } = render(ColumnPage, { props: { data: { slug: 'gw34-nobody' } } });
+      expect(body).toContain('data-column-missing');
+      expect(body).not.toContain('data-column-pending');
+    });
+
+    it('source: onMount resolves the cache via readBroadsheet + cachedBroadsheetToColumn (client-only path)', () => {
+      // The loaded-from-cache state is unreachable in SSR (localStorage is read
+      // in onMount), so pin the client path against the source.
+      expect(pageSource).toMatch(/import\s*\{\s*readBroadsheet\s*\}\s*from\s*['"]\$lib\/stores\/broadsheetStore['"]/);
+      expect(pageSource).toMatch(
+        /import\s*\{\s*parseColumnSlug\s*,\s*cachedBroadsheetToColumn\s*\}\s*from\s*['"]\$lib\/broadsheet\/broadsheetColumn['"]/
+      );
+      expect(pageSource).toMatch(/readBroadsheet\(\s*cachedSlug\.gameweek\s*,\s*cachedSlug\.personaId\s*\)/);
+      expect(pageSource).toMatch(/resolvedColumn\s*=\s*cachedBroadsheetToColumn\(entry\)/);
+    });
   });
 });

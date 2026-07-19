@@ -12,7 +12,8 @@
   const TYPE_LABEL: Record<NotificationType, string> = {
     'match-start': 'KICK-OFF',
     'model-edge': 'MODEL EDGE',
-    'broadsheet-ready': 'BROADSHEET'
+    'broadsheet-ready': 'BROADSHEET',
+    rumours: 'RUMOUR MILL'
   };
 
   function handleClick(): void {

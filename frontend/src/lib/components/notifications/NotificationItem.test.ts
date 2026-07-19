@@ -41,6 +41,10 @@ describe('NotificationItem — K1f-α', () => {
       props: { item: make({ type: 'broadsheet-ready' }) }
     }).body;
     expect(broadsheet).toContain('BROADSHEET');
+    const rumours = render(NotificationItem, {
+      props: { item: make({ type: 'rumours' }) }
+    }).body;
+    expect(rumours).toContain('RUMOUR MILL');
   });
 
   it('uses a CSS variable for the type label colour (no inline hex)', () => {

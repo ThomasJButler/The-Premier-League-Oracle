@@ -13,6 +13,7 @@
   import { readBroadsheet, writeBroadsheet, clearBroadsheet } from '$lib/stores/broadsheetStore';
   import { requestBroadsheet } from '$lib/broadsheet/requestBroadsheet';
   import { notifyBroadsheetReady } from '$lib/broadsheet/notifyBroadsheetReady';
+  import { buildColumnSlug } from '$lib/broadsheet/broadsheetColumn';
   import type { BroadsheetJson } from '$lib/server/broadsheetPrompt';
 
   interface PageData {
@@ -90,6 +91,11 @@
   }
 
   const titleLine = $derived(broadsheet?.headline ?? 'The Broadsheet');
+  // Deep link to this cached edition rendered through the column reader (T7).
+  // Only meaningful once a broadsheet is on file (which implies a known gameweek).
+  const columnHref = $derived(
+    gameweek !== null ? `/column/${buildColumnSlug(gameweek, personaId)}` : null
+  );
 </script>
 
 {#snippet demoBroadsheet()}
@@ -236,6 +242,16 @@
           cached at {persona.name}'s desk · key kicker:broadsheet:gw{gameweek}:{personaId}
         </span>
       </div>
+
+      {#if columnHref}
+        <a
+          href={columnHref}
+          class="inline-block mt-6 font-mono text-[10px] tracking-[0.25em] uppercase font-bold border border-ink px-3 py-2"
+          data-broadsheet-column-link
+        >
+          Read as column →
+        </a>
+      {/if}
     {:else if loading}
       <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-loading>
         {persona.name} is filing copy… (Sonnet 4.5)
@@ -375,6 +391,15 @@
         <span class="font-serif italic text-ink-soft text-[11px]">
           cached at {persona.name}'s desk
         </span>
+        {#if columnHref}
+          <a
+            href={columnHref}
+            class="mt-2 w-full text-center font-mono text-[10px] tracking-[0.25em] uppercase font-bold border border-ink px-3 py-2"
+            data-broadsheet-column-link
+          >
+            Read as column →
+          </a>
+        {/if}
       </div>
     {:else if loading}
       <p class="font-serif italic text-ink-soft text-[14px] mt-6" data-broadsheet-loading>

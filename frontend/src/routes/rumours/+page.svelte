@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import KickerShell from '$lib/components/shell/KickerShell.svelte';
   import MobileHeader from '$lib/components/shell/MobileHeader.svelte';
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
@@ -7,6 +8,45 @@
   import HeatBar from '$lib/components/rumours/HeatBar.svelte';
   import LockedColumn from '$lib/components/rumours/LockedColumn.svelte';
   import { KICKER_RUMOURS } from '$lib/fixtures/rumours';
+  import { addNotification } from '$lib/stores/notificationsFeed';
+  import { isValidEmail, readRumoursSignup, saveRumoursSignup } from '$lib/rumours/notifySignup';
+
+  // T6 — Rumours "notify me" capture. LOCAL ONLY: no email backend exists yet
+  // (arrives with the K2 backend phase), so the honest promise is an in-app
+  // notification, not a delivered email. See notifySignup.ts.
+  let notifyOpen = $state(false);
+  let notifySignedUp = $state(false);
+  let notifyEmail = $state('');
+  let notifyError = $state('');
+
+  onMount(() => {
+    if (readRumoursSignup()) notifySignedUp = true;
+  });
+
+  function openNotifyForm(): void {
+    notifyOpen = true;
+  }
+
+  function handleNotifySubmit(e: SubmitEvent): void {
+    e.preventDefault();
+    if (!isValidEmail(notifyEmail)) {
+      notifyError = 'Enter a valid email address.';
+      return;
+    }
+    const isFirstSignup = readRumoursSignup() === null;
+    saveRumoursSignup(notifyEmail);
+    notifySignedUp = true;
+    notifyOpen = false;
+    notifyError = '';
+    if (isFirstSignup) {
+      addNotification({
+        type: 'rumours',
+        title: "You're on Macca's rumour list",
+        body: "First take lands here the moment the window opens June 9 — no email, just an in-app ping.",
+        href: '/rumours'
+      });
+    }
+  }
 </script>
 
 <div class="hidden lg:block" data-desktop-shell>
@@ -55,16 +95,56 @@
             {/each}
           </div>
           <div class="mt-6 flex items-center justify-center gap-4 flex-wrap">
-            <button
-              type="button"
-              class="px-8 py-3 font-sans font-extrabold text-[12px] tracking-widest bg-paper text-ink"
-              data-rumours-notify-cta
-            >
-              NOTIFY ME WHEN LIVE →
-            </button>
-            <p class="font-serif italic text-[11px] text-ink-faint">
-              No spam. Just Macca's first take when the window opens.
-            </p>
+            {#if notifySignedUp}
+              <div
+                class="px-8 py-3 font-sans font-extrabold text-[12px] tracking-widest bg-amber text-ink"
+                data-rumours-notify-done
+              >
+                YOU'RE ON THE LIST →
+              </div>
+              <p class="font-serif italic text-[11px] text-ink-faint">
+                Macca's first take lands in your notifications when the window opens.
+              </p>
+            {:else if notifyOpen}
+              <form
+                class="flex items-center gap-2 flex-wrap justify-center"
+                data-rumours-notify-form
+                onsubmit={handleNotifySubmit}
+              >
+                <input
+                  type="email"
+                  autocomplete="off"
+                  placeholder="you@example.com"
+                  class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper text-ink"
+                  data-rumours-notify-input
+                  bind:value={notifyEmail}
+                />
+                <button
+                  type="submit"
+                  class="px-6 py-3 font-sans font-extrabold text-[12px] tracking-widest bg-paper text-ink"
+                >
+                  NOTIFY ME →
+                </button>
+                {#if notifyError}
+                  <p class="w-full font-mono text-[10px] tracking-wider text-red">{notifyError}</p>
+                {/if}
+              </form>
+              <p class="font-serif italic text-[11px] text-ink-faint">
+                No email delivery yet — Macca's first take lands in-app when the window opens.
+              </p>
+            {:else}
+              <button
+                type="button"
+                class="px-8 py-3 font-sans font-extrabold text-[12px] tracking-widest bg-paper text-ink"
+                data-rumours-notify-cta
+                onclick={openNotifyForm}
+              >
+                NOTIFY ME WHEN LIVE →
+              </button>
+              <p class="font-serif italic text-[11px] text-ink-faint">
+                No spam. Just Macca's first take when the window opens.
+              </p>
+            {/if}
           </div>
         </div>
       </section>
@@ -187,13 +267,55 @@
       >
         6 EARLY RUMOURS · WAITING
       </p>
-      <button
-        type="button"
-        class="mt-6 px-6 py-3 font-sans font-extrabold text-[11px] tracking-widest bg-paper text-ink"
-        data-rumours-notify-cta-mobile
-      >
-        NOTIFY ME WHEN LIVE →
-      </button>
+      <div class="mt-6 flex flex-col items-center gap-3">
+        {#if notifySignedUp}
+          <div
+            class="px-6 py-3 font-sans font-extrabold text-[11px] tracking-widest bg-amber text-ink"
+            data-rumours-notify-done
+          >
+            YOU'RE ON THE LIST →
+          </div>
+          <p class="font-serif italic text-[11px] text-ink-ghost text-center">
+            Macca's first take lands in your notifications when the window opens.
+          </p>
+        {:else if notifyOpen}
+          <form
+            class="w-full max-w-xs flex flex-col items-stretch gap-2"
+            data-rumours-notify-form
+            onsubmit={handleNotifySubmit}
+          >
+            <input
+              type="email"
+              autocomplete="off"
+              placeholder="you@example.com"
+              class="kicker-input font-mono text-[13px] px-3 py-2 border border-rule bg-paper text-ink"
+              data-rumours-notify-input
+              bind:value={notifyEmail}
+            />
+            <button
+              type="submit"
+              class="px-6 py-3 font-sans font-extrabold text-[11px] tracking-widest bg-paper text-ink"
+            >
+              NOTIFY ME →
+            </button>
+            {#if notifyError}
+              <p class="font-mono text-[10px] tracking-wider text-red">{notifyError}</p>
+            {/if}
+          </form>
+          <p class="font-serif italic text-[11px] text-ink-ghost text-center">
+            No email delivery yet — Macca's first take lands in-app when the window opens.
+          </p>
+        {:else}
+          <button
+            type="button"
+            class="px-6 py-3 font-sans font-extrabold text-[11px] tracking-widest bg-paper text-ink"
+            data-rumours-notify-cta-mobile
+            onclick={openNotifyForm}
+          >
+            NOTIFY ME WHEN LIVE →
+          </button>
+        {/if}
+      </div>
     </section>
   </main>
   <div class="fixed bottom-0 inset-x-0 z-10">
@@ -216,5 +338,9 @@
   }
   .kicker-rumour-row {
     grid-template-columns: 1fr 120px 120px 60px 1fr;
+  }
+  .kicker-input:focus {
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
   }
 </style>

@@ -81,6 +81,14 @@ describe('notificationsFeed store — K1f-α', () => {
     expect(list[0].id).toBe('y');
   });
 
+  it('round-trips a rumours-typed item (T6)', () => {
+    addNotification({ type: 'rumours', title: "Macca's on it", body: 'First take.', href: '/rumours' });
+    const list = readNotifications();
+    expect(list).toHaveLength(1);
+    expect(list[0].type).toBe('rumours');
+    expect(list[0].href).toBe('/rumours');
+  });
+
   it('filters out partial entries missing required fields', () => {
     localStorage.setItem(
       STORAGE_KEY,

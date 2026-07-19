@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { render } from 'svelte/server';
 import RumoursPage from './+page.svelte';
+
+const ROUTE_SRC = readFileSync(
+  fileURLToPath(new URL('./+page.svelte', import.meta.url)),
+  'utf-8'
+);
+const NOTIFY_SIGNUP_SRC = readFileSync(
+  fileURLToPath(new URL('../../lib/rumours/notifySignup.ts', import.meta.url)),
+  'utf-8'
+);
 
 describe('Rumours route — K1i', () => {
   it('renders without error', () => {
@@ -66,5 +77,44 @@ describe('Rumours route — K1i', () => {
     expect(body).toContain('DEAL PROBABILITY');
     expect(body).toContain("MACCA'S DESK");
     expect(body).toContain('IMPACT RATING');
+  });
+});
+
+describe('Rumours route — T6 (NOTIFY ME email capture)', () => {
+  it('SSR renders the untouched CTA state on both desktop and mobile (no form, no done-state)', () => {
+    const { body } = render(RumoursPage);
+    expect(body).toContain('data-rumours-notify-cta');
+    expect(body).toContain('data-rumours-notify-cta-mobile');
+    expect(body).not.toContain('data-rumours-notify-form');
+    expect(body).not.toContain('data-rumours-notify-done');
+    expect(body).not.toContain('data-rumours-notify-input');
+  });
+
+  it('wires the form to validate via isValidEmail and persist via saveRumoursSignup', () => {
+    expect(ROUTE_SRC).toContain(
+      "import { isValidEmail, readRumoursSignup, saveRumoursSignup } from '$lib/rumours/notifySignup';"
+    );
+    expect(ROUTE_SRC).toMatch(/isValidEmail\(notifyEmail\)/);
+    expect(ROUTE_SRC).toMatch(/saveRumoursSignup\(notifyEmail\)/);
+    expect(ROUTE_SRC).toMatch(/data-rumours-notify-input[\s\S]*?bind:value=\{notifyEmail\}/);
+  });
+
+  it('restores the confirmed state from storage on mount (readRumoursSignup)', () => {
+    expect(ROUTE_SRC).toMatch(/onMount\(\(\) => \{[\s\S]*?readRumoursSignup\(\)/);
+  });
+
+  it('pushes exactly one in-app rumours notification, only on first signup', () => {
+    expect(ROUTE_SRC).toMatch(/const isFirstSignup = readRumoursSignup\(\) === null;/);
+    expect(ROUTE_SRC).toMatch(/if \(isFirstSignup\) \{\s*addNotification\(\{/);
+    expect(ROUTE_SRC).toMatch(/addNotification\(\{\s*type: 'rumours',/);
+  });
+
+  it('keeps the copy honest — no promise of delivered email', () => {
+    expect(ROUTE_SRC).toMatch(/No email delivery yet/i);
+    expect(ROUTE_SRC).not.toMatch(/we('| wi)ll email you/i);
+  });
+
+  it('the notifySignup module persists under the documented storage key', () => {
+    expect(NOTIFY_SIGNUP_SRC).toContain("STORAGE_KEY = 'kicker:rumoursNotify'");
   });
 });

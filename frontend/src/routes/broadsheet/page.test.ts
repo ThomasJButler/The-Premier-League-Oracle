@@ -90,6 +90,28 @@ describe('Broadsheet route — K1e-β (/broadsheet)', () => {
     });
   });
 
+  describe('T7 — "Read as column" deep link into the column reader', () => {
+    it('does NOT render the column link in any SSR-reachable state (demo / empty)', () => {
+      // The link lives inside the loaded-broadsheet branch, which is unreachable
+      // in SSR (the cache is read in onMount), so it must be absent server-side.
+      const demo = render(BroadsheetPage);
+      expect(demo.body).not.toContain('data-broadsheet-column-link');
+      const empty = render(BroadsheetPage, { props: { data: { initialGameweek: 34 } } });
+      expect(empty.body).not.toContain('data-broadsheet-column-link');
+    });
+
+    it('source: the link appears only inside the loaded-broadsheet branch, href built via buildColumnSlug, in both shells', () => {
+      expect(pageSource).toMatch(
+        /import\s*\{\s*buildColumnSlug\s*\}\s*from\s*['"]\$lib\/broadsheet\/broadsheetColumn['"]/
+      );
+      expect(pageSource).toMatch(/columnHref\s*=\s*\$derived\([\s\S]*buildColumnSlug\(gameweek,\s*personaId\)/);
+      // One link per shell (desktop body + mobile mobileBody).
+      expect((pageSource.match(/data-broadsheet-column-link/g) ?? []).length).toBe(2);
+      // Each link is guarded by {#if columnHref} and reads the derived href.
+      expect((pageSource.match(/href=\{columnHref\}/g) ?? []).length).toBe(2);
+    });
+  });
+
   describe('K2a-γ — mobile vertical-stack grammar', () => {
     it('only the mobile shell carries the data-broadsheet-mobile wrapper', () => {
       const { body } = render(BroadsheetPage, { props: { data: { initialGameweek: 34 } } });

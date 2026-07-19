@@ -2,7 +2,7 @@
 //
 // Stored at `kicker:notificationsFeed` as a JSON array, capped at MAX_ITEMS
 // (newest-first). Item types per R0+ delta: `match-start | model-edge |
-// broadsheet-ready`. NO `value-bet` type — betting copy is locked out.
+// broadsheet-ready | rumours`. NO `value-bet` type — betting copy is locked out.
 //
 // SSR-safe: every method guards `typeof localStorage`. Schema-validated on
 // read so a tampered or partially-migrated cache entry can't crash callers.
@@ -10,7 +10,7 @@
 export const STORAGE_KEY = 'kicker:notificationsFeed';
 export const MAX_ITEMS = 50;
 
-export type NotificationType = 'match-start' | 'model-edge' | 'broadsheet-ready';
+export type NotificationType = 'match-start' | 'model-edge' | 'broadsheet-ready' | 'rumours';
 
 export interface NotificationItem {
   id: string;
@@ -27,7 +27,8 @@ export interface NotificationItem {
 const VALID_TYPES: ReadonlySet<NotificationType> = new Set([
   'match-start',
   'model-edge',
-  'broadsheet-ready'
+  'broadsheet-ready',
+  'rumours'
 ]);
 
 function isValidItem(raw: unknown): raw is NotificationItem {

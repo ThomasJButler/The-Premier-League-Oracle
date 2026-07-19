@@ -7,9 +7,11 @@
   import ColumnHero from '$lib/components/column/ColumnHero.svelte';
   import PullQuote from '$lib/components/column/PullQuote.svelte';
   import CheersGeoffCallout from '$lib/components/match/CheersGeoffCallout.svelte';
-  import { getColumn } from '$lib/fixtures/columns';
+  import { getColumn, type ColumnRecord } from '$lib/fixtures/columns';
   import { PERSONAS } from '$lib/personas';
   import { personaStore } from '$lib/stores/persona';
+  import { readBroadsheet } from '$lib/stores/broadsheetStore';
+  import { parseColumnSlug, cachedBroadsheetToColumn } from '$lib/broadsheet/broadsheetColumn';
   import { onMount } from 'svelte';
 
   interface PageData {
@@ -18,10 +20,28 @@
 
   const { data }: { data: PageData } = $props();
 
-  const column = $derived(getColumn(data.slug));
+  // Three sources of a column, resolved in priority order:
+  //  1. a hand-authored static fixture (SSR-visible, synchronous)
+  //  2. a cached broadsheet edition adapted at runtime (client-only, in onMount)
+  //  3. neither → not-found
+  const staticColumn = $derived(getColumn(data.slug));
+  // Cached-edition slug (gw{N}-{personaId}); null for static + unknown slugs.
+  const cachedSlug = $derived(parseColumnSlug(data.slug));
+  // The runtime-adapted column from the broadsheet cache (populated in onMount).
+  let resolvedColumn = $state<ColumnRecord | null>(null);
+  // Whether the onMount cache probe has run — gates pending vs not-found so a
+  // cached-shape slug shows a skeleton at SSR/pre-mount, never the 404 flash.
+  let cacheResolved = $state(false);
+
+  const column = $derived(staticColumn ?? resolvedColumn);
   const persona = $derived(column ? PERSONAS[column.byline.personaId] : null);
 
   onMount(() => {
+    if (!column && cachedSlug) {
+      const entry = readBroadsheet(cachedSlug.gameweek, cachedSlug.personaId);
+      if (entry) resolvedColumn = cachedBroadsheetToColumn(entry);
+      cacheResolved = true;
+    }
     if (column) personaStore.set(column.byline.personaId);
   });
 
@@ -82,6 +102,26 @@
         </div>
       {/if}
     </article>
+  {:else if cachedSlug && !cacheResolved}
+    <div data-column-pending>
+      <Rule kicker="COLUMN" title="Filing copy…" />
+      <div
+        class="max-w-[900px] mx-auto mt-8 animate-pulse"
+        data-column-pending-skeleton
+        aria-hidden="true"
+      >
+        <div class="h-3 w-24 border border-rule mb-6"></div>
+        <div class="h-10 border border-rule mb-3"></div>
+        <div class="h-10 w-3/4 border border-rule mb-8"></div>
+        <div class="grid gap-6 sm:grid-cols-2">
+          <div class="h-28 border border-rule"></div>
+          <div class="h-28 border border-rule"></div>
+        </div>
+      </div>
+      <p class="font-serif italic text-ink-dim text-[14px] mt-6">
+        Fetching this edition from the desk…
+      </p>
+    </div>
   {:else}
     <div data-column-missing>
       <Rule kicker="404" title="Column not found" />
