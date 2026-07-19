@@ -57,25 +57,39 @@ describe('PredictionPickRow', () => {
     expect(ghostTag![0]).toMatch(/opacity-40/);
   });
 
-  it('paints the value-edge chip red when valueEdge is positive', () => {
+  it('paints the value-edge chip green when valueEdge is positive', () => {
     const { body } = render(PredictionPickRow, {
       props: { ...baseProps, valueEdge: 0.04 }
     });
     expect(body).toContain('data-prediction-edge-sign="positive"');
     expect(body).toContain('+4pp');
     const edgeTag = body.match(/<div\b[^>]*data-prediction-edge="[^"]*"[^>]*>/);
-    expect(edgeTag![0]).toMatch(/text-red/);
-    expect(edgeTag![0]).toMatch(/border-red/);
+    expect(edgeTag![0]).toMatch(/text-green/);
+    expect(edgeTag![0]).toMatch(/border-green/);
+    expect(edgeTag![0]).not.toMatch(/text-red/);
   });
 
-  it('paints the value-edge chip ink-dim when valueEdge is non-positive', () => {
+  it('paints the value-edge chip red when valueEdge is negative', () => {
     const { body } = render(PredictionPickRow, {
       props: { ...baseProps, valueEdge: -0.02 }
     });
     expect(body).toContain('data-prediction-edge-sign="negative"');
     expect(body).toContain('-2pp');
     const edgeTag = body.match(/<div\b[^>]*data-prediction-edge="[^"]*"[^>]*>/);
+    expect(edgeTag![0]).toMatch(/text-red/);
+    expect(edgeTag![0]).toMatch(/border-red/);
+  });
+
+  it('paints the value-edge chip ink-dim when valueEdge is zero', () => {
+    const { body } = render(PredictionPickRow, {
+      props: { ...baseProps, valueEdge: 0 }
+    });
+    expect(body).toContain('data-prediction-edge-sign="zero"');
+    expect(body).toContain('0pp');
+    const edgeTag = body.match(/<div\b[^>]*data-prediction-edge="[^"]*"[^>]*>/);
     expect(edgeTag![0]).toMatch(/text-ink-dim/);
+    expect(edgeTag![0]).toMatch(/border-rule/);
+    expect(edgeTag![0]).not.toMatch(/text-green/);
     expect(edgeTag![0]).not.toMatch(/text-red/);
   });
 

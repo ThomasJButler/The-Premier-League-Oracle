@@ -34,10 +34,10 @@ describe('SettledResultRow', () => {
       /<div\b[^>]*data-settled-exact-chip="[^"]*"[^>]*>[^<]*/
     );
     expect(exactTag![0]).toMatch(/text-red/);
-    expect(exactTag![0]).toContain('EXACT');
+    expect(exactTag![0]).toContain('✓✓');
   });
 
-  it('renders a miss row with ink-dim ✗ and faint dash', () => {
+  it('renders a miss row with ink-dim dash and faint dash', () => {
     const { body } = render(SettledResultRow, {
       props: {
         fixture: 'Brighton v Newcastle',
@@ -51,7 +51,7 @@ describe('SettledResultRow', () => {
     expect(body).toContain('data-settled-exact="false"');
     const hdaTag = body.match(/<div\b[^>]*data-settled-hda="[^"]*"[^>]*>[^<]*/);
     expect(hdaTag![0]).toMatch(/text-ink-dim/);
-    expect(hdaTag![0]).toContain('✗');
+    expect(hdaTag![0]).toContain('—');
     const exactTag = body.match(
       /<div\b[^>]*data-settled-exact-chip="[^"]*"[^>]*>[^<]*/
     );

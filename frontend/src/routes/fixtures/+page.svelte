@@ -12,6 +12,7 @@
   import { dataService } from "../../services/dataService";
   import { predictionTracker } from "../../services/predictionTracker";
   import { getTeamColor } from "../../utils/teamLogos";
+  import { tvTeamsFrom, isTvPick } from "$lib/fixtureFilters";
   import type { Match, Standing } from "../../types";
 
   const DEFAULT_PROBS = { home: 0.4, draw: 0.3, away: 0.3 };
@@ -44,6 +45,7 @@
   const relegationTeams = $derived(
     standings.filter((s) => s.position >= 18).map((s) => s.team.name)
   );
+  const tvTeams = $derived(tvTeamsFrom(standings));
   const upcomingMatches = $derived(matches.filter((m) => m.status !== "FINISHED"));
 
   const filteredMatches = $derived.by(() => {
@@ -51,6 +53,8 @@
       return upcomingMatches.filter((m) => top6Teams.includes(m.home_team) || top6Teams.includes(m.away_team));
     if (activeFilter === "relegation" && relegationTeams.length > 0)
       return upcomingMatches.filter((m) => relegationTeams.includes(m.home_team) || relegationTeams.includes(m.away_team));
+    if (activeFilter === "tv" && tvTeams.length > 0)
+      return upcomingMatches.filter((m) => isTvPick(m, tvTeams));
     return upcomingMatches;
   });
 

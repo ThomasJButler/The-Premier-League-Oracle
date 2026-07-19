@@ -46,7 +46,9 @@
   const edgePct = $derived(
     valueEdge !== undefined ? Math.round(valueEdge * 100) : null
   );
-  const edgePositive = $derived(edgePct !== null && edgePct > 0);
+  const edgeSign = $derived(
+    edgePct === null ? null : edgePct > 0 ? 'positive' : edgePct < 0 ? 'negative' : 'zero'
+  );
   const edgeLabel = $derived(
     edgePct === null
       ? ''
@@ -110,11 +112,14 @@
 {#snippet trailingChip()}
   {#if edgePct !== null}
     <div
-      class="text-center font-mono text-[10px] tracking-widest font-bold px-2 py-1 border {edgePositive
-        ? 'text-red border-red'
-        : 'text-ink-dim border-rule'}"
+      class="text-center font-mono text-[10px] tracking-widest font-bold px-2 py-1 border {edgeSign ===
+      'positive'
+        ? 'text-green border-green'
+        : edgeSign === 'negative'
+          ? 'text-red border-red'
+          : 'text-ink-dim border-rule'}"
       data-prediction-edge
-      data-prediction-edge-sign={edgePositive ? 'positive' : 'negative'}
+      data-prediction-edge-sign={edgeSign}
     >
       {edgeLabel}
     </div>

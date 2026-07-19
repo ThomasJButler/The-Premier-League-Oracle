@@ -42,7 +42,7 @@
       : 'text-ink-dim'}"
     data-settled-hda
   >
-    {hit ? '✓' : '✗'}
+    {hit ? '✓' : '—'}
   </div>
   <div
     class="text-center text-[10px] font-bold tracking-widest {exact
@@ -50,7 +50,7 @@
       : 'text-ink-faint'}"
     data-settled-exact-chip
   >
-    {exact ? 'EXACT' : '—'}
+    {exact ? '✓✓' : '—'}
   </div>
   {#if date}
     <div

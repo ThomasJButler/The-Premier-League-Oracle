@@ -198,3 +198,29 @@ describe('Settings route — K2a-β.7 (subnav mobile horizontal scroll)', () => 
     }
   });
 });
+
+describe('Settings route — T2 (sub-tab history entries for Back/Forward)', () => {
+  it('imports pushState from $app/navigation and uses it in setTab', () => {
+    expect(ROUTE_SRC).toMatch(/import\s*\{\s*pushState\s*\}\s*from\s*'\$app\/navigation'/);
+    const setTabMatch = ROUTE_SRC.match(/function setTab\([^)]*\):\s*void\s*\{[\s\S]*?\n  \}/);
+    expect(setTabMatch).not.toBeNull();
+    expect(setTabMatch![0]).toContain('pushState(');
+  });
+
+  it('no longer calls history.replaceState', () => {
+    expect(ROUTE_SRC).not.toMatch(/history\.replaceState/);
+  });
+
+  it('retains the hashchange listener registration (mount + destroy)', () => {
+    expect(ROUTE_SRC).toMatch(/window\.addEventListener\('hashchange', syncFromHash\)/);
+    expect(ROUTE_SRC).toMatch(/window\.removeEventListener\('hashchange', syncFromHash\)/);
+  });
+
+  it('syncFromHash falls back to pundit for an empty or invalid hash', () => {
+    const syncMatch = ROUTE_SRC.match(/function syncFromHash\(\):\s*void\s*\{[\s\S]*?\n  \}/);
+    expect(syncMatch).not.toBeNull();
+    expect(syncMatch![0]).toMatch(
+      /activeTab = raw && isTabId\(raw\) \? raw : 'pundit';/
+    );
+  });
+});

@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import FixturesPage from './+page.svelte';
+
+const source = readFileSync(new URL('./+page.svelte', import.meta.url), 'utf-8');
 
 describe('Fixtures route', () => {
   it('renders without error', () => {
@@ -54,5 +57,9 @@ describe('Fixtures route', () => {
     expect(body).not.toMatch(/value bets/i);
     expect(body).not.toMatch(/bankroll/i);
     expect(body).not.toMatch(/betting/i);
+  });
+
+  it('wires the tv filter branch into filteredMatches', () => {
+    expect(source).toMatch(/activeFilter === "tv" && tvTeams\.length > 0/);
   });
 });

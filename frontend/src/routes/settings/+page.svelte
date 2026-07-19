@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { pushState } from '$app/navigation';
   import KickerShell from '$lib/components/shell/KickerShell.svelte';
   import MobileHeader from '$lib/components/shell/MobileHeader.svelte';
   import MobileNav from '$lib/components/shell/MobileNav.svelte';
@@ -128,16 +129,14 @@
   function setTab(id: TabId): void {
     activeTab = id;
     if (typeof window !== 'undefined' && window.location.hash !== `#${id}`) {
-      history.replaceState(null, '', `#${id}`);
+      pushState(`#${id}`, {});
     }
   }
 
   function syncFromHash(): void {
     if (typeof window === 'undefined') return;
     const raw = window.location.hash.slice(1);
-    if (raw && isTabId(raw)) {
-      activeTab = raw;
-    }
+    activeTab = raw && isTabId(raw) ? raw : 'pundit';
   }
 
   onMount(() => {
