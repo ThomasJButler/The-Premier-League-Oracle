@@ -17,6 +17,18 @@ describe('MobileTicker', () => {
     expect(body).toContain('data-mobile-ticker');
   });
 
+  it('renders the honest neutral default when no items are supplied', () => {
+    const { body } = render(MobileTicker);
+    expect(body).toContain('THE KICKER   ·   AWAITING SCHEDULE');
+  });
+
+  it('source carries no hardcoded fake-live stat literals', () => {
+    expect(SOURCE).not.toMatch(/GW33/);
+    expect(SOURCE).not.toMatch(/0\.198/);
+    expect(SOURCE).not.toMatch(/CALIBRATION 0\.94/);
+    expect(SOURCE).not.toMatch(/EDGE \+4pp/);
+  });
+
   it('source pins the mobile-specific 22px height (not desktop 28px)', () => {
     expect(SOURCE).toMatch(/height:\s*22px/);
     expect(SOURCE).not.toMatch(/height:\s*28px/);

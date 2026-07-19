@@ -16,6 +16,18 @@ describe('GeoffTicker', () => {
     expect(body).toContain('aria-label="Live model ticker"');
   });
 
+  it('renders the honest neutral default when no items are supplied', () => {
+    const { body } = render(GeoffTicker);
+    expect(body).toContain('THE KICKER   ·   AWAITING SCHEDULE');
+  });
+
+  it('source carries no hardcoded fake-live stat literals', () => {
+    expect(SOURCE).not.toMatch(/GW33/);
+    expect(SOURCE).not.toMatch(/0\.198/);
+    expect(SOURCE).not.toMatch(/CALIBRATION 0\.94/);
+    expect(SOURCE).not.toMatch(/EDGE \+4pp/);
+  });
+
   it('joins items into the tape with a centred dot separator', () => {
     const { body } = render(GeoffTicker, {
       props: { items: ['ALPHA', 'BETA', 'GAMMA'] }

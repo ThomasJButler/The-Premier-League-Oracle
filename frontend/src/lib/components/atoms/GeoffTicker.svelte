@@ -4,15 +4,10 @@
     label?: string;
   }
 
+  // Honest neutral default: a prop-less render can never lie. Live tape is fed
+  // from lib/ticker/tickerFeed (the KickerShell mount passes tickerDesktop).
   const {
-    items = [
-      'MODEL LIVE',
-      'GW33 · 7 fixtures',
-      'EDGE +4pp vs market · L10',
-      'BRIER 0.198',
-      'CALIBRATION 0.94',
-      "PUNDIT ON DUTY"
-    ],
+    items = ['THE KICKER', 'AWAITING SCHEDULE'],
     label = 'Live model ticker'
   }: Props = $props();
 

@@ -89,7 +89,10 @@ describe('Today route', () => {
   it('Predict GW button shows AWAITING SCHEDULE copy in null-GW SSR state, not a bare "Predict GW"', () => {
     const { body } = render(TodayPage);
     // Null-GW state (SSR) must surface the scheduled-fallback label, once per shell.
-    const awaitingMatches = body.match(/AWAITING SCHEDULE/g) ?? [];
+    // The GeoffTicker's honest neutral tape also carries AWAITING SCHEDULE (doubled
+    // for the marquee loop), so strip the ticker run before counting page content.
+    const pageBody = body.replace(/<span class="kicker-ticker__run[^"]*">[\s\S]*?<\/span>/g, '');
+    const awaitingMatches = pageBody.match(/AWAITING SCHEDULE/g) ?? [];
     expect(awaitingMatches.length).toBe(2);
     // Regression pin: the previous bare "Predict GW" (no number, no fallback context) must not reappear.
     expect(body).not.toMatch(/>\s*Predict GW\s*</);

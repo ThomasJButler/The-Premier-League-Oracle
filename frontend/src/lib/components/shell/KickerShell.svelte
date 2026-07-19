@@ -3,6 +3,7 @@
   import { personaStore } from '$lib/stores/persona';
   import { getPersona, type PersonaId } from '$lib/personas';
   import GeoffTicker from '$lib/components/atoms/GeoffTicker.svelte';
+  import { tickerDesktop } from '$lib/ticker/tickerFeed';
 
   type NavId = 'today' | 'fixtures' | 'predictions' | 'oracle' | 'insights' | 'settings';
 
@@ -35,7 +36,7 @@
 </script>
 
 <div class="kicker-shell min-h-screen bg-paper text-ink font-serif" data-shell>
-  <GeoffTicker />
+  <GeoffTicker items={$tickerDesktop} />
 
   <div class="kicker-shell__grid grid">
     <aside

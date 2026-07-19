@@ -5,6 +5,7 @@
   import { page } from '$app/stores';
   import { personaStore, STORAGE_KEY } from '$lib/stores/persona';
   import MobileTicker from '$lib/components/shell/MobileTicker.svelte';
+  import { tickerMobile } from '$lib/ticker/tickerFeed';
   import PersonaBottomSheet from '$lib/components/persona/PersonaBottomSheet.svelte';
   import PersistentAudioPlayer from '$lib/components/audio/PersistentAudioPlayer.svelte';
   import { shouldRedirectToOnboarding } from '$lib/utils/onboardingGate';
@@ -36,7 +37,7 @@
 
 <!-- Mobile ticker: visible on mobile only. Desktop gets GeoffTicker inside KickerShell. -->
 <div class="lg:hidden">
-  <MobileTicker />
+  <MobileTicker items={$tickerMobile} />
 </div>
 
 {@render children()}

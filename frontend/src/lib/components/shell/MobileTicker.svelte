@@ -4,14 +4,10 @@
     label?: string;
   }
 
+  // Honest neutral default: a prop-less render can never lie. Live tape is fed
+  // from lib/ticker/tickerFeed (the layout mount passes tickerMobile).
   const {
-    items = [
-      'MODEL LIVE',
-      'GW33',
-      'EDGE +4pp',
-      'BRIER 0.198',
-      'CALIBRATION 0.94'
-    ],
+    items = ['THE KICKER', 'AWAITING SCHEDULE'],
     label = 'Live model ticker'
   }: Props = $props();
 
